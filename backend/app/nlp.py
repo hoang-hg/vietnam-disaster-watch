@@ -168,8 +168,9 @@ DISASTER_RULES = [
   ("quake_tsunami", [
     # động đất
     r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"tâm\s*chấn",
-    r"đứt\s*gãy", r"nứt\s*đất", r"nứt\s*nhà",
-    r"(?:độ\s*lớn|cường\s*độ)\s*\d+(?:[.,]\d+)?",
+    r"đứt\s*gãy\s*địa\s*chất", # stricter than just "đứt gãy"
+    r"nứt\s*đất\s*do\s*động\s*đất", # stricter
+    r"(?:độ\s*lớn|cường\s*độ)\s*\d+(?:[.,]\d+)?\s*richter", # Must mention richter or magnitude context if possible, but keeping current patterns for now with caution
     r"\d+(?:[.,]\d+)?\s*(?:độ\s*richter|richter)",
     r"\bM\s*\d+(?:[.,]\d+)?\b", r"(?:magnitude|mag)\s*\d+(?:[.,]\d+)?",
     # sóng thần
@@ -523,7 +524,23 @@ DISASTER_NEGATIVE_PATTERNS = [
     re.compile(r"(?<!\w)làn\s*sóng\s*(?:covid|dịch\s*bệnh|đầu\s*tư|nhập\s*cư|tẩy\s*chay)(?!\w)", re.IGNORECASE),
     re.compile(r"(?<!\w)cơn\s*sốt\s*(?:đất|giá|vé)(?!\w)", re.IGNORECASE),
     re.compile(r"(?<!\w)đóng\s*băng\s*(?:thị\s*trường|tài\s*khoản|quan\s*hệ)(?!\w)", re.IGNORECASE),
+
+    # Construction / Planning / Policy (Non-disaster events)
+    re.compile(r"(?<!\w)quy\s*hoạch(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)phê\s*duyệt(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)khởi\s*công(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)khánh\s*thành(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)nghiệm\s*thu(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)đấu\s*thầu(?!\w)", re.IGNORECASE),
     
+    # Traffic accidents (unless clearly disaster related, usually these are distinct)
+    re.compile(r"(?<!\w)tai\s*nạn\s*giao\s*thông(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)va\s*chạm\s*xe(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)xe\s*tải(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)xe\s*container(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)xe\s*khách(?!\w)", re.IGNORECASE),
+    re.compile(r"(?<!\w)đường\s*cao\s*tốc(?!\w)", re.IGNORECASE), # "Tuyến cao tốc" issue
+
     # sports specific
     re.compile(r"(?<!\w)địa\s*chấn\s*(?:sân\s*cỏ|tại\s*world\s*cup|vòng\s*loại)(?!\w)", re.IGNORECASE),
     re.compile(r"(?<!\w)cơn\s*lốc\s*(?:đường\s*biên|màu\s*cam)(?!\w)", re.IGNORECASE), # Dutch team metaphor

@@ -35,6 +35,10 @@ class EventOut(BaseModel):
     missing: int | None
     injured: int | None
     damage_billion_vnd: float | None
+    lat: float | None
+    lon: float | None
+    details: dict | None
+    risk_level: int | None
     confidence: float
     sources_count: int
 

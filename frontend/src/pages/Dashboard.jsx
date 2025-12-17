@@ -216,24 +216,8 @@ export default function Dashboard() {
         
         {/* Left Column: Map & Risky Provinces (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Map Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-blue-500" />
-                Bản đồ rủi ro
-              </h3>
-              <Link to="/map" className="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                Mở rộng
-              </Link>
-            </div>
-            <div className="h-[400px] w-full">
-              <VietnamMap points={mapPoints} />
-            </div>
-          </div>
-
           {/* Recent Events Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center">
               <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-500" />

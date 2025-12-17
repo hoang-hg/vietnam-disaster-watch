@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Float, UniqueConstraint
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Float, UniqueConstraint, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from .database import Base
@@ -39,7 +39,7 @@ class Event(Base):
     __tablename__ = "events"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     key: Mapped[str] = mapped_column(String(256), unique=True, index=True)  # clustering key
-    title: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text, index=True)
     disaster_type: Mapped[str] = mapped_column(String(32), index=True)
     province: Mapped[str] = mapped_column(String(64), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
@@ -50,6 +50,10 @@ class Event(Base):
     missing: Mapped[int | None] = mapped_column(Integer, nullable=True)
     injured: Mapped[int | None] = mapped_column(Integer, nullable=True)
     damage_billion_vnd: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     confidence: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1 based on multi-source agreement
     sources_count: Mapped[int] = mapped_column(Integer, default=1)
