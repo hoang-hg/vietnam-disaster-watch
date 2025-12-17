@@ -1,66 +1,98 @@
-# Viet Disaster Watch (12 báo chính thống) — Full-stack starter
+# 🇻🇳 Viet Disaster Watch - Hệ thống Giám sát Thiên tai Việt Nam
 
-Hệ thống tổng hợp tin **thiên tai** từ 12 nguồn báo điện tử Việt Nam, phân loại (bão/lũ/động đất/sạt lở/...), trích xuất nhanh (địa điểm/thời gian/thiệt hại), nhóm thành **Sự kiện (Event)**, hiển thị dashboard bản đồ + bảng tin.
+Hệ thống theo dõi, tổng hợp và phân tích tin tức thiên tai tự động từ 38 nguồn chính thống tại Việt Nam. Ứng dụng sử dụng kỹ thuật NLP để phân loại sự kiện theo quy định của Chính phủ (Quyết định 18/2021/QĐ-TTg) và đánh giá mức độ rủi ro theo thời gian thực.
 
-> Lưu ý pháp lý/đạo đức:
-> - Ưu tiên **RSS/nguồn công khai**; nếu phải scraping, hãy tuân thủ robots.txt/ToS và hạn chế tần suất.
-> - Website này **không đăng lại toàn văn** bài báo; chỉ lưu metadata/tóm tắt trích xuất và link về nguồn gốc.
+![Dashboard Preview](https://i.imgur.com/example.png)
 
-## 1) Chạy nhanh bằng Docker
+## 🚀 Tính năng nổi bật
 
-```bash
-cd viet-disaster-watch
-docker compose up --build
-```
+-   **Đa nguồn tin cậy**: Tự động thu thập từ **38 nguồn** bao gồm các cơ quan chính phủ (NCHMF, MARD, Sở ban ngành) và các báo điện tử uy tín (VnExpress, Tuổi Trẻ, Thanh Niên...).
+-   **Phân loại chuẩn hóa**: Nhận diện và phân loại tự động **8 nhóm thiên tai** theo quy định pháp luật:
+    1.  Bão / Áp thấp nhiệt đới
+    2.  Mưa lớn / Lũ lụt / Sạt lở
+    3.  Nắng nóng / Hạn hán / Xâm nhập mặn
+    4.  Gió mạnh / Sương mù
+    5.  Nước dâng
+    6.  Cháy rừng
+    7.  Động đất / Sóng thần
+    8.  Thiên tai cực đoan khác (Lốc, sét, mưa đá...)
+-   **Đánh giá rủi ro**: Chấm điểm rủi ro (Risk Score) dựa trên từ khóa tác động (thương vong, thiệt hại vật chất) và quy mô sự kiện.
+-   **Giao diện trực quan**:
+    -   **Dashboard**: Thống kê tổng quan, biểu đồ xu hướng.
+    -   **Bản đồ rủi ro**: Hiển thị vị trí sự kiện trên bản đồ tương tác (Leaflet).
+    -   **Tra cứu nâng cao**: Lọc theo loại hình, địa phương, thời gian và mức độ nghiêm trọng.
 
-- Frontend: http://localhost:5173
-- Backend: http://localhost:8000/docs
+## 🛠 Công nghệ sử dụng
 
-Backend sẽ tự chạy crawler theo lịch (mặc định 10 phút/lần). Bạn cũng có thể trigger thủ công:
+### Backend (Python)
+-   **Framework**: FastAPI (High performance).
+-   **NLP Engine**: Custom Rule-based System + Regex (tối ưu cho tiếng Việt chuyên ngành thiên tai).
+-   **Database**: SQLite (SQLAlchemy ORM) - Dễ dàng triển khai và sao lưu.
+-   **Crawler**: `feedparser` cho RSS và `BeautifulSoup` & `Google News` cho fallback.
 
-```bash
-docker compose exec backend python -m app.crawler --once
-```
+### Frontend (React)
+-   **Core**: React 18 + Vite.
+-   **Styling**: TailwindCSS + Lucide Icons.
+-   **Charts**: Recharts.
+-   **Map**: React-Leaflet.
 
-## 2) Chạy thủ công (không Docker)
+## 📦 Cài đặt và Chạy ứng dụng
 
-### Backend
+### 1. Yêu cầu hệ thống
+-   Python 3.10+
+-   Node.js 18+
+
+### 2. Khởi chạy Backend
 ```bash
 cd backend
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
 
-### Frontend
+# Tạo môi trường ảo (khuyến nghị)
+python -m venv .venv
+
+# Kích hoạt môi trường (Windows)
+.\.venv\Scripts\activate
+# Hoặc MacOS/Linux: source .venv/bin/activate
+
+# Cài đặt thư viện
+pip install -r requirements.txt
+
+# Chạy server
+npm run dev 
+# Hoặc: python -m uvicorn app.main:app --reload --port 8000
+```
+Backend sẽ chạy tại: `http://localhost:8000`
+
+### 3. Khởi chạy Frontend
 ```bash
 cd frontend
+
+# Cài đặt thư viện
 npm install
+
+# Chạy dev server
 npm run dev
 ```
+Frontend sẽ chạy tại: `http://localhost:5173`
 
-## 3) Cấu hình nguồn dữ liệu (12 báo)
-Danh sách nguồn nằm ở `backend/app/sources.py`.
+## 📂 Cấu trúc dự án
 
-Thiết kế:
-- Nếu có RSS chính thức, dùng `method="rss"`.
-- Nếu không rõ RSS, dùng `method="gnews"` để lấy RSS truy vấn Google News theo domain (site:... + từ khóa thiên tai).
+```
+viet-disaster-watch/
+├── backend/
+│   ├── app/
+│   │   ├── nlp.py           # Logic xử lý ngôn ngữ & phân loại
+│   │   ├── crawler.py       # Bộ thu thập dữ liệu
+│   │   ├── api.py           # API Endpoints
+│   │   └── sources.py       # Cấu hình 38 nguồn tin
+│   ├── data/                # Chứa DB SQLite
+│   └── logs/                # Logs hệ thống
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # UI Components (Map, Cards, Badges...)
+│   │   ├── pages/           # Dashboard, Events, EventDetail
+│   │   └── api.js           # Kết nối Backend
+└── README.md
+```
 
-Bạn có thể chỉnh từ khóa, hoặc thay RSS bằng đường dẫn chính thức nếu có.
-
-## 4) Dữ liệu & mô hình
-- Lưu trong SQLite: `backend/data/app.db`.
-- NLP hiện tại dùng **rule-based** (regex + từ khóa) để:
-  - phân loại thiên tai
-  - trích xuất địa điểm (tỉnh/thành)
-  - trích xuất thiệt hại (người chết/mất tích/bị thương; thiệt hại kinh tế)
-- Có sẵn hook để nâng cấp sang PhoBERT/VnCoreNLP trong `app/nlp.py`.
-
-## 5) API chính
-- `GET /api/health`
-- `GET /api/articles/latest?limit=50&type=&province=`
-- `GET /api/events?limit=50&type=&province=&q=`
-- `GET /api/events/{event_id}`
-- `GET /api/stats/summary`
+## ⚖️ Lưu ý pháp lý
+Ứng dụng này là một công cụ tổng hợp tin tức (News Aggregator). Toàn bộ nội dung bài viết gốc thuộc bản quyền của các tòa soạn và cơ quan phát hành. Hệ thống chỉ trích xuất siêu dữ liệu (metadata), tóm tắt và dẫn link trực tiếp về nguồn gốc để tôn trọng quyền tác giả.
