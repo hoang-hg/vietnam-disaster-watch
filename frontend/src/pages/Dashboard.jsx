@@ -26,18 +26,37 @@ import {
   Calendar,
   Filter,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  Search
 } from "lucide-react";
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [riskiest, setRiskiest] = useState(null);
-  const [events, setEvents] = useState([]);
+  const [rawEvents, setRawEvents] = useState([]);
   const [articles, setArticles] = useState([]);
   const [hours, setHours] = useState(24);
+  const [minRisk, setMinRisk] = useState(0);
+  const [hazardType, setHazardType] = useState("all");
+  const [provQuery, setProvQuery] = useState("");
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const events = useMemo(() => {
+    let list = rawEvents;
+    if (minRisk > 0) list = list.filter(e => e.risk_level >= minRisk);
+    if (hazardType !== "all") list = list.filter(e => e.disaster_type === hazardType);
+    if (provQuery) {
+        const q = provQuery.toLowerCase();
+        list = list.filter(e => e.province && e.province.toLowerCase().includes(q));
+    }
+    return list;
+  }, [rawEvents, minRisk, hazardType, provQuery]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [minRisk, hours, hazardType, provQuery]);
 
   async function load() {
     try {
@@ -51,7 +70,7 @@ export default function Dashboard() {
       ]);
       setStats(s);
       setRiskiest(riskData?.data || []);
-      setEvents(evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown"));
+      setRawEvents(evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown"));
       setArticles(arts);
     } catch (e) {
       setError(e.message || "Load failed");
@@ -151,7 +170,57 @@ export default function Dashboard() {
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          
+          {/* Province Search */}
+          <div className="relative">
+             <input
+                type="text"
+                placeholder="Tìm tỉnh..."
+                value={provQuery}
+                onChange={(e) => setProvQuery(e.target.value)}
+                className="w-32 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400"
+             />
+             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Hazard Filter */}
+          <div className="relative">
+             <select
+                 value={hazardType}
+                 onChange={(e) => setHazardType(e.target.value)}
+                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[120px] truncate"
+             >
+                 <option value="all">Mọi thiên tai</option>
+                 <option value="storm">Bão / ATNĐ</option>
+                 <option value="flood_landslide">Mưa / Lũ / Sạt lở</option>
+                 <option value="heat_drought">Nắng nóng / Hạn</option>
+                 <option value="wind_fog">Gió / Sương mù</option>
+                 <option value="storm_surge">Nước dâng</option>
+                 <option value="quake_tsunami">Động đất / Sóng thần</option>
+                 <option value="wildfire">Cháy rừng</option>
+                 <option value="extreme_other">Khác</option>
+             </select>
+             <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Risk Filter */}
+          <div className="relative">
+             <select
+                 value={minRisk}
+                 onChange={(e) => setMinRisk(Number(e.target.value))}
+                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+             >
+                 <option value={0}>Mọi rủi ro</option>
+                 <option value={1}>Cấp 1+</option>
+                 <option value={2}>Cấp 2+</option>
+                 <option value={3}>Cấp 3+</option>
+                 <option value={4}>Cấp 4+</option>
+                 <option value={5}>Cấp 5</option>
+             </select>
+             <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
           <div className="bg-white rounded-lg border border-slate-200 p-1 flex items-center shadow-sm">
             {[24, 48, 72].map((h) => (
               <button
@@ -204,7 +273,7 @@ export default function Dashboard() {
         />
         <StatCard
           title="Mức rủi ro cao nhất"
-          value={`Cấp 3`} 
+          value={rawEvents.length > 0 ? `Cấp ${Math.max(...rawEvents.map(e => e.risk_level || 0), 0)}` : "Chưa có"} 
           sub="Đánh giá rủi ro"
           icon={TrendingUp}
           color="text-purple-600"

@@ -62,13 +62,13 @@ async def test_rss_sources():
                         "elapsed": elapsed
                     }
                 except Exception as e:
-                    print(f"  ❌ Primary RSS: {str(e)[:60]}")
+                    print(f"  Primary RSS: {str(e)[:60]}")
                     src_result["primary"] = {
                         "status": "error",
                         "error": str(e)[:60]
                     }
             else:
-                print(f"  ⏭️  Primary RSS: not configured")
+                print(f"Primary RSS: not configured")
             
             # Test backup RSS
             if backup_rss:
@@ -89,7 +89,7 @@ async def test_rss_sources():
                         "elapsed": elapsed
                     }
                 except Exception as e:
-                    print(f"  ❌ Backup RSS: {str(e)[:60]}")
+                    print(f"Backup RSS: {str(e)[:60]}")
                     src_result["backup"] = {
                         "status": "error",
                         "error": str(e)[:60]
@@ -101,7 +101,7 @@ async def test_rss_sources():
             results.append(src_result)
     
     # Summary
-    print("\n📊 SUMMARY")
+    print("\nSUMMARY")
     print("=" * 60)
     
     working = 0

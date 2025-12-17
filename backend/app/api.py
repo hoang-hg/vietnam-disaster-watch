@@ -68,7 +68,25 @@ def events(
     if q:
         query = query.filter(Event.title.ilike(f"%{q}%"))
         
-    return query.limit(limit).all()
+    q_events = query.limit(limit).all()
+    
+    # Enrich with representative image and source from the first article
+    # This avoids a complex join if we just want "one" image.
+    # A cleaner SQL way would be a subquery, but iterating 50 items is fast enough.
+    results = []
+    for ev in q_events:
+        # Pydantic model will be created from ev, but we need to inject image_url/source
+        # We can't easily modify the ORM object if it's not loaded with those fields.
+        # So we fetch the first article.
+        first_article = db.query(Article).filter(Article.event_id == ev.id).order_by(desc(Article.published_at)).first()
+        
+        ev_data = EventOut.from_orm(ev)
+        if first_article:
+            ev_data.image_url = first_article.image_url
+            ev_data.source = first_article.source
+        results.append(ev_data)
+
+    return results
 
 @router.get("/events/{event_id}", response_model=EventDetailOut)
 def event_detail(event_id: int, db: Session = Depends(get_db)):

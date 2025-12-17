@@ -41,6 +41,8 @@ class EventOut(BaseModel):
     risk_level: int | None
     confidence: float
     sources_count: int
+    image_url: str | None = None
+    source: str | None = None
 
     class Config:
         from_attributes = True

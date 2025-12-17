@@ -33,40 +33,15 @@ export default function MainLayout({ children }) {
                     </div>
                     {/* Text Logo */}
                     <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
-                        BÁO CẢNH BÁO <span className="text-[#e04f23]">THIÊN TAI</span>
+                        BÁO CẢNH BÁO <span className="text-[#e04f23]">RỦI RO THIÊN TAI</span>
                     </span>
                 </Link>
             </div>
 
-            {/* Search Bar - Keeping it as it's standard in Báo Mới style, but user said "only have Logo on top row"? 
-               "hàng đầu chỉ cần có BÁO CẢNH BÁO THIÊN TAI thôi". 
-               I'll assume they meant "The text content should be...", not literally removing search. 
-               However, if they meant "Only logo", I should remove the rest. 
-               Let's try to keep the search bar but make the logo more prominent as requested.
-            */}
-            <div className="hidden md:flex flex-1 max-w-lg mx-auto">
-                <div className="relative w-full">
-                    <input
-                        type="text"
-                        placeholder="Nhập nội dung tìm kiếm..."
-                        className="w-full pl-3 pr-10 py-2 border border-slate-200 rounded-sm text-sm focus:outline-none focus:border-[#2fa1b3] transition-colors"
-                    />
-                    <button className="absolute right-0 top-0 h-full px-3 text-slate-400 hover:text-[#2fa1b3]">
-                        <Search className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-
-            {/* Right Actions */}
-            <div className="flex items-center gap-3 text-slate-500">
-                <button className="hover:text-[#2fa1b3] transition-colors p-2 rounded-full hover:bg-slate-50">
-                    <User className="w-5 h-5" />
-                </button>
-                <button className="hover:text-[#2fa1b3] transition-colors p-2 rounded-full hover:bg-slate-50">
-                    <Grid className="w-5 h-5" />
-                </button>
+            {/* Mobile Menu Button - Moved to right since actions are gone */}
+            <div className="flex items-center md:hidden">
                 <button 
-                    className="md:hidden p-2 text-slate-700"
+                    className="p-2 text-slate-700"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
                     {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -78,17 +53,17 @@ export default function MainLayout({ children }) {
       {/* Navigation Bar (Teal - Bao Moi Style) */}
       <nav className="bg-[#2fa1b3] shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center h-10">
+            <div className="flex items-center h-12">
                 {/* Desktop/Tablet Nav */}
-                <div className="flex space-x-1 h-full items-stretch">
+                <div className="flex h-full border-l border-white/20">
                     {navigation.map((item) => (
                         <Link
                             key={item.name}
                             to={item.href}
-                            className={`flex items-center px-4 text-xs font-bold whitespace-nowrap transition-colors border-b-2 ${
+                            className={`flex items-center justify-center px-6 text-sm font-bold uppercase tracking-wide border-r border-white/20 transition-colors ${
                                 item.current
-                                    ? "text-white border-white bg-[#258a9b]"
-                                    : "text-white/90 border-transparent hover:bg-[#258a9b] hover:text-white"
+                                    ? "bg-[#258a9b] text-white"
+                                    : "text-white hover:bg-[#258a9b]"
                             }`}
                         >
                             {item.name}

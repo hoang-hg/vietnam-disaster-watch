@@ -180,16 +180,33 @@ export default function Events() {
             {/* Top Border Indicator for Impact/Severity Visual */}
             <div className={`h-1.5 w-full ${e.risk_level >= 4 ? 'bg-red-500' : (e.risk_level === 3 ? 'bg-orange-500' : 'bg-blue-500')}`}></div>
             
-            <div className="p-5 flex flex-col h-full">
+            {/* 0. Image Area */}
+            <div className="w-full h-48 bg-slate-100 overflow-hidden relative">
+                 {e.image_url ? (
+                    <img 
+                      src={e.image_url} 
+                      alt={e.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                 ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
+                        <Activity className="w-12 h-12 opacity-20" />
+                    </div>
+                 )}
+                 {/* Badge Overlay */}
+                 <div className="absolute top-3 left-3 flex flex-col gap-2">
+                    <Badge tone={TYPE_TONES[e.disaster_type] || "slate"}>
+                       {fmtType(e.disaster_type)}
+                    </Badge>
+                 </div>
+            </div>
+
+            <div className="p-5 flex flex-col h-full flex-1">
                 {/* 1. Header: Province & Date */}
                 <div className="flex justify-between items-start mb-3 text-xs text-slate-500 font-medium">
                     <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded">
                         <MapPin className="w-3 h-3 text-slate-400" />
                         {e.province}
-                    </span>
-                    <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        {fmtTimeAgo(e.last_updated_at)}
                     </span>
                 </div>
 
@@ -198,11 +215,19 @@ export default function Events() {
                     {e.title}
                 </h3>
 
-                {/* 3. Badges Row */}
+                {/* 3. Source & Time Row (Like VTCNews Logo Example) */}
+                <div className="flex items-center gap-2 mb-4 text-xs">
+                    {e.source ? (
+                       <span className="font-bold text-[#e04f23] uppercase">{e.source}</span>
+                    ) : (
+                       <span className="font-bold text-slate-400">TIN TỨC</span>
+                    )}
+                    <span className="text-slate-300">|</span>
+                    <span className="text-slate-500">{fmtTimeAgo(e.last_updated_at)}</span>
+                 </div>
+                
+                {/* 4. Risk Badge Row */}
                 <div className="flex flex-wrap items-center gap-2 mb-4">
-                    <Badge tone={TYPE_TONES[e.disaster_type] || "slate"}>
-                       {fmtType(e.disaster_type)}
-                    </Badge>
                     {e.risk_level && <RiskBadge level={e.risk_level} />}
                     <span className="text-xs text-slate-400 flex items-center gap-1 ml-auto">
                         <FileText className="w-3 h-3" /> {e.sources_count} tin

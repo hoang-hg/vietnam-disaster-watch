@@ -240,26 +240,33 @@ DISASTER_NEGATIVE = [
   r"bão\s*sao\s*kê",
   
   # Động đất / Lũ
-  r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường)(?!\w)",
+  r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)(?!\w)",
   r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí|mạng)(?!\w)",
   r"(?<!\w)động\s*đất\s*(?:thị\s*trường|giá|chứng\s*khoán|bất\s*động\s*sản)(?!\w)",
-  r"lũ\s*(?:lượt|fan|like|view|đơn\s*hàng)(?!\w)",
-  r"cơn\s*địa\s*chấn\s*sân\s*cỏ", r"cơn\s*lốc\s*(?:đường\s*biên|màu\s*cam)",
+  r"lũ\s*(?:lượt|fan|like|view|đơn\s*hàng|người\s*về)(?!\w)",
+  r"cơn\s*địa\s*chấn", r"cơn\s*lốc\s*(?:đường\s*biên|màu\s*cam|sân\s*cỏ)",
   
   # General Metaphors
   r"bão\s*(?:chấn\s*thương|bệnh\s*tật|sa\s*thải)(?!\w)",
   r"làn\s*sóng\s*(?:covid|dịch\s*bệnh|đầu\s*tư|nhập\s*cư|tẩy\s*chay)(?!\w)",
   r"cơn\s*sốt\s*(?:đất|giá|vé)(?!\w)",
   r"đóng\s*băng\s*(?:thị\s*trường|tài\s*khoản|quan\s*hệ)(?!\w)",
-  r"ngập\s*(?:tràn|trong)\s*(?:hạnh\s*phúc|tiếng\s*cười|quà|bình\s*luận)(?!\w)",
+  r"ngập\s*(?:tràn|trong)\s*(?:hạnh\s*phúc|tiếng\s*cười|quà|bình\s*luận|sắc\s*màu)(?!\w)",
 
-  # Non-disaster Context (Construction, Policy, Traffic)
-  r"(?<!\w)quy\s*hoạch(?!\w)", r"(?<!\w)phê\s*duyệt(?!\w)",
-  r"(?<!\w)khởi\s*công(?!\w)", r"(?<!\w)khánh\s*thành(?!\w)",
-  r"(?<!\w)nghiệm\s*thu(?!\w)", r"(?<!\w)đấu\s*thầu(?!\w)",
-  r"(?<!\w)tai\s*nạn\s*giao\s*thông(?!\w)", r"(?<!\w)va\s*chạm\s*xe(?!\w)",
-  r"(?<!\w)xe\s*tải(?!\w)", r"(?<!\w)xe\s*container(?!\w)", r"(?<!\w)xe\s*khách(?!\w)",
-  r"(?<!\w)đường\s*cao\s*tốc(?!\w)"
+  # Non-disaster Context (Construction, Policy, Traffic, Science, Agri)
+  r"(?<!\w)quy\s*hoạch(?!\w)", r"(?<!\w)phê\s*duyệt(?!\w)", r"(?<!\w)dự\s*án(?!\w)",
+  r"khởi\s*công", r"khánh\s*thành", r"nghiệm\s*thu", r"đấu\s*thầu",
+  r"bãi\s*đỗ\s*xe", r"biệt\s*thự", r"chung\s*cư", r"khu\s*đô\s*thị",
+  r"tai\s*nạn\s*giao\s*thông", r"va\s*chạm\s*xe", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
+  r"đường\s*cao\s*tốc", r"ùn\s*tắc", 
+  r"ứng\s*dụng\s*ai", r"trí\s*tuệ\s*nhân\s*tạo", r"công\s*nghệ", r"chuyển\s*đổi\s*số",
+  r"hội\s*thảo", r"hội\s*nghị", r"diễn\s*đàn", r"nghiên\s*cứu",
+  # Agricultural / Seasonal (without disaster warning context)
+  r"vụ\s*tết", r"hoa\s*cúc", r"thối\s*rễ", r"được\s*mùa", r"mất\s*mùa", 
+  r"giá\s*nông\s*sản", r"xuất\s*khẩu",
+  # Post-disaster / Charity (Recovery actions, not warnings)
+  r"xây\s*dựng\s*nhà\s*cho", r"trao\s*tặng", r"quyên\s*góp", r"ủng\s*hộ",
+  r"khắc\s*phục\s*hậu\s*quả", r"thăm\s*hỏi", r"chia\s*sẻ\s*khó\s*khăn"
 ]
 
 DISASTER_CONTEXT_PATTERNS = [re.compile(p, re.IGNORECASE) for p in DISASTER_CONTEXT]
@@ -382,6 +389,14 @@ def extract_disaster_metrics(text: str) -> dict:
     m = re.search(r"giật\s*cấp\s*(\d{1,2})", t)
     if m: metrics["wind_gust"] = int(m.group(1))
     
+    # Water Level / Surge (m)
+    m = re.search(r"(?:mực\s*nước|nước\s*dâng|độ\s*cao).*?(\d+(?:[.,]\d+)?)\s*m", t)
+    if m: metrics["water_level_m"] = _to_float(m.group(1))
+    
+    # Duration (days)
+    m = re.search(r"(?:trong|kéo\s*dài|đợt)\s*(?:khoảng\s*)?(\d+)\s*ngày", t)
+    if m: metrics["duration_days"] = _to_float(m.group(1))
+
     # Quake
     m = re.search(r"M\s*=?\s*(\d+(?:[.,]\d+)?)", t, re.IGNORECASE)
     if m: metrics["earthquake_magnitude"] = _to_float(m.group(1))
@@ -537,18 +552,36 @@ def summarize(text: str, max_len: int = 220) -> str:
     if len(cleaned) <= max_len: return cleaned
     return cleaned[:max_len].rsplit(" ", 1)[0] + "…"
 
-def extract_risk_level(text: str, disaster_type: str) -> int:
-    """Determine risk level (1-5) based on text rules or default mappings.
-    Updated with logic from Decision 18/2021/QD-TTg for Storms/Tropical Depressions.
+def extract_risk_level(text: str, disaster_type: str, title: str = "") -> int:
+    """Determine risk level (1-5).
+    Priority:
+    1. Direct mention in TITLE (High confidence).
+    2. Direct mention in TEXT.
+    3. Inference based on disaster type & keywords.
     """
+    # Quick fix: allow search in combined text if needed, but let's be explicit
+    # Search in Title first
+    if title:
+        t_title = title.lower()
+        # "rủi ro ... cấp X" in title
+        m_title = re.search(r"rủi\s*ro\s*(?:thiên\s*tai\s*)?(?:cấp|mức|độ)\s*(\d)", t_title)
+        if m_title:
+             try:
+                val = int(m_title.group(1))
+                if 1 <= val <= 5: return val
+             except: pass
+        
+        # "báo động 3" in title
+        m2_title = re.search(r"báo\s*động\s*(\d|I|II|III)", t_title)
+        if m2_title:
+            val_str = m2_title.group(1).upper()
+            if val_str in ("3", "III"): return 3 # High priority warnings
+            if val_str in ("2", "II"): return 2
+
     t = text.lower()
-    
-    # 1. Explicit mention in text (High Priority)
-    # Patterns: "rủi ro thiên tai cấp 3", "rủi ro cấp 4", "báo động 3"
-    
     levels = []
     
-    # "rủi ro thiên tai cấp X"
+    # "rủi ro thiên tai cấp X" in text
     m = re.search(r"rủi\s*ro\s*(?:thiên\s*tai\s*)?(?:cấp|mức|độ)\s*(\d)", t)
     if m:
         try:
@@ -557,7 +590,7 @@ def extract_risk_level(text: str, disaster_type: str) -> int:
                 levels.append(val)
         except: pass
 
-    # "báo động X" (often maps to flood risk)
+    # "báo động X" in text
     m2 = re.search(r"báo\s*động\s*(\d|I|II|III)", t)
     if m2:
         val_str = m2.group(1).upper()
@@ -568,135 +601,70 @@ def extract_risk_level(text: str, disaster_type: str) -> int:
     if levels:
         return max(levels)
 
-    # 2. Detailed Rules based on Disaster Type
+    # 2. Detailed Inference using Regulations (Decision 18/2021/QD-TTg)
+    # Disabled by User Request: "If title/content explicitly mentions risk level -> Show. Else -> Not show."
+    # So we skip the calculation based on metrics.
+    # from . import risk_mapping
+    # prov = extract_province(text)
+    # metrics = extract_disaster_metrics(text)
+    # reg_risk = risk_mapping.calculate_risk_from_metrics(prov, disaster_type, metrics)
+    # if reg_risk > 0: return reg_risk
+
+    # 3. Heuristic Fallbacks (explicit keywords only)
+    # User Request: If not strictly following regulation (missing data), default to Level 1.
 
     # === STORM / TROPICAL DEPRESSION (Bão / ATNĐ) ===
     if disaster_type == "storm":
-        # Helper to extract max level mentioned
-        # Matches: "cấp 12", "cấp 8-9", "mạnh cấp 10"
-        lv_matches = re.findall(r"cấp\s*(\d{1,2})", t)
-        parsed_lvs = []
-        for v in lv_matches:
-            try:
-                parsed_lvs.append(int(v))
-            except: pass
+        # Check for Super Storm explicitly (Always High Risk)
+        if "siêu bão" in t: return 5
         
+        # ATNĐ / Tropical Depression -> Risk 3 (Article 42.1.a)
+        # Even if no wind level is parsed, "áp thấp nhiệt đới" itself implies Risk 3.
+        if "áp thấp nhiệt đới" in t or "atnđ" in t:
+            return 3
+
+        # Helper to extract max level mentioned
+        lv_matches = re.findall(r"cấp\s*(\d{1,2})", t)
+        parsed_lvs = [int(v) for v in lv_matches if v.isdigit()]
         max_lv = max(parsed_lvs) if parsed_lvs else 0
         
-        # Check for "ATNĐ" or "Áp thấp nhiệt đới" implies base level if no explicit level
-        is_atnd = "áp thấp nhiệt đới" in t or "atnđ" in t
-        if is_atnd and max_lv == 0:
-            max_lv = 7 # Treat as < 8
-
-        # Check for Super Storm explicitly
-        if "siêu bão" in t:
-            max_lv = max(max_lv, 16)
-
-        # Region Detection
-        regions = set()
-        
-        # Sea
-        if re.search(r"biển\s*đông|trường\s*sa|hoàng\s*sa", t):
-            regions.add("sea")
-        # Coastal
-        if re.search(r"ven\s*bờ|vùng\s*biển|cửa\s*biển", t):
-            regions.add("coastal")
-        # Land - South (Nam Bộ)
-        if re.search(r"nam\s*bộ|miền\s*tây|đồng\s*bằng\s*sông\s*cửu\s*long|cà\s*mau|kiên\s*giang|bạc\s*liêu|sóc\s*trăng|trà\s*vinh|bến\s*tre|tiền\s*giang|vĩnh\s*long|cần\s*thơ|hậu\s*giang|đồng\s*tháp|an\s*giang|long\s*an|bình\s*phước|bình\s*dương|đồng\s*nai|tây\s*ninh|bà\s*rịa|\bvũng\s*tàu\b|tp\.hcm|hồ\s*chí\s*minh", t):
-            regions.add("south")
-        # Land - Highlands (Tây Nguyên)
-        if re.search(r"tây\s*nguyên|kon\s*tum|gia\s*lai|đắk\s*lắk|đắk\s*nông|lâm\s*đồng", t):
-            regions.add("highlands")
-        # Land - S.Central (Nam Trung Bộ)
-        if re.search(r"nam\s*trung\s*bộ|đà\s*nẵng|quảng\s*nam|quảng\s*ngãi|bình\s*định|phú\s*yên|khánh\s*hòa|ninh\s*thuận|bình\s*thuận", t):
-            regions.add("s_central")
-        # Land - C.Central (Trung Trung Bộ - loosely defined or overlapping) / N.Central (Bắc Trung Bộ)
-        # Grouping Central for simplicity if needed, but rules distinguish specific sets.
-        if re.search(r"bắc\s*trung\s*bộ|thanh\s*hóa|nghệ\s*an|hà\s*tĩnh|quảng\s*bình|quảng\s*trị|thừa\s*thiên\s*huế", t):
-            regions.add("n_central")
-        # Land - North (Northern Delta, NE, NW, Viet Bac)
-        if re.search(r"bắc\s*bộ|đồng\s*bằng\s*sông\s*hồng|hà\s*nội|hải\s*phòng|quảng\s*ninh|hải\s*dương|hưng\s*yên|thái\s*bình|hà\s*nam|nam\s*định|ninh\s*bình|vĩnh\s*phúc|bắc\s*ninh", t):
-            regions.add("delta_north")
-        if re.search(r"đông\s*bắc|hà\s*giang|cao\s*bằng|bắc\s*kạn|lạng\s*sơn|tuyên\s*quang|thái\s*nguyên|phú\s*thọ|bắc\s*giang", t):
-            regions.add("ne_north")
-        if re.search(r"tây\s*bắc|việt\s*bắc|hòa\s*bình|sơn\s*la|điện\s*biên|lai\s*châu|lào\s*cai|yên\s*bái", t):
-            regions.add("nw_north")
-
-        # Global flag for "land" if specific regions not caught but "đất liền" mentioned
-        any_land = len(regions.difference({"sea", "coastal"})) > 0 or "đất liền" in t
-
-        # --- LEVEL 5 RULES ---
-        # 1. Storm Lv 12-13 on Land South
-        if (12 <= max_lv <= 13) and "south" in regions:
-            return 5
-        # 2. Storm Lv 14-15 on Land NW, Viet Bac, S.Central, Highlands, South
-        if (14 <= max_lv <= 15) and ({"nw_north", "s_central", "highlands", "south"}.intersection(regions)):
-            return 5
-        # 3. Super Storm >= Lv 16 on Coastal, Land (All)
-        if max_lv >= 16 and (any_land or "coastal" in regions):
-            return 5
-
-        # --- LEVEL 4 RULES ---
-        # 1. Storm Lv 10-11 on Land South
-        if (10 <= max_lv <= 11) and "south" in regions:
-            return 4
-        # 2. Storm Lv 12-13 on Coastal, Land NW, Viet Bac, NE, RR Delta, NC, CC, SC, Highlands
-        # (Basically Land NOT South)
-        target_regions_lv4_2 = {"coastal", "nw_north", "ne_north", "delta_north", "n_central", "s_central", "highlands"}
-        if (12 <= max_lv <= 13) and (target_regions_lv4_2.intersection(regions) or (any_land and "south" not in regions)):
-            return 4
-        # 3. Storm Lv 14-15 on Coastal, Land NE, RR Delta, NC, CC (subset of North/Central)
-        target_regions_lv4_3 = {"coastal", "ne_north", "delta_north", "n_central"}
-        if (14 <= max_lv <= 15) and (target_regions_lv4_3.intersection(regions)):
-            return 4
-        # 4. Storm >= Lv 14 on East Sea
-        if max_lv >= 14 and "sea" in regions:
-            return 4
-
-        # --- LEVEL 3 RULES (Default for Storm/ATNĐ) ---
-        # Technically "ATNĐ, Storm Lv 8-9" anywhere, Storm Lv 10-11 except South, Storm Lv 12-13 Sea only.
-        # But since we check 5 and 4 first, anything else falling through is likely 3 if it's a storm.
-        
-        # Explicit checks for upgrading FROM lower levels (if default was 1, but storms start at 3 per reg):
-        # 1. ATNĐ, Storm Lv 8-9 (Anywhere) -> 3
-        # 2. Storm Lv 10-11 (Anywhere NOT South, i.e. Sea, Coastal, North/Central/Highlands) -> 3
-        # 3. Storm Lv 12-13 (East Sea) -> 3
-        
-        # So essentially, if it's a storm/ATNĐ, the regulatory minimum is Level 3 (except maybe weak lows, but "Áp thấp nhiệt đới" starts at 3).
-        return 3
-
-    # === OTHER DISASTERS (Existing Logic) ===
+        # High Intensity Keywords that clearly map to high risk even without location
+        if max_lv >= 16: return 5
+        if max_lv >= 12: return 4
+        # Level 8-11 -> Usually Risk 3, but User requested Default 1 if not strictly proven by Regulation (Region Map)
+        # We rely on risk_mapping for the strict Region+Wind rules.
+        # If we are here, we missed the strict check.
+        # User Update: Default to 0 (No Display) if not strict.
+        return 0
 
     # Mưa lớn / Lũ lụt: cấp 1-4
     if disaster_type == "flood_landslide":
-        if "lũ quét" in t or "sạt lở" in t: return 3 # Flash floods are high risk
+        if "lũ quét" in t: return 1 # Flash flood is dangerous but start 1 if no location context matched
+        # "Báo động 3" is a strict technical term in Flood regulation implying High Risk.
+        if "báo động 3" in t or "báo động iii" in t: return 3
         if "lịch sử" in t or "kỷ lục" in t: return 4
-        if "báo động 3" in t or "báo động III" in t: return 3
-        return 1 # Default rain/flood starts at 1
+        return 0
 
     # Nắng nóng / Hạn hán: cấp 1
     if disaster_type == "heat_drought":
-        if "đặc biệt gay gắt" in t: return 3
-        if "gay gắt" in t: return 2
-        return 1
+        if "đặc biệt gay gắt" in t: return 1 # Could be 2/3 but default 1 if region missing
+        return 0
 
     # Lốc, sét, mưa đá/khác: cấp 1-2
     if disaster_type in ("wind_fog", "extreme_other"):
-        if "diện rộng" in t or "thiệt hại nặng" in t: return 2
-        return 1
+        return 0
     
     # Nước dâng
     if disaster_type == "storm_surge":
-        if "nghiêm trọng" in t or "cao kỷ lục" in t: return 3
-        return 1
+        return 0
         
     # Động đất / Sóng thần: 
     if disaster_type == "quake_tsunami":
         if "sóng thần" in t: return 5
-        # > 6.5 -> risk high (heuristic)
+        # Strong Quake (>6.0) implies risk
         if re.search(r"(?:[6-9]\.\d|10\.)\s*độ", t):
             return 3
-        return 1
+        return 0
 
     # Cháy rừng
     if disaster_type == "wildfire":
