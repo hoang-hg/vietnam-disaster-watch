@@ -602,8 +602,14 @@ def extract_risk_level(text: str, disaster_type: str, title: str = "") -> int:
         return max(levels)
 
     # 2. Detailed Inference using Regulations (Decision 18/2021/QD-TTg)
-    # Disabled by User Request: "If title/content explicitly mentions risk level -> Show. Else -> Not show."
-    # So we skip the calculation based on metrics.
+    # Context-based pattern matching (per User Request to add filtering for specific articles)
+    # Explicitly check for patterns like "Bão cấp 12 tại Biển Đông" -> Risk 3
+    from . import risk_lookup
+    storm_risk = risk_lookup.check_storm_risk(text + " " + title)
+    if storm_risk > 0:
+        return storm_risk
+
+    # 3. Explicit Keyword Mapping (Fallback)
     # from . import risk_mapping
     # prov = extract_province(text)
     # metrics = extract_disaster_metrics(text)
@@ -639,7 +645,19 @@ def extract_risk_level(text: str, disaster_type: str, title: str = "") -> int:
 
     # Mưa lớn / Lũ lụt: cấp 1-4
     if disaster_type == "flood_landslide":
-        if "lũ quét" in t: return 1 # Flash flood is dangerous but start 1 if no location context matched
+        # Check Flood specific high-risk (Article 45) - Historic levels
+        flood_risk = risk_lookup.check_flood_risk(text + " " + title)
+        if flood_risk > 0: return flood_risk
+        
+        # Check Flash Flood / Landslide specific risk (Article 46)
+        ff_risk = risk_lookup.check_flash_flood_risk(text + " " + title)
+        if ff_risk > 0: return ff_risk
+
+        # Check explicit Article 44 rules (Rain/Duration/Terrain)
+        rain_risk = risk_lookup.check_rain_risk(text + " " + title)
+        if rain_risk > 0: return rain_risk
+        
+        if "lũ quét" in t: return 0 # Flash flood is dangerous but start 1 if no location context matched
         # "Báo động 3" is a strict technical term in Flood regulation implying High Risk.
         if "báo động 3" in t or "báo động iii" in t: return 3
         if "lịch sử" in t or "kỷ lục" in t: return 4
@@ -647,27 +665,61 @@ def extract_risk_level(text: str, disaster_type: str, title: str = "") -> int:
 
     # Nắng nóng / Hạn hán: cấp 1
     if disaster_type == "heat_drought":
+        heat_risk = risk_lookup.check_heat_risk(text + " " + title)
+        if heat_risk > 0: return heat_risk
+
+        # Check Drought specific risk (Article 48)
+        drought_risk = risk_lookup.check_drought_risk(text + " " + title)
+        if drought_risk > 0: return drought_risk
+        
+        # Check Saline Intrusion risk (Article 49)
+        saline_risk = risk_lookup.check_saline_risk(text + " " + title)
+        if saline_risk > 0: return saline_risk
+
         if "đặc biệt gay gắt" in t: return 1 # Could be 2/3 but default 1 if region missing
         return 0
 
-    # Lốc, sét, mưa đá/khác: cấp 1-2
-    if disaster_type in ("wind_fog", "extreme_other"):
+    # Lốc, sét, mưa đá/khác: cấp 1-2 (Article 52) / Rét hại (Article 53)
+    if disaster_type == "extreme_other":
+        ext_risk = risk_lookup.check_extreme_other_risk(text + " " + title)
+        if ext_risk > 0: return ext_risk
+        
+        cold_risk = risk_lookup.check_cold_risk(text + " " + title)
+        if cold_risk > 0: return cold_risk
+        return 0
+
+    # Gió mạnh trên biển / Sương mù (Article 50, 51)
+    if disaster_type == "wind_fog":
+        w_risk = risk_lookup.check_strong_wind_risk(text + " " + title)
+        if w_risk > 0: return w_risk
+        f_risk = risk_lookup.check_fog_risk(text + " " + title)
+        if f_risk > 0: return f_risk
         return 0
     
     # Nước dâng
     if disaster_type == "storm_surge":
+        surge_risk = risk_lookup.check_surge_risk(text + " " + title)
+        if surge_risk > 0: return surge_risk
         return 0
         
-    # Động đất / Sóng thần: 
+    # Động đất / Sóng thần (Articles 55, 56)
     if disaster_type == "quake_tsunami":
+        # Tsunami check
+        tsu_risk = risk_lookup.check_tsunami_risk(text + " " + title)
+        if tsu_risk > 0: return tsu_risk
+
+        # Earthquake check
+        quake_risk = risk_lookup.check_quake_risk(text + " " + title)
+        if quake_risk > 0: return quake_risk
+
         if "sóng thần" in t: return 5
-        # Strong Quake (>6.0) implies risk
-        if re.search(r"(?:[6-9]\.\d|10\.)\s*độ", t):
-            return 3
         return 0
 
-    # Cháy rừng
+    # Cháy rừng (Article 54)
     if disaster_type == "wildfire":
+        fire_risk = risk_lookup.check_wildfire_risk(text + " " + title)
+        if fire_risk > 0: return fire_risk
+        
         if "cấp 5" in t or "cực kỳ nguy hiểm" in t: return 5
         if "cấp 4" in t or "nguy hiểm" in t: return 4
         return 1
