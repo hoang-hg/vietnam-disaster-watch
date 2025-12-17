@@ -1,8 +1,6 @@
-# 🇻🇳 Viet Disaster Watch - Hệ thống Giám sát Thiên tai Việt Nam
+# 🇻🇳 VietNam Disaster Watch - Hệ thống Giám sát Thiên tai Việt Nam
 
 Hệ thống theo dõi, tổng hợp và phân tích tin tức thiên tai tự động từ 38 nguồn chính thống tại Việt Nam. Ứng dụng sử dụng kỹ thuật NLP để phân loại sự kiện theo quy định của Chính phủ (Quyết định 18/2021/QĐ-TTg) và đánh giá mức độ rủi ro theo thời gian thực.
-
-![Dashboard Preview](https://i.imgur.com/example.png)
 
 ## 🚀 Tính năng nổi bật
 
@@ -27,7 +25,7 @@ Hệ thống theo dõi, tổng hợp và phân tích tin tức thiên tai tự �
 ### Backend (Python)
 -   **Framework**: FastAPI (High performance).
 -   **NLP Engine**: Custom Rule-based System + Regex (tối ưu cho tiếng Việt chuyên ngành thiên tai).
--   **Database**: SQLite (SQLAlchemy ORM) - Dễ dàng triển khai và sao lưu.
+-   **Database**: PostgreSQL (Production) hoặc SQLite (Dev) - Tích hợp `psycopg2` & SQLAlchemy ORM.
 -   **Crawler**: `feedparser` cho RSS và `BeautifulSoup` & `Google News` cho fallback.
 
 ### Frontend (React)
