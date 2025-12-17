@@ -1,0 +1,304 @@
+{
+  "sources": [
+    {
+      "name": "Thanh Niên",
+      "domain": "thanhnien.vn",
+      "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Working well with ~500 entries",
+      "trusted": true
+    },
+    {
+      "name": "VietNamNet",
+      "domain": "vietnamnet.vn",
+      "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Working with ~60 entries",
+      "trusted": true
+    },
+    {
+      "name": "baocaobang.vn",
+      "domain": "baocaobang.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "tuyenquang.gov.vn",
+      "domain": "tuyenquang.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baotuyenquang.com.vn",
+      "domain": "baotuyenquang.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "laocai.gov.vn",
+      "domain": "laocai.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baolaocai.vn",
+      "domain": "baolaocai.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "dienbientv.vn",
+      "domain": "dienbientv.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "laichau.gov.vn",
+      "domain": "laichau.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baosonla.org.vn",
+      "domain": "baosonla.org.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baothainguyen.vn",
+      "domain": "baothainguyen.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baolangson.vn",
+      "domain": "baolangson.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baoquangninh.com.vn",
+      "domain": "baoquangninh.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baophutho.vn",
+      "domain": "baophutho.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baoninhbinh.org.vn",
+      "domain": "baoninhbinh.org.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baonghean.vn",
+      "domain": "baonghean.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baohatinh.vn",
+      "domain": "baohatinh.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baoquangtri.vn",
+      "domain": "baoquangtri.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "huengaynay.vn",
+      "domain": "huengaynay.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baodanang.vn",
+      "domain": "baodanang.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baoquangngai.vn",
+      "domain": "baoquangngai.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baobinhdinh.vn",
+      "domain": "baobinhdinh.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown (some sites use /Default.aspx)",
+      "trusted": true
+    },
+    {
+      "name": "baophuyen.com.vn",
+      "domain": "baophuyen.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baokhanhhoa.vn",
+      "domain": "baokhanhhoa.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baoninhthuan.com.vn",
+      "domain": "baoninhthuan.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown (homepage sometimes /home.htm)",
+      "trusted": true
+    },
+    {
+      "name": "baogialai.com.vn",
+      "domain": "baogialai.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "baodaklak.vn",
+      "domain": "baodaklak.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Added from user list; RSS unknown",
+      "trusted": true
+    },
+    {
+      "name": "Tuổi Trẻ",
+      "domain": "tuoitre.vn",
+      "primary_rss": "https://tuoitre.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Official RSS works with ~50 entries",
+      "trusted": true
+    },
+    {
+      "name": "VnExpress",
+      "domain": "vnexpress.net",
+      "primary_rss": "https://vnexpress.net/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Official RSS works with ~60 entries",
+      "trusted": true
+    },
+    {
+      "name": "Dân Trí",
+      "domain": "dantri.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Báo Tin tức (TTXVN)",
+      "domain": "baotintuc.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "SSL error - fallback to GNews"
+    },
+    {
+      "name": "SGGP",
+      "domain": "sggp.org.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Người Lao Động",
+      "domain": "nld.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Lao Động",
+      "domain": "laodong.vn",
+      "primary_rss": "https://laodong.vn/feed/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Exists but returns 0 entries - will try GNews"
+    },
+    {
+      "name": "Quân đội Nhân dân",
+      "domain": "qdnd.vn",
+      "primary_rss": "https://qdnd.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Exists but returns 0 entries - will try GNews"
+    },
+    {
+      "name": "VNA Net",
+      "domain": "vnanet.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "SSL error - fallback to GNews"
+    },
+    {
+      "name": "Báo Mới",
+      "domain": "baomoi.com",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Aggregator only - fallback to GNews"
+    }
+  ],
+  "gnews_fallback": true,
+  "gnews_context_terms": [
+    "thiệt hại",
+    "sơ tán",
+    "ứng phó",
+    "cứu hộ",
+    "thiệt hại",
+    "mất tích"
+  ],
+  "gnews_min_articles": 5,
+  "request_timeout": 10,
+  "max_articles_per_source": 
+}

@@ -1,0 +1,610 @@
+[
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.84117,
+          21.0245
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Hà Nội",
+        "admin_center": "Hà Nội",
+        "goog_maps": "https://www.google.com/maps?q=21.024500,105.841170"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          107.59546,
+          16.4619
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Huế",
+        "admin_center": "Thành phố Huế",
+        "goog_maps": "https://www.google.com/maps?q=16.461900,107.595460"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.25786,
+          22.66568
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Cao Bằng",
+        "admin_center": "Cao Bằng",
+        "goog_maps": "https://www.google.com/maps?q=22.665680,106.257860"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          103.02301,
+          21.38602
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Điện Biên",
+        "admin_center": "Điện Biên",
+        "goog_maps": "https://www.google.com/maps?q=21.386020,103.023010"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.90569,
+          18.34282
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Hà Tĩnh",
+        "admin_center": "Hà Tĩnh",
+        "goog_maps": "https://www.google.com/maps?q=18.342820,105.905690"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          103.45824,
+          22.39644
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Lai Châu",
+        "admin_center": "Lai Châu",
+        "goog_maps": "https://www.google.com/maps?q=22.396440,103.458240"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.76101,
+          21.85264
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Lạng Sơn",
+        "admin_center": "Lạng Sơn",
+        "goog_maps": "https://www.google.com/maps?q=21.852640,106.761010"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.69232,
+          18.67337
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Nghệ An",
+        "admin_center": "Nghệ An",
+        "goog_maps": "https://www.google.com/maps?q=18.673370,105.692320"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          107.07336,
+          20.95045
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Quảng Ninh",
+        "admin_center": "Quảng Ninh",
+        "goog_maps": "https://www.google.com/maps?q=20.950450,107.073360"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.76667,
+          19.8
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Thanh Hóa",
+        "admin_center": "Thanh Hóa",
+        "goog_maps": "https://www.google.com/maps?q=19.800000,105.766670"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          103.91882,
+          21.3256
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Sơn La",
+        "admin_center": "Sơn La",
+        "goog_maps": "https://www.google.com/maps?q=21.325600,103.918820"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.21424,
+          21.82356
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Tuyên Quang",
+        "admin_center": "Tuyên Quang",
+        "goog_maps": "https://www.google.com/maps?q=21.823560,105.214240"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          104.9113,
+          21.72288
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Lào Cai",
+        "admin_center": "Lào Cai",
+        "goog_maps": "https://www.google.com/maps?q=21.722880,104.911300"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.84817,
+          21.59422
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Thái Nguyên",
+        "admin_center": "Thái Nguyên",
+        "goog_maps": "https://www.google.com/maps?q=21.594220,105.848170"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.40198,
+          21.32274
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Phú Thọ",
+        "admin_center": "Phú Thọ",
+        "goog_maps": "https://www.google.com/maps?q=21.322740,105.401980"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.1946,
+          21.27307
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Bắc Ninh",
+        "admin_center": "Bắc Ninh",
+        "goog_maps": "https://www.google.com/maps?q=21.273070,106.194600"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.05112,
+          20.64637
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Hưng Yên",
+        "admin_center": "Hưng Yên",
+        "goog_maps": "https://www.google.com/maps?q=20.646370,106.051120"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.67924,
+          20.93617
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Hải Phòng",
+        "admin_center": "Hải Phòng",
+        "goog_maps": "https://www.google.com/maps?q=20.936170,106.679240"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.97965,
+          20.25809
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Ninh Bình",
+        "admin_center": "Ninh Bình",
+        "goog_maps": "https://www.google.com/maps?q=20.258090,105.979650"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.62226,
+          17.46885
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Quảng Trị",
+        "admin_center": "Quảng Trị",
+        "goog_maps": "https://www.google.com/maps?q=17.468850,106.622260"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          108.21346,
+          16.04176
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Đà Nẵng",
+        "admin_center": "Đà Nẵng",
+        "goog_maps": "https://www.google.com/maps?q=16.041760,108.213460"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          108.79232,
+          15.12047
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Quảng Ngãi",
+        "admin_center": "Quảng Ngãi",
+        "goog_maps": "https://www.google.com/maps?q=15.120470,108.792320"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          109.22367,
+          13.77648
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Gia Lai",
+        "admin_center": "Gia Lai",
+        "goog_maps": "https://www.google.com/maps?q=13.776480,109.223670"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          109.19432,
+          12.24507
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Khánh Hòa",
+        "admin_center": "Khánh Hòa",
+        "goog_maps": "https://www.google.com/maps?q=12.245070,109.194320"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          108.44193,
+          11.94646
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Lâm Đồng",
+        "admin_center": "Lâm Đồng",
+        "goog_maps": "https://www.google.com/maps?q=11.946460,108.441930"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          108.03775,
+          12.66747
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Đắk Lắk",
+        "admin_center": "Đắk Lắk",
+        "goog_maps": "https://www.google.com/maps?q=12.667470,108.037750"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.69944,
+          10.78069
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "TP Hồ Chí Minh",
+        "admin_center": "TP Hồ Chí Minh",
+        "goog_maps": "https://www.google.com/maps?q=10.780690,106.699440"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.82432,
+          10.94469
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Đồng Nai",
+        "admin_center": "Đồng Nai",
+        "goog_maps": "https://www.google.com/maps?q=10.944690,106.824320"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.41366,
+          10.53589
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Tây Ninh",
+        "admin_center": "Tây Ninh",
+        "goog_maps": "https://www.google.com/maps?q=10.535890,106.413660"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.75979,
+          10.0272
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Cần Thơ",
+        "admin_center": "Cần Thơ",
+        "goog_maps": "https://www.google.com/maps?q=10.027200,105.759790"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.9722,
+          10.25369
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Vĩnh Long",
+        "admin_center": "Vĩnh Long",
+        "goog_maps": "https://www.google.com/maps?q=10.253690,105.972200"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          106.35996,
+          10.36004
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Đồng Tháp",
+        "admin_center": "Đồng Tháp",
+        "goog_maps": "https://www.google.com/maps?q=10.360040,106.359960"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.15242,
+          9.17682
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "Cà Mau",
+        "admin_center": "Cà Mau",
+        "goog_maps": "https://www.google.com/maps?q=9.176820,105.152420"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          105.08091,
+          10.01245
+        ]
+      },
+      "properties": {
+        "category": "provincial_unit",
+        "name": "An Giang",
+        "admin_center": "An Giang",
+        "goog_maps": "https://www.google.com/maps?q=10.012450,105.080910"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          112.00096,
+          16.34468
+        ]
+      },
+      "properties": {
+        "category": "geo_feature",
+        "name": "Quần đảo Hoàng Sa",
+        "type": "archipelago (district)",
+        "goog_maps": "https://www.google.com/maps?q=16.344680,112.000960"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          114.02253,
+          8.82718
+        ]
+      },
+      "properties": {
+        "category": "geo_feature",
+        "name": "Quần đảo Trường Sa",
+        "type": "archipelago (district)",
+        "goog_maps": "https://www.google.com/maps?q=8.827180,114.022530"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          104.0,
+          10.2
+        ]
+      },
+      "properties": {
+        "category": "geo_feature",
+        "name": "Đảo Phú Quốc",
+        "type": "island",
+        "goog_maps": "https://www.google.com/maps?q=10.200000,104.000000"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          107.72944,
+          20.13389
+        ]
+      },
+      "properties": {
+        "category": "geo_feature",
+        "name": "Đảo Bạch Long Vĩ",
+        "type": "island",
+        "goog_maps": "https://www.google.com/maps?q=20.133890,107.729440"
+      }
+    }
+  ]

@@ -1,0 +1,92 @@
+{
+  "sources": [
+    {
+      "name": "Thanh Niên",
+      "domain": "thanhnien.vn",
+      "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Working well with ~500 entries"
+    },
+    {
+      "name": "VietNamNet",
+      "domain": "vietnamnet.vn",
+      "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Working with ~60 entries"
+    },
+    {
+      "name": "Tuổi Trẻ",
+      "domain": "tuoitre.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "VnExpress",
+      "domain": "vnexpress.net",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Dân Trí",
+      "domain": "dantri.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Báo Tin tức (TTXVN)",
+      "domain": "baotintuc.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "SSL error - fallback to GNews"
+    },
+    {
+      "name": "SGGP",
+      "domain": "sggp.org.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Người Lao Động",
+      "domain": "nld.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS not available - fallback to GNews"
+    },
+    {
+      "name": "Lao Động",
+      "domain": "laodong.vn",
+      "primary_rss": "https://laodong.vn/feed/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Exists but returns 0 entries - will try GNews"
+    },
+    {
+      "name": "Quân đội Nhân dân",
+      "domain": "qdnd.vn",
+      "primary_rss": "https://qdnd.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Exists but returns 0 entries - will try GNews"
+    },
+    {
+      "name": "VNA Net",
+      "domain": "vnanet.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "SSL error - fallback to GNews"
+    },
+    {
+      "name": "Báo Mới",
+      "domain": "baomoi.com",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Aggregator only - fallback to GNews"
+    }
+  ],
+  "gnews_fallback": true,
+  "gnews_min_articles": 5,
+  "request_timeout": 10,
+  "max_articles_per_source": 30
+}

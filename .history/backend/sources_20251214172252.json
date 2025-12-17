@@ -1,0 +1,81 @@
+{
+  "sources": [
+    {
+      "name": "Tuổi Trẻ",
+      "domain": "tuoitre.vn",
+      "primary_rss": "https://tuoitre.vn/feed/rss.html",
+      "backup_rss": "https://tuoitre.vn/thoi-su/rss.html"
+    },
+    {
+      "name": "VnExpress",
+      "domain": "vnexpress.net",
+      "primary_rss": "https://e.vnexpress.net/rss/thoi-su.rss",
+      "backup_rss": "https://e.vnexpress.net/rss/tin-tuc.rss"
+    },
+    {
+      "name": "Thanh Niên",
+      "domain": "thanhnien.vn",
+      "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
+      "backup_rss": "https://thanhnien.vn/rss/thoi-su-quoc-te.rss"
+    },
+    {
+      "name": "Dân Trí",
+      "domain": "dantri.com.vn",
+      "primary_rss": "https://dantri.com.vn/thoi-su.rss",
+      "backup_rss": "https://dantri.com.vn/xa-hoi.rss"
+    },
+    {
+      "name": "VietNamNet",
+      "domain": "vietnamnet.vn",
+      "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
+      "backup_rss": "https://vietnamnet.vn/rss/trong-nuoc.rss"
+    },
+    {
+      "name": "Báo Tin tức (TTXVN)",
+      "domain": "baotintuc.vn",
+      "primary_rss": "https://baotintuc.vn/rss/thoi-su.rss",
+      "backup_rss": "https://baotintuc.vn/rss/trong-nuoc.rss"
+    },
+    {
+      "name": "SGGP",
+      "domain": "sggp.org.vn",
+      "primary_rss": "https://sggp.org.vn/rss/thoi-su-trong-nuoc.rss",
+      "backup_rss": "https://sggp.org.vn/rss/thoi-su.rss"
+    },
+    {
+      "name": "Người Lao Động",
+      "domain": "nld.com.vn",
+      "primary_rss": "https://nld.com.vn/feed/rss/trong-nuoc.rss",
+      "backup_rss": "https://nld.com.vn/feed/rss/thoi-su.rss"
+    },
+    {
+      "name": "Lao Động",
+      "domain": "laodong.vn",
+      "primary_rss": "https://laodong.vn/feed/thoi-su.rss",
+      "backup_rss": "https://laodong.vn/feed/trong-nuoc.rss"
+    },
+    {
+      "name": "Quân đội Nhân dân",
+      "domain": "qdnd.vn",
+      "primary_rss": "https://qdnd.vn/rss/trong-nuoc.rss",
+      "backup_rss": "https://qdnd.vn/rss/thoi-su.rss"
+    },
+    {
+      "name": "VNA Net",
+      "domain": "vnanet.vn",
+      "primary_rss": "https://vnanet.vn/rss/thoi-su.rss",
+      "backup_rss": "https://vnanet.vn/rss/trong-nuoc.rss"
+    },
+    {
+      "name": "Báo Mới",
+      "domain": "baomoi.com",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "fallback to GNews only"
+    }
+  ],
+  "gnews_fallback": true,
+  "gnews_min_articles": 5,
+  "request_timeout": 10,
+  "max_articles_per_source": 30
+}
