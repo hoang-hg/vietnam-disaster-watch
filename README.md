@@ -20,86 +20,76 @@ Hệ thống theo dõi, tổng hợp và phân tích tin tức thiên tai tự �
     -   **Bản đồ rủi ro**: Hiển thị vị trí sự kiện trên bản đồ tương tác (Leaflet).
     -   **Tra cứu nâng cao**: Lọc theo loại hình, địa phương, thời gian và mức độ nghiêm trọng.
 
-## 🛠 Công nghệ sử dụng
+## � Cài đặt và Chạy bằng Docker (Khuyên dùng)
 
-### Backend (Python)
--   **Framework**: FastAPI (High performance).
--   **NLP Engine**: Custom Rule-based System + Regex (tối ưu cho tiếng Việt chuyên ngành thiên tai).
--   **Database**: PostgreSQL (Production) hoặc SQLite (Dev) - Tích hợp `psycopg2` & SQLAlchemy ORM.
--   **Crawler**: `feedparser` cho RSS và `BeautifulSoup` & `Google News` cho fallback.
+Đây là cách nhanh nhất và ổn định nhất để chạy dự án trên bất kỳ máy tính nào mà không cần cài đặt Python hay Node.js thủ công.
 
-### Frontend (React)
--   **Core**: React 18 + Vite.
--   **Styling**: TailwindCSS + Lucide Icons.
--   **Charts**: Recharts.
--   **Map**: React-Leaflet.
+### 1. Yêu cầu
+-   **Docker Desktop** (đã cài đặt và đang chạy).
+-   **Git** (để clone mã nguồn).
 
-## 📦 Cài đặt và Chạy ứng dụng
+### 2. Các bước thực hiện
 
-### 1. Yêu cầu hệ thống
--   Python 3.10+
--   Node.js 18+
+**Bước 1: Clone mã nguồn**
+Mở terminal (PowerShell, CMD hoặc Git Bash) và chạy lệnh:
+```bash
+git clone <đường-dẫn-repo-của-bạn>
+cd viet-disaster-watch
+```
 
-### 2. Khởi chạy Backend
+**Bước 2: Cấu hình biến môi trường**
+Copy file mẫu `.env.example` thành `.env`:
+```bash
+# Trên Windows
+copy .env.example .env
+
+# Trên Mac/Linux
+cp .env.example .env
+```
+*Lưu ý: Mặc định file `.env` đã được cấu hình sẵn để chạy tốt với Docker (Database PostgreSQL).*
+
+**Bước 3: Khởi chạy ứng dụng**
+Chạy lệnh sau để Docker tự động tải, build và chạy toàn bộ hệ thống (Frontend + Backend + Database):
+
+```bash
+docker compose up --build -d
+```
+*(Lần đầu chạy có thể mất vài phút để tải Docker Images)*
+
+**Bước 4: Truy cập ứng dụng**
+Sau khi lệnh chạy xong, mở trình duyệt và truy cập:
+-   **Ứng dụng Web (Frontend)**: [http://localhost:5173](http://localhost:5173)
+-   **API Tài liệu (Backend Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+-   **Quản lý Database (pgAdmin - nếu cài thêm)**: Host: `localhost`, Port: `5432`, User: `postgres`, Pass: `password`
+
+### 3. Các lệnh thường dùng
+
+-   **Ngừng ứng dụng**: `docker compose stop`
+-   **Tắt hẳn và xóa container**: `docker compose down`
+-   **Xem log (Backend)**: `docker logs -f viet-disaster-watch-backend-1`
+-   **Cập nhật code mới**: Sau khi `git pull`, chạy lại `docker compose up --build -d`
+
+## 🛠 Chạy Thủ công (Dành cho Dev/Debug)
+
+Nếu bạn muốn chạy từng phần riêng lẻ để phát triển:
+
+### Backend
+Yêu cầu: Python 3.10+
 ```bash
 cd backend
-
-# Tạo môi trường ảo (khuyến nghị)
 python -m venv .venv
-
-# Kích hoạt môi trường (Windows)
 .\.venv\Scripts\activate
-# Hoặc MacOS/Linux: source .venv/bin/activate
-
-# Cài đặt thư viện
 pip install -r requirements.txt
-
-# Chạy server
-npm run dev 
-# Hoặc: python -m uvicorn app.main:app --reload --port 8000
-```
-Backend sẽ chạy tại: `http://localhost:8000`
-
-### 3. Cấu hình Database (PostgreSQL)
-Nếu bạn muốn sử dụng PostgreSQL thay vì SQLite mặc định:
-
-1.  **Cài đặt PostgreSQL**: Đảm bảo máy của bạn đã cài đặt Postgres hoặc sử dụng Docker (xem phần dưới).
-2.  **Tạo File `.env`**: Sao chép file ví dụ:
-    ```bash
-    cp .env.example .env
-    ```
-3.  **Cấu hình URL**: Mở `.env` và cập nhật `APP_DB_URL`:
-    ```env
-    APP_DB_URL=postgresql://user:password@localhost:5432/db_name
-    ```
-4.  **Chạy Migrations**: Để khởi tạo các bảng trong database:
-    ```bash
-    cd backend
-    alembic upgrade head
-    ```
-
-### 4. Khởi chạy bằng Docker (Nhanh nhất)
-Dự án đã có sẵn cấu hình Docker Compose để khởi chạy toàn bộ Backend, Frontend và Database PostgreSQL chỉ với 1 lệnh duy nhất:
-
-```bash
-docker-compose up --build
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:5173`
-- Database: `localhost:5432`
-
-### 5. Khởi chạy Frontend (Manual)
+### Frontend
+Yêu cầu: Node.js 18+
 ```bash
 cd frontend
-
-# Cài đặt thư viện
 npm install
-
-# Chạy dev server
 npm run dev
 ```
-Frontend sẽ chạy tại: `http://localhost:5173`
 
 ## 📂 Cấu trúc dự án
 
@@ -107,17 +97,18 @@ Frontend sẽ chạy tại: `http://localhost:5173`
 viet-disaster-watch/
 ├── backend/
 │   ├── app/
-│   │   ├── nlp.py           # Logic xử lý ngôn ngữ & phân loại
-│   │   ├── crawler.py       # Bộ thu thập dữ liệu
+│   │   ├── nlp.py           # Logic xử lý ngôn ngữ & phân loại 8 nhóm thiên tai
+│   │   ├── crawler.py       # Bộ thu thập dữ liệu (kèm cơ chế DEDUP & Retry)
 │   │   ├── api.py           # API Endpoints
-│   │   └── sources.py       # Cấu hình 38 nguồn tin
-│   ├── data/                # Chứa DB SQLite
-│   └── logs/                # Logs hệ thống
+│   │   └── sources.py       # Cấu hình 38 nguồn tin & Keyword Groups
+│   ├── data/                # Dữ liệu SQLite (Dev mode)
+│   └── logs/                # Logs hệ thống crawl
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # UI Components (Map, Cards, Badges...)
-│   │   ├── pages/           # Dashboard, Events, EventDetail
+│   │   ├── components/      # UI Components (Map, Cards...)
+│   │   ├── pages/           # Dashboard, Events...
 │   │   └── api.js           # Kết nối Backend
+├── docker-compose.yml       # Cấu hình triển khai Docker
 └── README.md
 ```
 
