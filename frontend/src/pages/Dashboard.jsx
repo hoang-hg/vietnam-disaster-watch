@@ -65,12 +65,12 @@ export default function Dashboard() {
       const [s, riskData, evs, arts] = await Promise.all([
         getJson(`/api/stats/summary?hours=${hours}`),
         getJson(`/api/stats/heatmap?hours=${hours}`),
-        getJson(`/api/events?limit=50`),
+        getJson(`/api/events?limit=100&hours=${hours}`), // Increased limit for fuller stats
         getJson(`/api/articles/latest?limit=20`)
       ]);
       setStats(s);
       setRiskiest(riskData?.data || []);
-      setRawEvents(evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown"));
+      setRawEvents(evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type)));
       setArticles(arts);
     } catch (e) {
       setError(e.message || "Load failed");
@@ -149,7 +149,7 @@ export default function Dashboard() {
     // 4. Transform to array & Sort
     return Object.entries(agg)
         .map(([k, v]) => ({ 
-            name: k, 
+            name: fmtType(k), 
             count: v,
             fill: THEME_COLORS[k] || THEME_COLORS.unknown
         }))
@@ -189,17 +189,17 @@ export default function Dashboard() {
              <select
                  value={hazardType}
                  onChange={(e) => setHazardType(e.target.value)}
-                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[120px] truncate"
+                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[220px] truncate"
              >
-                 <option value="all">Mọi thiên tai</option>
-                 <option value="storm">Bão / ATNĐ</option>
-                 <option value="flood_landslide">Mưa / Lũ / Sạt lở</option>
-                 <option value="heat_drought">Nắng nóng / Hạn</option>
-                 <option value="wind_fog">Gió / Sương mù</option>
+                 <option value="all">Tất cả thiên tai</option>
+                 <option value="storm">Bão, ATNĐ</option>
+                 <option value="flood_landslide">Mưa lớn, Lũ, Lũ quét, Sạt lở</option>
+                 <option value="heat_drought">Nắng nóng, Hạn hán, Xâm nhập mặn</option>
+                 <option value="wind_fog">Gió mạnh trên biển, Sương mù</option>
                  <option value="storm_surge">Nước dâng</option>
-                 <option value="quake_tsunami">Động đất / Sóng thần</option>
+                 <option value="extreme_other">Lốc, Sét, Mưa đá, Rét hại, Sương muối</option>
                  <option value="wildfire">Cháy rừng</option>
-                 <option value="extreme_other">Khác</option>
+                 <option value="quake_tsunami">Động đất, Sóng thần</option>
              </select>
              <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
@@ -273,7 +273,10 @@ export default function Dashboard() {
         />
         <StatCard
           title="Mức rủi ro cao nhất"
-          value={rawEvents.length > 0 ? `Cấp ${Math.max(...rawEvents.map(e => e.risk_level || 0), 0)}` : "Chưa có"} 
+          value={(() => {
+            const m = rawEvents.reduce((acc, e) => Math.max(acc, e.risk_level || 0), 0);
+            return m > 0 ? `Cấp ${m}` : "Chưa có";
+          })()} 
           sub="Đánh giá rủi ro"
           icon={TrendingUp}
           color="text-purple-600"

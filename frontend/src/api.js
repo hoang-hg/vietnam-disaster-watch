@@ -10,23 +10,23 @@ export async function getJson(path) {
 export function fmtType(t) {
   const map = {
     // Decision 18/2021/QD-TTg Exact Names
-    storm: "Bão và áp thấp nhiệt đới",
-    flood_landslide: "Mưa lớn và lũ lụt",
-    heat_drought: "Nắng nóng, hạn hán, xâm nhập mặn",
-    wind_fog: "Gió mạnh, sương mù",
+    storm: "Bão, Áp thấp nhiệt đới",
+    flood_landslide: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
+    heat_drought: "Nắng nóng, Hạn hán, Xâm nhập mặn",
+    wind_fog: "Gió mạnh trên biển, Sương mù",
     storm_surge: "Nước dâng",
-    extreme_other: "Các hiện tượng thời tiết cực đoan khác",
+    extreme_other: "Lốc, Sét, Mưa đá, Rét hại, Sương muối",
     wildfire: "Cháy rừng tự nhiên",
-    quake_tsunami: "Động đất và sóng thần",
+    quake_tsunami: "Động đất, Sóng thần",
     
-    // Legacy mapping (normalize to new names)
-    flood: "Mưa lớn và lũ lụt",
-    landslide: "Mưa lớn và lũ lụt",
-    heavy_rain: "Mưa lớn và lũ lụt",
-    earthquake: "Động đất và sóng thần",
-    tsunami: "Động đất và sóng thần",
-    wind_hail: "Các hiện tượng thời tiết cực đoan khác", 
-    extreme_weather: "Nắng nóng, hạn hán, xâm nhập mặn",
+    // Legacy / Fallback
+    flood: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
+    landslide: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
+    heavy_rain: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
+    earthquake: "Động đất, Sóng thần",
+    tsunami: "Động đất, Sóng thần",
+    wind_hail: "Lốc, Sét, Mưa đá, Rét hại, Sương muối", 
+    extreme_weather: "Nắng nóng, Hạn hán, Xâm nhập mặn",
     
     unknown: "Chưa phân loại",
   };

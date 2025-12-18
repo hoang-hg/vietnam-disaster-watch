@@ -1,896 +1,1392 @@
 import re
+import unicodedata
+import json
+import os
+from typing import Iterable, Union, Optional, Tuple, Set
 
-# Keyword definitions based on Decision 18/2021/QD-TTg Article 42
-# Normalized to lowercase for matching
+# Load Flood Zones Data
+FLOOD_ZONES_DATA = {}
+try:
+    _fz_path = os.path.join(os.path.dirname(__file__), "..", "data", "flood_zones.json")
+    if os.path.exists(_fz_path):
+        with open(_fz_path, "r", encoding="utf-8") as f:
+            FLOOD_ZONES_DATA = json.load(f)
+except Exception:
+    pass
 
-# 1. Intensity Keywords
-LEVEL_8_9 = [r"cấp 8", r"cấp 9", r"áp thấp nhiệt đới", "atnđ"]
-LEVEL_10_11 = [r"cấp 10", r"cấp 11"]
-LEVEL_12_13 = [r"cấp 12", r"cấp 13"]
-LEVEL_14_15 = [r"cấp 14", r"cấp 15"]
-LEVEL_16_UP = [r"cấp 16", r"cấp 17", "siêu bão"] 
+PatternLike = Union[str, re.Pattern]
 
-# 2. Location Keywords (Groups)
-LOC_BIENDONG = ["biển đông", "hoàng sa", "trường sa"]
-LOC_VENBO = ["ven bờ"]
-LOC_SOUTH = ["nam bộ", "miền tây", "miền đông"] # Added typical aliases if needed, but sticking to text
-LOC_NORTH = ["tây bắc", "việt bắc", "đông bắc bộ", "đồng bằng bắc bộ", "hà nội", "bắc bộ"] # Expanded slightly for coverage
-LOC_CENTRAL = ["bắc trung bộ", "trung trung bộ", "nam trung bộ", "tây nguyên", "miền trung"]
+# --- UTILITIES ---
 
-# Helper to check if text contains any pattern from list
-def has_any(text, patterns):
+def normalize_text(s: str) -> str:
+    if not s:
+        return ""
+    s = str(s).lower()
+    # Normalize hyphens
+    s = s.replace("–", "-").replace("—", "-").replace("−", "-")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def strip_accents(s: str) -> str:
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+    return s.replace("đ", "d")
+
+ALIASES = [
+    (r"\btphcm\b", "tp ho chi minh"),
+    (r"\bhcmc\b", "tp ho chi minh"),
+    (r"\btp\s*hcm\b", "tp ho chi minh"),
+    (r"\bbrvt\b", "ba ria vung tau"),
+    (r"\bdaklak\b", "dak lak"),
+    (r"\bdaknong\b", "dak nong"),
+    (r"\bkontum\b", "kon tum"),
+]
+
+def canon(text: str) -> Tuple[str, str]:
+    """
+    Returns (t, t0):
+      - t  : normalized lowercase text 
+      - t0 : accent-stripped, punctuation-normalized, space-collapsed
+    """
+    t = normalize_text(text)
+    t0 = strip_accents(t)
+
+    # normalize punctuation -> space
+    t0 = re.sub(r"[^a-zA-Z0-9\s]", " ", t0)
+    t0 = re.sub(r"\s+", " ", t0).strip()
+
+    # alias expansion (on t0)
+    for pat, repl in ALIASES:
+        t0 = re.sub(pat, repl, t0)
+    t0 = re.sub(r"\s+", " ", t0).strip()
+
+    return t, t0
+
+def has_phrase(t0: str, phrase: str) -> bool:
+    return bool(re.search(rf"\b{re.escape(phrase)}\b", t0))
+
+def has_any(text: str, patterns: Iterable[PatternLike]) -> bool:
+    if not text:
+        return False
     for p in patterns:
-        if p in text or re.search(r"\b" + p + r"\b", text):
-            return True
+        if isinstance(p, re.Pattern):
+            if p.search(text):
+                return True
+        else:
+            # treat p as regex string
+            if re.search(p, text, flags=re.IGNORECASE | re.UNICODE):
+                return True
     return False
 
+# --- PARSERS ---
+
+def kmh_to_beaufort(kmh: float) -> int:
+    # Ngưỡng xấp xỉ theo thang Beaufort (km/h)
+    thresholds = [
+        (184, 16), (167, 15), (150, 14), (134, 13), (118, 12),
+        (103, 11), (89, 10), (75, 9), (62, 8), (50, 7),
+        (39, 6), (29, 5), (20, 4), (12, 3), (6, 2), (1, 1),
+    ]
+    for th, b in thresholds:
+        if kmh >= th:
+            return b
+    return 0
+
+ROMAN = {
+    "i":1,"ii":2,"iii":3,"iv":4,"v":5,"vi":6,"vii":7,"viii":8,"ix":9,
+    "x":10,"xi":11,"xii":12,"xiii":13,"xiv":14,"xv":15,"xvi":16
+}
+
+RISK_DECL_PAT = re.compile(
+    r"(?:cap\s*do\s*)?rui\s*ro\s*thien\s*tai[^0-9ivx]{0,20}"
+    r"(?:cap\s*)?(\d{1,2}|[ivx]{1,5})\b",
+    flags=re.IGNORECASE
+)
+
+def extract_declared_risk_level(text: str) -> Optional[int]:
+    _, t0 = canon(text)
+    vals: list[int] = []
+    for m in RISK_DECL_PAT.finditer(t0):
+        s = m.group(1).lower()
+        if s.isdigit():
+            vals.append(int(s))
+        else:
+            r = _roman_to_int(s)
+            if r is not None:
+                vals.append(r)
+    # clamp to 1..5
+    vals = [v for v in vals if 1 <= v <= 5]
+    return max(vals) if vals else None
+
+def extract_rain_accum(text: str) -> dict:
+    """
+    Return dict with keys: mm_24, mm_48, mm_72 if detected.
+    Accepts patterns like 'trong 24 giờ', '24h', '48 giờ', '72h'.
+    """
+    _, t0 = canon(text)
+    out = {}
+
+    def _max_mm_near(pat_time: str) -> Optional[float]:
+        m = re.search(pat_time, t0)
+        if not m:
+            return None
+        start = max(0, m.start() - 120)
+        end = min(len(t0), m.end() + 120)
+        window = t0[start:end]
+        cand = [float(x.replace(",", ".")) for x in re.findall(r"(\d+(?:[.,]\d+)?)\s*mm\b", window)]
+        return max(cand) if cand else None
+
+    out["mm_24"] = _max_mm_near(r"(24\s*h|24\s*gio|trong\s*24\s*gio)")
+    out["mm_48"] = _max_mm_near(r"(48\s*h|48\s*gio|trong\s*48\s*gio)")
+    out["mm_72"] = _max_mm_near(r"(72\s*h|72\s*gio|trong\s*72\s*gio)")
+    return {k:v for k,v in out.items() if v is not None}
+
+def _roman_to_int(s: str) -> Optional[int]:
+    s = s.lower().strip()
+    return ROMAN.get(s)
+
+def extract_beaufort_max(text: str) -> Optional[int]:
+    t, t0 = canon(text)
+    vals: list[int] = []
+
+    # cấp/cap X hoặc X-Y hoặc X,Y hoặc X đến Y
+    for m in re.finditer(r"(?:cấp|cap)\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+        a = int(m.group(1))
+        b = int(m.group(2)) if m.group(2) else a
+        vals.append(max(a, b))
+
+    # Roman numerals: Cấp XI, XII...
+    for m in re.finditer(r"(?:cấp|cap)\s*([ivx]{1,5})\b", t0, flags=re.IGNORECASE):
+        r = _roman_to_int(m.group(1))
+        if r is not None:
+            vals.append(r)
+
+    # giật cấp ...
+    for m in re.finditer(r"giat\s*(?:cap|cấp)?\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+        a = int(m.group(1))
+        b = int(m.group(2)) if m.group(2) else a
+        vals.append(max(a, b))
+
+    # gió theo km/h (dùng t để giữ dấu / hoặc t0 với km h)
+    for m in re.finditer(
+        r"gio[^0-9]{0,30}(\d+(?:[.,]\d+)?)\s*(?:km\s*/\s*h|km\s*h|kmh)\b",
+        t,  # using t to matched normalized text preserving /
+        flags=re.IGNORECASE | re.UNICODE
+    ):
+        kmh = float(m.group(1).replace(",", "."))
+        vals.append(kmh_to_beaufort(kmh))
+
+    # gió theo m/s (có ngữ cảnh "gió" gần đó) 1 m/s = 3.6 km/h
+    for m in re.finditer(
+        r"gio[^0-9]{0,30}(\d+(?:[.,]\d+)?)\s*m\s*/\s*s\b",
+        t, flags=re.IGNORECASE | re.UNICODE
+    ):
+        ms = float(m.group(1).replace(",", "."))
+        vals.append(kmh_to_beaufort(ms * 3.6))
+
+    if ("siêu bão" in t) or ("sieu bao" in t0):
+        vals.append(16)
+
+    return max(vals) if vals else None
+
+def extract_max_mm_24h(text: str) -> Optional[float]:
+    cand: list[float] = []
+    t, _ = canon(text)
+
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*mm\b", t, flags=re.IGNORECASE):
+        cand.append(float(m.group(2).replace(",", ".")))
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*mm\b", t, flags=re.IGNORECASE):
+        cand.append(float(m.group(1).replace(",", ".")))
+
+    # L/m2 == mm
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*(?:l|lit|lít)\s*/\s*m\s*(?:2|\^2)\b", t, flags=re.IGNORECASE):
+        cand.append(float(m.group(1).replace(",", ".")))
+
+    return max(cand) if cand else None
+
+def extract_max_meters(text: str) -> Optional[float]:
+    """
+    Parse mét (m/mét/met) và cm -> m.
+    Loại bỏ trường hợp m/s (vận tốc gió, dòng chảy...) để tránh nhầm.
+    """
+    t, _ = canon(text)
+    cand: list[float] = []
+
+    # meters, but NOT m/s
+    for m in re.finditer(
+        r"(\d+(?:[.,]\d+)?)\s*(?:m|mét|met)\b(?!\s*(?:/s|\^?[23]\b|[23]\b))",
+        t,
+        flags=re.IGNORECASE | re.UNICODE,
+    ):
+        cand.append(float(m.group(1).replace(",", ".")))
+
+    # centimeters -> meters
+    for m in re.finditer(
+        r"(\d+(?:[.,]\d+)?)\s*cm\b",
+        t,
+        flags=re.IGNORECASE | re.UNICODE,
+    ):
+        cand.append(float(m.group(1).replace(",", ".")) / 100.0)
+
+    return max(cand) if cand else None
+
+def extract_duration_days_bucket(text: str) -> Optional[str]:
+    _, t0 = canon(text)
+
+    if re.search(r"\b(5|6|7|8|9|10)\s*(ngay|ngay dem|tuan)\b|nhieu\s*ngay|dai\s*ngay", t0):
+        return ">4"
+
+    if re.search(r"(tren|hon)\s*2\s*ngay|2\s*-\s*4\s*ngay|\b3\s*ngay\b|\b4\s*ngay\b|keo\s*dai|48\s*gio|72\s*gio", t0):
+        return "2-4"
+
+    if re.search(r"1\s*-\s*2\s*ngay|\b24\s*h\b|\b24\s*gio\b|\b1\s*ngay\s*dem\b", t0):
+        return "1-2"
+
+    return None
+
+def extract_duration_days_count(text: str) -> int:
+    _, t0 = canon(text)
+    m = re.search(r"trong\s*(\d{1,2})\s*ngay", t0)
+    if m: return int(m.group(1))
+    m = re.search(r"(\d{1,2})\s*ngay\s*toi", t0)
+    if m: return int(m.group(1))
+    m = re.search(r"keo\s*dai\s*(\d{1,2})\s*ngay", t0)
+    if m: return int(m.group(1))
+    
+    if "nhieu ngay" in t0 or "dai ngay" in t0:
+        return 3
+    if "tu 3 ngay" in t0: return 3
+    return 0
+
+def extract_visibility_m(text: str) -> Optional[int]:
+    t, t0 = canon(text)
+    # Range km
+    m = re.search(r"(tam\s*nhin|visibility)[^0-9]{0,40}(\d+(?:[.,]\d+)?)(?:\s*-\s*(\d+(?:[.,]\d+)?))?\s*km\b", t0)
+    if m:
+        a = float(m.group(2).replace(",", "."))
+        b = float(m.group(3).replace(",", ".")) if m.group(3) else a
+        return int(max(a, b) * 1000)
+    
+    # 500m
+    m = re.search(r"(tam\s*nhin|visibility)[^0-9]{0,40}(\d{1,4})\s*m\b", t0)
+    if m: return int(m.group(2))
+    
+    m = re.search(r"(duoi|<)\s*(\d{1,4})\s*m\b", t0)
+    if m: return int(m.group(2))
+    return None
+
+def extract_max_mm(text: str) -> Optional[float]:
+    """
+    Lấy max lượng mưa theo mm.
+    Hỗ trợ mm và L/m2 (1 L/m2 = 1 mm).
+    """
+    t, _ = canon(text)
+    cand: list[float] = []
+
+    # range mm
+    for m in re.finditer(
+        r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*mm\b",
+        t, flags=re.IGNORECASE | re.UNICODE
+    ):
+        cand.append(float(m.group(2).replace(",", ".")))
+
+    # single mm
+    for m in re.finditer(
+        r"(\d+(?:[.,]\d+)?)\s*mm\b",
+        t, flags=re.IGNORECASE | re.UNICODE
+    ):
+        cand.append(float(m.group(1).replace(",", ".")))
+
+    # L/m2 variants (== mm)
+    for m in re.finditer(
+        r"(\d+(?:[.,]\d+)?)\s*(?:l|lit|lít)\s*/\s*m\s*(?:2|\^2)\b",
+        t, flags=re.IGNORECASE | re.UNICODE
+    ):
+        cand.append(float(m.group(1).replace(",", ".")))
+
+    return max(cand) if cand else None
+
+def extract_surge_height_m(text: str) -> Optional[float]:
+    t, t0 = canon(text)
+
+    # Ưu tiên bắt ngay sau keyword (có thể là range)
+    m = re.search(
+        r"(?:nước\s*dâng|nuoc\s*dang|triều\s*cường|trieu\s*cuong)"
+        r"[^0-9]{0,80}"
+        r"(\d+(?:[.,]\d+)?)(?:\s*(?:-|den|toi)\s*(\d+(?:[.,]\d+)?))?\s*(m|mét|met|cm)\b",
+        t,
+        flags=re.IGNORECASE | re.UNICODE,
+    )
+    if m:
+        a = float(m.group(1).replace(",", "."))
+        b = float(m.group(2).replace(",", ".")) if m.group(2) else a
+        unit = m.group(3).lower()
+        val = max(a, b)
+        return val / 100.0 if unit == "cm" else val
+
+    # Fallback: chỉ khi có đúng ngữ cảnh nước dâng/triều cường
+    if ("nuoc dang" in t0) or ("trieu cuong" in t0):
+        return extract_max_meters(text)
+
+    return None
+
+def extract_saline_intrusion_km(text: str) -> Optional[float]:
+    t, t0 = canon(text)
+    m = re.search(
+        r"(?:xam\s*nhap\s*man|do\s*man|nhiem\s*man)[^0-9]{0,80}"
+        r"(?:vao\s*sau|den|toi)?[^0-9]{0,40}"
+        r"(\d+(?:[.,]\d+)?)(?:\s*(?:-|den|toi)\s*(\d+(?:[.,]\d+)?))?\s*km\b",
+        t0
+    )
+    if m:
+        a = float(m.group(1).replace(",", "."))
+        b = float(m.group(2).replace(",", ".")) if m.group(2) else a
+        return max(a, b)
+
+    if any(k in t0 for k in ["xam nhap man", "do man", "nhiem man"]):
+        # Exclude km/h
+        cand = [
+            float(x.replace(",", "."))
+            for x in re.findall(r"(\d+(?:[.,]\d+)?)\s*km\b(?!\s*/\s*h)", t0)
+        ]
+        return max(cand) if cand else None
+    return None
+
+def extract_quake_mag(text: str) -> Optional[float]:
+    t, t0 = canon(text)
+    m = re.search(r"\b(?:m|mw|ml)\s*(\d+(?:[.,]\d+)?)\b", t0)
+    if m: return float(m.group(1).replace(",", "."))
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*do\s*(?:richter)?\b|do\s*lon[^0-9]{0,10}(\d+(?:[.,]\d+)?)\b", t0)
+    if m:
+        g = m.group(1) or m.group(2)
+        return float(g.replace(",", ".")) if g else None
+    return None
+
+def extract_wave_height_m(text: str) -> Optional[float]:
+    t, t0 = canon(text)
+    if "song" not in t0 and "bien dong" not in t0: return None
+    m = re.search(r"song[^0-9]{0,40}(\d+(?:[.,]\d+)?)(?:\s*-\s*(\d+(?:[.,]\d+)?))?\s*m\b", t0)
+    if not m: return None
+    a = float(m.group(1).replace(",", "."))
+    b = float(m.group(2).replace(",", ".")) if m.group(2) else a
+    return max(a,b)
+
+def extract_antecedent_days_bucket(t_accents: str) -> Optional[str]:
+    # Article 46: "from 1 to 2 days" or "over 2 days"
+    t0 = strip_accents(t_accents)
+    if re.search(r"(tu\s*1\s*ngay\s*den\s*2\s*ngay|1\s*-\s*2\s*ngay)", t0):
+        return "1-2"
+    if re.search(r"(tren|hon)\s*2\s*ngay", t0):
+        return ">2"
+    return None
+
+def extract_hazard_zone(t_accents: str) -> Optional[str]:
+    t0 = strip_accents(t_accents)
+    if re.search(r"nguy co rat cao", t0):
+        return "rat_cao"
+    if re.search(r"nguy co cao", t0):
+        return "cao"
+    if re.search(r"nguy co trung binh", t0):
+        return "trung_binh"
+    if re.search(r"nguy co thap", t0):
+        return "thap"
+    return None
+
+def extract_max_temp(text: str) -> Optional[float]:
+    t, t0 = canon(text)
+    # Matches simple and ranges for Temp
+    # Regex against t0 to handle stripped content, but unit needs care?
+    # risk_lookup.check_heat_risk used t0 with "do c", "do", "c".
+    TEMP_UNIT = r"(?:do\s*c|°\s*c|\bc\b)"
+    vals = []
+    # Ranges A-B
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0, re.IGNORECASE):
+         vals.append(float(m.group(2).replace(",", ".")))
+    # Single values
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0, re.IGNORECASE):
+         vals.append(float(m.group(1).replace(",", ".")))
+    
+    if vals: return max(vals)
+    return None
+
+def extract_max_salinity(text: str) -> Optional[float]:
+    t, t0 = canon(text)
+    # Units: ‰, g/l, ppt
+    UNIT = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin|‰|psu|ppt)"
+    vals = []
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT, t0, re.IGNORECASE):
+         vals.append(float(m.group(1).replace(",", ".")))
+    return max(vals) if vals else None
+
+def extract_water_level(text: str) -> Optional[float]:
+    """Extract generic water level (flood, surge, inundation depth)."""
+    t, t0 = canon(text)
+    # Contexts: muc nuoc, nuoc dang, ngap, do sau, dinh lu, bao dong
+    CTX = r"(?:muc\s*nuoc|nuoc\s*dang|ngap|do\s*sau|dinh\s*lu|bao\s*dong)"
+    # Pattern: CTX ... X (m|cm)
+    m = re.search(
+        CTX + r"[^0-9]{0,50}\s+(\d+(?:[.,]\d+)?)(?:\s*(?:-|den)\s*(\d+(?:[.,]\d+)?))?\s*(m|mét|met|cm)\b(?!\s*/)", 
+        t0, re.IGNORECASE
+    )
+    if m:
+        v1 = float(m.group(1).replace(",", "."))
+        v2 = float(m.group(2).replace(",", ".")) if m.group(2) else v1
+        val = max(v1, v2)
+        unit = m.group(3).lower()
+        if "cm" in unit: val /= 100.0
+        return val
+    return None
+
+# --- REGION DEFINITIONS (Decision 18) ---
+# Use stripped sets for matching against t0 (canonical)
+
+NAM_BO = {
+  "tp ho chi minh","ba ria vung tau","dong nai","binh duong","long an","tien giang","ben tre",
+  "tra vinh","vinh long","dong thap","an giang","kien giang","can tho","hau giang","soc trang",
+  "bac lieu","ca mau","tay ninh","binh phuoc", "nam bo", "mien tay", "dong nam bo"
+}
+TAY_BAC = {"lai chau","dien bien","son la","hoa binh","lao cai","yen bai", "tay bac"}
+VIET_BAC = {"ha giang","cao bang","bac kan","tuyen quang","lang son","thai nguyen","phu tho","bac giang", "viet bac"}
+NAM_TRUNG_BO = {"da nang", "quang nam", "quang ngai", "binh dinh", "phu yen", "khanh hoa", "ninh thuan", "binh thuan", "nam trung bo"}
+TAY_NGUYEN = {"kon tum", "gia lai", "dak lak", "dak nong", "lam dong", "tay nguyen"}
+
+# --- STORM RISK (Bão/ATNĐ - Article 42) ---
+
+def is_storm_context(t: str, t0: str) -> bool:
+    # Ưu tiên có dấu: phân biệt bão vs báo
+    if ("bão" in t) or ("áp thấp nhiệt đới" in t):
+        return True
+
+    # Nếu nguồn không dấu: chỉ nhận "bao" khi có ngữ cảnh khí tượng
+    # Tránh "bao cao" (báo cáo), "bao chi" (báo chí)
+    if re.search(r"\bbao\s*(cao|chi)\b", t0):
+        return False
+
+    # Nhận bão không dấu khi có: cấp/gió/số hiệu/ATND
+    return bool(
+        re.search(r"\b(atnd|ap thap nhiet doi)\b", t0)
+        or re.search(r"\bbao\s*(so\s*\d+|cap\s*\d{1,2}|giat|tren|manh)\b", t0)
+    )
+
 def check_storm_risk(text: str) -> int:
-    """
-    Analyzes text for Storm/Tropical Depression risk based on Article 42.
-    Returns Risk Level (3, 4, 5) or 0 if no match.
-    Logic is hierarchical: Check Level 5 -> 4 -> 3.
-    """
-    t = text.lower()
-    
-    # Pre-check: Must mention storm/atnd context? 
-    # The function is called if disaster_type is storm usually, or generic.
-    # Text usually contains "bão" or "áp thấp".
-    
-    # --- LEVEL 5 ---
-    # 3a) Cap 12-13 at Nam Bo
-    if has_any(t, LEVEL_12_13) and has_any(t, LOC_SOUTH):
-        return 5
-    # 3b) Cap 14-15 at Tay Bac, Viet Bac, Nam Trung Bo, Tay Nguyen, Nam Bo
-    # (Basically most land except North/NorthCentral?) -> Reg says: Tay Bac, Viet Bac, Nam Trung Bo, Tay Nguyen, Nam Bo.
-    # Missing: Dong Bac Bo, Dong Bang Bac Bo, Bac Trung Bo, Trung Trung Bo.
-    if has_any(t, LEVEL_14_15) and (has_any(t, LOC_SOUTH) or "tây nguyên" in t or "nam trung bộ" in t or "tây bắc" in t or "việt bắc" in t):
-        return 5
-    # 3c) Super Storm (16+) at Ven Bo or Any Land
-    if has_any(t, LEVEL_16_UP):
-        # Strict reg: Ven Bo or Land. If just "Tren Bien Dong" -> usually Risk 4 (2d says 14+ on Bien Dong).
-        # But 3c says "Super storm ... ven bo; dat lien".
-        # If text says "Sieu bao tren bien dong" -> Risk 4 or 5?
-        # Reg 2d: Storm 14+ on Bien Dong -> Risk 4.
-        # So Super Storm on Bien Dong is Risk 4?
-        # But "Sieu bao" generic is usually Risk 5.
-        # Let's check location strictly.
-        if has_any(t, LOC_VENBO) or has_any(t, LOC_NORTH) or has_any(t, LOC_CENTRAL) or has_any(t, LOC_SOUTH):
-            return 5
-          
-    # --- LEVEL 4 ---
-    # 2a) Cap 10-11 at Nam Bo
-    if has_any(t, LEVEL_10_11) and has_any(t, LOC_SOUTH):
-        return 4
-    # 2b) Cap 12-13 at Ven Bo, Land North/Central/Highland (Excl South -> handled in 3a)
-    if has_any(t, LEVEL_12_13):
-        if has_any(t, LOC_VENBO) or has_any(t, LOC_NORTH) or has_any(t, LOC_CENTRAL):
-            return 4
-    # 2c) Cap 14-15 at Ven Bo, North/Central (Excl South/Highland -> handled in 3b)
-    if has_any(t, LEVEL_14_15):
-        if has_any(t, LOC_VENBO) or has_any(t, LOC_NORTH) or "bắc trung bộ" in t or "trung trung bộ" in t:
-            return 4
-    # 2d) Cap 14+ on Bien Dong
-    if (has_any(t, LEVEL_14_15) or has_any(t, LEVEL_16_UP)) and has_any(t, LOC_BIENDONG):
+    t, t0 = canon(text)
+    if not is_storm_context(t, t0): return 0
+
+    wind = extract_beaufort_max(text)
+    if wind is None:
+        # ATND fallback: Table 2 says ATND (6-7) is Level 3
+        if re.search(r"\b(atnd|ap thap nhiet doi)\b", t0): return 3 
+        return 0
+
+    is_sea = any(k in t0 for k in ["bien dong", "hoang sa", "truong sa", "vung bien"])
+    # Zones
+    is_s = any(k in t0 for k in NAM_BO) # Zone 4
+    is_sc = any(k in t0 for k in NAM_TRUNG_BO) # Zone 3
+    is_hl = any(k in t0 for k in TAY_NGUYEN) or any(k in t0 for k in TAY_BAC) or any(k in t0 for k in VIET_BAC) # Zone 5
+    # Zone 2 (North/Central) is coverage fallback
+
+    # Table 2 Logic
+    # >= 16 (Super Typhoon)
+    if wind >= 16:
+        if is_sea: return 4
+        return 5 # Land (All zones)
+
+    # 14-15 (Very Strong)
+    if wind >= 14:
+        if is_sea: return 4
+        if is_s or is_sc or is_hl: return 5
+        return 4 # North/Central
+
+    # 12-13 (Very Strong)
+    if wind >= 12:
+        if is_sea: return 3
+        if is_s: return 5
+        # South Central, Highlands, North -> 4
         return 4
 
-    # --- LEVEL 3 ---
-    # 1a) ATND / Cap 8-9 on Bien Dong, Ven Bo, Land (Anywhere basically)
-    if has_any(t, LEVEL_8_9):
-        # Must appear with some location to be valid warning context?
-        if has_any(t, LOC_BIENDONG) or has_any(t, LOC_VENBO) or has_any(t, LOC_NORTH) or has_any(t, LOC_CENTRAL) or has_any(t, LOC_SOUTH):
-            return 3
-            
-    # 1b) Cap 10-11 on Bien Dong, Ven Bo, Land (Excl Nam Bo -> handled in 2a)
-    if has_any(t, LEVEL_10_11):
-        if has_any(t, LOC_BIENDONG) or has_any(t, LOC_VENBO) or has_any(t, LOC_NORTH) or has_any(t, LOC_CENTRAL):
-            return 3
-    # 1c) Cap 12-13 on Bien Dong
-    if has_any(t, LEVEL_12_13) and has_any(t, LOC_BIENDONG):
+    # 10-11 (Strong)
+    if wind >= 10:
+        if is_sea: return 3
+        if is_s: return 4
+        return 3 # Others
+
+    # 6-9 (ATND, Storm)
+    if wind >= 6:
         return 3
 
     return 0
 
 # --- WATER SURGE (Nước dâng) - Article 43 ---
+# Use Meter Parser
 
-# Water Level Patterns (Strict context "nước dâng ... X m")
-WL_1_2 = [r"1\s*m", r"1\s*mét", r"1,5\s*m", r"2\s*m", r"2\s*mét"]
-WL_2_3 = [r"2\s*m", r"2\s*mét", r"2,5\s*m", r"3\s*m", r"3\s*mét", r"trên 2\s*m"]
-WL_3_4 = [r"3\s*m", r"3\s*mét", r"3,5\s*m", r"4\s*m", r"4\s*mét", r"trên 3\s*m"]
-WL_4_5 = [r"4\s*m", r"4\s*mét", r"4,5\s*m", r"5\s*m", r"5\s*mét", r"trên 4\s*m"]
-WL_5_6 = [r"5\s*m", r"5\s*mét", r"5,5\s*m", r"6\s*m", r"6\s*mét", r"trên 5\s*m"]
-WL_GT_6 = [r"6\s*m", r"6\s*mét", r"trên 6\s*m"]
-
-# Location Groups for Surge
-# G1: Quang Binh -> Binh Dinh
-LOC_QB_BD = ["quảng bình", "quảng trị", "thừa thiên huế", "đà nẵng", "quảng nam", "quảng ngãi", "bình định"]
-# G2: Ca Mau -> Kien Giang
-LOC_CM_KG = ["cà mau", "kiên giang"]
-# G3: Nghe An -> Ha Tinh
-LOC_NA_HT = ["nghệ an", "hà tĩnh"]
-# G4: Phu Yen -> Ca Mau (Large South Central + South)
-LOC_PY_CM = ["phú yên", "khánh hòa", "ninh thuận", "bình thuận", "bà rịa", "vũng tàu", "tp hcm", "tiền giang", "bến tre", "trà vinh", "sóc trăng", "bạc liêu", "cà mau"]
-# G5: Quang Ninh -> Thanh Hoa (North)
-LOC_QN_TH = ["quảng ninh", "hải phòng", "thái bình", "nam định", "ninh bình", "thanh hóa"]
-# G6: Binh Thuan -> Ca Mau
-LOC_BT_CM = ["bình thuận", "bà rịa", "vũng tàu", "tp hcm", "tiền giang", "bến tre", "trà vinh", "sóc trăng", "bạc liêu", "cà mau"]
-# G7: Phu Yen -> Ninh Thuan
-LOC_PY_NT = ["phú yên", "khánh hòa", "ninh thuận"]
-# G8: Quang Binh -> Thua Thien Hue
-LOC_QB_TTH = ["quảng bình", "quảng trị", "thừa thiên huế"]
-# G9: Da Nang -> Binh Dinh
-LOC_DN_BD = ["đà nẵng", "quảng nam", "quảng ngãi", "bình định"]
-
+LOC_QN_TH = ["quang ninh", "hai phong", "thai binh", "nam dinh", "ninh binh", "thanh hoa"]
+LOC_NA_HT = ["nghe an", "ha tinh"]
+LOC_QB_TTH = ["quang binh", "quang tri", "thua thien hue"]
+LOC_DN_BD = ["da nang", "quang nam", "quang ngai", "binh dinh"]
+LOC_PY_NT = ["phu yen", "khanh hoa", "ninh thuan"]
+LOC_BT_VT = ["binh thuan", "ba ria", "vung tau"]
+LOC_HCM_CM = ["tp ho chi minh", "tien giang", "ben tre", "tra vinh", "soc trang", "bac lieu", "ca mau", "hcm", "sai gon"]
+LOC_CM_KG = ["ca mau", "kien giang"]
 
 def check_surge_risk(text: str) -> int:
-    """Article 43: Storm Surge Risk"""
-    t = text.lower()
-    if "nước dâng" not in t and "triều cường" not in t:
+    t, t0 = canon(text)
+    if "nuoc dang" not in t0 and "trieu cuong" not in t0: return 0
+
+    h = extract_surge_height_m(text)
+    if h is None: return 0
+
+    def in_loc(lst): return any(p in t0 for p in lst)
+
+    # Group 1: QN-TH
+    if in_loc(LOC_QN_TH):
+        if h > 6: return 5
+        if h > 5: return 4
+        if h > 4: return 3
+        if h > 3: return 2
         return 0
 
-    # Determine rough max water level mentioned
-    # This is a heuristic: check highest level first.
-    
-    # --- LEVEL 5 ---
-    # 4a) >5m at QB->TTH
-    if has_any(t, WL_5_6) or has_any(t, WL_GT_6):
-        if has_any(t, LOC_QB_TTH): return 5
-    # 4b) >6m at QN->HT
-    if has_any(t, WL_GT_6):
-        if has_any(t, LOC_QN_TH) or has_any(t, LOC_NA_HT): return 5
-        
-    # --- LEVEL 4 ---
-    # 3a) 3-4m at QB->TTH
-    if has_any(t, WL_3_4) and has_any(t, LOC_QB_TTH): return 4
-    # 3b) 4-5m at NA->TTH (NA->HT + QB->TTH)
-    if has_any(t, WL_4_5) and (has_any(t, LOC_NA_HT) or has_any(t, LOC_QB_TTH)): return 4
-    # 3c) 5-6m at QN->HT
-    if has_any(t, WL_5_6) and (has_any(t, LOC_QN_TH) or has_any(t, LOC_NA_HT)): return 4
-    # 3d) >3m at DN->BD OR CM->KG
-    if (has_any(t, WL_3_4) or has_any(t, WL_4_5) or has_any(t, WL_5_6)) and (has_any(t, LOC_DN_BD) or has_any(t, LOC_CM_KG)): return 4
-    # 3dd) >4m at BT->CM
-    if (has_any(t, WL_4_5) or has_any(t, WL_5_6)) and has_any(t, LOC_BT_CM): return 4
-    
-    # --- LEVEL 3 ---
-    # 2a) 2-3m at QB->BD OR CM->KG
-    if has_any(t, WL_2_3) and (has_any(t, LOC_QB_BD) or has_any(t, LOC_CM_KG)): return 3
-    # 2b) 3-4m at NA->HT OR BT->CM
-    if has_any(t, WL_3_4) and (has_any(t, LOC_NA_HT) or has_any(t, LOC_BT_CM)): return 3
-    # 2c) 4-5m at QN->TH
-    if has_any(t, WL_4_5) and has_any(t, LOC_QN_TH): return 3
-    # 2d) >3m at PY->NT
-    if (has_any(t, WL_3_4) or has_any(t, WL_4_5)) and has_any(t, LOC_PY_NT): return 3
-    
-    # --- LEVEL 2 ---
-    # 1a) 1-2m at QB->BD OR CM->KG
-    if has_any(t, WL_1_2) and (has_any(t, LOC_QB_BD) or has_any(t, LOC_CM_KG)): return 2
-    # 1b) 2-3m at NA->HT OR PY->CM
-    if has_any(t, WL_2_3) and (has_any(t, LOC_NA_HT) or has_any(t, LOC_PY_CM)): return 2
-    # 1c) 3-4m at QN->TH
-    if has_any(t, WL_3_4) and has_any(t, LOC_QN_TH): return 2
+    # Group 2: NA-HT
+    if in_loc(LOC_NA_HT):
+        if h > 6: return 5
+        if h > 4: return 4
+        if h > 3: return 3
+        if h > 2: return 2
+        return 0
+
+    # Group 3: QB-TTH
+    if in_loc(LOC_QB_TTH):
+        if h > 5: return 5
+        if h > 3: return 4
+        if h > 2: return 3
+        if h > 1: return 2
+        return 0
+
+    # Group 4/8: DN-BD & CM-KG
+    if in_loc(LOC_DN_BD) or in_loc(LOC_CM_KG):
+        if h > 3: return 4
+        if h > 2: return 3
+        if h > 1: return 2
+        return 0
+
+    # Group 5: PY-NT
+    if in_loc(LOC_PY_NT):
+        if h > 3: return 3
+        if h > 2: return 2
+        return 0
+
+    # Group 6/7: BT-VT & HCM-CM
+    if in_loc(LOC_BT_VT) or in_loc(LOC_HCM_CM):
+        if h > 4: return 4
+        if h > 3: return 3
+        if h > 2: return 2
+        return 0
+
+    # Default fallback
+    if h >= 1.0: return 2
     
     return 0
 
-# --- HEAVY RAIN (Mưa lớn) - Article 44 ---
+    return 0
 
-# Rain Amount Patterns
-# Regex looks for patterns like "100-200mm", "trên 200 mm"
-RAIN_100_200 = [r"100[-\s]200\s*mm", r"50[-\s]100\s*mm"] # Combined 24h and 12h logic approx
-RAIN_200_400 = [r"200[-\s]400\s*mm", r"trên 200\s*mm"]
-RAIN_GT_400 = [r"trên 400\s*mm", r"400[-\s]500\s*mm", r"500\s*mm", r"lịch sử", r"kỷ lục"] # History/Record implies >400 usually
+# --- HEAVY RAIN - Article 44 ---
+# Using extract_max_mm_24h
 
-# Duration Patterns
-# Simple keywords. Exact day parsing is hard, so we use buckets.
-DUR_LONG = [r"trên 4 ngày", r"4[-\s]7 ngày", r"nhiều ngày", r"dài ngày"] # > 4 days
-DUR_MED = [r"trên 2 ngày", r"2[-\s]4 ngày", r"3 ngày", r"4 ngày", r"kéo dài"] # 2-4 days
-DUR_SHORT = [r"1[-\s]2 ngày", r"2 ngày", r"24 giờ", r"24h", r"đợt mưa"] # 1-2 days
-
-# Terrain Context
-TERRAIN_MT = ["trung du", "miền núi", "vùng núi", "tây nguyên", "tây bắc", "việt bắc"]
-TERRAIN_PLAIN = ["đồng bằng", "ven biển", "hà nội", "tp hcm"] # Plain
+TERRAIN_MT = ["trung du", "mien nui", "vung nui", "tay nguyen", "tay bac", "viet bac"]
 
 def check_rain_risk(text: str) -> int:
-    """Article 44: Heavy Rain Risk"""
-    t = text.lower()
-    
-    # Check max rain amount
-    amt = 0
-    if has_any(t, RAIN_GT_400): amt = 400
-    elif has_any(t, RAIN_200_400): amt = 300
-    elif has_any(t, RAIN_100_200): amt = 150
-    
-    if amt == 0: return 0 # No rain amount mentioned
-    
-    # Check duration
-    dur = 1
-    if has_any(t, DUR_LONG): dur = 5
-    elif has_any(t, DUR_MED): dur = 3
-    elif has_any(t, DUR_SHORT): dur = 2
-    
-    # Check terrain (If mentioned "vùng núi" prioritize it)
-    is_mt = has_any(t, TERRAIN_MT)
-    # is_plain = has_any(t, TERRAIN_PLAIN) # default if not mountain
-    
-    # --- LEVEL 4 ---
-    # 4a) 200-400mm, >4 days, Mountain
-    if amt >= 300 and dur >= 5 and is_mt: return 4
-    # 4b) >400mm, >2 days (Mt) OR >4 days (Plain)
-    if amt >= 400:
-        if (is_mt and dur >= 3) or (dur >= 5): return 4
-        
-    # --- LEVEL 3 ---
-    # 3a) 100-200mm, >4 days, Mountain
-    if amt >= 150 and dur >= 5 and is_mt: return 3
-    # 3b) 200-400mm, 2-4 days (Mt) OR >2 days (Plain/Any)
-    if amt >= 300:
-        if (is_mt and dur >= 3) or (dur >= 3): return 3
-    # 3c) >400mm, 1-2 days (Mt) OR 1-4 days (Plain)
-    if amt >= 400: return 3 # Covers both cases roughly (Base level for >400mm is 3)
+    t, t0 = canon(text)
 
-    # --- LEVEL 2 ---
-    # 2a) 100-200mm, 2-4 days (Mt) OR >2 days (Plain)
-    if amt >= 150:
-        if (is_mt and dur >= 3) or (dur >= 3): return 2
-    # 2b) 200-400mm, 1-2 days
-    if amt >= 300 and dur <= 2: return 2
+    # Use accum or max_mm
+    accum = extract_rain_accum(text)
+    mm = accum.get("mm_24") or accum.get("mm_48") or accum.get("mm_72") or extract_max_mm(text)
+    if mm is None: return 0
+
+    rain_context = any(k in t0 for k in ["mua lon", "mua to", "mua rat to", "mua dien rong"])
+    if (mm < 100) and (not rain_context): return 0
+
+    # Determine duration bucket
+    days = "1-2" # Default
+    d_extracted = extract_duration_days_bucket(text)
+    if d_extracted:
+        days = d_extracted
+    else:
+        # Infer from accum key if bucket missing
+        if accum.get("mm_72") and mm == accum["mm_72"]: days = "2-4"
     
-    # --- LEVEL 1 ---
-    # 1) 100-200mm, 1-2 days
-    if amt >= 150 and dur <= 2: return 1
+    is_mt = any(k in t0 for k in TERRAIN_MT)
     
+    # Area Heuristic (downgrade logic reserved if needed, but table is strict)
+    is_wide = any(k in t0 for k in ["dien rong", "nhieu noi", "nhieu huyen", "lan rong"])
+
+    # Matrix Table (Decision 18)
+    
+    # > 400mm
+    if mm > 400:
+        if is_mt:
+            # Mtn: 1-2(3), >2(4)
+            if days == "1-2": return 3
+            return 4
+        else:
+            # Plain: 1-4(3), >4(4)
+            if days == ">4": return 4
+            return 3
+
+    # 200 - 400mm
+    if mm > 200:
+        if is_mt:
+            # Mtn: 1-2(2), 2-4(3), >4(4)
+            if days == ">4": return 4
+            if days == "2-4": return 3
+            return 2
+        else:
+            # Plain: 1-2(2), >2(3)
+            if days == "1-2": return 2
+            return 3
+
+    # 100 - 200mm
+    if mm >= 100:
+        if is_mt:
+            # Mtn: 1-2(1), 2-4(2), >4(3)
+            if days == ">4": return 3
+            if days == "2-4": return 2
+            return 1
+        else:
+            # Plain: 1-2(1), >2(2)
+            if days == "1-2": return 1
+            return 2
+
     return 0
 
-# --- FLOOD (Lũ, Ngập lụt) - Article 45 ---
-# Note: Article 45 depends on Hydrological Zones (Zone 1-4).
-# Without Zone mapping, we apply a Heuristic based on Severity keywords.
-# "Báo động 3" is handled by generic NLP regex -> maps to Risk 3.
-# Here we handle "Historic Flood" levels.
 
-FLOOD_HISTORIC_EXCEED = [r"vượt lũ lịch sử", r"vượt mức lịch sử", r"vượt đỉnh lũ lịch sử"]
-FLOOD_HISTORIC = [r"lũ lịch sử", r"đỉnh lũ lịch sử", r"tương đương lũ lịch sử"]
-# FLOOD_ALARM_3_PLUS = [r"trên báo động 3", "vượt báo động 3"] -> Maps to 3 usually, or 4 in Zone 4. 
-# We'll stick to Historic for strictly higher levels.
+
+# --- FLOOD - Article 45 ---
 
 def check_flood_risk(text: str) -> int:
-    """Article 45: Flood Risk (Historic Levels)"""
-    t = text.lower()
+    t, t0 = canon(text)
+    if not any(k in t0 for k in ["lu lut","ngap lut","lu len","muc nuoc","bao dong"]):
+        return 0
     
-    # 5. Exceed Historic Flood -> Level 5 (Art 45.5)
-    if has_any(t, FLOOD_HISTORIC_EXCEED):
-        return 5
+    # 1. Identify Region (1-4)
+    rid = 1 # Default Region 1
+    matched_rids = []
+    
+    def _match_item(item):
+        tram = item.get("ten_tram")
+        song = item.get("ten_song")
+        tinh = item.get("tinh")
+        if tram:
+            # Station match
+            if canon(tram)[1] in t0: return True
+        if song and tinh:
+            # River and Province match
+            if canon(song)[1] in t0 and canon(tinh)[1] in t0: return True
+        return False
         
-    # 4. Historic Flood -> Level 4 (Art 45.4 "Alarm 3 + 0.3m to Historic")
-    # Actually 45.4 says "to historic". 45.5 says "exceed historic".
-    # So "Historic Flood" is boundary of 4/5. 
-    # Safe to map "Lũ lịch sử" to 4 (Major disaster) or 5? 
-    # Let's map to Level 4 to be safe, Exceed -> 5.
-    if has_any(t, FLOOD_HISTORIC):
-        return 4
+    for k, v in FLOOD_ZONES_DATA.items():
+        k_id = int(k.replace("khu_vuc_", ""))
+        for item in v:
+            if _match_item(item):
+                matched_rids.append(k_id)
+                
+    if matched_rids:
+        # Conflict resolution: Take MAX region ID (Usually Stricter/Urban)
+        rid = max(matched_rids)
+
+    # 2. Identify Flood Level
+    # Levels mapped to Table Rows
+    # Lvl 7: > Hist
+    # Lvl 6: BD3+1 to Hist
+    # Lvl 5: BD3+0.3 to BD3+1
+    # Lvl 4: BD3 to BD3+0.3
+    # Lvl 3: BD2 to BD3
+    # Lvl 2: BD1 to BD2
+    # Lvl 1: < BD1 (or just detected without level?)
+    
+    lvl = 1 # Default if keyword detected but no level found? Or 0?
+    
+    is_above = any(k in t0 for k in ["tren", "vuot", "cao hon"])
+    is_below = any(k in t0 for k in ["duoi", "thap hon"])
+    
+    # Check Historic
+    if "lich su" in t0:
+        if is_above: lvl = 7
+        else: lvl = 6 # Treat 'At Historic' as high range of Row 2 => Risk 3/4
+        
+    # Check BD3
+    elif re.search(r"\b(bd|bao dong)\s*(3|iii)\b", t0):
+        if is_below:
+            lvl = 3 # Below BD3 -> Range BD2-BD3
+        else:
+             # Above or equal BD3
+             offset = 0.0
+             m = re.search(r"\b(bd|bao dong)\s*(3|iii).*?(\d+[.,]\d+)", t0)
+             if m:
+                 try: offset = float(m.group(3).replace(",","."))
+                 except: pass
+             
+             if offset >= 1.0: lvl = 6 # Row 2
+             elif offset >= 0.3: lvl = 5 # Row 3
+             else: lvl = 4 # Row 4
+             
+    # Check BD2
+    elif re.search(r"\b(bd|bao dong)\s*(2|ii)\b", t0):
+        if is_below: lvl = 2 # Below BD2 -> Range BD1-BD2
+        else: lvl = 3 # Above BD2 -> Range BD2-BD3
+        
+    # Check BD1
+    elif re.search(r"\b(bd|bao dong)\s*(1|i)\b", t0):
+        if is_below: lvl = 0
+        else: lvl = 2 # Above BD1 -> Range BD1-BD2
+
+    # 3. Apply Matrix
+    # Row 1 (> Hist)
+    if lvl == 7: return 5 if rid == 4 else 3
+    
+    # Row 2 (BD3+1 to Hist)
+    if lvl == 6: return 4 if rid == 4 else 3
+    
+    # Row 3 (BD3+0.3 to BD3+1)
+    if lvl == 5:
+        if rid == 4: return 4
+        if rid == 3: return 3
+        return 2 # R1, R2
+        
+    # Row 4 (BD3 to BD3+0.3)
+    if lvl == 4:
+        if rid in [3, 4]: return 3
+        return 2 # R1, R2
+        
+    # Row 5 (BD2 to BD3)
+    if lvl == 3:
+        if rid == 4: return 3
+        if rid in [2, 3]: return 2
+        return 1 # R1
+        
+    # Row 6 (BD1 to BD2)
+    if lvl == 2:
+        return 2 if rid == 4 else 1
         
     return 0
 
-# --- FLASH FLOOD / LANDSLIDE (Lũ quét, Sạt lở) - Article 46 ---
-# Zones defined in Appendix XII Table 5 (as per Prompt)
+# --- FLASH FLOOD / LANDSLIDE - Article 46 ---
 
-FF_R1 = ["lai châu", "sơn la", "điện biên", "hòa bình", "lào cai", "yên bái", "hà giang"]
-FF_R2 = ["tuyên quang", "bắc kạn", "lạng sơn", "cao bằng", "thanh hóa", "nghệ an", "quảng ngãi"]
-FF_R3 = ["phú thọ", "thái nguyên", "quảng ninh", "hà tĩnh", "quảng bình", "quảng trị", "thừa thiên huế", "đà nẵng", "quảng nam", "khánh hòa", "kon tum", "gia lai", "đắk lắk", "đắk nông", "lâm đồng"]
-FF_R4 = ["vĩnh phúc", "bắc giang", "hải phòng", "bình định", "phú yên", "ninh thuận", "bình thuận"]
+ZONE_PROVINCES_R1 = {"lai chau", "son la", "dien bien", "hoa binh", "lao cai", "yen bai", "ha giang"}
+ZONE_PROVINCES_R2 = {"tuyen quang", "bac kan", "lang son", "cao bang", "thanh hoa", "nghe an", "quang ngai"}
+ZONE_PROVINCES_R3 = {"phu tho", "thai nguyen", "quang ninh", "ha tinh", "quang binh", "quang tri", "thua thien hue", "tp da nang", "da nang", "quang nam", "khanh hoa", "kon tum", "gia lai", "dak lak", "dak nong", "lam dong"}
+ZONE_PROVINCES_R4 = {"vinh phuc", "bac giang", "hai phong", "binh dinh", "phu yen", "khanh hoa", "ninh thuan", "binh thuan"}
+
+def assert_disjoint(*zones: Set[str]) -> None:
+    seen = {}
+    for i, z in enumerate(zones, start=1):
+        for p in z:
+            if p in seen:
+                # Log or print warning (raising error stops app)
+                print(f"WARNING: Province '{p}' appears in zones {seen[p]} and {i}")
+            seen[p] = i
+
+# assert_disjoint(ZONE_PROVINCES_R1, ZONE_PROVINCES_R2, ZONE_PROVINCES_R3, ZONE_PROVINCES_R4)
+
+def detect_flashflood_region(t0: str) -> Optional[int]:
+    def hit(s): return any(p in t0 for p in s)
+    if hit(ZONE_PROVINCES_R1): return 1
+    if hit(ZONE_PROVINCES_R2): return 2
+    if hit(ZONE_PROVINCES_R3): return 3
+    if hit(ZONE_PROVINCES_R4): return 4
+    return None
 
 def check_flash_flood_risk(text: str) -> int:
-    """Article 46: Flash Flood/Landslide Risk"""
-    t = text.lower()
-    
-    # Must explicitly mention Flash Flood / Landslide keywords
-    if not ("lũ quét" in t or "sạt lở" in t or "sụt lún" in t):
+    t, t0 = canon(text)
+
+    if not any(k in t0 for k in ["lu quet","sat lo","sat lo dat","truot lo","truot dat","da lan","suc truot"]):
         return 0
 
-    # Determine Rain Amount (Reuse Patterns)
-    amt = 0
-    if has_any(t, RAIN_GT_400): amt = 400
-    elif has_any(t, RAIN_200_400): amt = 300
-    elif has_any(t, RAIN_100_200): amt = 150
-    
-    # Strict Policy: If no rain amount mention, typical warnings might just be Level 1.
-    if amt == 0: return 0
+    mm = extract_max_mm_24h(t)
+    days_bucket = extract_antecedent_days_bucket(t)   # "1-2" | ">2"
+    hz = extract_hazard_zone(t)                       # thap/trung_binh/cao/rat_cao
+    region = detect_flashflood_region(t0)             # 1..4
 
-    # Determine Region Zone
-    # Check R1 -> R2 -> R3 -> R4
-    is_r1 = has_any(t, FF_R1)
-    is_r2 = has_any(t, FF_R2)
-    is_r3 = has_any(t, FF_R3)
-    is_r4 = has_any(t, FF_R4)
+    if mm is None or days_bucket is None or hz is None or region is None:
+        return 0
 
-    # Risk Logic (Simplified Matrix based on Max Potentials)
-    # We assume "High Risk Area" within the Zone if not specified, for safety.
-    
+    def in_set(x, s): return x in s
+    level = 0
+
     # --- LEVEL 3 ---
-    # 3a) 100-200mm, R1/R2 (Very High Zone) -> Level 3
-    # 3b) >200mm, R1/R2 (High/Very High) -> Level 3
-    # 3b) >200mm, R3 (Very High) -> Level 3
-    # 3c) >400mm, R1/R2/R3 (High/Very High) -> Level 3
-    if amt >= 300: # >200mm
-        if is_r1 or is_r2 or is_r3: return 3
-    if amt >= 150: # 100-200mm
-        if is_r1 or is_r2: return 3 # Aggressive Safety
-    
+    if 100 <= mm <= 200 and days_bucket == "1-2" and region in (1,2) and hz == "rat_cao":
+        level = max(level, 3)
+    if 200 < mm <= 400 and days_bucket == ">2":
+        if region in (1,2) and in_set(hz, {"cao","rat_cao"}): level = max(level, 3)
+        if region == 3 and hz == "rat_cao": level = max(level, 3)
+    if mm > 400 and days_bucket == ">2":
+        if region in (1,2) and in_set(hz, {"cao","rat_cao"}): level = max(level, 3)
+        if region == 3 and hz == "rat_cao": level = max(level, 3)
+
     # --- LEVEL 2 ---
-    # 2a) 100-200mm, R1/R2 (High) -> Level 2
-    # 2b) >200mm, R1/R2 (Med), R3 (High), R4 (Very High) -> Level 2
-    if amt >= 300: # >200mm
-        if is_r4: return 2
-    if amt >= 150: # 100-200mm
-        # If R3 (Very High Risk Zone) could be 2. Let's map R3 to 2 here.
-        if is_r3: return 2
-        
+    if 100 <= mm <= 200 and days_bucket == "1-2":
+        if region in (1,2) and hz == "cao": level = max(level, 2)
+        if region == 3 and hz == "rat_cao": level = max(level, 2)
+    if 200 < mm <= 400 and days_bucket == ">2":
+        if region in (1,2) and hz == "trung_binh": level = max(level, 2)
+        if region == 3 and hz == "cao": level = max(level, 2)
+        if region == 4 and hz == "rat_cao": level = max(level, 2)
+    if mm > 400 and days_bucket == ">2":
+        if region in (1,2) and in_set(hz, {"thap","trung_binh"}): level = max(level, 2)
+        if region == 3 and in_set(hz, {"trung_binh","cao"}): level = max(level, 2)
+        if region == 4 and in_set(hz, {"cao","rat_cao"}): level = max(level, 2)
+
     # --- LEVEL 1 ---
-    # 1a) 100-200mm R1/2/3/4 (Low/Med/High) -> Level 1
-    if amt >= 150:
-         return 1
-         
-    return 0
+    if 100 <= mm <= 200 and days_bucket == "1-2":
+        if region in (1,2) and hz == "thap": level = max(level, 1)
+        if region == 3 and in_set(hz, {"thap","trung_binh"}): level = max(level, 1)
+        if region == 4 and hz == "trung_binh": level = max(level, 1)
+    if 200 < mm <= 400 and days_bucket == ">2":
+        if region in (1,2) and hz == "thap": level = max(level, 1)
+        if region == 3 and in_set(hz, {"thap","trung_binh"}): level = max(level, 1)
+    if mm > 400 and days_bucket == ">2":
+        if region in (1,2) and hz == "thap": level = max(level, 1)
 
-# --- HEAT / HEATWAVE (Nắng nóng) - Article 47 ---
+    return level
 
-# Temp Patterns
-TEMP_35_37 = [r"35[-\s]37\s*độ", r"35[-\s]37\s*c", r"nắng nóng diện rộng"] # "Nắng nóng" implies >35
-TEMP_37_39 = [r"37[-\s]39\s*độ", r"37[-\s]39\s*c", r"trên 37\s*độ", r"nắng nóng gay gắt"]
-TEMP_39_41 = [r"39[-\s]41\s*độ", r"39[-\s]41\s*c", r"trên 39\s*độ", r"40\s*độ", r"nắng nóng đặc biệt gay gắt"]
-TEMP_GT_41 = [r"trên 41\s*độ", r"vượt 41\s*độ", r"42\s*độ", r"43\s*độ"]
-
-# Duration Patterns (Heat specific)
-HEAT_DUR_3 = [r"3 ngày", r"trên 3 ngày", r"3[-\s]5 ngày"] # >= 3 days
-HEAT_DUR_5 = [r"5 ngày", r"trên 5 ngày", r"5[-\s]10 ngày"]
-HEAT_DUR_10 = [r"10 ngày", r"trên 10 ngày", r"10[-\s]25 ngày", r"dài ngày"]
-HEAT_DUR_25 = [r"25 ngày", r"trên 25 ngày", r"kéo dài hàng tháng", r"đợt nắng nóng kỷ lục"]
-
-# Heat Regions
-# Group S: Tay Nguyen, Nam Bo
-HEAT_LOC_S = ["tây nguyên", "nam bộ", "miền nam", "tp hcm", "đồng nai", "bình dương"]
-# Group N: Bac Bo, Trung Bo
-HEAT_LOC_N = ["bắc bộ", "trung bộ", "miền bắc", "miền trung", "hà nội", "nghệ an", "thanh hóa"]
+# --- HEAT - Article 47 ---
 
 def check_heat_risk(text: str) -> int:
-    """Article 47: Heat Risk"""
-    t = text.lower()
+    t, t0 = canon(text)
+    if "nang nong" not in t0: return 0
+
+    dur = extract_duration_days_count(text)
+    if dur < 3: return 0
+
+    # Temp Extraction
+    TEMP_UNIT = r"(?:do|°\s*c|do\s*c|\bc\b)"
+    matches = re.findall(r"(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0)
+    ranges = re.findall(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0)
+    vals = [float(x.replace(",",".")) for x in matches]
+    for a,b in ranges: vals.append(float(b.replace(",",".")))
     
-    # Check Temp Bucket
-    temp = 0
-    if has_any(t, TEMP_GT_41): temp = 42
-    elif has_any(t, TEMP_39_41): temp = 40
-    elif has_any(t, TEMP_37_39): temp = 38
-    elif has_any(t, TEMP_35_37): temp = 36
-    
-    if temp == 0: return 0 # No heat context
+    temp = max(vals) if vals else 0
+    if temp == 0:
+        if "tren 41" in t0: temp = 42
+        elif "39 den 41" in t0: temp = 40
+        elif "37 den 39" in t0: temp = 38
+        elif "35 den 37" in t0: temp = 36
+        elif "dac biet gay gat" in t0: temp = 40
+        elif "gay gat" in t0: temp = 39
 
-    # Check Duration Bucket
-    dur = 1 # default <3 days
-    if has_any(t, HEAT_DUR_25): dur = 25
-    elif has_any(t, HEAT_DUR_10): dur = 10
-    elif has_any(t, HEAT_DUR_5): dur = 5
-    elif has_any(t, HEAT_DUR_3) or "đợt nắng nóng" in t: dur = 3
-    
-    # Check Region
-    is_s = has_any(t, HEAT_LOC_S)
-    # is_n = has_any(t, HEAT_LOC_N) # default
+    if temp < 35: return 0
 
-    # --- LEVEL 4 ---
-    # 4a) 39-41, >25 days (S)
-    if temp >= 40 and dur >= 25 and is_s: return 4
-    # 4b) >41, >10 days (S) OR >25 days (N)
-    if temp >= 42:
-        if (is_s and dur >= 10) or (dur >= 25): return 4
+    # Region
+    is_s = any(p in t0 for p in NAM_BO) or any(p in t0 for p in TAY_NGUYEN)
+    CTR_PROV = {"thanh hoa","nghe an","ha tinh","quang binh","quang tri","thua thien hue"}
+    is_c = any(p in t0 for p in NAM_TRUNG_BO) or any(p in t0 for p in CTR_PROV) or "trung bo" in t0
+    is_n = not is_s and not is_c
 
-    # --- LEVEL 3 ---
-    # 3a) 37-39, >25 days (S)
-    if temp >= 38 and dur >= 25 and is_s: return 3
-    # 3b) 39-41, 10-25 days (S) OR >25 days (N)
-    if temp >= 40:
-        if (is_s and dur >= 10) or (dur >= 25): return 3
-    # 3c) >41, 5-10 days (S) OR 10-25 days (N)
-    if temp >= 42:
-        if (is_s and dur >= 5) or (dur >= 10): return 3
+    # Matrix Logic
+     # > 25 Days
+    if dur > 25:
+        if temp > 41: return 4
+        if temp > 39: # 39-41
+            if is_s: return 4
+            return 3
+        if temp > 37: # 37-39
+            if is_s: return 3
+            return 2
+        return 1
 
-    # --- LEVEL 2 ---
-    # 2a) 37-39, 10-25 days (S) OR >25 days (N)
-    if temp >= 38:
-        if (is_s and dur >= 10) or (dur >= 25): return 2
-    # 2b) 39-41, 3-10 days (S) OR 5-25 days (N)
-    if temp >= 40:
-        if (is_s and dur >= 3) or (dur >= 5): return 2
-    # 2c) >41, 3-10 days (N) OR 3-5 days (S)
-    if temp >= 42:
-        if (is_s and dur >= 3) or (dur >= 3): return 2
+    # > 10 - 25 Days
+    if dur > 10:
+        if temp > 41:
+            if is_s: return 4
+            return 3
+        if temp > 39: # 39-41
+            if is_s: return 3
+            return 2
+        if temp > 37: # 37-39
+            if is_s: return 2
+            return 1
+        return 1
 
-    # --- LEVEL 1 ---
-    # 1a) 35-37, >3 days
-    if temp >= 36 and dur >= 3: return 1
-    # 1b) 37-39, 3-25 days (N) OR 3-10 days (S)
-    if temp >= 38:
-        if dur >= 3: return 1
-    # 1c/d) >39, 3-5 days
-    if temp >= 40 and dur >= 3: return 1
-    
+    # > 5 - 10 Days
+    if dur > 5:
+        if temp > 41:
+            if is_s: return 3
+            return 2
+        if temp > 39: # 39-41
+            return 2
+        return 1
+
+    # 3 - 5 Days
+    if dur >= 3:
+        if temp > 41:
+            if is_c: return 1
+            return 2 # N(2), S(2)
+        if temp > 39: # 39-41
+            if is_s: return 2
+            return 1 # N(1), C(1)
+        return 1
+        
     return 0
 
-# --- DROUGHT (Hạn hán) - Article 48 ---
-
-# Water Shortage Patterns
-SHORTAGE_20_50 = [r"20[-\s]50%", r"thiếu hụt nước", r"thiếu nước"] # Generic warning usually implies start of shortage
-SHORTAGE_50_70 = [r"50[-\s]70%", r"trên 50%", r"hạn hán gay gắt"]
-SHORTAGE_GT_70 = [r"trên 70%", r"cạn kiệt", r"mực nước chết", r"khô hạn khốc liệt", r"hạn hán đặc biệt gay gắt"]
-
-# Duration (Months)
-DR_DUR_2_3 = [r"2[-\s]3 tháng", r"kéo dài 2 tháng"]
-DR_DUR_3_5 = [r"3[-\s]5 tháng", r"kéo dài 3 tháng", r"kéo dài 4 tháng"]
-DR_DUR_GT_5 = [r"trên 5 tháng", r"5[-\s]6 tháng", r"nửa năm", r"dài ngày"] # Drought "dai ngay" usually means months
-
-# Reuse Heat Regions (TN/NB vs BB/TB)
-# HEAT_LOC_S (TN/NB) -> Higher Risk Sensitivity
-# HEAT_LOC_N (BB/TB) -> Lower Risk Sensitivity
-
-def check_drought_risk(text: str) -> int:
-    """Article 48: Drought Risk"""
-    t = text.lower()
-    
-    if not ("hạn hán" in t or "thiếu nước" in t or "khô hạn" in t or "xâm nhập mặn" in t):
-        if "sạt lở" not in t and "sụt lún" not in t:
-            return 0
-        if "hạn hán" not in t: return 0
-
-    # Check Shortage Bucket
-    short = 0
-    if has_any(t, SHORTAGE_GT_70): short = 75
-    elif has_any(t, SHORTAGE_50_70): short = 60
-    elif has_any(t, SHORTAGE_20_50): short = 35
-    
-    if short == 0: return 0
-
-    # Check Duration
-    dur_mo = 1
-    if has_any(t, DR_DUR_GT_5): dur_mo = 6
-    elif has_any(t, DR_DUR_3_5): dur_mo = 4
-    elif has_any(t, DR_DUR_2_3) or "kéo dài" in t: dur_mo = 2
-    
-    # Check Region
-    is_s = has_any(t, HEAT_LOC_S) # TN/NB
-    # is_n = has_any(t, HEAT_LOC_N) # BB/TB
-
-    # --- LEVEL 4 ---
-    # 4a) Short >70%, >3 mo (All)
-    if short >= 75 and dur_mo >= 4: return 4
-    # 4b) Short 50-70%, >5 mo (S)
-    if short >= 60 and dur_mo >= 6 and is_s: return 4
-
-    # --- LEVEL 3 ---
-    # 3a) Short >70%, 2-3 mo (All)
-    if short >= 75 and dur_mo >= 2: return 3
-    # 3b) Short 50-70%, 3-5 mo (S) OR >5 mo (N - clause 3c covers N >5mo wait. 
-    # 3c says Short 50-70%, >5mo (N) -> Level 3.
-    # 3b says Short 50-70%, 3-5mo (S) -> Level 3.
-    if short >= 60:
-        if (is_s and dur_mo >= 4) or (dur_mo >= 6): return 3
-    # 3d) Short 20-50%, >5 mo (S)
-    if short >= 35 and dur_mo >= 6 and is_s: return 3
-
-    # --- LEVEL 2 ---
-    # 2a) Short 50-70%, 2-3 mo (S)
-    if short >= 60 and dur_mo >= 2 and is_s: return 2
-    # 2b) Short 20-50%, 3-5 mo (S)
-    if short >= 35 and dur_mo >= 4 and is_s: return 2
-    # 2c) Short 50-70%, 3-5 mo (N - wait clause 2c says 3-5mo 50-70% BB -> L2)
-    if short >= 60:
-       # N (BB) 3-5 mo -> L2 (2c)
-       if (not is_s and dur_mo >= 4): return 2
-       # S/C 2-3 mo -> L2 (2a)
-       if dur_mo >= 2: return 2 
-       
-    # 2d) Short 20-50%, >5 mo (N/C - clause 2d says BB, TB -> L2)
-    if short >= 35 and dur_mo >= 6 and (not is_s): return 2
-
-    # --- LEVEL 1 ---
-    # Generic default 1 is reasonable if "Hạn hán" keywords present.
-    return 1
-
-# --- SALINE INTRUSION (Xâm nhập mặn) - Article 49 ---
-
-# Salinity
-SALT_1 = [r"1\s*g/l", r"1\s*gam", r"1\s*phần nghìn", r"1‰"]
-SALT_4 = [r"4\s*g/l", r"4\s*gam", r"4\s*phần nghìn", r"4‰", r"mặn 4"] # "mặn 4" shorthand
-
-# Intrusion Depth
-# Looking for phrases "sâu X km", "vào X km"
-DP_15_25 = [r"15[-\s]25\s*km", r"20\s*km"]
-DP_25_50 = [r"25[-\s]50\s*km", r"30\s*km", r"40\s*km"]
-DP_50_90 = [r"50[-\s]90\s*km", r"60\s*km", r"70\s*km", r"80\s*km"]
-DP_GT_90 = [r"trên 90\s*km", r"vượt 90\s*km", r"100\s*km", r"sâu vào nội đồng"]
-
-# Regions
-# North/NorthCentral (BB, BTB): Higher sensitivity in reg
-SALT_LOC_N = ["bắc bộ", "bắc trung bộ", "thanh hóa", "nghệ an", "hà tĩnh", "quảng bình", "thái bình", "nam định"]
-# Central/South (TTB, NTB, NB): Lower sensitivity (Delta)
-SALT_LOC_S = ["nam bộ", "đồng bằng sông cửu long", "bến tre", "trà vinh", "sóc trăng", "bạc liêu", "cà mau", "kiên giang", "tiền giang", "hậu giang"] 
+# --- SALINE - Article 49 ---
 
 def check_saline_risk(text: str) -> int:
-    """Article 49: Saline Intrusion"""
-    t = text.lower()
-    if "xâm nhập mặn" not in t and "độ mặn" not in t and "nhiễm mặn" not in t:
+    t, t0 = canon(text)
+    if ("xam nhap man" not in t0) and ("do man" not in t0) and ("nhiem man" not in t0):
         return 0
 
-    # Check Depth Bucket
-    depth = 0
-    if has_any(t, DP_GT_90): depth = 100
-    elif has_any(t, DP_50_90): depth = 70
-    elif has_any(t, DP_25_50): depth = 35
-    elif has_any(t, DP_15_25): depth = 20
+    depth = extract_saline_intrusion_km(text)
+    if depth is None: return 0
     
-    if depth == 0: return 0
+    # Check plural river mouths (Regulatory requirement Art 49)
+    has_many = "nhieu cua song" in t0 or "cac cua song" in t0 or t0.count("song ") >= 2
+    if "dong bang song cuu long" in t0 or "dbscl" in t0 or "nam bo" in t0: has_many = True
     
-    # Check Salinity Value (Default to 4‰ context if unspecified but talking about impacts? 
-    # Actually 1‰ affects drinking, 4‰ affects rice. Media focuses on 4‰ usually.
-    # Let's check if 1‰ explicitly mentioned. Else assume 4‰ context if depth is significant?
-    # Or strict: if 1‰ -> is_1. Else -> is_4.
-    is_1 = has_any(t, SALT_1)
-    is_4 = has_any(t, SALT_4) # or default?
+    if not has_many: return 0
+        
+    unit_pat = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin|‰|psu|ppt)"
+    # Default to 4‰ (Agricultural limit) unless 1‰ explicitly focused and < 4
+    is_4 = True
+    # If 1‰ mentioned and NO mention of >=4, switch to 1‰ table?
+    # Simple logic: if text mentions 1‰, use 1‰. If 4‰, use 4‰.
+    # If both, usually context is "ranh man 4g/l vao sau X km", "ranh man 1g/l vao sau Y km".
+    # This single function processes whole text. It finds MAX depth.
+    # If max depth is associated with 1‰, we should use 1‰ table.
+    # But extract_saline_intrusion_km finds max depth regardless of grammar.
+    # Conservative Approach: Use 4‰ table (stricter for deeper depth?)
+    # Compare:
+    # 4‰ table: >50km -> 3 or 4.
+    # 1‰ table: >50km -> 2.
+    # So 4‰ table is STRICTER (Higher Risk for same distance? No, 4‰ intrusion is harder).
+    # Wait. If 4g/l goes 50km deep, that's worse than 1g/l going 50km deep.
+    # So if we observe 50km, we must know if it is 1g/l or 4g/l.
+    # If implicit, "xam nhap sau 50km", standard implies 4g/l usually.
+    # I will stick to is_4 = True default.
+    
+    if re.search(r"\b1\s*" + unit_pat, t0) and not re.search(r"\b[4-9]\s*" + unit_pat, t0):
+        is_4 = False
+        
+    # Regions
+    is_s = any(p in t0 for p in NAM_BO) or "nam bo" in t0 or "dbscl" in t0
+    BTB = {"thanh hoa","nghe an","ha tinh","quang binh","quang tri","thua thien hue"}
+    is_n_nc = any(p in t0 for p in BTB) or "bac bo" in t0 or "bac trung bo" in t0
+    # C (TTB + NTB)
+    TTB_NTB = {"da nang","quang nam","quang ngai","binh dinh","phu yen","khanh hoa","ninh thuan","binh thuan"}
+    is_c = any(p in t0 for p in TTB_NTB) or "trung bo" in t0 or any(p in t0 for p in NAM_TRUNG_BO)
+    
+    if not (is_s or is_n_nc or is_c): is_s = True 
 
-    # Check Region
-    is_n = has_any(t, SALT_LOC_N)
-    # is_s = has_any(t, SALT_LOC_S) # default
-
-    # --- LEVEL 4 ---
-    # 4a) 4‰, 50-90km (North)
-    if (is_4 or not is_1) and depth >= 70 and is_n: return 4
-    # 4b) 4‰, >90km (All)
-    if (is_4 or not is_1) and depth >= 100: return 4
-
-    # --- LEVEL 3 ---
-    # 3a) 1‰, >90km (All)
-    if is_1 and depth >= 100: return 3
-    # 3b) 4‰, 25-50km (North)
-    if (is_4 or not is_1) and depth >= 35 and is_n: return 3
-    # 3c) 4‰, 50-90km (South/Central)
-    if (is_4 or not is_1) and depth >= 70: return 3 # (is_n check led to 4a, so this catches is_s)
-
-    # --- LEVEL 2 ---
-    # 2a) 1‰, 50-90km (All)
-    if is_1 and depth >= 70: return 2
-    # 2b) 4‰, 15-25km (North) (Reg says 15-25 BB/BTB -> L2)
-    if (is_4 or not is_1) and depth >= 20 and is_n: return 2
-    # 2b) 4‰, 25-50km (South) 
-    if (is_4 or not is_1) and depth >= 35: return 2 # (is_n check led to 3b, so this catches is_s)
-
-    # --- LEVEL 1 ---
-    # 1a) 1‰, 25-50km (All)
-    if is_1 and depth >= 35: return 1
-    # 1b) 4‰, 15-25km (Central South - prompt says TTB, NTB. NB is in Risk 2 for 25-50. 
-    # What about NB 15-25? Not explicitly L2. Assume L1 or L2?
-    # Safe to map 15-25 to L1 generally for South?
-    if (is_4 or not is_1) and depth >= 20: return 1
-
+    # 4‰ Table
+    if is_4:
+        if is_n_nc:
+            # Col 4: >90(4), 50-90(4), 25-50(3), 15-25(2)
+            if depth > 50: return 4
+            if depth > 25: return 3
+            if depth > 15: return 2
+            return 0
+        if is_c:
+            # Col 5: >90(4), 50-90(3), 25-50(2), 15-25(1)
+            if depth > 90: return 4
+            if depth > 50: return 3
+            if depth > 25: return 2
+            if depth > 15: return 1
+            return 0
+        if is_s:
+            # Col 6: >90(4), 50-90(3), 25-50(2)
+            if depth > 90: return 4
+            if depth > 50: return 3
+            if depth > 25: return 2
+            return 0
+            
+    # 1‰ Table
+    if depth > 90: return 3
+    if depth > 50: return 2
+    if depth > 25: return 1
     return 0
 
-# --- STRONG WIND AT SEA (Gió mạnh trên biển) - Article 50 ---
-# Wind Levels
-LEVEL_6 = [r"cấp 6"]
-LEVEL_7_8 = [r"cấp 7", r"cấp 8"]
-LEVEL_9_UP = [r"cấp 9", r"cấp 10", r"cấp 11", r"cấp 12"] # 9+
+# --- STRONG WIND SEA - Article 50 ---
+
+LOC_SEA_VENBO = ["ven bien", "ven bo", "vung bien ven bo", "gan bo"]
+LOC_SEA_OFFSHORE = ["bien dong", "hoang sa", "truong sa", "ngoai khoi", "xa bo", "dao"]
 
 def check_strong_wind_risk(text: str) -> int:
-    """Article 50: Strong Wind at Sea"""
-    t = text.lower()
-    if "gió mạnh" not in t: return 0
-    
-    # Check Wind Level
-    lv = 0
-    if has_any(t, LEVEL_9_UP) or has_any(t, LEVEL_12_13) or has_any(t, LEVEL_14_15): lv = 9
-    elif has_any(t, LEVEL_7_8): lv = 7
-    elif has_any(t, LEVEL_6): lv = 6
-    
-    if lv == 0: return 0
+    t, t0 = canon(text)
+    if "gio manh" not in t0 and "gio cap" not in t0: return 0
 
-    # Locations: LOC_VENBO, LOC_BIENDONG (Offshore)
-    # Default to Offshore if not specified? Or Ven Bo?
-    # Usually "Gió mạnh trên biển" implies offshore/biendong.
-    is_venbo = has_any(t, LOC_VENBO)
-    is_offshore = has_any(t, LOC_BIENDONG) or "ngoài khơi" in t or "đảo" in t or not is_venbo # Default to offshore if purely 'sea wind'
+    lv = extract_beaufort_max(text)
+    if lv is None: return 0
     
-    # --- LEVEL 3 ---
-    # 2a) >= Level 7, Ven Bo
-    if lv >= 7 and is_venbo: return 3
-    # 2b) >= Level 9, Offshore
-    if lv >= 9 and is_offshore: return 3
+    # Article 50: strictly Wind Level
     
-    # --- LEVEL 2 ---
-    # 1a) Level 6, Ven Bo
-    if lv == 6 and is_venbo: return 2
-    # 1b) Level 7-8, Offshore
-    if lv >= 7 and is_offshore: return 2
+    is_venbo = any(k in t0 for k in LOC_SEA_VENBO)
+    is_offshore = any(k in t0 for k in LOC_SEA_OFFSHORE)
     
+    if (not is_venbo) and (not is_offshore):
+        return 0 
+    
+    # Coastal (Ven bo)
+    if is_venbo:
+        if lv >= 7: return 3
+        if lv >= 6: return 2
+        return 0
+
+    # Offshore (Ngoai khoi / Bien Dong)
+    if is_offshore:
+        if lv >= 9: return 3
+        if lv >= 7: return 2
+        # Lv 6 is empty in table (Risk not classified or Low)
+        return 0
+
     return 0
+    
+# --- OTHERS (Simple) ---
 
-# --- FOG (Sương mù) - Article 51 ---
-VIS_LT_50 = [r"dưới 50\s*m", r"< 50\s*m"]
-VIS_GT_50 = [r"từ 50\s*m", r"trên 50\s*m", r"> 50\s*m"]
-LOC_HIGHWAY_AIRPORT = ["cao tốc", "sân bay", "cảng hàng không"]
-LOC_SEA_RIVER_PASS = ["trên biển", "trên sông", "đèo", "núi"]
+LOC_HIGHWAY_AIRPORT = ["cao toc", "san bay", "cang hang khong", "duong bang"]
+LOC_SEA_RIVER_PASS = ["tren bien", "tren song", "deo", "nui", "cua song"]
 
 def check_fog_risk(text: str) -> int:
-    """Article 51: Fog"""
-    t = text.lower()
-    if "sương mù" not in t: return 0
-    
-    is_dense = "dày đặc" in t
-    # If not dense, usually no risk warning? Reg says "Cảnh báo sương mù dày đặc".
-    if not is_dense and not has_any(t, VIS_LT_50): return 0 
+    t, t0 = canon(text)
+    if "suong mu" not in t0:
+        return 0
 
-    is_lt_50 = has_any(t, VIS_LT_50)
-    is_critical_loc = has_any(t, LOC_HIGHWAY_AIRPORT)
+    dense = "day dac" in t0
+    vis = extract_visibility_m(text)
     
-    # --- LEVEL 2 ---
-    # Warning dense fog, <50m, Highway/Airport
-    if is_lt_50 and is_critical_loc: return 2
+    is_critical = any(k in t0 for k in LOC_HIGHWAY_AIRPORT)
+    is_sea_pass = any(k in t0 for k in LOC_SEA_RIVER_PASS)
     
-    # --- LEVEL 1 ---
-    # 1a) Dense, >50m, Highway/Airport
-    if not is_lt_50 and is_critical_loc: return 1
-    # 1b) Dense, <50m, Sea/River/Pass (or default location)
-    if is_lt_50: return 1
+    # Level 2 (Art 51)
+    if vis is not None and vis < 50 and is_critical: return 2
     
-    # Default Level 1 if "Dense Fog" explicitly warned without distance?
-    return 1 if is_dense else 0
-
-# --- LỐC, SÉT, MƯA ĐÁ (Tornado, Lightning, Hail) - Article 52 ---
-SCOPE_WIDE = ["diện rộng", "hàng loạt", "nhiều nơi", "trên phạm vi toàn tỉnh"]
+    # Level 1
+    if is_critical and dense: return 1
+    if is_sea_pass and vis is not None and vis < 50: return 1
+    
+    return 0
 
 def check_extreme_other_risk(text: str) -> int:
-    """Article 52: Tornado, Lightning, Hail"""
-    t = text.lower()
-    # Keywords check by caller or here
-    keywords = ["lốc", "sét", "mưa đá"]
-    if not any(k in t for k in keywords): return 0
+    t, t0 = canon(text)
+
+    # Lốc: ưu tiên chữ có dấu, hoặc cụm "lốc xoáy/giông lốc"
+    has_loc = ("lốc" in t) or bool(re.search(r"\bloc\s*(xoay|xoa y|kem|manh)\b", t0)) or ("giong loc" in t0)
+    # Loại "lọc ..."
+    if re.search(r"\bloc\s*(nuoc|khong\s*khi|dau|bui|rac)\b", t0):
+        has_loc = False
+
+    # Sét: ưu tiên "sét" hoặc cụm "sét đánh/giông sét"
+    has_set = ("sét" in t) or ("giong set" in t0) or bool(re.search(r"\bset\s*danh\b", t0))
+    # Loại "set up/setting"
+    if re.search(r"\bset\s*(up|ups|ting|ting\s*up)\b", t0):
+        has_set = False
+
+    # Mưa đá
+    has_hail = ("mưa đá" in t) or ("mua da" in t0)
+
+    if not (has_loc or has_set or has_hail): return 0
     
-    # --- LEVEL 2 ---
-    # > 1/2 province (Wide scope)
-    if has_any(t, SCOPE_WIDE): return 2
+    # Level 2 check: "Từ 1/2 số huyện, xã trở lên" -> Diện rộng/Nhiều nơi
+    is_wide = any(k in t0 for k in ["dien rong", "nhieu noi", "nhieu huyen", "toan tinh", "hau het", "hang loat", "nhieu xa"])
+    if is_wide: return 2
     
-    # --- LEVEL 1 ---
-    # < 1/2 province (Local/Default)
-    # < 1/2 province (Local/Default)
+    # Level 1: Dưới 1/2 số huyện (Cục bộ/Rải rác)
     return 1
 
-# --- COLD / FROST (Rét hại, Sương muối) - Article 53 ---
-
-# Temp Ranges (Avg Daily)
-COLD_LT_0 = [r"dưới 0\s*độ", r"âm\s*\d+\s*độ", r"-\d+\s*độ", r"sương muối", r"băng giá"] # <0Implies severe
-COLD_0_4 = [r"0[-\s]4\s*độ", r"dưới 4\s*độ"]
-COLD_4_8 = [r"4[-\s]8\s*độ", r"dưới 8\s*độ"]
-COLD_8_13 = [r"8[-\s]13\s*độ", r"dưới 13\s*độ"]
-
-# Duration
-CD_DUR_3_5 = [r"3[-\s]5 ngày", r"trên 3 ngày"]
-CD_DUR_5_10 = [r"5[-\s]10 ngày", r"trên 5 ngày"]
-CD_DUR_GT_10 = [r"trên 10 ngày", r"dài ngày"]
-
-# Regions
-# Plains (DB): Dong Bang, Bac Trung Bo, Trung Trung Bo
-COLD_LOC_DB = ["đồng bằng", "hà nội", "thanh hóa", "nghệ an", "hà tĩnh", "quảng bình", "thừa thiên huế", "bắc trung bộ", "trung trung bộ"]
-# Mountains (MN): Vung Nui, Trung Du Bac Bo
-COLD_LOC_MN = ["vùng núi", "trung du", "lạng sơn", "cao bằng", "hà giang", "lào cai", "yên bái", "sapa", "mẫu sơn", "đỉnh núi"]
-
 def check_cold_risk(text: str) -> int:
-    """Article 53: Cold/Frost Risk"""
-    t = text.lower()
-    if "rét" not in t and "sương muối" not in t and "băng giá" not in t and "lạnh" not in t:
-        return 0
+    t, t0 = canon(text)
+    if "ret hai" not in t0 and "suong muoi" not in t0 and "bang gia" not in t0: return 0
 
-    # Determine Temp Bucket
-    temp = 100
-    if has_any(t, COLD_LT_0): temp = -1
-    elif has_any(t, COLD_0_4): temp = 3
-    elif has_any(t, COLD_4_8): temp = 7
-    elif has_any(t, COLD_8_13) or "rét hại" in t: temp = 12 # Rét hại implies <13 (actually <13 is ret hai definition)
+    dur = extract_duration_days_count(text)
     
-    if temp == 100: return 0
-
-    # Determine Duration Bucket
-    dur = 1
-    if has_any(t, CD_DUR_GT_10): dur = 11
-    elif has_any(t, CD_DUR_5_10): dur = 6
-    elif has_any(t, CD_DUR_3_5) or "đợt rét" in t: dur = 4
-
-    # Determine Region
-    is_mn = has_any(t, COLD_LOC_MN) or "vùng núi" in t
-    # is_db = has_any(t, COLD_LOC_DB) # default otherwise
+    # Temp Parsing
+    TEMP_UNIT = r"(?:do|°\s*c|do\s*c|\bc\b)"
+    matches = re.findall(r"(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0)
+    ranges = re.findall(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0)
+    vals = [float(x.replace(",",".")) for x in matches]
+    for a,b in ranges: vals.append(float(a.replace(",","."))) # Use min of range
     
-    # --- LEVEL 3 ---
-    # 3a) <=8C, >10d (DB)
-    if temp <= 8 and dur >= 10 and not is_mn: return 3
-    # 3b) <=4C, >10d (MN)
-    if temp <= 4 and dur >= 10 and is_mn: return 3
-    # 3c) <0C, 5-10d or >10d (MN)
-    if temp <= -1 and dur >= 5 and is_mn: return 3
-
-    # --- LEVEL 2 ---
-    # 2a) 8-13C, >10d (DB)
-    if temp <= 13 and dur >= 10 and not is_mn: return 2
-    # 2b) 4-8C, >10d (MN)
-    if temp <= 8 and dur >= 10 and is_mn: return 2
-    # 2c) <=8C, 5-10d (DB)
-    if temp <= 8 and dur >= 5 and not is_mn: return 2
-    # 2d) 0-4C, 5-10d (MN)
-    if temp <= 4 and dur >= 5 and is_mn: return 2
-    # 2e) <0C, 3-5d (MN)
-    if temp <= -1 and dur >= 3 and is_mn: return 2
-
-    # --- LEVEL 1 ---
-    # 1a) 8-13C, 3-5d or 5-10d (Only >5d mentioned in 1a for DB? 1a says >5 to 10. And >10d MN?)
-    # 1a part 1: 8-13, 5-10d (DB)
-    if temp <= 13 and dur >= 5 and not is_mn: return 1
-    # 1a part 2: 8-13, >10d (MN)
-    if temp <= 13 and dur >= 10 and is_mn: return 1
-    # 1b) 4-8C, 5-10d (MN)
-    if temp <= 8 and dur >= 5 and is_mn: return 1
-    # 1c) 0-4C, 3-5d (MN)
-    if temp <= 4 and dur >= 3 and is_mn: return 1
-    # 1d) <=8C, 3-5d (DB)
-    if temp <= 8 and dur >= 3 and not is_mn: return 1
+    valid_temps = [v for v in vals if v < 20]
+    temp = 13 # Default barrier for Ret Hai
+    if valid_temps:
+        temp = min(valid_temps)
+    else:
+        if "duoi 0" in t0: temp = -1
+        elif "bang gia" in t0 or "suong muoi" in t0: temp = -1
     
-    return 0
+    # Region
+    is_mtn = "vung nui" in t0 or "trung du" in t0 or any(p in t0 for p in ["lao cai","yen bai","ha giang","lang son","cao bang","son la","lai chau","dien bien"])
+    
+    # Logic Table
+    # > 10 Days
+    if dur > 10:
+        if temp < 0: return 3
+        if temp <= 4: return 3
+        if temp <= 8:
+            return 1 if is_mtn else 3
+        if temp <= 13:
+            return 1 if is_mtn else 2
 
-# --- WILDFIRE (Cháy rừng) - Article 54 ---
+    # > 5-10 Days
+    elif dur > 5:
+        if temp < 0:
+            return 3 if is_mtn else 2
+        if temp <= 4: return 2
+        if temp <= 8:
+            return 1 if is_mtn else 2
+        if temp <= 13:
+            return 0 if is_mtn else 1
 
-# Forest Zones (Based on Flammability)
-# Zone 4 (Highest): Pine, Melaleuca (Tram), Dipterocarp (Khop), Bamboo (Tre/Nua), Eucalyptus (Bach dan)
-# Locations: Tay Nguyen, U Minh, Da Lat, Northwest (Pine)
-FIRE_Z4 = [r"rừng thông", r"rừng tràm", r"rừng khộp", r"rừng tre", r"rừng nứa", r"bạch đàn", r"u minh", "tây nguyên", "đà lạt"]
-# Zone 3: Native Evergreen
-FIRE_Z3 = [r"rừng tự nhiên", r"rừng mỡ", r"bồ đề"]
-# Zone 2: Coastal/Evergreen
-FIRE_Z2 = [r"rừng phi lao", r"rừng chắn cát", r"rừng ven biển"]
-# Zone 1 (Lowest): Mangrove
-FIRE_Z1 = [r"rừng ngập mặn", "cần giờ", "cà mau"]
-
-# Explicit Levels (Often reported as "Cấp IV", "Cấp V")
-FIRE_LV_5 = [r"cấp v", r"cấp 5", r"cực kỳ nguy hiểm"]
-FIRE_LV_4 = [r"cấp iv", r"cấp 4", r"nguy hiểm"]
-FIRE_LV_3 = [r"cấp iii", r"cấp 3", r"cao"]
-
+    # 3-5 Days
+    elif dur >= 3:
+        if temp < 0:
+            return 2 if is_mtn else 1
+        if temp <= 4: return 1
+        if temp <= 8:
+            return 0 if is_mtn else 1
+    
+    # If < 3 days but severe cold often implies warning.
+    # Default Level 1 if Ret Hai confirmed
+    return 1
+    
 def check_wildfire_risk(text: str) -> int:
-    """Article 54: Wildfire Risk"""
-    t = text.lower()
-    if "cháy rừng" not in t: return 0
-
-    # 1. Explicit Level Check (Highest Confidence)
-    if has_any(t, FIRE_LV_5): return 5
-    if has_any(t, FIRE_LV_4): return 4 # "Nguy hiểm" can be generic word, but with "cấp 4" it's solid.
-    if has_any(t, FIRE_LV_3): return 3
-
-    # 2. Inference
-    # Needs Temp > 35 (Nắng nóng)
-    if not ("nắng nóng" in t or "35" in t or "37" in t): return 0
-
-    # Duration Est
-    dur = 1
-    if "trên 1 tháng" in t or "35 ngày" in t: dur = 36
-    elif has_any(t, HEAT_DUR_25): dur = 26
-    elif has_any(t, HEAT_DUR_10): dur = 11  
+    t, t0 = canon(text)
+    if "chay rung" not in t0: return 0
     
-    # Zone Est
-    is_z4 = has_any(t, FIRE_Z4)
-    is_z3 = has_any(t, FIRE_Z3)
+    # Extract Level
+    lvl = 0
+    if "cap v" in t0 or "cap 5" in t0 or "cuc ky nguy hiem" in t0: lvl = 5
+    elif "cap iv" in t0 or "cap 4" in t0 or "nguy hiem" in t0: lvl = 4
+    elif "cap iii" in t0 or "cap 3" in t0 or "cap cao" in t0: lvl = 3
+    elif "cap ii" in t0 or "cap 2" in t0: lvl = 2
+    elif "cap i" in t0 or "cap 1" in t0: lvl = 1
     
-    # --- LEVEL 5 ---
-    # >35C, >35 days, Z4
-    if dur >= 36 and is_z4: return 5
+    if lvl == 0: return 0
     
-    # --- LEVEL 4 ---
-    # >35C, >35 days, Z3
-    if dur >= 36 and is_z3: return 4
-    # >35C, >25 days, Z4
-    if dur >= 26 and is_z4: return 4
+    dur = extract_duration_days_count(text)
+    # Default duration if not found? 
+    # If "keo dai" matches but no number? 
+    # If strict compliance, needing duration. 
+    # If no duration, assuming worst case is dangerous (Level 5).
+    # Assuming best case is safe (Level 0/1).
+    # Common warnings: "Du bao chay rung cap V tai cac tinh...". (Implicitly immediate).
+    # Table starts at 3-5 days.
+    # I will default to duration 3 days if unspecified? Or 0?
+    # Let's use 0 -> Risk 1.
     
-    # --- LEVEL 3 ---
-    # Infers <25 days in Z4? 
-    # Reg says "not exceed 25 days" for L3 Z4.
-    # So if 10-25 days in Z4 -> likely L3.
-    if dur >= 11 and is_z4: return 3
+    # Cap V (Vung 4)
+    if lvl == 5:
+        if dur > 20: return 5
+        if dur > 15: return 4
+        if dur > 10: return 3
+        if dur > 5: return 2
+        return 1
+        
+    # Cap IV (Vung 3)
+    if lvl == 4:
+        if dur > 20: return 4 # Wait. Vung 3 >20 is 4.
+        if dur > 15: return 3
+        if dur > 10: return 3
+        if dur > 5: return 2
+        return 1
+
+    # Cap III (Vung 2)
+    if lvl == 3:
+        if dur > 20: return 3
+        if dur > 15: return 2
+        return 1
     
-    # Default Level 1 if just "Nắng nóng + Cháy rừng"?
-    if is_z4: return 1 # At least 1 for Z4 if hot
-
-    return 0
-
-# --- EARTHQUAKE (Động đất) - Article 55 ---
-# Factors: Intensity (Cap chan dong) or Magnitude (Richter proxy), Location (Dam/Urban)
-
-# Intensity Patterns
-INT_V_VI = [r"cấp v", r"cấp vi", r"cấp 5", r"cấp 6"] # Intensity V-VI
-INT_VI_VII = [r"cấp vi", r"cấp vii", r"cấp 6", r"cấp 7"]
-INT_VII_VIII = [r"cấp vii", r"cấp viii", r"cấp 7", r"cấp 8"]
-INT_GT_VIII = [r"cấp ix", r"cấp x", r"cấp 9", r"cấp 10", r"trên cấp 8"]
-
-# Richter Proxy (Approx)
-M_3_4 = [r"3\.\d\s*độ richter", r"4\.\d\s*độ richter"] # ~ V-VI
-M_4_5 = [r"4\.\d\s*độ richter", r"5\.\d\s*độ richter"] # ~ VI-VII
-M_5_6 = [r"5\.\d\s*độ richter", r"6\.\d\s*độ richter"] # ~ VII-VIII
-M_GT_6 = [r"6\.\d\s*độ richter", r"7\.\d\s*độ richter"] # ~ VIII+
-
-# Locations
-LOC_DAM = [r"thủy điện", r"hồ chứa", r"đập"]
-LOC_URBAN = [r"thành phố", r"đô thị", r"khu dân cư"]
+    return 1 # Vung 1 is always 1
 
 def check_quake_risk(text: str) -> int:
-    """Article 55: Earthquake Risk"""
-    t = text.lower()
-    if "động đất" not in t and "chấn động" not in t and "rung lắc" not in t:
-        return 0
+    t, t0 = canon(text)
+    if "bien dong dat" in t0 or "hoat dong dat" in t0: return 0 
+    if not re.search(r"\bdong\s*dat\b", t0): return 0
 
-    # Determine Intensity / Magnitude Bucket (Max wins)
-    # Using simple heuristic mapping: 
-    # Lev 4 (VIII+ / M>6)
-    # Lev 3 (VII-VIII / M 5-6)
-    # Lev 2 (VI-VII / M 4-5)
-    # Lev 1 (V-VI / M 3-4)
+    # Extract Intensity (MSK-64)
+    msk = 0
+    # Roman Numerals
+    romans = {"xii":12, "xi":11, "x":10, "ix":9, "viii":8, "vii":7, "vi":6, "v":5}
+    for r, v in romans.items():
+        if re.search(rf"\bcap\s*{r}\b", t0):
+            msk = max(msk, v)
     
-    tier = 0
-    if has_any(t, INT_GT_VIII) or has_any(t, M_GT_6): tier = 4
-    elif has_any(t, INT_VII_VIII) or has_any(t, M_5_6): tier = 3
-    elif has_any(t, INT_VI_VII) or has_any(t, M_4_5): tier = 2
-    elif has_any(t, INT_V_VI) or has_any(t, M_3_4): tier = 1
+    # Arabic Numerals (5-12)
+    matches = re.findall(r"\bcap\s*(\d+)", t0)
+    for m in matches:
+        v = int(m)
+        if 5 <= v <= 12: msk = max(msk, v)
+            
+    # Area Type
+    is_res = any(k in t0 for k in ["thuy dien", "ho chua", "dap", "thuy loi"])
+    is_urban = any(k in t0 for k in ["thanh pho", "thi xa", "do thi", "thi tran", "nha cao tang"])
     
-    # Check Location Context
-    is_dam = has_any(t, LOC_DAM)
-    is_urban = has_any(t, LOC_URBAN)
-
-    # --- LEVEL 5 ---
-    # Intensity > VIII (Tier 4) Anywhere
-    if tier >= 4: return 5
-
-    # --- LEVEL 4 ---
-    # VII-VIII (Tier 3) + Urban/Dam
-    if tier == 3 and (is_urban or is_dam): return 4
+    # Logic Table (Article 55)
+    if msk > 8: return 5 # > VIII
     
-    # --- LEVEL 3 ---
-    # VI-VII (Tier 2) + Dam
-    if tier == 2 and is_dam: return 3
-    # VII-VIII (Tier 3) + Rural (Default)
-    if tier == 3: return 3
+    if msk >= 7: # VII - VIII (7, 8)
+        if is_res or is_urban: return 4
+        return 3
+        
+    if msk >= 6: # VI - VII (6)
+        if is_res: return 3
+        return 2 # Urban and Rural are 2
+        
+    if msk >= 5: # V - VI (5)
+        return 1
 
-    # --- LEVEL 2 ---
-    # VI-VII (Tier 2) Any
-    if tier >= 2: return 2
-    
-    # --- LEVEL 1 ---
-    # V-VI (Tier 1) Any
-    if tier >= 1: return 1
-
+    # Fallback if no Intensity detected but Magnitude is present
+    # Heuristic mapping for usability
+    mag = extract_quake_mag(text)
+    if mag:
+        if mag >= 6.0: return 5
+        if mag >= 5.0: return 3
+        if mag >= 3.5: return 1
+        
     return 0
-
-# --- TSUNAMI (Sóng thần) - Article 56 ---
-# Wave Height
-TSU_H_GT_16 = [r"trên 16\s*m", r"cao 20\s*m"]
-TSU_H_8_16 = [r"8[-\s]16\s*m", r"8\s*m", r"10\s*m"]
-TSU_H_4_8 = [r"4[-\s]8\s*m", r"4\s*m", r"5\s*m", r"6\s*m"]
-TSU_H_2_4 = [r"2[-\s]4\s*m", r"2\s*m", r"3\s*m"]
-TSU_H_LT_2 = [r"dưới 2\s*m", r"1\s*m", r"0,5\s*m"]
 
 def check_tsunami_risk(text: str) -> int:
-    """Article 56: Tsunami Risk"""
-    t = text.lower()
-    if "sóng thần" not in t: return 0
+    t, t0 = canon(text)
+    # Avoid "song than" in words like "song than thien"
+    if not re.search(r"\bsong\s*than\b", t0): return 0
+    if "cuoc song than" in t0: return 0
 
-    # Determine Height Bucket
-    h_tier = 0
-    if has_any(t, TSU_H_GT_16): h_tier = 5
-    elif has_any(t, TSU_H_8_16): h_tier = 4
-    elif has_any(t, TSU_H_4_8): h_tier = 3
-    elif has_any(t, TSU_H_2_4): h_tier = 2
-    elif has_any(t, TSU_H_LT_2): h_tier = 1
+    h = extract_max_meters(t)
+    if h is not None:
+        if h > 16: return 5
+        if h > 8: return 4
+        if h > 4: return 3
+        if h >= 2: return 2
+        return 1
     
-    # Logic Map directly
-    if h_tier == 5: return 5
-    if h_tier == 4: return 4
-    if h_tier == 3: return 3
-    if h_tier == 2: return 2
-    if h_tier == 1: return 1
+    # Check explicit intensity (Roman or Arabic)
+    if re.search(r"cap\s*(12|xii)", t0): return 5
+    if re.search(r"cap\s*(11|xi\b)", t0): return 4
+    if re.search(r"cap\s*(9|10|ix|x\b)", t0): return 3
+    if re.search(r"cap\s*(7|8|vii|viii)", t0): return 2
+    if re.search(r"cap\s*(6|vi\b)", t0): return 1
+
+    return 1
     
-    return 0
+# --- DROUGHT - Article 48 --- (Added back)
+def check_drought_risk(text: str) -> int:
+    t, t0 = canon(text)
+    if "han han" not in t0 and "kho han" not in t0: return 0
+
+    # Extract months
+    # "thieu hut ... 3 thang", "keo dai 3 thang"
+    months = 0
+    m_match = re.search(r"\b(\d+)\s*thang\b", t0)
+    if m_match: months = int(m_match.group(1))
+
+    # Extract water %
+    # "thieu hut 30 %", "thieu hut 30%"
+    pct = 0
+    p_match = re.search(r"\b(\d+(?:[.,]\d+)?)\s*%", t0)
+    if p_match: pct = float(p_match.group(1).replace(",", "."))
+    
+    # Definition of Central Region for Drought (Art 48 generally implies Trung Bo)
+    is_s = any(p in t0 for p in NAM_BO) or any(p in t0 for p in TAY_NGUYEN)
+    CTR_PROV = {"thanh hoa","nghe an","ha tinh","quang binh","quang tri","thua thien hue"}
+    is_c = any(p in t0 for p in NAM_TRUNG_BO) or any(p in t0 for p in CTR_PROV) or "trung bo" in t0
+    is_n = not is_s and not is_c
+
+    # Logic
+    # Group > 70%
+    if pct > 70:
+        # Col 7,8,9: >5(4), 3-5(4), 2-3(3) for ALL regions
+        if months > 3: return 4
+        if months >= 2: return 3
+        # Fallback if months unknown but pct > 70? Likely 3 or 4.
+        return 3
+        
+    # Group > 50 - 70%
+    elif pct > 50:
+        if is_n:
+            # Col 4: >5(3), 3-5(2), 2-3(1)
+            if months > 5: return 3
+            if months > 3: return 2
+            if months >= 2: return 1
+        elif is_c:
+            # Col 5: >5(3), 3-5(3), 2-3(2)
+            if months > 5: return 3
+            if months > 3: return 3
+            if months >= 2: return 2
+        elif is_s:
+            # Col 6: >5(4), 3-5(3), 2-3(2)
+            if months > 5: return 4
+            if months > 3: return 3
+            if months >= 2: return 2
+        return 2
+
+    # Group 20 - 50%
+    elif pct >= 20: 
+        if is_n:
+            # Col 1: >5(2), 3-5(1), 2-3(0)
+            if months > 5: return 2
+            if months > 3: return 1
+        elif is_c:
+            # Col 2: >5(2), 3-5(1), 2-3(1)
+            if months > 5: return 2
+            if months > 3: return 1
+            if months >= 2: return 1
+        elif is_s:
+            # Col 3: >5(3), 3-5(2), 2-3(1)
+            if months > 5: return 3
+            if months > 3: return 2
+            if months >= 2: return 1
+        return 1
+
+    # Heuristics if no numeric data
+    if "dac biet gay gat" in t0 or "khoc liet" in t0: return 4
+    if "gay gat" in t0: return 3
+    
+    return 1
+
+CHECKS = [
+    ("storm", check_storm_risk),
+    ("surge", check_surge_risk),
+    ("rain", check_rain_risk),
+    ("flood", check_flood_risk),
+    ("flash_flood", check_flash_flood_risk),
+    ("heat", check_heat_risk),
+    ("saline", check_saline_risk),
+    ("strong_wind_sea", check_strong_wind_risk),
+    ("fog", check_fog_risk),
+    ("extreme_other", check_extreme_other_risk),
+    ("cold", check_cold_risk),
+    ("wildfire", check_wildfire_risk),
+    ("quake", check_quake_risk),
+    ("tsunami", check_tsunami_risk),
+    ("drought", check_drought_risk),
+]
+
+def assess(text: str, prefer_declared: bool = True, explain: bool = False) -> dict:
+    hazards = []
+    debug = []
+
+    declared = extract_declared_risk_level(text)
+    overall = declared or 0
+
+    if declared:
+        hazards.append({"hazard": "declared", "level": declared})
+        if explain:
+            debug.append({"rule": "declared_risk", "level": declared})
+
+    for name, fn in CHECKS:
+        try:
+            lv = fn(text)
+        except Exception as e:
+            lv = 0
+            if explain:
+                debug.append({"hazard": name, "error": str(e)})
+
+        if lv > 0:
+            hazards.append({"hazard": name, "level": lv})
+            if explain:
+                debug.append({"hazard": name, "level": lv})
+
+            if not (prefer_declared and declared):
+                overall = max(overall, lv)
+
+    hazards.sort(key=lambda x: x["level"], reverse=True)
+    out = {"overall_level": overall, "hazards": hazards}
+    if explain:
+        out["debug"] = debug
+    return out

@@ -39,6 +39,7 @@ def latest_articles(
 @router.get("/events", response_model=list[EventOut])
 def events(
     limit: int = Query(50, ge=1, le=1000),
+    hours: int | None = Query(None, ge=1, le=720),
     type: str | None = Query(None),
     province: str | None = Query(None),
     start_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
@@ -48,6 +49,10 @@ def events(
 ):
     query = db.query(Event).order_by(desc(Event.last_updated_at))
     
+    if hours:
+        since = datetime.utcnow() - timedelta(hours=hours)
+        query = query.filter(Event.last_updated_at >= since)
+
     if type:
         query = query.filter(Event.disaster_type == type)
     if province:

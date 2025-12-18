@@ -10,6 +10,7 @@ import asyncio
 import time
 import json
 import html
+import logging
 from pathlib import Path
 from datetime import datetime, timezone
 import random
@@ -34,6 +35,8 @@ from .html_scraper import HTMLScraper
 
 Base.metadata.create_all(bind=engine)
 
+logger = logging.getLogger(__name__)
+
 # Optional classifier loader (joblib). If model exists, use as second-pass.
 _classifier = None
 try:
@@ -44,6 +47,18 @@ try:
         _classifier = joblib.load(model_path)
 except Exception:
     _classifier = None
+
+
+def _get_impact_value(impact_data):
+    """
+    Extract numeric value from impact data.
+    Handles both new dict structure {"value": X, "qualifier": Y} and old direct values.
+    """
+    if impact_data is None:
+        return None
+    if isinstance(impact_data, dict):
+        return impact_data.get("value")
+    return impact_data  # Fallback for old format
 
 
 def _to_dt(entry) -> datetime:
@@ -383,7 +398,7 @@ async def _process_once_async() -> dict:
                     if duplicate:
                         # Link to existing article instead of creating duplicate
                         article_hash = get_article_hash(title, src.domain)
-                        print(f"[DEDUP] {src.name} #{article_hash}: duplicate of {duplicate.source} (skipped)")
+                        logger.info(f"Skipping duplicate article: {title[:50]}... (hash={article_hash})")
                         continue
 
                     article = Article(
@@ -395,10 +410,10 @@ async def _process_once_async() -> dict:
                         disaster_type=disaster_type,
                         province=province,
                         risk_level=nlp.extract_risk_level(text_for_nlp, disaster_type),
-                        deaths=impacts["deaths"],
-                        missing=impacts["missing"],
-                        injured=impacts["injured"],
-                        damage_billion_vnd=impacts["damage_billion_vnd"],
+                        deaths=_get_impact_value(impacts["deaths"]),
+                        missing=_get_impact_value(impacts["missing"]),
+                        injured=_get_impact_value(impacts["injured"]),
+                        damage_billion_vnd=_get_impact_value(impacts["damage_billion_vnd"]),
                         agency=impacts["agency"],
                         summary=summary,
                         image_url=_extract_image_url(entry),
@@ -475,13 +490,13 @@ async def _process_once_async() -> dict:
 
                                     full_impacts = nlp.extract_impacts(full_text)
                                     if full_impacts.get("deaths") is not None and article.deaths is None:
-                                        article.deaths = full_impacts.get("deaths")
+                                        article.deaths = _get_impact_value(full_impacts.get("deaths"))
                                     if full_impacts.get("missing") is not None and article.missing is None:
-                                        article.missing = full_impacts.get("missing")
+                                        article.missing = _get_impact_value(full_impacts.get("missing"))
                                     if full_impacts.get("injured") is not None and article.injured is None:
-                                        article.injured = full_impacts.get("injured")
+                                        article.injured = _get_impact_value(full_impacts.get("injured"))
                                     if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
-                                        article.damage_billion_vnd = full_impacts.get("damage_billion_vnd")
+                                        article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
                                     if full_impacts.get("agency") is not None and article.agency is None:
                                         article.agency = full_impacts.get("agency")
                                     if article.province in (None, "unknown"):
@@ -613,13 +628,13 @@ async def _process_once_async() -> dict:
                                     
                                     full_impacts = nlp.extract_impacts(full_text)
                                     if full_impacts.get("deaths") is not None and article.deaths is None:
-                                        article.deaths = full_impacts.get("deaths")
+                                        article.deaths = _get_impact_value(full_impacts.get("deaths"))
                                     if full_impacts.get("missing") is not None and article.missing is None:
-                                        article.missing = full_impacts.get("missing")
+                                        article.missing = _get_impact_value(full_impacts.get("missing"))
                                     if full_impacts.get("injured") is not None and article.injured is None:
-                                        article.injured = full_impacts.get("injured")
+                                        article.injured = _get_impact_value(full_impacts.get("injured"))
                                     if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
-                                        article.damage_billion_vnd = full_impacts.get("damage_billion_vnd")
+                                        article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
                                     if full_impacts.get("agency") is not None and article.agency is None:
                                         article.agency = full_impacts.get("agency")
                                     if article.province in (None, "unknown"):

@@ -3,6 +3,28 @@ import { getJson } from "../api";
 import VietnamMap from "../components/VietnamMap";
 import { Filter, Layers } from "lucide-react";
 import { THEME_COLORS } from "../theme";
+import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
+
+// Build province lookup map
+const PROVINCE_COORDS = {};
+VIETNAM_LOCATIONS.forEach(loc => {
+  if (loc.properties.category === "provincial_unit") {
+    const [lon, lat] = loc.geometry.coordinates;
+    PROVINCE_COORDS[loc.properties.name] = { lat, lon };
+  }
+});
+
+// Define 8 official disaster types
+const VALID_DISASTER_TYPES = [
+  'storm',
+  'flood_landslide',
+  'heat_drought',
+  'wind_fog',
+  'storm_surge',
+  'extreme_other',
+  'wildfire',
+  'quake_tsunami'
+];
 
 export default function MapPage() {
   const [events, setEvents] = useState([]);
@@ -23,8 +45,29 @@ export default function MapPage() {
             if (endDate) query += `&end_date=${endDate}`;
             
             const evs = await getJson(query);
-            // Filter only events with coordinates and exclude 'unknown' type
-            setEvents(evs.filter(e => e.lat && e.lon && e.disaster_type !== 'unknown'));
+            
+            // Enrich events with coordinates from province if missing
+            const enrichedEvents = evs.map(e => {
+              // If event already has coordinates, keep them
+              if (e.lat && e.lon) return e;
+              
+              // Otherwise, try to get coordinates from province
+              if (e.province && PROVINCE_COORDS[e.province]) {
+                return {
+                  ...e,
+                  lat: PROVINCE_COORDS[e.province].lat,
+                  lon: PROVINCE_COORDS[e.province].lon
+                };
+              }
+              
+              // If no province match, return as is (will be filtered out)
+              return e;
+            });
+            
+            // Filter: must have coordinates AND be one of 8 official disaster types
+            setEvents(enrichedEvents.filter(e => 
+              e.lat && e.lon && VALID_DISASTER_TYPES.includes(e.disaster_type)
+            ));
         } catch (e) {
             console.error(e);
         } finally {
@@ -34,14 +77,14 @@ export default function MapPage() {
   }, [startDate, endDate]);
 
   const LEGEND_ITEMS = [
-    { key: "storm", color: THEME_COLORS.storm, label: "Bão / Áp thấp" },
-    { key: "flood_landslide", color: THEME_COLORS.flood_landslide, label: "Mưa lũ / Sạt lở" },
-    { key: "heat_drought", color: THEME_COLORS.heat_drought, label: "Nắng nóng / Hạn" },
-    { key: "wind_fog", color: THEME_COLORS.wind_fog, label: "Gió mạnh / Sương mù" },
-    { key: "storm_surge", color: THEME_COLORS.storm_surge, label: "Nước dâng" },
-    { key: "extreme_other", color: THEME_COLORS.extreme_other, label: "Cực đoan khác" },
-    { key: "wildfire", color: THEME_COLORS.wildfire, label: "Cháy rừng" },
-    { key: "quake_tsunami", color: THEME_COLORS.quake_tsunami, label: "Động đất / Sóng thần" },
+    { key: "storm", color: THEME_COLORS.storm, label: "Bão, áp thấp nhiệt đới" },
+    { key: "flood_landslide", color: THEME_COLORS.flood_landslide, label: "Mưa lớn, lũ, lũ quét, sạt lở đất" },
+    { key: "heat_drought", color: THEME_COLORS.heat_drought, label: "Nắng nóng, hạn hán, xâm nhập mặn" },
+    { key: "wind_fog", color: THEME_COLORS.wind_fog, label: "Gió mạnh trên biển, sương mù" },
+    { key: "storm_surge", color: THEME_COLORS.storm_surge, label: "Nước dâng do bão" },
+    { key: "extreme_other", color: THEME_COLORS.extreme_other, label: "Các hiện tượng cực đoan khác" },
+    { key: "wildfire", color: THEME_COLORS.wildfire, label: "Cháy rừng tự nhiên" },
+    { key: "quake_tsunami", color: THEME_COLORS.quake_tsunami, label: "Động đất, sóng thần" },
   ];
 
   return (
