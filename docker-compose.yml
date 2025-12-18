@@ -25,7 +25,7 @@ services:
       - ./backend/logs:/app/logs
     environment:
       - APP_DB_URL=postgresql://postgres:password@db:5432/viet_disaster_watch
-      - CRAWL_INTERVAL_MINUTES=60
+      - CRAWL_INTERVAL_MINUTES=10
       - APP_TIMEZONE=Asia/Ho_Chi_Minh
     depends_on:
       db:
