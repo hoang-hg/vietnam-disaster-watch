@@ -60,7 +60,36 @@ npm run dev
 ```
 Backend sẽ chạy tại: `http://localhost:8000`
 
-### 3. Khởi chạy Frontend
+### 3. Cấu hình Database (PostgreSQL)
+Nếu bạn muốn sử dụng PostgreSQL thay vì SQLite mặc định:
+
+1.  **Cài đặt PostgreSQL**: Đảm bảo máy của bạn đã cài đặt Postgres hoặc sử dụng Docker (xem phần dưới).
+2.  **Tạo File `.env`**: Sao chép file ví dụ:
+    ```bash
+    cp .env.example .env
+    ```
+3.  **Cấu hình URL**: Mở `.env` và cập nhật `APP_DB_URL`:
+    ```env
+    APP_DB_URL=postgresql://user:password@localhost:5432/db_name
+    ```
+4.  **Chạy Migrations**: Để khởi tạo các bảng trong database:
+    ```bash
+    cd backend
+    alembic upgrade head
+    ```
+
+### 4. Khởi chạy bằng Docker (Nhanh nhất)
+Dự án đã có sẵn cấu hình Docker Compose để khởi chạy toàn bộ Backend, Frontend và Database PostgreSQL chỉ với 1 lệnh duy nhất:
+
+```bash
+docker-compose up --build
+```
+
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
+- Database: `localhost:5432`
+
+### 5. Khởi chạy Frontend (Manual)
 ```bash
 cd frontend
 
