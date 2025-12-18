@@ -7,7 +7,6 @@ import {
   fmtVndBillion,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import RiskBadge from "../components/RiskBadge.jsx";
 import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X } from "lucide-react";
 import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
 
@@ -199,8 +198,8 @@ export default function Events() {
             href={`/events/${e.id}`}
             className="block group bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden relative"
           >
-            {/* Top Border Indicator for Impact/Severity Visual */}
-            <div className={`h-1.5 w-full ${e.risk_level >= 4 ? 'bg-red-500' : (e.risk_level === 3 ? 'bg-orange-500' : 'bg-blue-500')}`}></div>
+            {/* Top Border Indicator */}
+            <div className="h-1.5 w-full bg-blue-500"></div>
             
             {/* 0. Image Area */}
             <div className="w-full h-48 bg-slate-100 overflow-hidden relative">
@@ -290,9 +289,7 @@ export default function Events() {
                         <FileText className="w-3.5 h-3.5" />
                         <span>{e.sources_count || 1} nguồn</span>
                      </div>
-                     {e.risk_level > 0 && (
-                        <RiskBadge level={e.risk_level} />
-                     )}
+
                   </div>
                   <span className="text-slate-400">{fmtDate(e.started_at)}</span>
                </div>

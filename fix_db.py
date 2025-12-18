@@ -30,8 +30,7 @@ def add_column_if_missing(table, column, col_type):
             print(f"  Error checking/adding column: {e}")
 
 if __name__ == "__main__":
-    add_column_if_missing("articles", "risk_level", "INTEGER")
-    add_column_if_missing("events", "risk_level", "INTEGER")
+
     # Add new image_url column
     add_column_if_missing("articles", "image_url", "TEXT")
     

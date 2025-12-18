@@ -1,10 +1,9 @@
 import sys
 from pathlib import Path
-
-# Add backend directory to path so we can import 'app'
-# This assumes alembic.ini is at root (d:\viet-disaster-watch) 
-# and env.py is at backend/alembic/env.py
-sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
+# Add both current parent and project root to path
+root = Path(__file__).resolve().parent.parent
+sys.path.append(str(root))
+sys.path.append(str(root.parent))
 
 from logging.config import fileConfig
 
@@ -13,10 +12,15 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# Import settings and models
-from backend.app.settings import settings
-from backend.app.database import Base
-from backend.app.models import Article, Event  # Ensure models are registered
+# Import settings and models with fallback for different structures
+try:
+    from app.settings import settings
+    from app.database import Base
+    from app.models import Article, Event
+except ImportError:
+    from backend.app.settings import settings
+    from backend.app.database import Base
+    from backend.app.models import Article, Event
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -120,6 +120,13 @@ def stats_summary(
     total_articles = db.query(Article).filter(Article.published_at >= start, Article.published_at < end).count()
     total_events = db.query(Event).filter(Event.last_updated_at >= start, Event.last_updated_at < end).count()
 
+    # Aggregate impacts
+    impacts = db.query(
+        func.sum(func.coalesce(Event.deaths, 0)).label("deaths"),
+        func.sum(func.coalesce(Event.missing, 0)).label("missing"),
+        func.sum(func.coalesce(Event.injured, 0)).label("injured")
+    ).filter(Event.last_updated_at >= start, Event.last_updated_at < end).first()
+
     types = ["storm", "flood", "landslide", "earthquake", "tsunami", "wind_hail", "wildfire", "extreme_weather", "unknown"]
     by_type = {t: db.query(Event).filter(Event.last_updated_at >= start, Event.last_updated_at < end, Event.disaster_type == t).count() for t in types}
 
@@ -127,6 +134,11 @@ def stats_summary(
         "window_hours": hours,
         "articles_24h": total_articles,
         "events_24h": total_events,
+        "impacts": {
+            "deaths": int(impacts.deaths or 0),
+            "missing": int(impacts.missing or 0),
+            "injured": int(impacts.injured or 0)
+        },
         "by_type": by_type,
     }
 

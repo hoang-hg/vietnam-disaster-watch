@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
     
-    crawl_interval_minutes: int = 10  # Optimized: check more frequently (was 15)
+    crawl_interval_minutes: int = 60  # Set to 60 mins to stay within AI API quotas
     app_timezone: str = "Asia/Ho_Chi_Minh"
     user_agent: str = "Mozilla/5.0 (compatible; VietDisasterBot/1.0)"
     

@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { getJson, fmtType, fmtDate, fmtTimeAgo } from "../api.js";
 import { THEME_COLORS, CHART_COLORS } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
-import RiskBadge from "../components/RiskBadge.jsx";
 import VietnamMap from "../components/VietnamMap.jsx";
 import {
   LineChart,
@@ -36,42 +35,48 @@ export default function Dashboard() {
   const [rawEvents, setRawEvents] = useState([]);
   const [articles, setArticles] = useState([]);
   const [hours, setHours] = useState(24);
-  const [minRisk, setMinRisk] = useState(0);
   const [hazardType, setHazardType] = useState("all");
   const [provQuery, setProvQuery] = useState("");
   const [page, setPage] = useState(0);
+  const [topProvince, setTopProvince] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const events = useMemo(() => {
     let list = rawEvents;
-    if (minRisk > 0) list = list.filter(e => e.risk_level >= minRisk);
     if (hazardType !== "all") list = list.filter(e => e.disaster_type === hazardType);
     if (provQuery) {
         const q = provQuery.toLowerCase();
         list = list.filter(e => e.province && e.province.toLowerCase().includes(q));
     }
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(e => e.title && e.title.toLowerCase().includes(q));
+    }
     return list;
-  }, [rawEvents, minRisk, hazardType, provQuery]);
+  }, [rawEvents, hazardType, provQuery, searchQuery]);
 
   useEffect(() => {
     setPage(0);
-  }, [minRisk, hours, hazardType, provQuery]);
+  }, [hours, hazardType, provQuery, searchQuery]);
 
   async function load() {
     try {
       setLoading(true);
       setError(null);
-      const [s, riskData, evs, arts] = await Promise.all([
+      const [s, riskData, evs, arts, topRisk] = await Promise.all([
         getJson(`/api/stats/summary?hours=${hours}`),
         getJson(`/api/stats/heatmap?hours=${hours}`),
         getJson(`/api/events?limit=100&hours=${hours}`), // Increased limit for fuller stats
-        getJson(`/api/articles/latest?limit=20`)
+        getJson(`/api/articles/latest?limit=20`),
+        getJson(`/api/stats/top-risky-province?hours=${hours}`)
       ]);
       setStats(s);
       setRiskiest(riskData?.data || []);
       setRawEvents(evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type)));
       setArticles(arts);
+      setTopProvince(topRisk);
     } catch (e) {
       setError(e.message || "Load failed");
     } finally {
@@ -104,7 +109,6 @@ export default function Dashboard() {
             title: e.title,
             lat: lat,
             lng: lng,
-            risk_level: e.risk_level,
             type: e.disaster_type,
         };
       }),
@@ -146,17 +150,49 @@ export default function Dashboard() {
         }
     });
     
-    // 4. Transform to array & Sort
     return Object.entries(agg)
         .map(([k, v]) => ({ 
             name: fmtType(k), 
             count: v,
             fill: THEME_COLORS[k] || THEME_COLORS.unknown
         }))
-        // Sort by count desc, then by fixed order if needed to keep list stable? 
-        // User wants to see all 8, maybe stable order is better than sorting by count 0?
-        // Let's sort by count desc for now to highlight active ones.
         .sort((a, b) => b.count - a.count);
+  }, [events]);
+  const topEventTopic = useMemo(() => {
+    if (!events || events.length === 0) return null;
+    
+    const counts = {};
+    // Extended patterns for VN news: Bão [Tên], Bão số [X], ATNĐ, Lũ quét, Sạt lở...
+    const patterns = [
+      /bão\s+số\s+\d+/i,
+      /bão\s+[a-zàáảãạâầấtẩẫậăằắẳẵặeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứcửữựyỳýỷỹỴ]+/i,
+      /siêu\s+bão\s+[a-zàáảãạâầấtẩẫậăằắẳẵặeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứcửữựyỳýỷỹỴ]+/i,
+      /áp\s+thấp\s+nhiệt\s+đới/i,
+      /lũ\s+quét\s+(?:tại|ở)\s+[a-zàáảãạâầấtẩẫậăằắẳẵặ]+/i,
+      /sạt\s+lở\s+(?:tại|ở)\s+[a-zàáảãạâầấtẩẫậăằắẳẵặ]+/i,
+    ];
+
+    events.forEach(e => {
+      const title = e.title;
+      patterns.forEach(p => {
+        const match = title.match(p);
+        if (match) {
+          // Clean up: Proper casing for display
+          let key = match[0].trim();
+          key = key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
+    });
+
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    
+    // If no specific pattern matched, try to get most frequent 3-word phrase starting with disaster keywords
+    if (sorted.length === 0) {
+       return { name: "Đang cập nhật...", count: 0 };
+    }
+
+    return { name: sorted[0][0], count: sorted[0][1] };
   }, [events]);
 
   return (
@@ -184,42 +220,37 @@ export default function Dashboard() {
              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-          {/* Hazard Filter */}
-          <div className="relative">
-             <select
-                 value={hazardType}
-                 onChange={(e) => setHazardType(e.target.value)}
-                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[220px] truncate"
-             >
-                 <option value="all">Tất cả thiên tai</option>
-                 <option value="storm">Bão, ATNĐ</option>
-                 <option value="flood_landslide">Mưa lớn, Lũ, Lũ quét, Sạt lở</option>
-                 <option value="heat_drought">Nắng nóng, Hạn hán, Xâm nhập mặn</option>
-                 <option value="wind_fog">Gió mạnh trên biển, Sương mù</option>
-                 <option value="storm_surge">Nước dâng</option>
-                 <option value="extreme_other">Lốc, Sét, Mưa đá, Rét hại, Sương muối</option>
-                 <option value="wildfire">Cháy rừng</option>
-                 <option value="quake_tsunami">Động đất, Sóng thần</option>
-             </select>
-             <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+           <div className="relative">
+              <input
+                 type="text"
+                 placeholder="Tìm theo tên sự kiện..."
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 className="w-48 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+           </div>
 
-          {/* Risk Filter */}
-          <div className="relative">
-             <select
-                 value={minRisk}
-                 onChange={(e) => setMinRisk(Number(e.target.value))}
-                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-             >
-                 <option value={0}>Mọi rủi ro</option>
-                 <option value={1}>Cấp 1+</option>
-                 <option value={2}>Cấp 2+</option>
-                 <option value={3}>Cấp 3+</option>
-                 <option value={4}>Cấp 4+</option>
-                 <option value={5}>Cấp 5</option>
-             </select>
-             <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+           <div className="relative">
+              <select
+                  value={hazardType}
+                  onChange={(e) => setHazardType(e.target.value)}
+                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[180px] truncate"
+              >
+                  <option value="all">Tất cả thiên tai</option>
+                  <option value="storm">Bão, ATNĐ</option>
+                  <option value="flood_landslide">Lũ, Ngập, Sạt lở</option>
+                  <option value="heat_drought">Hạn hán, Mặn</option>
+                  <option value="wind_fog">Gió, Sương mù</option>
+                  <option value="storm_surge">Nước dâng, Triều cường</option>
+                  <option value="extreme_other">Lốc, Sét, Rét...</option>
+                  <option value="wildfire">Cháy rừng</option>
+                  <option value="quake_tsunami">Động đất, Sóng thần</option>
+              </select>
+              <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+           </div>
+
+
 
           <div className="bg-white rounded-lg border border-slate-200 p-1 flex items-center shadow-sm">
             {[24, 48, 72].map((h) => (
@@ -264,22 +295,18 @@ export default function Dashboard() {
           color="text-orange-600"
         />
         <StatCard
-          title="Bài viết thu thập"
-          value={stats?.articles_24h || 0}
-          sub="Từ 38 nguồn tin tức"
-          icon={Activity}
-          trend="up"
-          color="text-blue-600"
+          title="Thương vong & Mất tích"
+          value={(stats?.impacts?.deaths || 0) + (stats?.impacts?.missing || 0)}
+          sub={`Bị thương: ${stats?.impacts?.injured || 0} người`}
+          icon={AlertTriangle}
+          color="text-red-500"
         />
         <StatCard
-          title="Mức rủi ro cao nhất"
-          value={(() => {
-            const m = rawEvents.reduce((acc, e) => Math.max(acc, e.risk_level || 0), 0);
-            return m > 0 ? `Cấp ${m}` : "Chưa có";
-          })()} 
-          sub="Đánh giá rủi ro"
+          title="Sự kiện tiêu điểm"
+          value={topEventTopic ? topEventTopic.name : "N/A"}
+          sub={topEventTopic ? `Đang có ${topEventTopic.count} tin liên quan` : "Chưa có dữ liệu"}
           icon={TrendingUp}
-          color="text-purple-600"
+          color="text-indigo-500"
         />
       </div>
 
@@ -309,7 +336,6 @@ export default function Dashboard() {
                         {fmtType(event.disaster_type)}
                       </span>
                     </div>
-                    <RiskBadge level={event.risk_level} />
                   </div>
                   <Link to={`/events/${event.id}`} className="block">
                     <h4 className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 mb-1">

@@ -73,9 +73,7 @@ export default function VietnamMap({ points }) {
                     >
                         {fmtType(p.disaster_type)}
                     </span>
-                    {p.risk_level && (
-                        <span className="text-xs font-medium text-slate-500">Rủi ro cấp {p.risk_level}</span>
-                    )}
+
                 </div>
               </div>
             </Popup>

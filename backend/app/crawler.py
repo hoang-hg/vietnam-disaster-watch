@@ -31,7 +31,7 @@ from .sources import SOURCES, build_gnews_rss
 from . import nlp
 from .dedup import find_duplicate_article, get_article_hash
 from .event_matcher import upsert_event_for_article
-from .html_scraper import HTMLScraper
+from .html_scraper import HTMLScraper, fetch_article_full_text
 
 Base.metadata.create_all(bind=engine)
 
@@ -385,6 +385,7 @@ async def _process_once_async() -> dict:
                     impacts = nlp.extract_impacts(getattr(entry, "summary", "") or title)
                     summary = nlp.summarize((getattr(entry, "summary", "") or "").replace("&nbsp;", " "))
 
+
                     # Check for duplicates before inserting
                     duplicate = find_duplicate_article(
                         db,
@@ -409,7 +410,6 @@ async def _process_once_async() -> dict:
                         published_at=published_at,
                         disaster_type=disaster_type,
                         province=province,
-                        risk_level=nlp.extract_risk_level(text_for_nlp, disaster_type),
                         deaths=_get_impact_value(impacts["deaths"]),
                         missing=_get_impact_value(impacts["missing"]),
                         injured=_get_impact_value(impacts["injured"]),
@@ -585,7 +585,6 @@ async def _process_once_async() -> dict:
                                 published_at=published_at,
                                 disaster_type=disaster_type,
                                 province=province,
-                                risk_level=nlp.extract_risk_level(text_for_nlp, disaster_type),
                                 deaths=impacts["deaths"],
                                 missing=impacts["missing"],
                                 injured=impacts["injured"],

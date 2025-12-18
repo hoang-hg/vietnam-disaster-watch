@@ -6,7 +6,7 @@
       "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
       "backup_rss": null,
       "note": "Working well with ~500 entries",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VietNamNet",
@@ -14,7 +14,7 @@
       "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
       "backup_rss": null,
       "note": "Working with ~60 entries",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baocaobang.vn",
@@ -22,7 +22,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "tuyenquang.gov.vn",
@@ -30,7 +30,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baotuyenquang.com.vn",
@@ -38,7 +38,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "laocai.gov.vn",
@@ -46,7 +46,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baolaocai.vn",
@@ -54,7 +54,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "dienbientv.vn",
@@ -62,7 +62,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "laichau.gov.vn",
@@ -70,7 +70,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baosonla.org.vn",
@@ -78,7 +78,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baothainguyen.vn",
@@ -86,7 +86,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baolangson.vn",
@@ -94,7 +94,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoquangninh.com.vn",
@@ -102,7 +102,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baophutho.vn",
@@ -110,7 +110,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoninhbinh.org.vn",
@@ -118,7 +118,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baonghean.vn",
@@ -126,7 +126,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baohatinh.vn",
@@ -134,7 +134,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoquangtri.vn",
@@ -142,7 +142,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "huengaynay.vn",
@@ -150,7 +150,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baodanang.vn",
@@ -158,7 +158,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoquangngai.vn",
@@ -166,7 +166,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baobinhdinh.vn",
@@ -174,7 +174,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown (some sites use /Default.aspx)",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baophuyen.com.vn",
@@ -182,7 +182,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baokhanhhoa.vn",
@@ -190,7 +190,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoninhthuan.com.vn",
@@ -198,7 +198,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown (homepage sometimes /home.htm)",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baogialai.com.vn",
@@ -206,7 +206,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baodaklak.vn",
@@ -214,7 +214,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Tuổi Trẻ",
@@ -222,7 +222,7 @@
       "primary_rss": "https://tuoitre.vn/rss/thoi-su.rss",
       "backup_rss": null,
       "note": "Official RSS works with ~50 entries",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VnExpress",
@@ -230,7 +230,7 @@
       "primary_rss": "https://vnexpress.net/rss/thoi-su.rss",
       "backup_rss": null,
       "note": "Official RSS works with ~60 entries",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Dân Trí",

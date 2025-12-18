@@ -19,7 +19,6 @@ class Article(Base):
     disaster_type: Mapped[str] = mapped_column(String(32), index=True, default="unknown")
     province: Mapped[str] = mapped_column(String(64), index=True, default="unknown")
     event_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    risk_level: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     deaths: Mapped[int | None] = mapped_column(Integer, nullable=True)
     missing: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -44,7 +43,6 @@ class Event(Base):
     province: Mapped[str] = mapped_column(String(64), index=True)
     started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     last_updated_at: Mapped[datetime] = mapped_column(DateTime, index=True)
-    risk_level: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     deaths: Mapped[int | None] = mapped_column(Integer, nullable=True)
     missing: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
+import Dashboard from "./pages/DashboardV2.jsx";
 import Events from "./pages/Events.jsx";
 import EventDetail from "./pages/EventDetail.jsx";
 import MapPage from "./pages/MapPage.jsx";

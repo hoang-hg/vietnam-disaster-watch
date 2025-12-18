@@ -38,7 +38,7 @@ class EventOut(BaseModel):
     lat: float | None
     lon: float | None
     details: dict | None
-    risk_level: int | None
+
     confidence: float
     sources_count: int
     image_url: str | None = None

@@ -26,7 +26,6 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             missing=article.missing,
             injured=article.injured,
             damage_billion_vnd=article.damage_billion_vnd,
-            risk_level=article.risk_level,
             confidence=0.25,
             sources_count=1,
         )
@@ -59,8 +58,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     if article.damage_billion_vnd is not None:
         ev.damage_billion_vnd = max(ev.damage_billion_vnd or 0.0, article.damage_billion_vnd)
 
-    if article.risk_level is not None:
-        ev.risk_level = max(ev.risk_level or 0, article.risk_level)
+
 
     sources = {a.source for a in ev.articles} | {article.source}
     ev.sources_count = len(sources)

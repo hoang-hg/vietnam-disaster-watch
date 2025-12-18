@@ -16,27 +16,42 @@ from .settings import settings
 import random
 import re
 
+logger = logging.getLogger(__name__)
+
 try:
     from bs4 import BeautifulSoup
     _HAS_BS4 = True
 except ImportError:
     _HAS_BS4 = False
 
-# Build disaster keyword patterns (matching nlp.py DISASTER_RULES)
+# 8 Standardized Disaster Groups (Matching nlp.py)
 DISASTER_RULES = [
-    ("earthquake", [r"\bđộng\s*đất\b", r"\brung\s*chấn\b", r"\bdự\s*chấn\b", r"\bnứt\s*đất\b", r"\bđứt\s*gãy\b"]),
-    ("tsunami", [r"\bsóng\s*thần\b", r"\bcảnh\s*báo\s*sóng\s*thần\b"]),
-    ("landslide", [r"\bsạt\s*lở\b", r"\blở\s*đất\b", r"\btrượt\s*đất\b", r"\btaluy\b", r"\bsạt\s*taluy\b", r"\bsạt\s*lở\s*bờ\b", r"\bsụt\s*lún\b"]),
-    ("flood", [r"\bmưa\s*lũ\b", r"\blũ\b", r"\blụt\b", r"\bngập\s*lụt\b", r"\bngập\s*sâu\b", r"\blũ\s*quét\b", r"\blũ\s*ống\b", r"\btriều\s*cường\b", r"\bnước\s*dâng\b"]),
-    ("storm", [r"\bbão\b", r"\bbão\s*số\b", r"\bsiêu\s*bão\b", r"\báp\s*thấp\b", r"\bATNĐ\b", r"\báp\s*thấp\s*nhiệt\s*đới\b"]),
-    ("wind_hail", [r"\bgió\s*mạnh\b", r"\bgió\s*giật\b", r"\bdông\s*lốc\b", r"\blốc\b", r"\blốc\s*xoáy\b", r"\bvòi\s*rồng\b", r"\bmưa\s*đá\b", r"\bgiông\s*sét\b", r"\bsét\b"]),
-    ("wildfire", [r"\bcháy\s*rừng\b", r"\bnguy\s*cơ\s*cháy\s*rừng\b"]),
-    ("extreme_weather", [r"\bnắng\s*nóng\b", r"\bnắng\s*nóng\s*gay\s*gắt\b", r"\bhạn\s*hán\b", r"\bkhô\s*hạn\b", r"\brét\s*đậm\b", r"\brét\s*hại\b", r"\bbăng\s*giá\b", r"\bxâm\s*nhập\s*mặn\b"]),
+    ("storm", [r"(?<!\w)bão(?!\w)", r"bão\s*số", r"siêu\s*bão", r"áp\s*thấp", r"ATNĐ", r"áp\s*thấp\s*nhiệt\s*đới"]),
+    ("flood_landslide", [r"mưa\s*lũ", r"(?<!\w)lũ(?!\w)", r"(?<!\w)lụt(?!\w)", r"ngập\s*lụt", r"ngập\s*sâu", r"lũ\s*quét", r"lũ\s*ống", r"sạt\s*lở", r"lở\s*đất", r"sụt\s*lún"]),
+    ("heat_drought", [r"nắng\s*nóng", r"hạn\s*hán", r"khô\s*hạn", r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn"]),
+    ("wind_fog", [r"gió\s*mạnh", r"gió\s*giật", r"biển\s*động", r"sóng\s*lớn", r"sương\s*mù"]),
+    ("storm_surge", [r"triều\s*cường", r"nước\s*dâng", r"nước\s*biển\s*dâng"]),
+    ("extreme_other", [r"dông\s*lốc", r"lốc", r"lốc\s*xoáy", r"mưa\s*đá", r"sét", r"rét\s*hại", r"rét\s*đậm", r"băng\s*giá", r"sương\s*muối"]),
+    ("wildfire", [r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng"]),
+    ("quake_tsunami", [r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"nứt\s*đất", r"sóng\s*thần"]),
+]
+
+DISASTER_NEGATIVE = [
+    r"bão\s*(?:giá|sale|like|scandal|lòng|đơn|quà|tài\s*chính)",
+    r"cháy\s*(?:hàng|túi|phim|vé|nhà|xe|chung\s*cư|xưởng|kho)",
+    r"ngập(?:\s*tràn|\s*trong\s*nợ|\s*nợ)",
+    r"\btăng\s*lương\b", r"\bbắt\s*giữ\b", r"\blừa\s*đảo\b", r"\bsập\s*bẫy\b"
 ]
 
 def contains_disaster_keywords(text: str) -> bool:
     """Check if text contains disaster keywords using regex patterns."""
     t = text.lower()
+    
+    # First check negative veto
+    for p in DISASTER_NEGATIVE:
+        if re.search(p, t, flags=re.IGNORECASE):
+            return False
+            
     for label, patterns in DISASTER_RULES:
         for p in patterns:
             if re.search(p, t, flags=re.IGNORECASE):
@@ -215,6 +230,43 @@ class HTMLScraper:
             "sggp.org.vn": await self.scrape_sggp(),
         }
         return results
+
+def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
+    """
+    Synchronous wrapper for fetching full article text, suitable for usage in crawler loop.
+    Extracts the main body text, ignoring nav, footer, etc.
+    """
+    if not _HAS_BS4: return None
+    
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
+            resp = client.get(url, headers=headers)
+            resp.raise_for_status()
+            
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            # Remove scripts, styles, etc.
+            for s in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                s.decompose()
+            
+            # Common article selectors for VN news sites
+            # Tuoi Tre, VNExpress, Thanh Nien, etc.
+            content_tags = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'content|body|detail|post-content|article-content', re.I))
+            
+            if content_tags:
+                # Get the biggest one
+                main_content = max(content_tags, key=lambda x: len(x.get_text()))
+                return main_content.get_text(separator=' ', strip=True)
+            
+            # Fallback to body text
+            return soup.body.get_text(separator=' ', strip=True) if soup.body else soup.get_text(separator=' ', strip=True)
+            
+    except Exception as e:
+        logger.error(f"Error fetching full text from {url}: {e}")
+        return None
 
 
 # Simple test function

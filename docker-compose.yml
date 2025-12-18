@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15
+    image: postgres:18
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -20,7 +20,7 @@ services:
       - ./backend/logs:/app/logs
     environment:
       - APP_DB_URL=postgresql://postgres:password@db:5432/viet_disaster_watch
-      - CRAWL_INTERVAL_MINUTES=10
+      - CRAWL_INTERVAL_MINUTES=60
       - APP_TIMEZONE=Asia/Ho_Chi_Minh
     depends_on:
       - db

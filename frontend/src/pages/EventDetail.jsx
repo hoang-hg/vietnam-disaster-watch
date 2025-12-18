@@ -8,7 +8,6 @@ import {
   fmtVndBillion,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import RiskBadge from "../components/RiskBadge.jsx";
 import { ArrowLeft } from "lucide-react";
 
 const TYPE_TONES = {
@@ -94,9 +93,7 @@ export default function EventDetail() {
           </div>
         </div>
           <div className="flex flex-col items-end gap-2">
-            <div>
-              {ev.risk_level && <RiskBadge level={ev.risk_level} />}
-            </div>
+
             <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"}>
               {fmtType(ev.disaster_type)}
             </Badge>

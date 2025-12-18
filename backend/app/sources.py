@@ -6,42 +6,50 @@ from pathlib import Path
 
 Method = Literal["rss", "gnews"]
 
-DISASTER_KEYWORDS = [
-    # bão/áp thấp
-    "bão", "bão số", "siêu bão", "hoàn lưu bão", "tâm bão", "đổ bộ",
-    "áp thấp", "áp thấp nhiệt đới", "atnđ", "vùng áp thấp",
+# 8 Standardized Disaster Groups (Decision 18/2021/QD-TTg & common usage)
+DISASTER_GROUPS = {
+    "storm": [
+        "bão", "bão số", "siêu bão", "hoàn lưu bão", "tâm bão", "đổ bộ",
+        "áp thấp", "áp thấp nhiệt đới", "atnđ", "vùng áp thấp"
+    ],
+    "flood_landslide": [
+        "lũ", "lụt", "lũ lớn", "lũ lịch sử", "lũ dâng", "ngập", "ngập úng", "ngập lụt", "ngập sâu",
+        "lũ quét", "lũ ống", "ngập cục bộ", "sạt lở", "sạt lở đất", "trượt lở", "trượt đất",
+        "taluy", "sạt taluy", "sạt lở bờ sông", "sạt lở bờ biển", "sụt lún", "hố tử thần", "sụp đường"
+    ],
+    "heat_drought": [
+        "nắng nóng", "nắng nóng gay gắt", "nắng nóng đặc biệt", "nhiệt độ kỷ lục",
+        "hạn hán", "khô hạn", "thiếu nước", "cạn kiệt", "xâm nhập mặn", "nhiễm mặn", "độ mặn"
+    ],
+    "wind_fog": [
+        "gió mạnh", "gió giật", "biển động", "sóng lớn", "sóng cao", "cấm biển",
+        "sương mù", "sương mù dày đặc", "tầm nhìn hạn chế"
+    ],
+    "storm_surge": [
+        "triều cường", "nước dâng", "nước dâng do bão", "nước biển dâng", "đỉnh triều"
+    ],
+    "extreme_other": [
+        "dông", "dông lốc", "lốc", "lốc xoáy", "vòi rồng", "mưa lớn", "mưa rất to", 
+        "mưa cực lớn", "mưa diện rộng", "mưa đá", "sét", "giông sét",
+        "rét đậm", "rét hại", "không khí lạnh", "sương muối", "băng giá"
+    ],
+    "wildfire": [
+        "cháy rừng", "nguy cơ cháy rừng", "cấp dự báo cháy rừng", "PCCCR"
+    ],
+    "quake_tsunami": [
+        "động đất", "rung chấn", "dư chấn", "nứt đất", "đứt gãy", "sóng thần", "cảnh báo sóng thần"
+    ]
+}
 
-    # gió - dông - mưa cực đoan
-    "gió mạnh", "gió giật", "dông", "dông lốc", "lốc", "lốc xoáy", "vòi rồng",
-    "mưa lớn", "mưa rất to", "mưa cực lớn", "mưa diện rộng",
-    "mưa kéo dài", "mưa kỷ lục", "mưa cực đoan", "mưa đá", "sét", "giông sét",
+# Flat list for searching and initial filtering
+DISASTER_KEYWORDS = [item for sublist in DISASTER_GROUPS.values() for item in sublist]
 
-    # lũ/ngập/biển
-    "lũ", "lụt", "lũ lớn", "lũ lịch sử", "lũ dâng", "ngập", "ngập úng", "ngập lụt", "ngập sâu",
-    "lũ quét", "lũ ống", "ngập cục bộ",
-    "triều cường", "nước dâng", "nước dâng do bão", "biển động", "sóng lớn", "sóng cao",
-    "sóng thần", "cảnh báo sóng thần", "cấm biển",
-
-    # sạt lở/địa chất
-    "sạt lở", "sạt lở đất", "trượt lở", "trượt đất", "taluy", "sạt taluy",
-    "sạt lở bờ sông", "sạt lở bờ biển",
-    "động đất", "rung chấn", "dư chấn", "nứt đất", "nứt nhà", "đứt gãy",
-    "sụt lún", "hố tử thần", "sụp đường", "sụp lún",
-
-    # khí hậu cực đoan
-    "nắng nóng", "nắng nóng gay gắt", "nắng nóng đặc biệt", "nhiệt độ kỷ lục",
-    "hạn hán", "khô hạn", "thiếu nước", "cạn kiệt",
-    "rét đậm", "rét hại", "không khí lạnh", "sương muối", "băng giá",
-    "xâm nhập mặn", "nhiễm mặn", "độ mặn",
-
-    # cháy rừng
-    "cháy rừng", "nguy cơ cháy rừng", "cấp dự báo cháy rừng",
-
-    # tổng hợp/cảnh báo/thiệt hại/ứng phó
+# Context keywords (not a disaster group, but used to refine search)
+CONTEXT_KEYWORDS = [
     "thiên tai", "thảm họa", "rủi ro thiên tai", "cấp độ rủi ro",
     "thiệt hại", "tàn phá", "tốc mái", "sập", "cuốn trôi", "chia cắt", "cô lập",
     "sơ tán", "di dời", "mất tích", "thương vong", "mất điện", "mất liên lạc",
-    "vỡ đê", "xả lũ", "xả tràn", "hồ chứa", "thủy điện",
+    "vỡ đê", "xả lũ", "xả tràn", "hồ chứa", "thủy điện"
 ]
 
 @dataclass(frozen=True)
