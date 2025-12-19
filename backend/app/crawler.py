@@ -310,7 +310,8 @@ async def _process_once_async() -> dict:
                     link = getattr(entry, "link", "").strip()
                     
                     published_at = _to_dt(entry)
-                    text_for_nlp = title + " " + (getattr(entry, "summary", "") or getattr(entry, "description", "") or "")
+                    summary_raw = html.unescape(getattr(entry, "summary", "") or getattr(entry, "description", "") or "")
+                    text_for_nlp = title + " " + summary_raw
                     # ---------------------------------------------------------
                     # 1. OPTIMIZATION: Advanced NLP Check (Title + Summary + Trust)
                     # ---------------------------------------------------------
@@ -363,12 +364,12 @@ async def _process_once_async() -> dict:
                     disaster_type = nlp.classify_disaster(text_for_nlp)
                     province = nlp.extract_province(text_for_nlp)
 
-                    impacts = nlp.extract_impacts(getattr(entry, "summary", "") or title)
-                    summary_raw = nlp.summarize((getattr(entry, "summary", "") or "").replace("&nbsp;", " "))
+                    impacts = nlp.extract_impacts(summary_raw or title)
+                    summary_text = nlp.summarize(summary_raw.replace("&nbsp;", " "))
                     
                     # Detect Event Stage (Warning vs Impact vs Recovery)
                     stage = nlp.determine_event_stage(text_for_nlp)
-                    summary = f"[{stage}] {summary_raw}"
+                    summary = f"[{stage}] {summary_text}"
 
 
                     # Check for duplicates before inserting
@@ -532,7 +533,8 @@ async def _process_once_async() -> dict:
                             # Use scrape time as publish time
                             published_at = datetime.utcnow()
                             
-                            text_for_nlp = title + " " + (scraped.get("summary", "") or scraped.get("description", "") or "")
+                            summary_raw_scraper = html.unescape(scraped.get("summary", "") or scraped.get("description", "") or "")
+                            text_for_nlp = title + " " + summary_raw_scraper
                             
                             # Pre-filter: require title keyword OR allow if source is trusted
                             if not (src.trusted or nlp.title_contains_disaster_keyword(title)):
@@ -544,8 +546,8 @@ async def _process_once_async() -> dict:
                             disaster_type = nlp.classify_disaster(text_for_nlp)
                             province = nlp.extract_province(text_for_nlp)
                             
-                            impacts = nlp.extract_impacts(scraped.get("summary", "") or title)
-                            summary = nlp.summarize(scraped.get("summary", ""))
+                            impacts = nlp.extract_impacts(summary_raw_scraper or title)
+                            summary = nlp.summarize(summary_raw_scraper)
                             
                             # Check for duplicates
                             duplicate = find_duplicate_article(

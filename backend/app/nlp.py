@@ -313,6 +313,87 @@ HARD_NEGATIVE = [
   r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)",
   r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí)",
   r"địa\s*chấn\s*(?:showbiz|làng\s*giải\s*trí|V-pop|V-League)",
+  
+  # === ADDED NOISE FILTERS ===
+  # Economy / Real Estate
+  r"bất\s*động\s*sản", r"cơn\s*sốt\s*đất", r"sốt\s*đất", r"đất\s*nền", r"chung\s*cư",
+  r"dự\s*án\s*nhà\s*ở", r"shophouse", r"biệt\s*thự", r"đấu\s*giá\s*đất",
+  r"lãi\s*suất", r"tín\s*dụng", r"ngân\s*hàng", r"tỉ\s*giá", r"VN-Index", r"chứng\s*khoán", r"cổ\s*phiếu",
+  r"giá\s*(?:vàng|heo|cà\s*phê|lúa|xăng|dầu|trái\s*cây)", r"tăng\s*giá", r"giảm\s*giá", r"hạ\s*nhiệt\s*(?:giá|thị\s*trường)",
+  r"xuất\s*khẩu", r"nhập\s*khẩu", r"GDP", r"tăng\s*trưởng\s*kinh\s*tế",
+
+  # Traffic Accidents (Distinguish from Disaster)
+  r"tai\s*nạn\s*giao\s*thông", r"va\s*chạm\s*xe", r"tông\s*xe", r"tông\s*chết",
+  r"xe\s*tải", r"xe\s*khách", r"xe\s*đầu\s*kéo", r"xe\s*container", r"xe\s*buýt",
+  r"(?<!thiên\s)tai\s*nạn\s*liên\s*hoàn", r"vi\s*phạm\s*nồng\s*độ\s*cồn",
+
+  # Sports
+  r"bóng\s*đá", r"cầu\s*thủ", r"đội\s*tuyển", r"World\s*Cup", r"V-League", r"Sea\s*Games",
+  r"AFF\s*Cup", r"huấn\s*luyện\s*viên", r"bàn\s*thắng", r"ghi\s*bàn", r"vô\s*địch",
+  r"huy\s*chương", r"HCV", r"HCB", r"HCD",
+
+  # Showbiz / Events
+  r"showbiz", r"hoa\s*hậu", r"người\s*mẫu", r"ca\s*sĩ", r"diễn\s*viên", r"liveshow",
+  r"scandal", r"drama", r"sao\s*Việt", r"khánh\s*thành", r"khai\s*trương", r"kỷ\s*niệm\s*ngày",
+  
+  r"buôn\s*lậu", r"ma\s*túy", r"đánh\s*bạc", r"cờ\s*bạc", r"lừa\s*đảo", r"khởi\s*tố", r"bắt\s*giữ",
+  r"án\s*mạng", r"giết\s*người", r"cướp\s*giật", r"trộm\s*cắp", r"cát\s*tặc", r"khai\s*thác\s*cát",
+  r"súng", r"bắn", r"nổ\s*súng", r"hung\s*thủ", r"nghi\s*phạm", r"điều\s*tra\s*vụ",
+
+  # Fire / Explosion (Urban/Industrial - Not Forest)
+  r"cháy\s*(?:nhà|xưởng|xe|công\s*ty|chợ|cửa\s*hàng|quán|chung\s*cư|tàu|ca\s*nô|chùa|đền|miếu|nhà\s*thờ)",
+  r"lửa\s*ngùn\s*ngụt",  # Urban fire, not wildfire
+  r"hỏa\s*hoạn\s*(?!rừng)", r"bà\s*hỏa", r"chập\s*điện", r"nổ\s*bình\s*gas",
+  r"bom\s*mìn", r"vật\s*liệu\s*nổ", r"thuốc\s*nổ", r"đạn\s*pháo", r"chiến\s*tranh", r"thời\s*chiến",
+
+  # Pollution / Environment (Not Disaster)
+  r"bụi\s*mịn", r"ô\s*nhiễm\s*không\s*khí", r"chất\s*lượng\s*không\s*khí", r"AQI",
+  r"quan\s*trắc\s*môi\s*trường", r"rác\s*thải",
+
+  # Construction / Labor Accidents
+  r"giàn\s*giáo", r"sập\s*giàn\s*giáo", r"tai\s*nạn\s*lao\s*động", r"an\s*toàn\s*lao\s*động",
+  r"công\s*trình\s*xây\s*dựng", r"thicông",
+
+  # Extended Traffic Noise
+  r"xe\s*cứu\s*thương", r"biển\s*số\s*xe", r"đấu\s*giá\s*biển\s*số",
+  r"đăng\s*kiểm", r"giấy\s*phép", r"phạt\s*nguội",
+  
+  # Other Misc
+  r"tặng\s*quà", r"trao\s*quà", r"từ\s*thiện", r"hiến\s*máu", # Filter out pure charity events if not linked to active disaster keywords strongly
+
+  # Administrative / Legal / Political (Non-disaster)
+  r"giấy\s*chứng\s*nhận", r"sổ\s*đỏ", r"quyền\s*sử\s*dụng\s*đất", r"giao\s*đất", r"chuyển\s*nhượng",
+  r"công\s*chức", r"viên\s*chức", r"biên\s*chế", r"thẩm\s*quyền", r"hành\s*chính",
+  r"quốc\s*phòng\s*toàn\s*dân", r"an\s*ninh\s*quốc\s*phòng", r"quân\s*sự",
+  r"vụ\s*án", r"tranh\s*chấp", r"khiếu\s*nại", r"tố\s*cáo", r"điều\s*tra\s*viên", r"bị\s*can",
+  
+  # Education
+  r"đại\s*học", r"cao\s*đẳng", r"tuyển\s*sinh", r"đào\s*tạo", r"giáo\s*dục", r"học\s*bổng",
+  r"tốt\s*nghiệp", r"thạc\s*sĩ", r"tiến\s*sĩ",
+  
+  # Finance / Banking (Specific)
+  r"vốn\s*điều\s*lệ", r"tăng\s*vốn", r"cổ\s*đông", r"lợi\s*nhuận", r"doanh\s*thu",
+  r"ADB", r"WB", r"IMF", r"ODA", # International banks often in economic news
+  
+  # Health / Lifestyle
+  r"ung\s*thư", r"tế\s*bào", r"tiểu\s*đường", r"huyết\s*áp", r"đột\s*quỵ",
+  r"dinh\s*dưỡng", r"thực\s*phẩm", r"món\s*ăn", r"đặc\s*sản", r"giảm\s*cân", r"làm\s*đẹp",
+  r"ngăn\s*ngừa\s*bệnh", r"sức\s*khỏe\s*sinh\s*sản",
+
+  # Tech / Internet / Misc
+  r"Google", r"Facebook", r"Youtube", r"TikTok", r"Zalo\s*Pay", r"tính\s*năng", r"cập\s*nhật",
+  r"tra\s*từ", r"từ\s*điển", r"bài\s*hát", r"ca\s*khúc", r"MV", r"triệu\s*view", r"top\s*trending",
+  
+  # Metaphors (Reinforced)
+  r"bão\s*tố\s*cuộc\s*đời", r"sóng\s*gió\s*cuộc\s*đời", r"bão\s*tố\s*tình\s*yêu",
+  r"bão\s*lòng",
+  
+  # Transport / Aviation / Urban Traffic
+  r"sân\s*bay", r"cảng\s*hàng\s*không", r"máy\s*bay", r"Boeing", r"Airbus", r"vé\s*máy\s*bay",
+  r"kẹt\s*xe", r"ùn\s*tắc", r"giao\s*thông\s*đô\s*thị",
+
+
+
   r"lũ\s*(?:lượt|fan|like|view|đơn\s*hàng)",
   r"cơn\s*lốc\s*(?:đường\s*biên|màu\s*cam|sân\s*cỏ|chuyển\s*nhượng)",
   r"sóng\s*gió\s*(?:cuộc\s*đời|hôn\s*nhân)",
