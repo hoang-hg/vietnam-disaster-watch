@@ -1,0 +1,216 @@
+
+Case 1: Tòa Hiến pháp Hàn Quốc cách chức Tư lệnh Cảnh sát quốc gia...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 0
+
+Case 2: Vùng 4 Hải quân đưa 52 ngư dân vào đảo Song Tử Tây an toàn...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 3.5 | Context Score: 0
+
+Case 3: Mỹ thông qua thương vụ bán vũ khí trị giá 136,1 triệu USD ch...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 0
+
+Case 4: Thủ quỹ ở Ninh Bình bị tạm giam vì tham ô tiền của hợp tác x...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.5 | Context Score: 0
+
+Case 5: Tổng thống Vladimir Putin: Kinh tế Nga tăng trưởng 1% trong ...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 0
+
+Case 6: Lâm Đồng: Bảo đảm an ninh mạng, an toàn thông tin là nhiệm v...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.5 | Context Score: 0
+
+Case 7: Bộ trưởng Nguyễn Mạnh Hùng: Muốn ra thế giới, trước hết phải...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.0 | Context Score: 0
+
+Case 8: Khoa học cơ bản – nền tảng tri thức cho đột phá khoa học, cô...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.0 | Context Score: 0
+
+Case 9: 2581/QĐ-TTg...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 0
+
+Case 10: Giám đốc Công an Cao Bằng Nguyễn Quang Vinh được thăng cấp b...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.5 | Context Score: 0
+
+Case 11: Khánh thành Dự án Tận dụng nhiệt khí thải để phát điện Ximăn...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.0 | Context Score: 0
+
+Case 12: Tây Ninh khởi công 2 dự án trọng điểm hơn 3.600 tỉ đồng...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.5 | Context Score: 0
+
+Case 13: Sở Y tế Đắk Lắk thông tin vụ trẻ sơ sinh trở nặng sau khi ra...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.5 | Context Score: 0
+
+Case 14: EU chưa đạt đồng thuận về kế hoạch sử dụng tài sản Nga cho U...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 0
+
+Case 15: Bộ Quốc phòng khánh thành tượng đài chuyên gia, chiến sĩ 5 n...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.0 | Context Score: 0
+
+Case 16: Cà Mau khởi công 2 dự án giao thông trọng điểm, tổng vốn hơn...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.5 | Context Score: 0
+
+Case 17: Thủ tướng: Những viên gạch đầu tiên cho công trình tương lai...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.0 | Context Score: 0
+
+Case 18: Bệnh viện Chợ Rẫy nói gì xe cứu thương tông xe đầu kéo trạm ...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 1
+
+Case 19: Nhiều tỉnh chi trợ cấp hưu trí cao hơn cho người 75 tuổi...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.0 | Context Score: 1
+
+Case 20: Đồng chí Triệu Quang Huy giữ chức vụ Chủ tịch Hội Nông dân t...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 0.5 | Context Score: 0
+
+Case 21: Hôm nay khởi công, khánh thành 234 công trình...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: True
+     - Score: 0.0 | Context Score: 0
+
+Case 22: Người dân Hà Nội, TP.HCM tràn ra đường 'đi bão' sau khi U22 ...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: True | Soft Neg: False
+     - Score: 1.5 | Context Score: 0
+
+Case 23: Tàu cá trôi dạt vào bờ, một ngư dân Quảng Trị mất tích trên ...
+   Expected: False | Actual: False -> ✅ OK
+   Decision Details:
+     - Hazard Score: 0
+     - Rule Matches: []
+     - Hard Neg: False | Soft Neg: False
+     - Score: 4.0 | Context Score: 1
+
+Case 24: Lâm Đồng mưa lớn, cảnh báo nguy cơ lũ quét và sạt lở đất...
+   Expected: True | Actual: True -> ✅ OK
+   Decision Details:
+     - Hazard Score: 1
+     - Rule Matches: ['flood_landslide']
+     - Hard Neg: False | Soft Neg: False
+     - Score: 8.5 | Context Score: 1
+
+Case 25: Cử tri Đà Nẵng đề nghị làm rõ vận hành xả lũ hồ thủy điện gâ...
+   Expected: True | Actual: True -> ✅ OK
+   Decision Details:
+     - Hazard Score: 1
+     - Rule Matches: ['flood_landslide']
+     - Hard Neg: False | Soft Neg: False
+     - Score: 8.5 | Context Score: 0
+
+Case 26: Những cột điện bằng cành cây, khúc gỗ, nằm ngổn ngang nhiều ...
+   Expected: True | Actual: True -> ✅ OK
+   Decision Details:
+     - Hazard Score: 1
+     - Rule Matches: ['storm']
+     - Hard Neg: False | Soft Neg: False
+     - Score: 4.0 | Context Score: 0
+
+Case 27: Dự báo thời tiết 18/12/2025: Miền Bắc bừng nắng ấm rồi lại đ...
+   Expected: True | Actual: True -> ✅ OK
+   Decision Details:
+     - Hazard Score: 1
+     - Rule Matches: ['extreme_other']
+     - Hard Neg: False | Soft Neg: False
+     - Score: 4.0 | Context Score: 0

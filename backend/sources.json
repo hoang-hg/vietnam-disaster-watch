@@ -4,8 +4,8 @@
       "name": "Thanh Niên",
       "domain": "thanhnien.vn",
       "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
-      "backup_rss": null,
-      "note": "Working well with ~500 entries",
+      "backup_rss": "https://thanhnien.vn/rss/tin-24h.rss",
+      "note": "Updated Backup to Tin-24h",
       "trusted": false
     },
     {
@@ -13,24 +13,104 @@
       "domain": "vietnamnet.vn",
       "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
       "backup_rss": null,
-      "note": "Working with ~60 entries",
+      "note": "Backup 404, Primary OK",
       "trusted": false
+    },
+    {
+      "name": "VnExpress",
+      "domain": "vnexpress.net",
+      "primary_rss": "https://vnexpress.net/rss/thoi-su.rss",
+      "backup_rss": "https://vnexpress.net/rss/tin-moi-nhat.rss",
+      "note": "Official RSS",
+      "trusted": true
+    },
+    {
+      "name": "Tuổi Trẻ",
+      "domain": "tuoitre.vn",
+      "primary_rss": "https://tuoitre.vn/rss/thoi-su.rss",
+      "backup_rss": "https://tuoitre.vn/rss/tin-moi-nhat.rss",
+      "note": "Official RSS",
+      "trusted": true
+    },
+    {
+      "name": "Dân Trí",
+      "domain": "dantri.com.vn",
+      "primary_rss": "https://dantri.com.vn/rss/thoi-su.rss",
+      "backup_rss": "https://dantri.com.vn/rss/home.rss",
+      "note": "RSS available",
+      "trusted": false
+    },
+    {
+      "name": "Lao Động",
+      "domain": "laodong.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS broken (0 entries). Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "Nhân Dân",
+      "domain": "nhandan.vn",
+      "primary_rss": "https://nhandan.vn/rss/xa-hoi-1361.rss",
+      "backup_rss": "https://nhandan.vn/rss/home.rss",
+      "note": "Added Backup Home RSS",
+      "trusted": true
+    },
+    {
+      "name": "Tiền Phong",
+      "domain": "tienphong.vn",
+      "primary_rss": "https://tienphong.vn/rss/xa-hoi-2.rss",
+      "backup_rss": null,
+      "note": "RSS available",
+      "trusted": false
+    },
+    {
+      "name": "CAND",
+      "domain": "cand.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS 404. Using GNews.",
+      "trusted": false
+    },
+     {
+      "name": "Pháp luật & Đời sống",
+      "domain": "doisongphapluat.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS DNS Error. Using GNews.",
+      "trusted": false
+    },
+    {
+        "name": "Znews",
+        "domain": "znews.vn",
+        "primary_rss": "https://znews.vn/rss/xa-hoi.rss",
+        "backup_rss": "https://znews.vn/rss/thoi-su.rss",
+        "note": "RSS available",
+        "trusted": false
+    },
+    {
+        "name": "Kênh 14",
+        "domain": "kenh14.vn",
+        "primary_rss": "https://kenh14.vn/xa-hoi.rss",
+        "backup_rss": null,
+        "note": "RSS available",
+        "trusted": false
     },
     {
       "name": "baocaobang.vn",
       "domain": "baocaobang.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "note": "RSS Empty/Broken. Using GNews.",
       "trusted": false
     },
     {
       "name": "tuyenquang.gov.vn",
       "domain": "tuyenquang.gov.vn",
-      "primary_rss": null,
+      "primary_rss": "https://www.tuyenquang.gov.vn/rss.xml",
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
-      "trusted": false
+      "note": "Official Gov Portal",
+      "trusted": true
     },
     {
       "name": "baotuyenquang.com.vn",
@@ -51,9 +131,9 @@
     {
       "name": "baolaocai.vn",
       "domain": "baolaocai.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "primary_rss": "https://baolaocai.vn/rss/home.rss",
+      "backup_rss": "https://baolaocai.vn/rss/index.rss",
+      "note": "Official Province News",
       "trusted": false
     },
     {
@@ -61,7 +141,7 @@
       "domain": "dienbientv.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "note": "RSS 404. Using GNews.",
       "trusted": false
     },
     {
@@ -75,9 +155,9 @@
     {
       "name": "baosonla.org.vn",
       "domain": "baosonla.org.vn",
-      "primary_rss": null,
+      "primary_rss": "https://baosonla.vn/rss/xa-hoi.rss",
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "note": "Official Province News",
       "trusted": false
     },
     {
@@ -93,7 +173,7 @@
       "domain": "baolangson.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "note": "RSS Empty. Using GNews.",
       "trusted": false
     },
     {
@@ -107,9 +187,9 @@
     {
       "name": "baophutho.vn",
       "domain": "baophutho.vn",
-      "primary_rss": null,
+      "primary_rss": "http://baophutho.vn/feed",
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "note": "RSS updated per validation",
       "trusted": false
     },
     {
@@ -131,9 +211,9 @@
     {
       "name": "baohatinh.vn",
       "domain": "baohatinh.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "primary_rss": "https://baohatinh.vn/rss/home.rss",
+      "backup_rss": "https://baohatinh.vn/rss/index.rss",
+      "note": "Official Province News",
       "trusted": false
     },
     {
@@ -203,9 +283,9 @@
     {
       "name": "baogialai.com.vn",
       "domain": "baogialai.com.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
+      "primary_rss": "https://baogialai.com.vn/rss/home.rss",
+      "backup_rss": "https://baogialai.com.vn/rss/index.rss",
+      "note": "RSS updated per validation",
       "trusted": false
     },
     {
@@ -217,34 +297,12 @@
       "trusted": false
     },
     {
-      "name": "Tuổi Trẻ",
-      "domain": "tuoitre.vn",
-      "primary_rss": "https://tuoitre.vn/rss/thoi-su.rss",
-      "backup_rss": null,
-      "note": "Official RSS works with ~50 entries",
-      "trusted": false
-    },
-    {
-      "name": "VnExpress",
-      "domain": "vnexpress.net",
-      "primary_rss": "https://vnexpress.net/rss/thoi-su.rss",
-      "backup_rss": null,
-      "note": "Official RSS works with ~60 entries",
-      "trusted": false
-    },
-    {
-      "name": "Dân Trí",
-      "domain": "dantri.com.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS not available - fallback to GNews"
-    },
-    {
       "name": "Báo Tin tức (TTXVN)",
       "domain": "baotintuc.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "SSL error - fallback to GNews"
+      "note": "RSS SSL Error. Using GNews.",
+      "trusted": true
     },
     {
       "name": "SGGP",
@@ -256,23 +314,18 @@
     {
       "name": "Người Lao Động",
       "domain": "nld.com.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS not available - fallback to GNews"
-    },
-    {
-      "name": "Lao Động",
-      "domain": "laodong.vn",
-      "primary_rss": "https://laodong.vn/feed/thoi-su.rss",
-      "backup_rss": null,
-      "note": "Exists but returns 0 entries - will try GNews"
+      "primary_rss": "https://nld.com.vn/rss/thoi-su.rss",
+      "backup_rss": "https://nld.com.vn/rss/home.rss",
+      "note": "Corrected RSS path",
+      "trusted": false
     },
     {
       "name": "Quân đội Nhân dân",
       "domain": "qdnd.vn",
-      "primary_rss": "https://qdnd.vn/rss/thoi-su.rss",
+      "primary_rss": "https://www.qdnd.vn/rss/cate/tin-tuc-moi-nhat.rss",
       "backup_rss": null,
-      "note": "Exists but returns 0 entries - will try GNews"
+      "note": "Army Breaking News",
+      "trusted": true
     },
     {
       "name": "VNA Net",
@@ -286,14 +339,96 @@
       "domain": "baomoi.com",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Aggregator only - fallback to GNews"
+      "note": "RSS Empty. Using GNews.",
+      "trusted": false
     },
+    {
+      "name": "Soha",
+      "domain": "soha.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS 404. Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "24h",
+      "domain": "24h.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS 404. Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "Báo Chính Phủ",
+      "domain": "baochinhphu.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS 404. Using GNews.",
+      "trusted": true
+    },
+    {
+      "name": "VietnamPlus (TTXVN)",
+      "domain": "vietnamplus.vn",
+      "primary_rss": "https://www.vietnamplus.vn/rss/xa-hoi.rss",
+      "backup_rss": "https://www.vietnamplus.vn/rss/thoi-su.rss",
+      "note": "Official VNA",
+      "trusted": true
+    },
+    {
+      "name": "VTV News",
+      "domain": "vtv.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS 404. Using GNews.",
+      "trusted": true
+    },
+    {
+      "name": "Nông Nghiệp Việt Nam",
+      "domain": "nongnghiep.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS Empty. Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "Tài nguyên & Môi trường",
+      "domain": "baotainguyenmoitruong.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS Empty. Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "Báo Dân tộc và Phát triển",
+      "domain": "baodantoc.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS Empty. Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "Báo Giao thông",
+      "domain": "baogiaothong.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "RSS 404. Using GNews.",
+      "trusted": false
+    },
+    {
+      "name": "Cổng TTĐT Chính phủ (Công báo)",
+      "domain": "congbao.chinhphu.vn",
+      "primary_rss": "http://congbao.chinhphu.vn/cac_van_ban_moi_ban_hanh.rss",
+      "backup_rss": "http://congbao.chinhphu.vn/cac_so_cong_bao_moi_dang.rss",
+      "note": "Official Gazette",
+      "trusted": true
+    },
+
     {
       "name": "KTTV Quốc gia",
       "domain": "nchmf.gov.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "User requested; fallback to GNews",
+      "note": "RSS 404. Using GNews.",
       "trusted": true
     },
     {
@@ -335,8 +470,25 @@
     "sơ tán",
     "ứng phó",
     "cứu hộ",
-    "thiệt hại",
-    "mất tích"
+    "cứu nạn",
+    "mất tích",
+    "người chết",
+    "thương vong",
+    "khẩn cấp",
+    "cảnh báo",
+    "công điện",
+    "chỉ đạo",
+    "khắc phục",
+    "sập nhà",
+    "tốc mái",
+    "ngập lụt",
+    "sạt lở",
+    "chia cắt",
+    "cô lập",
+    "hư hỏng",
+    "vỡ đê",
+    "di dời",
+    "hỗ trợ"
   ],
   "gnews_min_articles": 5,
   "request_timeout": 10,

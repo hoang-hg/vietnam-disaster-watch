@@ -10,10 +10,11 @@ Method = Literal["rss", "gnews"]
 DISASTER_GROUPS = {
     "storm": [
         "bão", "bão số", "siêu bão", "hoàn lưu bão", "tâm bão", "đổ bộ",
-        "áp thấp", "áp thấp nhiệt đới", "atnđ", "vùng áp thấp"
+        "áp thấp", "áp thấp nhiệt đới", "atnđ", "vùng áp thấp", "vùng thấp", "rãnh áp thấp"
     ],
     "flood_landslide": [
         "lũ", "lụt", "lũ lớn", "lũ lịch sử", "lũ dâng", "ngập", "ngập úng", "ngập lụt", "ngập sâu",
+        "ngập nước", "chia cắt", "cô lập", "vỡ đê", "tràn đê", "xả lũ", "hồ chứa",
         "lũ quét", "lũ ống", "ngập cục bộ", "sạt lở", "sạt lở đất", "trượt lở", "trượt đất",
         "taluy", "sạt taluy", "sạt lở bờ sông", "sạt lở bờ biển", "sụt lún", "hố tử thần", "sụp đường"
     ],
@@ -30,7 +31,7 @@ DISASTER_GROUPS = {
     ],
     "extreme_other": [
         "dông", "dông lốc", "lốc", "lốc xoáy", "vòi rồng", "mưa lớn", "mưa rất to", 
-        "mưa cực lớn", "mưa diện rộng", "mưa đá", "sét", "giông sét",
+        "mưa cực lớn", "mưa diện rộng", "mưa đá", "sét", "giông sét", "giông", "mưa giông", "giông tố",
         "rét đậm", "rét hại", "không khí lạnh", "sương muối", "băng giá"
     ],
     "wildfire": [
@@ -66,14 +67,24 @@ def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_
 
     If both hazard_terms and context_terms are provided, build a query that
     requires a hazard term and a context term to reduce false positives.
+    Automatically quotes terms with spaces to prevent keyword splitting.
     """
     hazards = hazard_terms or DISASTER_KEYWORDS
+    
+    # Helper to quote terms with spaces
+    def _quote(terms):
+        return [f'"{t.strip()}"' if ' ' in t.strip() else t.strip() for t in terms]
+
+    hazards = _quote(hazards)
+
     if context_terms:
+        contexts = _quote(context_terms)
         hazard_q = " OR ".join(hazards)
-        context_q = " OR ".join(context_terms)
+        context_q = " OR ".join(contexts)
         q = f"site:{domain} (({hazard_q}) AND ({context_q}))"
     else:
         q = f"site:{domain} (" + " OR ".join(hazards) + ")"
+        
     params = {"q": q, "hl": "vi", "gl": "VN", "ceid": "VN:vi"}
     return "https://news.google.com/rss/search?" + urllib.parse.urlencode(params)
 
@@ -107,3 +118,4 @@ def load_sources_from_json() -> list[Source]:
 
 # Load sources at module import time
 SOURCES: list[Source] = load_sources_from_json()
+# Trigger reload for source update

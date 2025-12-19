@@ -43,16 +43,21 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  /* Helper to normalize string for search (remove tones) */
+  const normalizeStr = (str) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
   const events = useMemo(() => {
     let list = rawEvents;
     if (hazardType !== "all") list = list.filter(e => e.disaster_type === hazardType);
     if (provQuery) {
-        const q = provQuery.toLowerCase();
-        list = list.filter(e => e.province && e.province.toLowerCase().includes(q));
+        const q = normalizeStr(provQuery);
+        list = list.filter(e => e.province && normalizeStr(e.province).includes(q));
     }
     if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        list = list.filter(e => e.title && e.title.toLowerCase().includes(q));
+        const q = normalizeStr(searchQuery);
+        list = list.filter(e => e.title && normalizeStr(e.title).includes(q));
     }
     return list;
   }, [rawEvents, hazardType, provQuery, searchQuery]);
@@ -157,42 +162,6 @@ export default function Dashboard() {
             fill: THEME_COLORS[k] || THEME_COLORS.unknown
         }))
         .sort((a, b) => b.count - a.count);
-  }, [events]);
-  const topEventTopic = useMemo(() => {
-    if (!events || events.length === 0) return null;
-    
-    const counts = {};
-    // Extended patterns for VN news: Bão [Tên], Bão số [X], ATNĐ, Lũ quét, Sạt lở...
-    const patterns = [
-      /bão\s+số\s+\d+/i,
-      /bão\s+[a-zàáảãạâầấtẩẫậăằắẳẵặeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứcửữựyỳýỷỹỴ]+/i,
-      /siêu\s+bão\s+[a-zàáảãạâầấtẩẫậăằắẳẵặeèéẻẽẹêềếểễệiìíỉĩịoòóỏõọôồốổỗộơờớởỡợuùúủũụưừứcửữựyỳýỷỹỴ]+/i,
-      /áp\s+thấp\s+nhiệt\s+đới/i,
-      /lũ\s+quét\s+(?:tại|ở)\s+[a-zàáảãạâầấtẩẫậăằắẳẵặ]+/i,
-      /sạt\s+lở\s+(?:tại|ở)\s+[a-zàáảãạâầấtẩẫậăằắẳẵặ]+/i,
-    ];
-
-    events.forEach(e => {
-      const title = e.title;
-      patterns.forEach(p => {
-        const match = title.match(p);
-        if (match) {
-          // Clean up: Proper casing for display
-          let key = match[0].trim();
-          key = key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
-          counts[key] = (counts[key] || 0) + 1;
-        }
-      });
-    });
-
-    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-    
-    // If no specific pattern matched, try to get most frequent 3-word phrase starting with disaster keywords
-    if (sorted.length === 0) {
-       return { name: "Đang cập nhật...", count: 0 };
-    }
-
-    return { name: sorted[0][0], count: sorted[0][1] };
   }, [events]);
 
   return (
@@ -302,9 +271,9 @@ export default function Dashboard() {
           color="text-red-500"
         />
         <StatCard
-          title="Sự kiện tiêu điểm"
-          value={topEventTopic ? topEventTopic.name : "N/A"}
-          sub={topEventTopic ? `Đang có ${topEventTopic.count} tin liên quan` : "Chưa có dữ liệu"}
+          title="Nhóm thiên tai nguy hiểm nhất"
+          value={chartData && chartData.length > 0 ? chartData[0].name : "N/A"}
+          sub={chartData && chartData.length > 0 ? `Chiếm số lượng lớn nhất (${chartData[0].count} vụ)` : "Chưa có dữ liệu"}
           icon={TrendingUp}
           color="text-indigo-500"
         />

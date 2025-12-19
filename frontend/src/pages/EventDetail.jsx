@@ -136,7 +136,7 @@ export default function EventDetail() {
               )
               .filter(Boolean)
               .slice(0, 3)
-              .join("\n\n");
+              .join("<br/><br/>"); // Use line breaks for HTML
             
             const heroImage = ev.articles.find(a => a.image_url)?.image_url;
             
@@ -166,9 +166,10 @@ export default function EventDetail() {
                     </div>
                 )}
                 
-                <div className="text-sm whitespace-pre-line text-gray-700 leading-relaxed">
-                  {short}
-                </div>
+                <div 
+                  className="text-sm text-gray-700 leading-relaxed summary-content"
+                  dangerouslySetInnerHTML={{ __html: short }}
+                />
                 {combined.length > limit ? (
                   <button
                     className="mt-2 text-sm text-blue-600 hover:underline font-medium"

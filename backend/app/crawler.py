@@ -17,6 +17,9 @@ import random
 import feedparser
 import httpx
 import re
+import urllib3
+# Suppress InsecureRequestWarning for cleaner logs
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 try:
     from bs4 import BeautifulSoup
     _HAS_BS4 = True
@@ -142,7 +145,8 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
     # load persisted feed state for ETag/Last-Modified
     feed_state = _load_feed_state()
 
-    transport = httpx.AsyncHTTPTransport(retries=3)
+    # Allow insecure SSL (verify=False) to support gov sites with bad certs
+    transport = httpx.AsyncHTTPTransport(retries=3, verify=False)
     
     async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, limits=limits, transport=transport) as client:
         tasks = {}
@@ -304,42 +308,19 @@ async def _process_once_async() -> dict:
                 for entry in feed.entries[:max_articles]:
                     title = html.unescape(getattr(entry, "title", "")).strip()
                     link = getattr(entry, "link", "").strip()
-                    if not title or not link:
-                        continue
-
-                    published_at = _to_dt(entry)
-
-                    text_for_nlp = title + " " + (getattr(entry, "summary", "") or getattr(entry, "description", "") or "")
                     
-                    # Pre-filter: require title keyword OR allow if source is trusted
-                    if not (src.trusted or nlp.title_contains_disaster_keyword(title)):
-                        article_hash = get_article_hash(title, src.domain)
-                        diag = nlp.diagnose(title)
-                        # Write skip log (detailed) and sample 1% for audit
-                        try:
-                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                            logs_dir.mkdir(parents=True, exist_ok=True)
-                            skip_file = logs_dir / "skip_debug.jsonl"
-                            record = {
-                                "timestamp": datetime.utcnow().isoformat(),
-                                "action": "skip",
-                                "source": src.name,
-                                "domain": src.domain,
-                                "title": title,
-                                "url": link,
-                                "id": article_hash,
-                                "diagnose": diag,
-                            }
-                            with skip_file.open("a", encoding="utf-8") as f:
-                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                            # 1% sample retention for manual audit
-                            if random.random() < 0.01:
-                                sample_file = logs_dir / "skip_sample.jsonl"
-                                with sample_file.open("a", encoding="utf-8") as sf:
-                                    sf.write(json.dumps(record, ensure_ascii=False) + "\n")
-                        except Exception:
-                            pass
-                        print(f"[SKIP] {src.name} #{article_hash}: title-miss score={diag['score']:.1f} reason={diag['reason']}")
+                    published_at = _to_dt(entry)
+                    text_for_nlp = title + " " + (getattr(entry, "summary", "") or getattr(entry, "description", "") or "")
+                    # ---------------------------------------------------------
+                    # 1. OPTIMIZATION: Advanced NLP Check (Title + Summary + Trust)
+                    # ---------------------------------------------------------
+                    # Uses Smart Filtering: 
+                    # - Trusted sources passed easier.
+                    # - Untrusted sources need Impact/Metrics.
+                    # - Hard Negatives filtered out.
+                    is_relevant = nlp.contains_disaster_keywords(text_for_nlp, trusted_source=src.trusted)
+                    
+                    if not is_relevant:
                         continue
 
                     # Second-pass: optional classifier rejects low-probability items
@@ -383,7 +364,11 @@ async def _process_once_async() -> dict:
                     province = nlp.extract_province(text_for_nlp)
 
                     impacts = nlp.extract_impacts(getattr(entry, "summary", "") or title)
-                    summary = nlp.summarize((getattr(entry, "summary", "") or "").replace("&nbsp;", " "))
+                    summary_raw = nlp.summarize((getattr(entry, "summary", "") or "").replace("&nbsp;", " "))
+                    
+                    # Detect Event Stage (Warning vs Impact vs Recovery)
+                    stage = nlp.determine_event_stage(text_for_nlp)
+                    summary = f"[{stage}] {summary_raw}"
 
 
                     # Check for duplicates before inserting

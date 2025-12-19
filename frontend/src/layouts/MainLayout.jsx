@@ -33,7 +33,7 @@ export default function MainLayout({ children }) {
                     </div>
                     {/* Text Logo */}
                     <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
-                        BÁO CẢNH BÁO <span className="text-[#e04f23]">RỦI RO THIÊN TAI</span>
+                        BÁO <span className="text-[#e04f23]">TỔNG HỢP THIÊN TAI</span>
                     </span>
                 </Link>
             </div>

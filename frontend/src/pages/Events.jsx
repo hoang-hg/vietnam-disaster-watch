@@ -8,7 +8,6 @@ import {
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
 import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X } from "lucide-react";
-import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
 
 // Updated tones for 8 groups
 const TYPE_TONES = {
@@ -24,10 +23,14 @@ const TYPE_TONES = {
 };
 
 // Extract provinces for dropdown
-const PROVINCES = VIETNAM_LOCATIONS
-  .filter(f => f.properties.category === "provincial_unit")
-  .map(f => f.properties.name)
-  .sort();
+// Must match PROVINCE_MAPPING keys in backend/app/nlp.py
+const PROVINCES = [
+  "Thủ đô Hà Nội", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Điện Biên", "Lai Châu", "Sơn La", 
+  "Thái Nguyên", "Lạng Sơn", "Quảng Ninh", "Phú Thọ", "Bắc Ninh", "Hải Phòng", "Hưng Yên", 
+  "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "Huế", "Đà Nẵng", 
+  "Quảng Ngãi", "Khánh Hòa", "Gia Lai", "Đắk Lắk", "Lâm Đồng", "Tây Ninh", "Đồng Nai", 
+  "Thành phố Hồ Chí Minh", "Vĩnh Long", "Đồng Tháp", "An Giang", "Cần Thơ", "Cà Mau"
+].sort();
 
 export default function Events() {
   const [events, setEvents] = useState([]);
@@ -46,28 +49,40 @@ export default function Events() {
   
   const [error, setError] = useState(null);
 
+  /* Helper to normalize string for search (remove tones) */
+  const normalizeStr = (str) => {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
         setError(null);
         
+        // Fetch base data first (filtered by Type and Date on server for efficiency)
         const params = new URLSearchParams();
-        params.append("limit", "200");
-        if (q) params.append("q", q);
+        params.append("limit", "200"); // Get enough data 
         if (type) params.append("type", type);
-        if (province) params.append("province", province);
         if (startDate) params.append("start_date", startDate);
         if (endDate) params.append("end_date", endDate);
+        // Note: We don't send 'q' and 'province' to server anymore to support smart local filtering
 
         const evs = await getJson(`/api/events?${params.toString()}`);
         
-        // Filter out events classified as 'unknown' if not explicitly asked
-        setEvents(
-          evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type))
-        );
+        let filteredEvents = evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type));
+
+        // Client-side smart filtering for Text and Province (unaccented support)
+        if (q) {
+            const query = normalizeStr(q);
+            filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title).includes(query));
+        }
+        if (province) {
+            const query = normalizeStr(province);
+            filteredEvents = filteredEvents.filter(e => e.province && normalizeStr(e.province).includes(query));
+        }
         
-        // Reset to page 1 when filters change
+        setEvents(filteredEvents);
         setCurrentPage(1);
       } catch (e) {
         setError(e.message || "Load failed");

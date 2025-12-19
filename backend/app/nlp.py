@@ -29,8 +29,23 @@ IMPACT_KEYWORDS = {
     "damage": [
         "thiệt hại", "tổn thất", "hư hỏng", "hư hại", "tàn phá",
         "ước tính thiệt hại", "thiệt hại về tài sản", "sập nhà", "đổ sập",
-        "tốc mái", "ngập nhà", "cuốn trôi", "sạt lở đường", "đứt đường",
+        "tốc mái", "ngập nhà", "cuốn trôi", "sạt lở đường", "đứt đường", "nứt mặt đường",
         "chia cắt", "cô lập", "sập cầu", "mất điện", "mất nước", "mất sóng"
+    ],
+    "disruption": [
+        "sơ tán", "di dời", "tạm sơ tán", "phong tỏa", "cấm đường", 
+        "cấm lưu thông", "đóng cửa trường", "cho học sinh nghỉ",
+        "ngừng cấp điện", "cắt điện", "mất điện diện rộng", "tê liệt giao thông",
+        "cấm biển", "dừng hoạt động", "tàu thuyền không ra khơi"
+    ],
+    "agriculture": [
+        "hoa màu", "lúa", "ruộng", "diện tích lúa", "ha lúa", "mất trắng",
+        "gia súc", "gia cầm", "trâu bò", "lợn gà", "vật nuôi",
+        "ao nuôi", "tôm cá", "thủy sản", "lồng bè", "lồng nuôi"
+    ],
+    "marine": [
+        "chìm tàu", "đắm tàu", "lật tàu", "trôi dạt", "mất tín hiệu", 
+        "gặp nạn trên biển", "tàu cá", "ngư dân"
     ]
 }
 
@@ -53,40 +68,73 @@ NUMBER_WORDS = {
 # Format: New_Name -> List of Old_Names to match in text
 # -----------------------------------------------------------------------------
 PROVINCE_MAPPING = {
-    "Thủ đô Hà Nội": ["Hà Nội", "Ha Noi", "HN"],
+    # Miền Bắc
+    "Hà Nội": ["Hà Nội", "HN", "Ha Noi"],
+    "Hà Giang": ["Hà Giang"],
     "Cao Bằng": ["Cao Bằng"],
-    "Tuyên Quang": ["Tuyên Quang", "Hà Giang"],
-    "Lào Cai": ["Lào Cai", "Yên Bái"],
+    "Bắc Kạn": ["Bắc Kạn"],
+    "Tuyên Quang": ["Tuyên Quang"],
+    "Lào Cai": ["Lào Cai"],
     "Điện Biên": ["Điện Biên"],
     "Lai Châu": ["Lai Châu"],
     "Sơn La": ["Sơn La"],
-    "Thái Nguyên": ["Thái Nguyên", "Bắc Kạn"],
+    "Yên Bái": ["Yên Bái"],
+    "Hòa Bình": ["Hòa Bình"],
+    "Thái Nguyên": ["Thái Nguyên"],
     "Lạng Sơn": ["Lạng Sơn"],
     "Quảng Ninh": ["Quảng Ninh"],
-    "Phú Thọ": ["Phú Thọ", "Vĩnh Phúc", "Hòa Bình"],
-    "Bắc Ninh": ["Bắc Ninh", "Bắc Giang"],
-    "Hải Phòng": ["Hải Phòng", "Hải Dương"],
-    "Hưng Yên": ["Hưng Yên", "Thái Bình"],
-    "Ninh Bình": ["Ninh Bình", "Hà Nam", "Nam Định"],
+    "Bắc Giang": ["Bắc Giang"],
+    "Phú Thọ": ["Phú Thọ"],
+    "Vĩnh Phúc": ["Vĩnh Phúc"],
+    "Bắc Ninh": ["Bắc Ninh"],
+    "Hải Dương": ["Hải Dương"],
+    "Hải Phòng": ["Hải Phòng"],
+    "Hưng Yên": ["Hưng Yên"],
+    "Thái Bình": ["Thái Bình"],
+    "Hà Nam": ["Hà Nam"],
+    "Nam Định": ["Nam Định"],
+    "Ninh Bình": ["Ninh Bình"],
+    # Miền Trung
     "Thanh Hóa": ["Thanh Hóa"],
     "Nghệ An": ["Nghệ An"],
     "Hà Tĩnh": ["Hà Tĩnh"],
-    "Quảng Trị": ["Quảng Trị", "Quảng Bình"],
-    "Huế": ["Huế", "Thừa Thiên Huế", "Thừa Thiên - Huế"],
-    "Đà Nẵng": ["Đà Nẵng", "Quảng Nam"],
-    "Quảng Ngãi": ["Quảng Ngãi", "Kon Tum"],
-    "Khánh Hòa": ["Khánh Hòa", "Ninh Thuận"],
-    "Gia Lai": ["Gia Lai", "Bình Định"],
-    "Đắk Lắk": ["Đắk Lắk", "Phú Yên"],
-    "Lâm Đồng": ["Lâm Đồng", "Đắk Nông", "Binh Thuận", "Bình Thuận"],
-    "Tây Ninh": ["Tây Ninh", "Long An"],
-    "Đồng Nai": ["Đồng Nai", "Bình Phước"],
-    "Thành phố Hồ Chí Minh": ["Hồ Chí Minh", "TP.HCM", "TPHCM", "Sài Gòn", "Bà Rịa", "Vũng Tàu", "Bình Dương"],
-    "Vĩnh Long": ["Vĩnh Long", "Bến Tre", "Trà Vinh"],
-    "Đồng Tháp": ["Đồng Tháp", "Tiền Giang"],
-    "An Giang": ["An Giang", "Kiên Giang"],
-    "Cần Thơ": ["Cần Thơ", "Sóc Trăng", "Hậu Giang"],
-    "Cà Mau": ["Cà Mau", "Bạc Liêu"],
+    "Quảng Bình": ["Quảng Bình"],
+    "Quảng Trị": ["Quảng Trị"],
+    "Thừa Thiên Huế": ["Thừa Thiên Huế", "Huế", "TT-Huế", "T.T.Huế"],
+    "Đà Nẵng": ["Đà Nẵng"],
+    "Quảng Nam": ["Quảng Nam"],
+    "Quảng Ngãi": ["Quảng Ngãi"],
+    "Bình Định": ["Bình Định"],
+    "Phú Yên": ["Phú Yên"],
+    "Khánh Hòa": ["Khánh Hòa"],
+    "Ninh Thuận": ["Ninh Thuận"],
+    "Bình Thuận": ["Bình Thuận"],
+    # Tây Nguyên
+    "Kon Tum": ["Kon Tum"],
+    "Gia Lai": ["Gia Lai"],
+    "Đắk Lắk": ["Đắk Lắk", "Dak Lak"],
+    "Đắk Nông": ["Đắk Nông", "Dak Nong"],
+    "Lâm Đồng": ["Lâm Đồng"],
+    # Miền Nam
+    "TP Hồ Chí Minh": ["Hồ Chí Minh", "TP.HCM", "TPHCM", "Sài Gòn"],
+    "Bình Phước": ["Bình Phước"],
+    "Tây Ninh": ["Tây Ninh"],
+    "Bình Dương": ["Bình Dương"],
+    "Đồng Nai": ["Đồng Nai"],
+    "Bà Rịa - Vũng Tàu": ["Bà Rịa", "Vũng Tàu", "BR-VT", "BRVT"],
+    "Long An": ["Long An"],
+    "Tiền Giang": ["Tiền Giang"],
+    "Bến Tre": ["Bến Tre"],
+    "Trà Vinh": ["Trà Vinh"],
+    "Vĩnh Long": ["Vĩnh Long"],
+    "Đồng Tháp": ["Đồng Tháp"],
+    "An Giang": ["An Giang"],
+    "Kiên Giang": ["Kiên Giang"],
+    "Cần Thơ": ["Cần Thơ"],
+    "Hậu Giang": ["Hậu Giang"],
+    "Sóc Trăng": ["Sóc Trăng"],
+    "Bạc Liêu": ["Bạc Liêu"],
+    "Cà Mau": ["Cà Mau"],
 }
 
 # List of valid (new) province names
@@ -130,15 +178,18 @@ for reg in PROVINCE_REGIONS:
 DISASTER_RULES = [
   # 1) Bão & áp thấp nhiệt đới
   ("storm", [
-    r"(?<!\w)bão(?!\w)", r"bão\s*số\s*\d+",
+    # Bão (loại trừ: đi bão, bão giá, bão mạng, bão lòng, cơn bão số... khi nói về giá cả)
+    r"(?<!\w)(?<!đi\s)(?<!dự\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\w)",
+    r"bão\s*số\s*\d+",
     r"siêu\s*bão", r"hoàn\s*lưu\s*bão", r"tâm\s*bão",
     r"đổ\s*bộ", r"đi\s*vào\s*biển\s*đông", r"tiến\s*vào\s*biển\s*đông",
-    r"suy\s*yếu", r"mạnh\s*lên", r"tăng\s*cấp",
-    r"áp\s*thấp\s*nhiệt\s*đới", r"(?<!\w)ATNĐ(?!\w)", r"vùng\s*áp\s*thấp",
+    # Áp thấp (loại trừ: huyết áp thấp, cao áp thấp)
+    r"(?<!huyết\s)áp\s*thấp\s*nhiệt\s*đới",
+    r"(?<!huyết\s)(?<!cao\s)áp\s*thấp(?!\w)",
+    r"(?<!\w)ATNĐ(?!\w)", r"vùng\s*áp\s*thấp",
     r"xoáy\s*thuận\s*nhiệt\s*đới", r"nhiễu\s*động\s*nhiệt\s*đới",
     r"gió\s*mạnh\s*cấp\s*\d+", r"gió\s*giật\s*cấp\s*\d+",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai", r"biển\s*động",
-    r"áp\s*suất\s*trung\s*tâm", r"vùng\s*gió\s*mạnh", r"gió\s*giật",
+    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
   ]),
 
   # 2) Lũ, Ngập lụt, Sạt lở, Sụt lún (Grouped as flood_landslide)
@@ -147,16 +198,18 @@ DISASTER_RULES = [
     r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"mưa\s*cực\s*lớn",
     r"mưa\s*đặc\s*biệt\s*lớn", r"mưa\s*diện\s*rộng", r"mưa\s*kéo\s*dài",
     r"mưa\s*kỷ\s*lục", r"mưa\s*cực\s*đoan", r"mưa\s*như\s*trút",
-    # Lũ / Ngập
-    r"(?<!\w)lũ(?!\w)(?!\s*lượt)", r"(?<!\w)lụt(?!\w)", r"lũ\s*lụt", r"lũ\s*lớn", r"lũ\s*lịch\s*sử", r"lũ\s*dâng",
-    r"(?<!\w)ngập(?!\w)(?!\s*đầu\s*tư)(?!\s*tràn)(?!\s*trong)", r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu",
+    # Lũ / Ngập (Strict boundaries)
+    r"(?<!\w)lũ(?!\w)(?!\s*lượt)(?!\s*khách)",
+    r"(?<!\w)lụt(?!\w)", r"lũ\s*lụt", r"lũ\s*lớn", r"lũ\s*lịch\s*sử", r"lũ\s*dâng",
+    r"(?<!\w)ngập(?!\w)(?!\s*đầu\s*tư)(?!\s*tràn)(?!\s*trong)(?!\s*ngụa)(?!\s*mặn)",
+    r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu",
     r"ngập\s*cục\s*bộ", r"nước\s*lên\s*nhanh", r"mực\s*nước\s*dâng", r"đỉnh\s*lũ",
     r"báo\s*động\s*(?:1|2|3|I|II|III)", r"vượt\s*báo\s*động",
     r"vỡ\s*đê", r"vỡ\s*kè", r"tràn\s*đê", r"tràn\s*bờ", r"vỡ\s*đập", r"sự\s*cố\s*đập", r"xả\s*lũ",
     # Lũ quét / Lũ ống
     r"lũ\s*quét", r"lũ\s*ống", r"nước\s*lũ\s*cuốn\s*trôi",
-    # Sạt lở / Sụt lún
-    r"sạt\s*lở", r"sạt\s*lở\s*đất", r"lở\s*đất", r"trượt\s*đất", r"trượt\s*lở",
+    # Sạt lở / Sụt lún (Loại trừ: đất đai, bất động sản, vận chuyển đất)
+    r"(?<!\w)sạt(?!\w)", r"sạt\s*lở(?!\s*giá)", r"sạt\s*lở\s*đất", r"lở\s*đất", r"trượt\s*đất", r"trượt\s*lở",
     r"sạt\s*taluy", r"taluy", r"sạt\s*lở\s*bờ\s*sông", r"sạt\s*lở\s*bờ\s*biển",
     r"sụt\s*lún", r"hố\s*tử\s*thần", r"hố\s*sụt", r"nứt\s*đất", r"sụp\s*đường", r"sụp\s*lún"
   ]),
@@ -168,7 +221,7 @@ DISASTER_RULES = [
     r"nhiệt\s*độ\s*kỷ\s*lục", r"oi\s*bức", r"nhiệt\s*độ\s*cao",
     # Hạn hán
     r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước", r"cạn\s*kiệt",
-    r"khát\s*nước", r"nứt\s*nẻ", r"đất\s*khô\s*nứt", "cạn\s*hồ",
+    r"khát\s*nước", r"nứt\s*nẻ", r"đất\s*khô\s*nứt", r"cạn\s*hồ",
     # Mặn
     r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn", r"mặn\s*xâm\s*nhập",
     r"hạn\s*mặn", r"(?<!\w)ppt(?!\w)", r"(?<!\w)g/l(?!\w)"
@@ -193,17 +246,21 @@ DISASTER_RULES = [
   # 6) Thời tiết cực đoan khác (Lốc, Sét, Mưa đá, Rét)
   ("extreme_other", [
     # Dông lốc
-    r"dông", r"dông\s*lốc", r"lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc",
+    r"(?<!\w)dông(?!\w)", r"dông\s*lốc", r"(?<!\w)lốc(?!\w)", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc",
     # Mưa đá, Sét
-    r"mưa\s*đá", r"sét", r"giông\s*sét", r"sét\s*đánh",
+    r"mưa\s*đá", r"(?<!\w)sét(?!\w)", r"giông\s*sét", r"sét\s*đánh",
     # Rét, Băng giá
     r"rét\s*đậm", r"rét\s*hại", r"không\s*khí\s*lạnh", r"sương\s*muối", r"băng\s*giá"
   ]),
 
   # 7) Cháy rừng
+  # 7) Cháy rừng
+  # 7) Cháy rừng
   ("wildfire", [
+    # Explicitly wildfire only
     r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
-    r"PCCCR", r"cháy\s*thực\s*bì", r"bùng\s*phát\s*cháy"
+    r"PCCCR", r"cháy\s*thực\s*bì", r"rừng\s*phòng\s*hộ", r"rừng\s*sản\s*xuất", 
+    r"đám\s*cháy\s*rừng", r"lửa\s*rừng"
   ]),
 
   # 8) Động đất, Sóng thần
@@ -211,7 +268,8 @@ DISASTER_RULES = [
     r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn",
     r"nứt\s*đất", r"đứt\s*gãy", r"nứt\s*nhà",
     r"sóng\s*thần", r"cảnh\s*báo\s*sóng\s*thần", r"tsunami",
-    r"richter", r"chấn\s*tiêu", r"tâm\s*chấn"
+    r"richter", r"chấn\s*tiêu", r"tâm\s*chấn",
+    r"độ\s*lớn", r"magnitude", r"Mw", r"ML"
   ])
 ]
 
@@ -220,75 +278,75 @@ DISASTER_CONTEXT = [
   r"cấp\s*độ\s*rủi\s*ro", r"rủi\s*ro\s*thiên\s*tai",
   r"sơ\s*tán", r"di\s*dời", r"cứu\s*hộ", r"cứu\s*nạn",
   r"thiệt\s*hại", r"thương\s*vong", r"mất\s*tích", r"bị\s*thương",
-  r"chia\s*cắt", r"cô\s*lập", r"mất\s*điện", r"mất\s*liên\s*lạc"
+  r"chia\s*cắt", r"cô\s*lập", r"mất\s*điện", r"mất\s*liên\s*lạc",
+  # Official Sources
+  r"trung\s*tâm\s*dự\s*báo", r"đài\s*khí\s*tượng", r"thủy\s*văn",
+  r"ban\s*chỉ\s*huy", r"ban\s*chỉ\s*đạo", r"phòng\s*chống\s*thiên\s*tai", 
+  r"sở\s*nn&ptnt", r"bộ\s*nông\s*nghiệp", r"ubnd",
+  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện", r"khẩn\s*cấp",
+  # Recovery / Relief (Moved from Negatives to Positive Context)
+  r"khắc\s*phục", r"hỗ\s*trợ", r"cứu\s*trợ", r"ủng\s*hộ",
+  r"thăm\s*hỏi", r"chia\s*sẻ", r"quyên\s*góp", r"tiếp\s*nhận",
+  r"sửa\s*chữa", r"khôi\s*phục", r"tái\s*thiết", r"bồi\s*thường",
+  r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn",
+  r"bệnh\s*viện", r"điều\s*trị", r"bác\s*sĩ", r"cấp\s*cứu"
 ]
 
-DISASTER_NEGATIVE = [
-  # Bão (Metaphorical usage)
+# RECOVERY Keywords for Event Stage Classification
+RECOVERY_KEYWORDS = [
+    r"khắc\s*phục", r"hỗ\s*trợ", r"cứu\s*trợ", r"ủng\s*hộ",
+    r"thăm\s*hỏi", r"chia\s*sẻ", r"quyên\s*góp", r"tiếp\s*nhận",
+    r"sửa\s*chữa", r"khôi\s*phục", r"tái\s*thiết", r"bồi\s*thường",
+    r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn" 
+]
+
+# 1. HARD NEGATIVE: Absolute Veto (Metaphors, Sports, Showbiz, Accidents)
+HARD_NEGATIVE = [
+  # Bão (Metaphorical)
   r"bão\s*giá", r"cơn\s*bão\s*(?:dư\s*luận|truyền\s*thông|tin\s*giả|mạng)(?!\w)",
   r"bão\s*sale", r"bão\s*like", r"bão\s*scandal", r"cơn\s*bão\s*tài\s*chính",
-  r"bão\s*sao\s*kê", r"bão\s*(?:chấn\s*thương|bệnh\s*tật|sa\s*thải)(?!\w)",
+  r"bão\s*sao\s*kê", r"bão\s*(?:chấn\s*thương|sa\s*thải)(?!\w)",
   r"(?<!thiên\s)bão\s*lòng", r"dông\s*bão\s*(?:cuộc\s*đời|tình\s*cảm|nội\s*tâm)",
+  r"siêu\s*bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu)", 
   
-  # Động đất / Lũ (Metaphorical)
-  r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)(?!\w)",
-  r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí|mạng)(?!\w)",
-  r"(?<!\w)động\s*đất\s*(?:thị\s*trường|giá|chứng\s*khoán|bất\s*động\s*sản)(?!\w)",
+  # Động đất / Lũ / Sóng (Metaphorical)
+  r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)",
+  r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí)",
   r"địa\s*chấn\s*(?:showbiz|làng\s*giải\s*trí|V-pop|V-League)",
-  r"lũ\s*(?:lượt|fan|like|view|đơn\s*hàng|người\s*về)(?!\w)",
+  r"lũ\s*(?:lượt|fan|like|view|đơn\s*hàng)",
   r"cơn\s*lốc\s*(?:đường\s*biên|màu\s*cam|sân\s*cỏ|chuyển\s*nhượng)",
-  
-  # Sóng/Nước (Metaphorical)
-  r"sóng\s*gió\s*(?:cuộc\s*đời|hôn\s*nhân|tình\s*cảm)",
-  r"làn\s*sóng\s*(?:covid|dịch\s*bệnh|đầu\s*tư|nhập\s*cư|tẩy\s*chay|sa\s*thải)(?!\w)",
-  r"ngập\s*(?:tràn|trong)\s*(?:hạnh\s*phúc|tiếng\s*cười|quà|bình\s*luận|sắc\s*màu|niềm\s*vui)(?!\w)",
-  
-  # Nhiệt/Lạnh (Metaphorical)  
-  r"cơn\s*sốt\s*(?:đất|giá|vé|mua\s*sắm)(?!\w)",
-  r"đóng\s*băng\s*(?:thị\s*trường|tài\s*khoản|quan\s*hệ|hợp\s*đồng)(?!\w)",
-  r"nóng\s*(?:bỏng\s*)?(?:showbiz|sân\s*cỏ|thị\s*trường|tranh\s*cãi)",
-  
-  # Fire - Non-disaster contexts (Phân biệt cháy rừng vs cháy thường)
-  # Cháy nhà/kho/xưởng/xe (không phải thiên tai tự nhiên)
-  r"cháy\s*(?:nhà|nhà\s*dân|chung\s*cư|căn\s*hộ|biệt\s*thự|khu\s*công\s*nghiệp|công\s*ty|doanh\s*nghiệp)",
-  r"cháy\s*(?:kho|kho\s*hàng|nhà\s*kho|xưởng|nhà\s*xưởng|văn\s*phòng)",
-  r"cháy\s*(?:xe|ô\s*tô|xe\s*máy|xe\s*tải|container)",
-  r"cháy\s*(?:quán|cửa\s*hàng|siêu\s*thị|chợ|trung\s*tâm\s*thương\s*mại)",
-  r"cháy\s*(?:nổ|điện|chập\s*điện|ga|gas|bếp\s*gas)",
-  r"hỏa\s*hoạn\s*(?:tại|ở)\s*(?:khu|kho|nhà|xưởng|công\s*ty)",
-  
-  # Non-disaster Context (Construction, Policy, Traffic, Science, Agri)
-  r"(?<!\w)quy\s*hoạch(?!\w)", r"(?<!\w)phê\s*duyệt(?!\w)", r"(?<!\w)dự\s*án(?!\w)",
-  r"khởi\s*công", r"khánh\s*thành", r"nghiệm\s*thu", r"đấu\s*thầu",
-  r"bãi\s*đỗ\s*xe", r"biệt\s*thự", r"chung\s*cư", r"khu\s*đô\s*thị",
-  r"tai\s*nạn\s*giao\s*thông", r"va\s*chạm\s*xe", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
-  r"đường\s*cao\s*tốc", r"ùn\s*tắc", 
-  r"ứng\s*dụng\s*ai", r"trí\s*tuệ\s*nhân\s*tạo", r"công\s*nghệ", r"chuyển\s*đổi\s*số",
-  r"hội\s*thảo", r"hội\s*nghị", r"diễn\s*đàn", r"nghiên\s*cứu",
-  
-  # Agricultural / Seasonal (without disaster warning context)
-  r"vụ\s*tết", r"hoa\s*cúc", r"thối\s*rễ", r"được\s*mùa", r"mất\s*mùa", 
-  r"giá\s*nông\s*sản", r"xuất\s*khẩu",
-  
-  # Post-disaster / Charity (Recovery actions, not warnings)
-  r"xây\s*dựng\s*nhà\s*cho", r"trao\s*tặng", r"quyên\s*góp", r"ủng\s*hộ",
-  r"khắc\s*phục\s*hậu\s*quả", r"thăm\s*hỏi", r"chia\s*sẻ\s*khó\s*khăn",
-  
-  # Entertainment/Sports specific
-  r"scandal", r"drama", r"tin\s*đồn", r"ồn\s*ào",
-  r"(?:V-League|Ngoại\s*hạng\s*Anh|World\s*Cup|SEA\s*Games)",
-  
-  # Crime / Economy / Policy (Veto for disaster watch)
-  r"bắt\s*(?:giữ|tạm\s*giữ|ngay|đối\s*tượng|ghe|thuyền|xe|đất)",
-  r"tăng\s*(?:lương|giá|trưởng)", r"đề\s*xuất\s*(?:tăng|giảm|xây|dùng)",
-  r"hợp\s*nhất", r"bổ\s*nhiệm", r"phó\s*chủ\s*tịch", r"bộ\s*nội\s*vụ",
-  r"lừa\s*đảo", r"sập\s*bẫy", r"chiếm\s*đoạt", r"hóa\s*đơn", r"chứng\s*từ",
-  r"vượt\s*biển(?!\s*động)", r"xuất\s*nhập\s*cảnh", r"người\s*trung\s*quốc",
-  r"quả\s*bom", r"vật\s*nổ", r"thuốc\s*nổ",
-  r"nhân\s*lực", r"công\s*bố\s*khu\s*đất", r"đối\s*ứng", r"metro",
-  r"bệnh\s*viện", r"cứu\s*thương(?!\s*do\s*thiên\s*tai)", r"tông\s*xe", r"va\s*chạm",
-  r"giáng\s*sinh", r"noel", r"từ\s*thiện", r"ủng\s*hộ", r"trao\s*tặng"
+  r"sóng\s*gió\s*(?:cuộc\s*đời|hôn\s*nhân)",
+  r"làn\s*sóng\s*(?:covid|dịch\s*bệnh|đầu\s*tư|tẩy\s*chay|sa\s*thải)",
+  r"đóng\s*băng\s*(?:thị\s*trường|tài\s*khoản|quan\s*hệ)",
+  r"cơn\s*sốt\s*(?:đất|giá|vé)",
+  r"không\s*khí\s*lạnh\s*(?:nhạt|lùng|giá)", 
+
+  # Thể thao
+  r"(?:đi|về)\s*bão", r"ăn\s*mừng", r"cổ\s*vũ", r"xuống\s*đường",
+  r"bóng\s*đá", r"U\d+", r"đội\s*tuyển", r"SEA\s*Games", r"AFF\s*Cup",
+  r"vô\s*địch", r"huy\s*chương", r"bàn\s*thắng", r"ghi\s*bàn", r"HLV", r"sân\s*cỏ",
+  r"tỉ\s*số", r"chung\s*kết", r"ngược\s*dòng"
 ]
+
+# 2. SOFT NEGATIVE: Potential False Positive (Politics, Admin, Economy)
+# Can be overridden if HAZARD SCORE is high enough.
+SOFT_NEGATIVE = [
+  r"đại\s*hội", r"bầu\s*cử", r"ứng\s*cử", r"đại\s*biểu", r"quốc\s*hội",
+  r"mặt\s*trận\s*tổ\s*quốc", r"MTTQ", r"ủy\s*ban", r"kiểm\s*tra", r"giám\s*sát",
+  r"thăng\s*quân\s*hàm", r"bổ\s*nhiệm", r"kỷ\s*luật", r"nghị\s*quyết",
+  r"thủ\s*tướng", r"bộ\s*trưởng", r"lãnh\s*đạo",
+  r"khởi\s*công", r"khánh\s*thành", r"nghiệm\s*thu", 
+  r"an\s*ninh\s*mạng", r"chuyển\s*đổi\s*số", r"công\s*nghệ", r"startup",
+  r"giải\s*thưởng", r"vinh\s*danh",
+  # Tai nạn (Soft Negative - pass if caused by storm/flood)
+  r"tai\s*nạn\s*giao\s*thông", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
+  # Fire non-wildfire
+  r"cháy\s*(?:nhà|xe|kho|xưởng|chung\s*cư|công\s*ty|chợ|siêu\s*thị|tàu\s*cá|quán)",
+  r"hỏa\s*hoạn\s*(?:tại|ở)\s*(?:khu|kho|nhà|xưởng)"
+]
+
+# Combined Negative List for backward compatibility (used in NO_ACCENT generation)
+DISASTER_NEGATIVE = HARD_NEGATIVE + SOFT_NEGATIVE
 
 # Removed old compiled patterns
 POLLUTION_TERMS = [r"ô\s*nhiễm", r"AQI", r"PM2\.5", r"bụi\s*mịn"]
@@ -392,7 +450,7 @@ def _to_float(num_str: str) -> float:
 
 def extract_provinces(text: str) -> List[dict]:
     """
-    Extract multiple provinces/regions with location info.
+    Extract multiple provinces/regions with location info using finditer.
     Returns list of dicts: {name, type, span, match}
     Matches against both t (accented) and t0 (unaccented).
     """
@@ -400,23 +458,18 @@ def extract_provinces(text: str) -> List[dict]:
     t, t0 = risk_lookup.canon(text or "")
     
     for item in PROVINCE_REGEXES:
-        found = None
-        # Try Accented
-        m = item["re_acc"].search(t)
-        if m:
-            found = m
-        else:
-            # Try Unaccented
-            m = item["re_no"].search(t0)
-            if m:
-                found = m
+        # Try Accented first
+        found_iter = list(item["re_acc"].finditer(t))
+        if not found_iter:
+             # Try Unaccented if no accented match found for this regex
+             found_iter = list(item["re_no"].finditer(t0))
         
-        if found:
+        for m in found_iter:
             matches.append({
                 "name": item["name"],  # The normalized name
                 "type": item["type"],
-                "span": found.span(),
-                "match": found.group(0)
+                "span": m.span(),
+                "match": m.group(0)
             })
             
     # Sort by position
@@ -476,8 +529,6 @@ def extract_disaster_metrics(text: str) -> dict:
 
 def compute_disaster_signals(text: str) -> dict:
     # 1. Standardize Normalization using risk_lookup.canon
-    # t: normalized, lowercase, accents preserved
-    # t0: normalized, lowercase, accents stripped, punctuation removed
     t, t0 = risk_lookup.canon(text or "")
 
     rule_matches = []
@@ -487,18 +538,14 @@ def compute_disaster_signals(text: str) -> dict:
         # Match Accented on t
         for p in patterns:
             if re.search(p, t, re.IGNORECASE):
-                matched = True
-                break
-        # Match Unaccented on t0 (if not already matched)
-        if not matched:
-            _, patterns_no = DISASTER_RULES_NO_ACCENT[i]
-            for p in patterns_no:
-                if re.search(p, t0, re.IGNORECASE):
-                    matched = True
-                    break
-        
-        if matched:
-            rule_matches.append(label)
+                matched = True; break
+        # Disable Unaccented Check to prevent False Positives (bao -> bão, lu -> lũ)
+        # if not matched:
+        #     _, patterns_no = DISASTER_RULES_NO_ACCENT[i]
+        #     for p in patterns_no:
+        #         if re.search(p, t0, re.IGNORECASE):
+        #             matched = True; break
+        if matched: rule_matches.append(label)
 
     hazard_score = len(set(rule_matches))
     rule_score = WEIGHT_RULE if hazard_score else 0.0
@@ -507,8 +554,7 @@ def compute_disaster_signals(text: str) -> dict:
     for k, klist in IMPACT_KEYWORDS.items():
         for kw in klist:
             if kw.lower() in t:
-                impact_hits.append((k, kw))
-                break
+                impact_hits.append((k, kw)); break
     impact_score = WEIGHT_IMPACT if impact_hits else 0.0
 
     agency_match = bool(RE_AGENCY.search(t))
@@ -518,19 +564,13 @@ def compute_disaster_signals(text: str) -> dict:
     prov_hits = extract_provinces(text)
     specific_prov_found = any(h["type"] == "province" for h in prov_hits)
     
-    # Determine best display name
     best_prov = "unknown"
-    # 1. First specific
     for h in prov_hits:
-        if h["type"] == "province":
-            best_prov = h["name"]; break
-    # 2. If no specific, use region
+        if h["type"] == "province": best_prov = h["name"]; break
     if best_prov == "unknown":
         for h in prov_hits:
-            if h["type"] == "region":
-                best_prov = h["name"]; break
+            if h["type"] == "region": best_prov = h["name"]; break
     
-    # Only score if specific province found (reduce false positives from general regional news)
     province_score = WEIGHT_PROVINCE if specific_prov_found else 0.0
 
     # Source keywords match
@@ -538,48 +578,38 @@ def compute_disaster_signals(text: str) -> dict:
     non_ambiguous_hits = []
     for kw in SOURCE_DISASTER_KEYWORDS:
         kl = kw.lower()
-        if kl in t:
-            if kl not in ambiguous:
-                non_ambiguous_hits.append(kl)
+        if kl in t and kl not in ambiguous:
+            non_ambiguous_hits.append(kl)
     source_score = float(len(non_ambiguous_hits)) * WEIGHT_SOURCE
 
     score = rule_score + impact_score + agency_score + source_score + province_score
 
     # Context Matches
     context_hits = []
-    # Check each context pattern (Match either accented or unaccented)
     for i, p_str in enumerate(DISASTER_CONTEXT):
         matched = False
         if re.search(p_str, t, re.IGNORECASE): matched = True
-        else:
-            p_no = DISASTER_CONTEXT_NO_ACCENT[i]
-            if re.search(p_no, t0, re.IGNORECASE): matched = True
-        
+        # Disable Unaccented Check for Context
+        # else:
+        #     p_no = DISASTER_CONTEXT_NO_ACCENT[i]
+        #     if re.search(p_no, t0, re.IGNORECASE): matched = True
         if matched: context_hits.append(p_str)
         
     for pt in POLLUTION_TERMS:
         if re.search(pt, t, re.IGNORECASE): context_hits.append(pt)
     context_score = len(context_hits)
 
-    # Negative Matches
-    negative_hit = False
-    for i, p_str in enumerate(DISASTER_NEGATIVE):
-        if re.search(p_str, t, re.IGNORECASE): 
-            negative_hit = True
-            break
-        p_no = DISASTER_NEGATIVE_NO_ACCENT[i]
-        if re.search(p_no, t0, re.IGNORECASE):
-            negative_hit = True
-            break
-    
-    # Extra check: if heavily sports related
-    SPORTS_TERMS = ["bóng đá", "v-league", "ngoại hạng anh", "cầu thủ", "ghi bàn"]
-    if not negative_hit:
-        sc = sum(1 for w in SPORTS_TERMS if w in t)
-        if sc >= 2 and hazard_score < 2:
-            if "địa chấn" in t or "cơn lốc" in t: negative_hit = True
-            # Check unaccented too
-            if "dia chan" in t0 or "con loc" in t0: negative_hit = True
+    # NEGATIVE CHECKS (Split)
+    hard_negative = False
+    for p in HARD_NEGATIVE:
+        if re.search(p, t, re.IGNORECASE): 
+            hard_negative = True; break
+            
+    soft_negative = False
+    if not hard_negative:
+        for p in SOFT_NEGATIVE:
+            if re.search(p, t, re.IGNORECASE):
+                soft_negative = True; break
 
     metrics = extract_disaster_metrics(t)
 
@@ -591,29 +621,90 @@ def compute_disaster_signals(text: str) -> dict:
         "score": score,
         "hazard_score": hazard_score,
         "context_score": context_score,
-        "negative_hit": negative_hit,
+        "hard_negative": hard_negative,
+        "soft_negative": soft_negative,
         "metrics": metrics
     }
 
-def contains_disaster_keywords(text: str) -> bool:
+def determine_event_stage(text: str) -> str:
+    """Classify event stage: WARNING, IMPACT, or RECOVERY"""
+    t_lower = text.lower()
+    
+    # 1. Recovery
+    for kw in RECOVERY_KEYWORDS:
+        if re.search(kw, t_lower): return "RECOVERY"
+        
+    # 2. Warning / Forecast
+    warning_sig = [
+        r"dự\s*báo", r"cảnh\s*báo", r"tin\s*bão", r"áp\s*thấp", 
+        r"công\s*điện", r"khẩn\s*cấp", r"nguy\s*cơ", r"chủ\s*động"
+    ]
+    for kw in warning_sig:
+        if re.search(kw, t_lower): return "WARNING"
+        
+    # 3. Default to IMPACT (Actual event happening)
+    return "IMPACT"
+
+
+def contains_disaster_keywords(text: str, trusted_source: bool = False) -> bool:
     """
-    Two-stage verification with hard veto on negative patterns.
+    Advanced Logic v2:
+    - Hard Veto: Metaphors/Sports -> Immediate FAIL.
+    - Soft Veto: Politics/Accidents -> Fail unless Hazard Score >= 1 AND Score >= 3.0.
+    - Trusted: Pass if Hazard >= 1 OR Score >= 3.0.
+    - Untrusted: 
+        - Hazard == 0 -> Fail (unless metrics+context strong? No, kept strict).
+        - Hazard >= 1 -> Needs Score >= 3.0 OR (Impact/Metric/Context/Province).
     """
-    # 1. Stage A: Candidate Detection (Broad)
     sig = compute_disaster_signals(text)
     
-    # Must have at least some signal (hazard pattern or metrics)
-    if sig["hazard_score"] == 0 and not sig["metrics"]:
-        return False
-
-    # 2. Hard Veto: Negative patterns
-    # This prevents metaphorical/non-disaster content from passing
-    if sig["negative_hit"]:
+    # 1. Absolute Veto
+    if sig["hard_negative"]:
         return False
         
-    # Accept if it passes the score threshold (Stage A)
-    # logic: if it has hazards or metrics and no negative hits, it's likely valid.
-    return sig["hazard_score"] > 0 or len(sig["metrics"]) > 0
+    # 2. Mandatory Hazard Check (Keep strict for now to avoid pure noise)
+    if sig["hazard_score"] == 0:
+        if not sig["metrics"]: 
+            return False
+        
+    # 3. Decision Logic
+    
+    if sig["soft_negative"]:
+        # Soft Neg present (e.g. "Thủ tướng", "Tai nạn", "Khánh thành")
+        # Require stronger signal to override (e.g. "Bão" + "Lũ" -> Hazard=2, or very high context).
+        # T030 (Khánh thành dự án ngập) had Hazard=1, Score=4.0. We want to Reject it.
+        # So we raise threshold: Need Hazard >= 2 OR Score >= 7.0
+        if sig["hazard_score"] < 2 and sig["score"] < 7.0:
+            return False
+        # Else pass (Override)
+        return True
+    
+    else:
+        # No Negative Hit
+        # Pass if High Score
+        if sig["score"] >= 3.0:
+            return True
+            
+        # Trusted source
+        if trusted_source and sig["hazard_score"] > 0:
+            return True
+        
+        # Untrusted + Low Score (< 3.0):
+        # Need corroboration
+        has_evidence = (
+            sig["impact_hits"] or 
+            sig["metrics"] or 
+            sig["province"] or 
+            sig["context_score"] > 0 or
+            sig["agency"]
+        )
+        if sig["hazard_score"] > 0 and has_evidence:
+            return True
+        elif sig["hazard_score"] >= 2: # Multiple hazard keywords -> likely true
+             return True
+            
+        return False
+
 
 def diagnose(text: str) -> dict:
     sig = compute_disaster_signals(text)
@@ -817,92 +908,43 @@ def extract_event_time(published_at: datetime, text: str) -> datetime | None:
 
 def classify_disaster(text: str, title: str = "") -> dict:
     """
-    Classify disaster type by selecting hazard with highest risk level.
-    Returns:
-    {
-        "primary_type": str,      # Hazard type with max risk
-        "primary_level": int,     # Risk level of primary hazard
-        "all_hazards": [          # Full list of detected hazards
-            {"type": str, "level": int},
-            ...
-        ]
-    }
+    Classify disaster type based on rule matches.
+    Simplified version: No complex risk level assessment (User Request).
     """
-    # Get signals first
-    sig = compute_disaster_signals(text)
+    # Combine text for better signal detection
+    full_text = f"{title}\n{text}" if title else text
+    sig = compute_disaster_signals(full_text)
     
-    # If no hazard detected, return unknown
-    if not sig["rule_matches"]:
+    matches = list(set(sig["rule_matches"])) # Deduplicate
+    
+    if not matches:
         return {
             "primary_type": "unknown",
             "primary_level": 0,
             "all_hazards": []
         }
     
-    # Use risk_lookup.assess() to get detailed hazard levels
-    combined_text = f"{title}\n{text}" if title else text
-    assessment = risk_lookup.assess(combined_text, prefer_declared=True)
+    # Simple Priority for Primary Type
+    PRIO = [
+        "quake_tsunami", 
+        "storm", "storm_surge",
+        "flood_landslide", 
+        "wildfire", 
+        "heat_drought", 
+        "wind_fog", 
+        "extreme_other"
+    ]
     
-    # Build hazard list with levels
-    hazard_levels = []
+    # Build list
+    all_hazards = [{"type": m, "level": 1} for m in matches] # Default Level 1
     
-    if assessment["hazards"]:
-        # Group hazards by disaster type mapping
-        # risk_lookup returns granular hazards (e.g., "storm", "rain", "flood")
-        # We need to map them to our 8 groups
-        
-        HAZARD_TYPE_MAPPING = {
-            # risk_lookup key -> nlp.py disaster group
-            "storm": "storm",
-            "surge": "storm_surge",
-            "rain": "flood_landslide",
-            "flood": "flood_landslide",
-            "flash_flood": "flood_landslide",
-            "heat": "heat_drought",
-            "drought": "heat_drought",
-            "saline": "heat_drought",
-            "strong_wind_sea": "wind_fog",
-            "fog": "wind_fog",
-            "extreme_other": "extreme_other",
-            "cold": "extreme_other",
-            "wildfire": "wildfire",
-            "earthquake": "quake_tsunami",
-            "quake": "quake_tsunami",
-            "tsunami": "quake_tsunami"
-        }
-        
-        # Aggregate by disaster group
-        group_levels = {}
-        for h in assessment["hazards"]:
-            hazard_key = h["hazard"]
-            level = h["level"]
-            
-            # Map to disaster group
-            group = HAZARD_TYPE_MAPPING.get(hazard_key, hazard_key)
-            
-            # Take max level for each group
-            if group not in group_levels or level > group_levels[group]:
-                group_levels[group] = level
-        
-        # Convert to list
-        for group, level in group_levels.items():
-            hazard_levels.append({"type": group, "level": level})
-    
-    # If risk_lookup didn't find levels, use rule_matches with default level
-    if not hazard_levels:
-        for hazard_type in sig["rule_matches"]:
-            hazard_levels.append({"type": hazard_type, "level": 1})
-    
-    # Sort by level (descending), then by type name for stability
-    hazard_levels.sort(key=lambda x: (-x["level"], x["type"]))
-    
-    # Select primary (highest level)
-    primary = hazard_levels[0] if hazard_levels else {"type": "unknown", "level": 0}
+    # Sort by Priority
+    all_hazards.sort(key=lambda h: PRIO.index(h["type"]) if h["type"] in PRIO else 99)
     
     return {
-        "primary_type": primary["type"],
-        "primary_level": primary["level"],
-        "all_hazards": hazard_levels
+        "primary_type": all_hazards[0]["type"],
+        "primary_level": 1,
+        "all_hazards": all_hazards
     }
 
 def detect_flood_station(text: str) -> dict:
@@ -992,19 +1034,4 @@ def summarize(text: str, max_len: int = 220) -> str:
     if len(cleaned) <= max_len: return cleaned
     return cleaned[:max_len].rsplit(" ", 1)[0] + "…"
 
-def classify_disaster(text: str) -> str:
-    """Classify the text into a single disaster type string.
-    Prioritizes more specific detections.
-    """
-    sig = compute_disaster_signals(text)
-    matches = sig.get("rule_matches", [])
-    if not matches:
-        return "other"
-    
-    # Prioritize certain categories if multiple match
-    prio = ["quake_tsunami", "flood_landslide", "storm", "wildfire", "heat_drought", "wind_fog", "extreme_other", "storm_surge"]
-    for p in prio:
-        if p in matches:
-            return p
-            
-    return matches[0]
+

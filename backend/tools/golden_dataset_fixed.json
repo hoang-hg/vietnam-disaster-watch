@@ -1,0 +1,204 @@
+{
+  "version": "1.0",
+  "generated_at": "2025-12-19T14:42:55.646966Z",
+  "count": 300,
+  "cases": [
+    {
+      "id": "D001",
+      "kind": "title+content",
+      "title": "Hạn mặn gia tăng tại Hà Tĩnh, độ mặn đo được 5.5 g/l",
+      "content": "Đợt nắng nóng khiến Hà Tĩnh ghi nhận nhiệt độ cao 38°C. Nhiều hồ chứa cạn kiệt, người dân thiếu nước. Tại khu vực cửa sông, độ mặn 5.5 g/l; ngành chức năng khuyến cáo ứng phó hạn mặn. Ghi nhận 4 người bị thương, nhiều nhà dân bị hư hại, thiệt hại về tài sản.",
+      "expected": {
+        "is_disaster": true,
+        "hazards": [
+          "heat_drought"
+        ],
+        "provinces": [
+          "Hà Tĩnh"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 4,
+          "damage_hit": true
+        }
+      }
+    },
+    {
+      "id": "D002",
+      "kind": "title+content",
+      "title": "Gió mạnh, sóng lớn trên biển, nhiều tàu thuyền ở Bắc Giang không thể ra khơi",
+      "content": "Gió mạnh kèm sóng cao 4m khiến khu vực Bắc Giang biển động. Khuyến cáo hạn chế di chuyển. Trong đất liền, sương mù làm giảm tầm nhìn còn 150m. Ghi nhận 5 người tử vong, 1 người mất tích, nhiều nhà dân bị hư hại, thiệt hại về tài sản.",
+      "expected": {
+        "is_disaster": true,
+        "hazards": [
+          "wind_fog"
+        ],
+        "provinces": [
+          "Bắc Giang"
+        ],
+        "impacts": {
+          "deaths_min": 5,
+          "missing_min": 1,
+          "injured_min": 0,
+          "damage_hit": true
+        }
+      }
+    },
+    {
+      "id": "N003",
+      "kind": "title+content",
+      "title": "Phát hiện đường dây cờ bạc quy mô lớn tạo làn sóng tranh cãi",
+      "content": "Tại Đồng Tháp, nội dung liên quan lãi suất thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Đồng Tháp"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    },
+    {
+      "id": "N004",
+      "kind": "title+content",
+      "title": "U22 Việt Nam vô địch, người hâm mộ 'đi bão' xuyên đêm bùng nổ like và view",
+      "content": "Tại Huế, nội dung liên quan cổ phiếu thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Thừa Thiên Huế"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    },
+    {
+      "id": "N005",
+      "kind": "title+content",
+      "title": "AFF Cup: Hà Nội FC vào chung kết, phố phường náo nhiệt - cơn bão truyền thông",
+      "content": "Tại Đà Nẵng, nội dung liên quan xăng dầu thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Hà Nội",
+          "Đà Nẵng"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    },
+    {
+      "id": "N006",
+      "kind": "title+content",
+      "title": "Lũ lượt du khách đổ về Lào Cai dịp cuối tuần",
+      "content": "Tại Lào Cai, nội dung liên quan cổ phiếu thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Lào Cai"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    },
+    {
+      "id": "N007",
+      "kind": "title+content",
+      "title": "Bão giá bất động sản quay trở lại, thị trường biến động mạnh",
+      "content": "Tại Bắc Giang, nội dung liên quan bất động sản thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Bắc Giang"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    },
+    {
+      "id": "N008",
+      "kind": "title+content",
+      "title": "HAGL thắng đậm, sân cỏ bùng nổ sau bàn thắng phút 89 khiến dư luận rung chấn",
+      "content": "Tại Sơn La, nội dung liên quan bất động sản thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Sơn La"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    },
+    {
+      "id": "D009",
+      "kind": "title+content",
+      "title": "Sơ tán khẩn cấp trước nguy cơ lũ quét tại Bắc Kạn",
+      "content": "Mưa to khiến Bắc Kạn xảy ra ngập úng cục bộ. Nước lên nhanh làm 120 hộ bị cô lập; 0 người mất tích, 6 người bị thương. Nhiều điểm sạt lở đất vùi lấp 1 nhà. Ghi nhận 6 người bị thương, nhiều nhà dân bị hư hại, thiệt hại về tài sản.",
+      "expected": {
+        "is_disaster": true,
+        "hazards": [
+          "flood_landslide"
+        ],
+        "provinces": [
+          "Bắc Kạn"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 6,
+          "damage_hit": true
+        }
+      }
+    },
+    {
+      "id": "N010",
+      "kind": "title+content",
+      "title": "An ninh mạng: phát hiện lỗ hổng nghiêm trọng trong xăng dầu - cơn bão truyền thông",
+      "content": "Tại Phú Thọ, nội dung liên quan xăng dầu thu hút quan tâm. Đây là tin kinh tế - xã hội, không liên quan thiên tai. Có nhắc 'thiệt hại' theo nghĩa tài chính, nhưng không có sơ tán hay cứu hộ.",
+      "expected": {
+        "is_disaster": false,
+        "hazards": [],
+        "provinces": [
+          "Phú Thọ"
+        ],
+        "impacts": {
+          "deaths_min": 0,
+          "missing_min": 0,
+          "injured_min": 0,
+          "damage_hit": false
+        }
+      }
+    }
+  ]
+}
