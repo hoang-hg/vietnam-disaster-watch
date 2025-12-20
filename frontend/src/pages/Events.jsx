@@ -70,7 +70,7 @@ export default function Events() {
 
         const evs = await getJson(`/api/events?${params.toString()}`);
         
-        let filteredEvents = evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type));
+        let filteredEvents = evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
 
         // Client-side smart filtering for Text and Province (unaccented support)
         if (q) {

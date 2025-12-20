@@ -21,11 +21,9 @@ import urllib3
 # Suppress InsecureRequestWarning for cleaner logs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# =============================================================================
 # GLOBAL SSL PATCh: Allow Legacy Renegotiation
 # Many VN sites (doisongphapluat, gov.vn) use older SSL config that OpenSSL 3 rejects.
 # This forces Python to use a relaxed SSL context for urllib (used by feedparser).
-# =============================================================================
 import ssl
 try:
     _ctx = ssl.create_default_context()
@@ -42,7 +40,6 @@ try:
     ssl._create_default_https_context = lambda: _ctx
 except Exception as e:
     print(f"[WARN] Failed to apply SSL patch: {e}")
-# =============================================================================
 try:
     from bs4 import BeautifulSoup
     _HAS_BS4 = True
@@ -76,22 +73,26 @@ except Exception:
 
 
 def _get_impact_value(impact_data):
-    """
-    Extract numeric value from impact data.
-    Handles both new dict structure {"value": X, "qualifier": Y} and old direct values.
-    """
     if impact_data is None:
         return None
+    if isinstance(impact_data, (int, float)):
+        return impact_data
     if isinstance(impact_data, dict):
-        return impact_data.get("value")
-    return impact_data  # Fallback for old format
+        return impact_data.get("num") or impact_data.get("value")
+    if isinstance(impact_data, list):
+        nums = []
+        for x in impact_data:
+            if isinstance(x, (int, float)): nums.append(x)
+            elif isinstance(x, dict): nums.append(x.get("num") or x.get("value") or 0)
+        return max(nums) if nums else None
+    return impact_data
 
 
 def _to_dt(entry) -> datetime:
     tt = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
     if tt:
         return datetime(*tt[:6], tzinfo=timezone.utc).astimezone(timezone.utc).replace(tzinfo=None)
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
     """Extract best image URL from Feed Entry or HTML Soup."""
@@ -155,7 +156,7 @@ def _save_feed_state(state: dict) -> None:
         pass
 
 
-async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds: int) -> dict:
+async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds: int, force_update: bool = False) -> dict:
     """Fetch all feeds concurrently with conditional requests (ETag / If-Modified-Since).
     
     Includes User-Agent rotation and retries (3 attempts).
@@ -185,10 +186,11 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
                         local_headers = {**headers, "User-Agent": current_ua}
                         
                         state = feed_state.get(u, {})
-                        if state.get("etag"):
-                            local_headers["If-None-Match"] = state.get("etag")
-                        if state.get("last_modified"):
-                            local_headers["If-Modified-Since"] = state.get("last_modified")
+                        if not force_update:
+                            if state.get("etag"):
+                                local_headers["If-None-Match"] = state.get("etag")
+                            if state.get("last_modified"):
+                                local_headers["If-Modified-Since"] = state.get("last_modified")
 
                         r = await client.get(u, headers=local_headers)
                         
@@ -208,7 +210,7 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
                             if r.headers.get("last-modified"):
                                 h["last_modified"] = r.headers.get("last-modified")
                             if h:
-                                feed_state[u] = {**feed_state.get(u, {}), **h, "fetched_at": datetime.utcnow().isoformat()}
+                                feed_state[u] = {**feed_state.get(u, {}), **h, "fetched_at": datetime.now(timezone.utc).isoformat()}
                                 _save_feed_state(feed_state)
                         except Exception:
                             pass
@@ -237,7 +239,7 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
 
 
 
-async def _process_once_async() -> dict:
+async def _process_once_async(force_update: bool = False) -> dict:
     """Async implementation of a single crawl run."""
     db: Session = SessionLocal()
     new_count = 0
@@ -285,7 +287,7 @@ async def _process_once_async() -> dict:
 
         fetched = {}
         try:
-            fetched = await _fetch_all_feeds(all_feed_urls, headers, settings.request_timeout_seconds)
+            fetched = await _fetch_all_feeds(all_feed_urls, headers, settings.request_timeout_seconds, force_update=force_update)
         except Exception as e:
             print(f"[WARN] concurrent fetch failed: {e}")
             fetched = {}
@@ -334,7 +336,7 @@ async def _process_once_async() -> dict:
                 
                 # Process articles from this feed
                 # DO NOT BREAK: Continue to process other feeds (e.g. backup/secondary) to maximize coverage
-                max_articles = 15  # Optimized: reduce from 30 to 15 to save CPU
+                max_articles = 200  # User requested deep crawl
                 for entry in feed.entries[:max_articles]:
                     title = html.unescape(getattr(entry, "title", "")).strip()
                     link = getattr(entry, "link", "").strip()
@@ -391,7 +393,8 @@ async def _process_once_async() -> dict:
                     except Exception:
                         pass
                     
-                    disaster_type = nlp.classify_disaster(text_for_nlp)
+                    disaster_info = nlp.classify_disaster(text_for_nlp)
+                    disaster_type = disaster_info.get("primary_type", "unknown")
                     province = nlp.extract_province(text_for_nlp)
 
                     impacts = nlp.extract_impacts(summary_raw or title)
@@ -433,14 +436,18 @@ async def _process_once_async() -> dict:
                         agency=impacts["agency"],
                         summary=summary,
                         image_url=_extract_image_url(entry),
-                        impact_details=nlp.extract_impact_details(text_for_nlp) # Populate new field
+                        impact_details=nlp.extract_impact_details(text_for_nlp) 
                     )
 
                     try:
                         db.add(article)
                         db.flush()
-                    except Exception:
+                        new_count += 1
+                        src_info["articles_added"] += 1
+                        print(f"   [ADDED] {src.name}: {title[:70]}...")
+                    except Exception as e:
                         db.rollback()
+                        print(f"   [ERROR_DB] {src.name}: {e}")
                         continue
 
                     # Log accepted/inserted candidate (for review)
@@ -450,7 +457,7 @@ async def _process_once_async() -> dict:
                         skip_file = logs_dir / "skip_debug.jsonl"
                         article_hash = get_article_hash(title, src.domain, link)
                         record = {
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                             "action": "accepted",
                             "source": src.name,
                             "domain": src.domain,
@@ -538,8 +545,6 @@ async def _process_once_async() -> dict:
                         pass
 
                     upsert_event_for_article(db, article)
-                    new_count += 1
-                    src_info["articles_added"] += 1
                 
                 break  # Don't try other feeds for this source, we got articles
             
@@ -618,8 +623,11 @@ async def _process_once_async() -> dict:
                                 db.flush()
                                 new_count += 1
                                 src_info["articles_added"] += 1
-                            except Exception:
+                                print(f"   [ADDED_SCRAPE] {src.name}: {title[:70]}...")
+                                upsert_event_for_article(db, article)
+                            except Exception as e:
                                 db.rollback()
+                                print(f"   [ERROR_DB_SCRAPE] {src.name}: {e}")
                                 continue
                             
                             # Try to fetch full page for better impact extraction
@@ -696,7 +704,7 @@ async def _process_once_async() -> dict:
             logs_dir.mkdir(parents=True, exist_ok=True)
             log_file = logs_dir / "crawl_log.jsonl"
             record = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "new_articles": new_count,
                 "elapsed": total_elapsed,
                 "per_source": per_source_stats,
@@ -706,28 +714,22 @@ async def _process_once_async() -> dict:
         except Exception as e:
             print(f"[WARN] failed writing crawl log: {e}")
 
-        return {"new_articles": new_count, "timestamp": datetime.utcnow().isoformat(), "elapsed": total_elapsed, "per_source": per_source_stats}
+        return {"new_articles": new_count, "timestamp": datetime.now(timezone.utc).isoformat(), "elapsed": total_elapsed, "per_source": per_source_stats}
     finally:
         db.close()
 
-
-def process_once() -> dict:
-    """Synchronous wrapper used by the scheduler/background jobs.
-
-    When called from a thread without a running event loop we can safely
-    use asyncio.run to execute the async implementation. When the server
-    startup wants to run the crawl immediately within the running event
-    loop it should call `_process_once_async` directly and await it.
-    """
-    return asyncio.run(_process_once_async())
+def process_once(force: bool = False) -> dict:
+    """Synchronous wrapper used by the scheduler/background jobs."""
+    return asyncio.run(_process_once_async(force_update=force))
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--force", action="store_true", help="Ignore feed cache and force re-crawl")
     args = parser.parse_args()
     if args.once:
-        print(process_once())
+        print(process_once(force=args.force))
     else:
         print("Use --once; scheduling is handled by backend server.")
 

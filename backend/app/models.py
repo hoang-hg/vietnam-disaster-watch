@@ -1,7 +1,8 @@
 from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Float, UniqueConstraint, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
-from .database import Base
+from .database import Base, engine
 
 class Article(Base):
     __tablename__ = "articles"
@@ -28,7 +29,7 @@ class Article(Base):
     agency: Mapped[str | None] = mapped_column(String(256), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    impact_details: Mapped[dict | None] = mapped_column(JSON, nullable=True) # Expanded impact stats (homes, agri, etc)
+    impact_details: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     event = relationship("Event", back_populates="articles")
@@ -52,7 +53,7 @@ class Event(Base):
 
     lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
-    details: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    details: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     confidence: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1 based on multi-source agreement
     sources_count: Mapped[int] = mapped_column(Integer, default=1)

@@ -103,16 +103,15 @@ def find_duplicate_article(
             if article.domain == domain and article.title == title:
                 return article
 
-        # Strategy 3: Highly similar title across domains
-        threshold = 0.75
-        for candidate in candidates:
-            if candidate.domain == domain:
-                continue
-            similarity = title_similarity(title, candidate.title)
-            if similarity >= threshold:
-                print(f"[INFO] Dedup fuzzy match: '{title}' ~ '{candidate.title}' ({similarity:.2f})")
-                return candidate
-
+        # Strategy 3: Highly similar title across domains (DISABLED to maximize recall)
+        # threshold = 0.75
+        # for candidate in candidates:
+        #     if candidate.domain == domain:
+        #         continue
+        #     similarity = title_similarity(title, candidate.title)
+        #     if similarity >= threshold:
+        #         print(f"[INFO] Dedup fuzzy match: '{title}' ~ '{candidate.title}' ({similarity:.2f})")
+        #         return candidate
         return None
     except Exception as e:
         print(f"[WARN] dedup check failed: {e}")

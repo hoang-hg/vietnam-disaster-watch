@@ -10,6 +10,16 @@ engine = create_engine(
     max_overflow=10,
     pool_timeout=30,
 )
+
+# Register JSON adapters for psycopg2 if using Postgres
+if engine.url.drivername.startswith("postgresql"):
+    try:
+        import psycopg2.extras
+        # Use the underlying DBAPI connection to register
+        psycopg2.extras.register_default_json(conn_or_curs=None, globals=True)
+        psycopg2.extras.register_default_jsonb(conn_or_curs=None, globals=True)
+    except Exception:
+        pass
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class Base(DeclarativeBase):

@@ -95,11 +95,6 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
                         if sig not in seen:
                             seen.add(sig)
                             unique.append(x)
-                    current_details[key] = unique
-                else:
-                    # Fallback
-                    current_details[key] = combined
-                    
         ev.details = current_details
 
 

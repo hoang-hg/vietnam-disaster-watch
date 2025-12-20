@@ -14,7 +14,8 @@ DISASTER_GROUPS = {
         "bão nhiệt đới", "siêu bão nhiệt đới", "gió bão", "vùng gió mạnh",
         "tiến vào biển đông", "đi vào biển đông", "suy yếu thành áp thấp",
         "chuyển hướng", "ảnh hưởng của bão", "hoàn lưu áp thấp",
-        "tin bão", "tin áp thấp", "bản tin bão", "cảnh báo bão"
+        "tin bão", "tin áp thấp", "bản tin bão", "cảnh báo bão",
+        "dự báo bão", "hướng di chuyển của bão", "vị trí tâm bão", "sức gió mạnh nhất"
     ],
     "flood_landslide": [
         "lũ", "lụt", "lũ lớn", "lũ lịch sử", "lũ dâng", "ngập", "ngập úng", "ngập lụt", "ngập sâu",
@@ -98,7 +99,9 @@ CONTEXT_KEYWORDS = [
 VIP_TERMS = [
     r"tin\s*bão", r"bão\s*(?:số|gần\s*biển\s*đông|đổ\s*bộ)", 
     r"áp\s*thấp\s*nhiệt\s*đới", r"ATNĐ",
-    r"hỗ\s*trợ\s*khẩn\s*cấp", r"viện\s*trợ.*thiên\s*tai"
+    r"hỗ\s*trợ\s*khẩn\s*cấp", r"viện\s*trợ.*thiên\s*tai",
+    r"dự\s*báo\s*thời\s*tiết", r"cảnh\s*báo\s*mưa", r"tin\s*không\s*khí\s*lạnh",
+    r"dự\s*báo\s*bão", r"cảnh\s*báo\s*lũ", r"nguy\s*cơ\s*sạt\s*lở"
 ]
 
 
@@ -111,6 +114,20 @@ class Source:
     note: str | None = None
     trusted: bool | None = False
 
+# Short list of hazards for GNews RSS search to avoid extremely long URLs
+GNEWS_HAZARD_KEYWORDS = [
+    "bão", "siêu bão", "áp thấp nhiệt đới", "tin bão", "dự báo bão",
+    "lũ", "lụt", "lũ quét", "ngập lụt", "xả lũ", "vỡ đê",
+    "sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống",
+    "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng",
+    "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm",
+    "rét đậm", "rét hại", "băng giá", "sương muối",
+    "cháy rừng", "nguy cơ cháy rừng",
+    "động đất", "sóng thần", "rung chấn",
+    "thiệt hại", "tốc mái", "sập nhà", "cuốn trôi", "cô lập", "chia cắt",
+    "tìm kiếm cứu nạn", "mất tích", "hỗ trợ khẩn cấp"
+]
+
 def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_terms: List[str] | None = None) -> str:
     """Build Google News RSS URL as fallback.
 
@@ -118,7 +135,8 @@ def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_
     requires a hazard term and a context term to reduce false positives.
     Automatically quotes terms with spaces to prevent keyword splitting.
     """
-    hazards = hazard_terms or DISASTER_KEYWORDS
+    # Use condensed list for GNews if no specific hazards provided to keep URL short
+    hazards = hazard_terms or GNEWS_HAZARD_KEYWORDS
     
     # Helper to quote terms with spaces
     def _quote(terms):
@@ -126,13 +144,11 @@ def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_
 
     hazards = _quote(hazards)
 
-    if context_terms:
-        contexts = _quote(context_terms)
-        hazard_q = " OR ".join(hazards)
-        context_q = " OR ".join(contexts)
-        q = f"site:{domain} (({hazard_q}) AND ({context_q}))"
-    else:
-        q = f"site:{domain} (" + " OR ".join(hazards) + ")"
+    # SIMPLIFICATION: Context terms list is too long (200+ items) for GNews URL limits.
+    # Truncating it to 25 items [:25] caused us to miss keywords in the latter half of the list.
+    # We will rely on ONLY the primary Hazard terms for the search query to ensure high recall.
+    # False positives will be filtered by the NLP pipeline (which uses the full keyword list).
+    q = f"site:{domain} (" + " OR ".join(hazards) + ")"
         
     params = {"q": q, "hl": "vi", "gl": "VN", "ceid": "VN:vi"}
     return "https://news.google.com/rss/search?" + urllib.parse.urlencode(params)

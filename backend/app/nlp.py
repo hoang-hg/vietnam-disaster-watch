@@ -3,6 +3,7 @@ import unicodedata
 from typing import List
 from datetime import datetime
 from dateutil import parser as dtparser
+from . import sources
 from .sources import DISASTER_KEYWORDS as SOURCE_DISASTER_KEYWORDS
 from . import risk_lookup
 
@@ -324,7 +325,14 @@ DISASTER_RULES = [
     r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
   ]),
 
-  # 2) Lũ, Ngập lụt, Sạt lở, Sụt lún (Grouped as flood_landslide)
+
+  # 2) Nước dâng, Triều cường (Moved UP to prioritize over flood)
+  ("storm_surge", [
+    r"triều\s*cường", r"nước\s*dâng", r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng",
+    r"đỉnh\s*triều", r"ngập\s*do\s*triều", r"sóng\s*lớn\s*đánh\s*tràn"
+  ]),
+
+  # 3) Lũ, Ngập lụt, Sạt lở, Sụt lún (Grouped as flood_landslide)
   ("flood_landslide", [
     # Mưa lớn (driver)
     r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"mưa\s*cực\s*lớn",
@@ -338,6 +346,7 @@ DISASTER_RULES = [
     r"ngập\s*cục\s*bộ", r"nước\s*lên\s*nhanh", r"mực\s*nước\s*dâng", r"đỉnh\s*lũ",
     r"báo\s*động\s*(?:1|2|3|I|II|III)", r"vượt\s*báo\s*động",
     r"vỡ\s*đê", r"vỡ\s*kè", r"tràn\s*đê", r"tràn\s*bờ", r"vỡ\s*đập", r"sự\s*cố\s*đập", r"xả\s*lũ",
+    r"hồ\s*chứa", r"thủy\s*lợi", r"tràn\s*đập", r"tràn\s*qua\s*đập",
     # Lũ quét / Lũ ống
     r"lũ\s*quét", r"lũ\s*ống", r"nước\s*lũ\s*cuốn\s*trôi",
     # Sạt lở / Sụt lún (Loại trừ: đất đai, bất động sản, vận chuyển đất)
@@ -346,7 +355,7 @@ DISASTER_RULES = [
     r"sụt\s*lún", r"hố\s*tử\s*thần", r"hố\s*sụt", r"nứt\s*đất", r"sụp\s*đường", r"sụp\s*lún"
   ]),
 
-  # 3) Nắng nóng, Hạn hán, Xâm nhập mặn
+  # 4) Nắng nóng, Hạn hán, Xâm nhập mặn
   ("heat_drought", [
     # Nắng nóng
     r"nắng\s*nóng", r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt",
@@ -359,20 +368,14 @@ DISASTER_RULES = [
     r"hạn\s*mặn", r"(?<!\w)ppt(?!\w)", r"(?<!\w)g/l(?!\w)"
   ]),
 
-  # 4) Gió mạnh, Sương mù (trên biển và đất liền)
+  # 5) Gió mạnh, Sương mù (trên biển và đất liền)
   ("wind_fog", [
     # Gió
-    r"gió\s*mạnh", r"gió\s*giật", r"gió\s*mùa", r"gió\s*cấp",
-    r"biển\s*động", r"sóng\s*lớn", r"sóng\s*cao", r"cấm\s*biển",
+    r"gió\s*mạnh", r"gió\s*giật", r"gió\s*mùa", r"gió\s*cấp", r"gió\s*lớn",
+    r"biển\s*động", r"sóng\s*lớn", r"sóng\s*cao", r"cấm\s*biển", r"sóng\s*to",
     # Sương mù
     r"sương\s*mù", r"sương\s*mù\s*dày\s*đặc", r"mù\s*dày\s*đặc",
     r"tầm\s*nhìn\s*hạn\s*chế", r"giảm\s*tầm\s*nhìn"
-  ]),
-
-  # 5) Nước dâng, Triều cường
-  ("storm_surge", [
-    r"triều\s*cường", r"nước\s*dâng", r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng",
-    r"đỉnh\s*triều", r"ngập\s*do\s*triều", r"sóng\s*lớn\s*đánh\s*tràn"
   ]),
 
   # 6) Thời tiết cực đoan khác (Lốc, Sét, Mưa đá, Rét)
@@ -386,22 +389,20 @@ DISASTER_RULES = [
   ]),
 
   # 7) Cháy rừng
-  # 7) Cháy rừng
-  # 7) Cháy rừng
   ("wildfire", [
     # Explicitly wildfire only
     r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
     r"PCCCR", r"cháy\s*thực\s*bì", r"rừng\s*phòng\s*hộ", r"rừng\s*sản\s*xuất", 
-    r"đám\s*cháy\s*rừng", r"lửa\s*rừng"
+    r"đám\s*cháy\s*rừng", r"lửa\s*rừng", r"rừng\s*tràm", r"rừng\s*thông", r"keo\s*lá\s*tràm"
   ]),
 
   # 8) Động đất, Sóng thần
   ("quake_tsunami", [
     r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn",
-    r"nứt\s*đất", r"đứt\s*gãy", r"nứt\s*nhà",
+    # Removed ambiguous "nứt đất/nhà" (common in landslides)
     r"sóng\s*thần", r"cảnh\s*báo\s*sóng\s*thần", r"tsunami",
     r"richter", r"chấn\s*tiêu", r"tâm\s*chấn",
-    r"độ\s*lớn", r"magnitude", r"Mw", r"ML"
+    r"magnitude"
   ])
 ]
 
@@ -442,6 +443,7 @@ HARD_NEGATIVE = [
   r"siêu\s*bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu)", 
   r"bão\s*view", r"bão\s*comment", r"bão\s*order", r"bão\s*đơn",
   r"bão\s*hàng", r"bão\s*flash\s*sale", r"bão\s*voucher",
+  r"siêu\s*dự\s*án", r"siêu\s*công\s*trình",
   
   # Động đất / Lũ / Sóng (Metaphorical)
   r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)",
@@ -470,22 +472,31 @@ HARD_NEGATIVE = [
   r"showbiz", r"hoa\s*hậu", r"người\s*mẫu", r"ca\s*sĩ", r"diễn\s*viên", r"liveshow",
   r"scandal", r"drama", r"sao\s*Việt", r"khánh\s*thành", r"khai\s*trương", r"kỷ\s*niệm\s*ngày",
   
-  r"buôn\s*lậu", r"ma\s*túy", r"đánh\s*bạc", r"cờ\s*bạc", r"lừa\s*đảo", r"khởi\s*tố", r"bắt\s*giữ",
+  
   r"án\s*mạng", r"giết\s*người", r"cướp\s*giật", r"trộm\s*cắp", r"cát\s*tặc", r"khai\s*thác\s*cát",
-  r"súng", r"bắn", r"nổ\s*súng", r"hung\s*thủ", r"nghi\s*phạm", r"điều\s*tra\s*vụ",
+  # Removed súng/bắn for military/rescue flare context
+  r"hung\s*thủ", r"nghi\s*phạm",
+  r"truy\s*nã", r"đối\s*tượng\s*lừa\s*đảo", r"đối\s*tượng\s*ma\s*túy", r"đối\s*tượng\s*truy\s*nã",
+  r"bắt\s*giữ", r"bị\s*can", r"xử\s*phạt", r"xét\s*xử", r"phiên\s*tòa",
+  r"tử\s*hình", r"án\s*tù", r"tội\s*phạm",
 
   # Fire / Explosion (Urban/Industrial - Not Forest)
-  r"cháy\s*(?:nhà|xưởng|xe|công\s*ty|chợ|cửa\s*hàng|quán|chung\s*cư|tàu|ca\s*nô|chùa|đền|miếu|nhà\s*thờ)",
-  r"lửa\s*ngùn\s*ngụt",  # Urban fire, not wildfire
-  r"hỏa\s*hoạn\s*(?!rừng)", r"bà\s*hỏa", r"chập\s*điện", r"nổ\s*bình\s*gas",
+  # Removed aggressive 'cháy nhà/xưởng' and 'hỏa hoạn' to avoid FP on wildfire descriptions.
+  # Positive rules for wildfire are specific enough.
+  r"lửa\s*ngùn\s*ngụt", 
+  r"bà\s*hỏa", r"chập\s*điện", r"nổ\s*bình\s*gas",
   r"bom\s*mìn", r"vật\s*liệu\s*nổ", r"thuốc\s*nổ", r"đạn\s*pháo", r"chiến\s*tranh", r"thời\s*chiến",
 
   # Pollution / Environment 
   r"quan\s*trắc\s*môi\s*trường", r"rác\s*thải",
+  r"chất\s*lượng\s*không\s*khí", r"(?<!\w)AQI(?!\w)", r"bụi\s*mịn", r"chỉ\s*số\s*không\s*khí",
 
-  # Construction / Labor Accidents
   r"giàn\s*giáo", r"sập\s*giàn\s*giáo", r"tai\s*nạn\s*lao\s*động", r"an\s*toàn\s*lao\s*động",
   r"công\s*trình\s*xây\s*dựng", r"thi\s*công",
+  r"thiết\s*kế\s*nội\s*thất", r"trần\s*thạch\s*cao", r"la\s*phông", r"tấm\s*ốp",
+  r"trang\s*trí\s*nhà", r"nhà\s*đẹp", r"căn\s*hộ\s*mẫu", r"chung\s*cư\s*cao\s*cấp", r"biệt\s*thự",
+  r"bảo\s*trì", r"bảo\s*dưỡng", r"nghiệm\s*thu", r"lắp\s*đặt", r"hệ\s*thống\s*kỹ\s*thuật",
+  r"tủ\s*điện", r"thẩm\s*duyệt\s*PCCC", r"tập\s*huấn\s*PCCC", r"diễn\s*tập\s*PCCC",
 
   # Extended Traffic Noise
   r"xe\s*cứu\s*thương", r"biển\s*số\s*xe", r"đấu\s*giá\s*biển\s*số",
@@ -497,8 +508,10 @@ HARD_NEGATIVE = [
   # Administrative / Legal / Political (Non-disaster)
   r"giấy\s*chứng\s*nhận", r"sổ\s*đỏ", r"quyền\s*sử\s*dụng\s*đất", r"giao\s*đất", r"chuyển\s*nhượng",
   r"công\s*chức", r"viên\s*chức", r"biên\s*chế", r"thẩm\s*quyền", r"hành\s*chính",
-  r"quốc\s*phòng\s*toàn\s*dân", r"an\s*ninh\s*quốc\s*phòng", r"quân\s*sự",
+  r"quốc\s*phòng\s*toàn\s*dân", r"an\s*ninh\s*quốc\s*phòng", r"quân\s*sự", r"binh\s*sĩ",
   r"vụ\s*án", r"tranh\s*chấp", r"khiếu\s*nại", r"tố\s*cáo", r"điều\s*tra\s*viên", r"bị\s*can",
+  r"kháng\s*chiến", r"đại\s*biểu\s*quốc\s*hội", r"tổng\s*tuyển\s*cử", r"chính\s*trị",
+  r"phân\s*công\s*công\s*tác", r"nhân\s*sự", r"bầu\s*cử", r"nhiệm\s*kỳ",
   
   # Education
   r"đại\s*học", r"cao\s*đẳng", r"tuyển\s*sinh", r"đào\s*tạo", r"giáo\s*dục", r"học\s*bổng",
@@ -516,13 +529,15 @@ HARD_NEGATIVE = [
   # Tech / Internet / Misc
   r"Google", r"Facebook", r"Youtube", r"TikTok", r"Zalo\s*Pay", r"tính\s*năng", r"cập\s*nhật",
   r"tra\s*từ", r"từ\s*điển", r"bài\s*hát", r"ca\s*khúc", r"MV", r"triệu\s*view", r"top\s*trending",
+  r"công\s*nghệ\s*số", r"dữ\s*liệu", r"trao\s*quyền", r"thủ\s*tục",
+  r"văn\s*hóa", r"nghệ\s*thuật", r"triển\s*lãm", r"khai\s*mạc", r"lễ\s*hội",
+  r"tình\s*yêu\s*lan\s*tỏa", r"đánh\s*thức\s*những\s*lãng\s*quên",
   
   # Metaphors (Reinforced)
   r"bão\s*tố\s*cuộc\s*đời", r"sóng\s*gió\s*cuộc\s*đời", r"bão\s*tố\s*tình\s*yêu",
   r"bão\s*lòng",
   
   # Transport / Aviation / Urban Traffic
-  r"sân\s*bay", r"cảng\s*hàng\s*không", r"máy\s*bay", r"Boeing", r"Airbus", r"vé\s*máy\s*bay",
   r"kẹt\s*xe", r"ùn\s*tắc", r"giao\s*thông\s*đô\s*thị",
 
   # === NEW: MODERN VIETNAMESE PATTERNS (2024+) ===
@@ -571,7 +586,6 @@ HARD_NEGATIVE = [
   r"nhà\s*thông\s*minh", r"smart\s*home", r"AI", r"trí\s*tuệ\s*nhân\s*tạo",
   
   # Travel / Tourism
-  r"du\s*lịch", r"tour\s*du\s*lịch", r"resort", r"khách\s*sạn",
   r"combo\s*du\s*lịch", r"săn\s*vé\s*máy\s*bay",
   
   # Cosmetics / Beauty
@@ -652,10 +666,8 @@ HARD_NEGATIVE = [
   r"phim.*(?:chiếu|Netflix)", r"bài\s*hát\s*mới",
   r"đỗ\s*xe.*(?:trước\s*cửa|lòng\s*đường)",
 
-  # Urban Fires (Industrial/Residential - NOT forest)
-  r"cháy.*(?:nhà|xưởng|kho|chợ|công\s*ty|quán|chung\s*cư)(?!.*(?:rừng|phòng\s*hộ))",
-  r"hỏa\s*hoạn.*(?:chung\s*cư|nhà\s*dân)",
-  r"chập\s*điện.*(?:cháy|nổ)",
+  # Urban Fires (Industrial/Residential - NOT forest) - Removed to avoid FP.
+  # Non-disaster fires won't match positive rules anyway.
   
   # Traffic Accidents (NOT disaster related)
   r"tai\s*nạn.*(?:giao\s*thông|liên\s*hoàn|xe\s*khách|xe\s*tải)",
@@ -982,7 +994,14 @@ def contains_disaster_keywords(text: str, trusted_source: bool = False) -> bool:
     if sig["hazard_score"] > 0:
         return True
         
-    # 3. Metrics Fallback (e.g. "Mưa 200mm", "Sức gió cấp 12" without explicit keyword?)
+    # 3. Warning/Forecast Signatures (NEW: To capture "Tin bão", "Cảnh báo lũ", "Dự báo thời tiết")
+    # Even if exact hazard key is tricky, if we see "Dự báo" + "mưa lớn/bão/lũ", we take it.
+    if re.search(r"(dự\s*báo|cảnh\s*báo|tin\s*(?:không\s*khí\s*lạnh|bão|lũ|mưa|nắng\s*nóng))", text, re.IGNORECASE):
+        # Must also have some disaster-ish context if not a direct hazard term
+        if sig["context_score"] > 0 or re.search(r"(thời\s*tiết|thiên\s*tai|nguy\s*hiểm)", text, re.IGNORECASE):
+            return True
+
+    # 4. Metrics Fallback (e.g. "Mưa 200mm", "Sức gió cấp 12" without explicit keyword?)
     # Rare case, but good safety net.
     if sig["metrics"]: 
         return True
@@ -1032,7 +1051,13 @@ def extract_impacts(text: str) -> dict:
     Maps detailed extraction to flat structure used by crawler.
     """
     details = extract_impact_details(text)
-    res = {}
+    res = {
+        "deaths": None,
+        "missing": None,
+        "injured": None,
+        "damage_billion_vnd": 0.0,
+        "agency": None
+    }
     
     # 1. Human casualties (List of ints)
     for k in ["deaths", "missing", "injured"]:
@@ -1162,8 +1187,9 @@ def classify_disaster(text: str, title: str = "") -> dict:
     
     # Simple Priority for Primary Type
     PRIO = [
-        "quake_tsunami", 
-        "storm", "storm_surge",
+        "quake_tsunami",
+        "storm_surge", # Prioritize surge over storm for specificity 
+        "storm",
         "flood_landslide", 
         "wildfire", 
         "heat_drought", 
