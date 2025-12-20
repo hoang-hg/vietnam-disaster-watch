@@ -20,6 +20,29 @@ import re
 import urllib3
 # Suppress InsecureRequestWarning for cleaner logs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# =============================================================================
+# GLOBAL SSL PATCh: Allow Legacy Renegotiation
+# Many VN sites (doisongphapluat, gov.vn) use older SSL config that OpenSSL 3 rejects.
+# This forces Python to use a relaxed SSL context for urllib (used by feedparser).
+# =============================================================================
+import ssl
+try:
+    _ctx = ssl.create_default_context()
+    _ctx.check_hostname = False
+    _ctx.verify_mode = ssl.CERT_NONE
+    # OP_LEGACY_SERVER_CONNECT = 0x4 (Allows connecting to legacy servers)
+    if hasattr(ssl, 'OP_LEGACY_SERVER_CONNECT'):
+         _ctx.options |= ssl.OP_LEGACY_SERVER_CONNECT
+    else:
+         # Fallback for some python versions where attribute might be missing but bit works
+         _ctx.options |= 0x4
+    
+    # Apply globally to urllib (which feedparser uses)
+    ssl._create_default_https_context = lambda: _ctx
+except Exception as e:
+    print(f"[WARN] Failed to apply SSL patch: {e}")
+# =============================================================================
 try:
     from bs4 import BeautifulSoup
     _HAS_BS4 = True
@@ -30,7 +53,7 @@ from sqlalchemy.orm import Session
 from .settings import settings
 from .database import SessionLocal, engine, Base
 from .models import Article
-from .sources import SOURCES, build_gnews_rss
+from .sources import SOURCES, build_gnews_rss, CONFIG
 from . import nlp
 from .dedup import find_duplicate_article, get_article_hash
 from .event_matcher import upsert_event_for_article
@@ -231,8 +254,15 @@ async def _process_once_async() -> dict:
             if src.backup_rss:
                 feed_urls.append(("backup_rss", src.backup_rss))
             
-            # Always add GNews fallback
-            gnews_url = build_gnews_rss(src.domain)
+            # Always add GNews fallback with context terms from config
+            gnews_context = CONFIG.get("gnews_context_terms", [])
+            if gnews_context:
+                # Use context terms for better filtering
+                gnews_url = build_gnews_rss(src.domain, context_terms=gnews_context)
+                print(f"[DEBUG] {src.name} GNews with {len(gnews_context)} context terms")
+            else:
+                # Fallback to no context terms
+                gnews_url = build_gnews_rss(src.domain)
             feed_urls.append(("gnews", gnews_url))
             
             sources_feeds[src.name] = {
@@ -280,12 +310,12 @@ async def _process_once_async() -> dict:
                 # If feed did not change since last fetch (HTTP 304), treat as a successful feed with no new entries
                 if info.get("not_modified"):
                     elapsed = info.get("elapsed", 0)
-                    stat["feed_used"] = feed_type
-                    stat["elapsed"] = elapsed
-                    src_info["used_feed"] = (feed_type, url)
+                    stat["feed_used"] = f"{stat['feed_used']}, {feed_type}" if stat["feed_used"] else feed_type
+                    stat["elapsed"] = (stat["elapsed"] or 0) + elapsed
                     feed_worked = True
                     print(f"[OK] {src.name} using {feed_type} (not modified, {elapsed:.2f}s)")
-                    break
+                    # DO NOT BREAK: Continue to check next feed (e.g. backup/secondary)
+                    continue
                 
                 # Try to parse this feed
                 elapsed = info.get("elapsed", 0)
@@ -296,14 +326,14 @@ async def _process_once_async() -> dict:
                     continue
                 
                 # Success! Use this feed
-                stat["feed_used"] = feed_type
-                stat["elapsed"] = elapsed
-                src_info["used_feed"] = (feed_type, url)
+                stat["feed_used"] = f"{stat['feed_used']}, {feed_type}" if stat["feed_used"] else feed_type
+                stat["elapsed"] = (stat["elapsed"] or 0) + elapsed
                 feed_worked = True
                 
                 print(f"[OK] {src.name} using {feed_type} ({len(feed.entries)} entries, {elapsed:.2f}s)")
                 
                 # Process articles from this feed
+                # DO NOT BREAK: Continue to process other feeds (e.g. backup/secondary) to maximize coverage
                 max_articles = 15  # Optimized: reduce from 30 to 15 to save CPU
                 for entry in feed.entries[:max_articles]:
                     title = html.unescape(getattr(entry, "title", "")).strip()
@@ -403,6 +433,7 @@ async def _process_once_async() -> dict:
                         agency=impacts["agency"],
                         summary=summary,
                         image_url=_extract_image_url(entry),
+                        impact_details=nlp.extract_impact_details(text_for_nlp) # Populate new field
                     )
 
                     try:
@@ -444,8 +475,9 @@ async def _process_once_async() -> dict:
                         if src.trusted or nlp.title_contains_disaster_keyword(title):
                             should_fetch = True
                         else:
-                            for klist in nlp.IMPACT_KEYWORDS.values():
-                                for kw in klist:
+                            for data in nlp.IMPACT_KEYWORDS.values():
+                                terms = data.get("terms", [])
+                                for kw in terms:
                                     if kw.lower() in text_lower:
                                         should_fetch = True
                                         break
@@ -578,6 +610,7 @@ async def _process_once_async() -> dict:
                                 damage_billion_vnd=impacts["damage_billion_vnd"],
                                 agency=impacts["agency"],
                                 summary=summary,
+                                impact_details=nlp.extract_impact_details(text_for_nlp)
                             )
                             
                             try:

@@ -101,8 +101,17 @@ async def validate_all():
     sources = data.get("sources", [])
     log(f"Found {len(sources)} sources defined.\n")
     
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    try:
+        ssl_context.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
+    except:
+        pass
+
     headers = {"User-Agent": USER_AGENT}
-    transport = httpx.AsyncHTTPTransport(retries=1, verify=False)
+    transport = httpx.AsyncHTTPTransport(retries=1, verify=ssl_context)
     
     async with httpx.AsyncClient(timeout=TIMEOUT, headers=headers, transport=transport, follow_redirects=True) as client:
         

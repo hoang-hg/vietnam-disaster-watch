@@ -28,6 +28,7 @@ class Article(Base):
     agency: Mapped[str | None] = mapped_column(String(256), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    impact_details: Mapped[dict | None] = mapped_column(JSON, nullable=True) # Expanded impact stats (homes, agri, etc)
 
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     event = relationship("Event", back_populates="articles")

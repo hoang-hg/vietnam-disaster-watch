@@ -23,6 +23,7 @@ urllib3.disable_warnings()
 async def dry_run():
     print("Loading sources configuration...")
     sources = src_module.load_sources_from_json()
+    config = src_module.load_config_from_json()
     print(f"Loaded {len(sources)} sources definition.")
     
     total_scanned = 0
@@ -44,9 +45,14 @@ async def dry_run():
             method = "RSS"
             
             if not url and src.domain:
-                # Fallback to GNews if no RSS
+                # Fallback to GNews if no RSS with context terms
                 try:
-                    url = src_module.build_gnews_rss(src.domain)
+                    gnews_context = config.get("gnews_context_terms", [])
+                    if gnews_context:
+                        url = src_module.build_gnews_rss(src.domain, context_terms=gnews_context)
+                        print(f"[DEBUG] {src.name} GNews with {len(gnews_context)} context terms")
+                    else:
+                        url = src_module.build_gnews_rss(src.domain)
                     method = "GNews"
                 except:
                     continue

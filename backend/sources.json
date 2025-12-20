@@ -45,7 +45,7 @@
       "domain": "laodong.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "RSS broken (0 entries). Using GNews.",
+      "note": "RSS landing exists; run RSS discovery. Using GNews meanwhile.",
       "trusted": false
     },
     {
@@ -75,9 +75,9 @@
      {
       "name": "Pháp luật & Đời sống",
       "domain": "doisongphapluat.com.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS DNS Error. Using GNews.",
+      "primary_rss": "https://doisongphapluat.com.vn/rss/tin-tuc.rss",
+      "backup_rss": "https://doisongphapluat.com.vn/rss/phap-luat.rss",
+      "note": "RSS updated per patch (via main-rss.html)",
       "trusted": false
     },
     {
@@ -299,9 +299,9 @@
     {
       "name": "Báo Tin tức (TTXVN)",
       "domain": "baotintuc.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS SSL Error. Using GNews.",
+      "primary_rss": "https://baotintuc.vn/thoi-su.rss",
+      "backup_rss": "https://baotintuc.vn/tin-moi-nhat.rss",
+      "note": "Official RSS from /rss.htm",
       "trusted": true
     },
     {
@@ -428,7 +428,7 @@
       "domain": "nchmf.gov.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "RSS 404. Using GNews.",
+      "note": "RSS returns 404. Using GNews fallback.",
       "trusted": true
     },
     {
@@ -460,37 +460,46 @@
       "domain": "pcccr.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "User requested; fallback to GNews",
+      "note": "Dashboard-based (watch/v2). using GNews fallback until API polling implemented.",
       "trusted": true
     }
   ],
   "gnews_fallback": true,
   "gnews_context_terms": [
-    "thiệt hại",
-    "sơ tán",
-    "ứng phó",
-    "cứu hộ",
-    "cứu nạn",
-    "mất tích",
-    "người chết",
-    "thương vong",
-    "khẩn cấp",
-    "cảnh báo",
-    "công điện",
-    "chỉ đạo",
-    "khắc phục",
-    "sập nhà",
-    "tốc mái",
-    "ngập lụt",
-    "sạt lở",
-    "chia cắt",
-    "cô lập",
-    "hư hỏng",
-    "vỡ đê",
-    "di dời",
-    "hỗ trợ"
+    "thiệt hại","tổn thất","sập nhà","tốc mái","đổ nhà","đổ tường","nhà bị sập",
+    "nhà bị tốc mái","nhà bị hư hỏng","hư hỏng","cuốn trôi","trôi nhà","ngập nhà",
+    "ngập lụt","sạt lở","vỡ đê","tràn đê","vỡ bờ","chia cắt","cô lập","mất mùa",
+    "mất trắng","chết đuối","bị vùi lấp","người chết","tử vong","thiệt mạng",
+    "thi thể","nạn nhân","thương vong","bị thương","trọng thương","nhẹ thương",
+    "mất tích","mất liên lạc","tìm kiếm","tìm thấy thi thể","sơ tán","sơ tán khẩn cấp",
+    "di dời","di dời dân","di dời khẩn cấp","tránh trú","lánh nạn","neo đậu","vào bờ",
+    "lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế","vận chuyển cứu trợ",
+    "hỗ trợ","hỗ trợ khẩn cấp","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn",
+    "huy động lực lượng","xuất quân","triển khai lực lượng","ứng phó","ứng phó khẩn cấp",
+    "khắc phục","khắc phục hậu quả","xử lý sự cố","sửa chữa","tu bổ","phục hồi",
+    "tái thiết","tổng kết thiệt hại","thống kê thiệt hại","đánh giá thiệt hại",
+    "cảnh báo","cảnh báo khẩn","dự báo","tin khẩn","công điện","công điện khẩn",
+    "chỉ đạo","chỉ thị","lệnh","quyết định","nghị quyết","ban bố","ban hành",
+    "tình trạng khẩn cấp","tình huống khẩn cấp","trạng thái khẩn cấp","khẩn cấp",
+    "khẩn trương","gấp rút","hỏa tốc","cấp bách","nguy hiểm","nguy cấp","nguy kịch",
+    "mất an toàn","đe dọa","đe dọa nghiêm trọng","rủi ro cao","nguy cơ cao",
+    "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa","đóng cửa trường","cho nghỉ học",
+    "nghỉ học","tạm dừng","tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn",
+    "cuộc họp khẩn","ban chỉ huy","ban chỉ đạo","trực ban","trực 24/24","túc trực",
+    "ứng trực","mưa to đến rất to","mưa đặc biệt lớn","mưa cực đoan","mưa kỷ lục",
+    "báo động 1","báo động 2","báo động 3","báo động khẩn cấp","mực nước báo động",
+    "lũ trên sông","lũ bùn đá","lũ bùn","xói lở","xâm thực","sạt trượt","trượt sườn",
+    "đứt gãy taluy","đá lăn","ranh mặn","cống ngăn mặn","độ mặn phần nghìn",
+    "nguy cơ cháy rừng rất cao","cấp cháy rừng cấp","cấp dự báo cháy rừng",
+    "bão","áp thấp nhiệt đới","ATNĐ","hoàn lưu bão","gió mạnh trên biển","biển động",
+    "gió giật","sóng lớn","áp thấp","nước dâng","nước dâng do bão","triều cường",
+    "lốc","lốc xoáy","vòi rồng","sét","sét đánh","mưa lớn","mưa rất to",
+    "mưa đặc biệt lớn","lũ","lũ lớn","lũ quét","ngập lụt","lụt","ngập sâu",
+    "sạt lở đất","trượt lở","sụt lún","nứt đất","đá lăn", "xâm nhập mặn","độ mặn","ranh mặn",
+    "hạn hán","thiếu nước","khoảng hán","nắng nóng","nắng nóng gay gắt","nhiệt độ cao", "cháy rừng","nguy cơ cháy rừng","cấp dự báo cháy rừng","PCCCR",
+    "rét hại","rét đậm","mưa đá","sương mù","sương muối", "động đất","dư chấn","sóng thần","cảnh báo sóng thần"
   ],
-  "gnews_min_articles": 5,
-  "request_timeout": 10,
-  "max_articles_per_source": 30
+  "gnews_min_articles": 2,
+  "request_timeout": 30,
+  "max_articles_per_source": 10
 }

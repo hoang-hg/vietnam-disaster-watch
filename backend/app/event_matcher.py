@@ -58,6 +58,50 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     if article.damage_billion_vnd is not None:
         ev.damage_billion_vnd = max(ev.damage_billion_vnd or 0.0, article.damage_billion_vnd)
 
+    # Aggregating impact_details into ev.details
+    if article.impact_details:
+        import json
+        current_details = dict(ev.details or {})
+        new_details = article.impact_details
+        
+        for key, items in new_details.items():
+            if not items: continue
+            
+            if key not in current_details:
+                current_details[key] = items
+            else:
+                # Merge lists
+                existing = current_details[key]
+                combined = existing + items
+                
+                if not combined: continue
+                
+                # Check type of first item to decide on dedup strategy
+                first_item = combined[0]
+                if isinstance(first_item, int):
+                    # Dedup integers (casualty counts)
+                    current_details[key] = sorted(list(set(combined)), reverse=True)
+                elif isinstance(first_item, dict):
+                    # Dedup dicts (agriculture, homes, etc)
+                    # Dedupe based on 'num' + 'unit'
+                    seen = set()
+                    unique = []
+                    for x in combined:
+                        # simplistic signature: num_unit
+                        # normalize unit to lower
+                        u = (x.get("unit") or "").lower().strip()
+                        n = x.get("num")
+                        sig = f"{n}_{u}"
+                        if sig not in seen:
+                            seen.add(sig)
+                            unique.append(x)
+                    current_details[key] = unique
+                else:
+                    # Fallback
+                    current_details[key] = combined
+                    
+        ev.details = current_details
+
 
 
     sources = {a.source for a in ev.articles} | {article.source}

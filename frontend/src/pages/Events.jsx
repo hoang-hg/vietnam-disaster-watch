@@ -262,39 +262,96 @@ export default function Events() {
                   )}
                </div>
 
-               {/* 2. Impact Stats Grid */}
-               <div className="grid grid-cols-2 gap-2 mb-4">
-                  {/* Deaths */}
-                  {e.deaths != null && e.deaths > 0 && (
-                     <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 rounded-lg px-2.5 py-1.5">
-                        <Zap className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="font-medium">{e.deaths} người chết</span>
-                     </div>
-                  )}
 
-                  {/* Missing */}
-                  {e.missing != null && e.missing > 0 && (
-                     <div className="flex items-center gap-2 text-xs text-orange-700 bg-orange-50 rounded-lg px-2.5 py-1.5">
-                        <Users className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="font-medium">{e.missing} mất tích</span>
-                     </div>
-                  )}
+               {/* 2. Impact Stats Grid (Dynamic & Prioritized) */}
+               <div className="flex flex-wrap gap-2 mb-4">
+                  {(() => {
+                    const prioritized = [];
+                    const details = e.details || {};
 
-                  {/* Injured */}
-                  {e.injured != null && e.injured > 0 && (
-                     <div className="flex items-center gap-2 text-xs text-yellow-700 bg-yellow-50 rounded-lg px-2.5 py-1.5">
-                        <Activity className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="font-medium">{e.injured} bị thương</span>
-                     </div>
-                  )}
+                    // 1. Core Human Casualties (from columns)
+                    if (e.deaths > 0) prioritized.push({ type: 'deaths', label: `${e.deaths} chết`, priority: 100, color: 'red' , icon: Zap });
+                    if (e.missing > 0) prioritized.push({ type: 'missing', label: `${e.missing} mất tích`, priority: 90, color: 'orange', icon: Users });
+                    if (e.injured > 0) prioritized.push({ type: 'injured', label: `${e.injured} bị thương`, priority: 80, color: 'yellow', icon: Activity });
 
-                  {/* Damage */}
-                  {e.damage_billion_vnd != null && e.damage_billion_vnd > 0 && (
-                     <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 rounded-lg px-2.5 py-1.5">
-                        <DollarSign className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="font-medium">{fmtVndBillion(e.damage_billion_vnd)}</span>
-                     </div>
-                  )}
+                    // 2. Financial (from column)
+                    if (e.damage_billion_vnd > 0) prioritized.push({ type: 'damage', label: fmtVndBillion(e.damage_billion_vnd), priority: 70, color: 'blue', icon: DollarSign });
+
+                    // 3. Extended details (from JSON)
+                    // Check 'homes'
+                    if (details.homes && details.homes.length > 0) {
+                        // Take the largest number or first
+                        const best = details.homes.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.homes[0]);
+                        prioritized.push({ 
+                            type: 'homes', 
+                            label: `${best.num} ${best.unit || 'nhà'}`, // e.g. "50 nhà", "50 tốc mái"
+                            priority: 60, 
+                            color: 'indigo',
+                            icon: MapPin // Placeholder icon
+                        });
+                    }
+                    
+                    // Check 'disruption' (evacuation)
+                    if (details.disruption && details.disruption.length > 0) {
+                        const best = details.disruption.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.disruption[0]);
+                         prioritized.push({ 
+                            type: 'disruption', 
+                            label: `${best.num} ${best.unit || 'di dời'}`, 
+                            priority: 55, 
+                            color: 'slate',
+                            icon: Users
+                        });
+                    }
+
+                    // Check 'agriculture'
+                    if (details.agriculture && details.agriculture.length > 0) {
+                        const best = details.agriculture.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.agriculture[0]);
+                        prioritized.push({ 
+                            type: 'agriculture', 
+                            label: `${best.num} ${best.unit || 'ha'}`, 
+                            priority: 40, 
+                            color: 'green',
+                            icon: Filter
+                        });
+                    }
+
+                    // Check 'marine'
+                    if (details.marine && details.marine.length > 0) {
+                        const best = details.marine.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.marine[0]);
+                        prioritized.push({ 
+                            type: 'marine', 
+                            label: `${best.num} ${best.unit || 'tàu'}`, 
+                            priority: 30, 
+                            color: 'cyan',
+                            icon: Activity
+                        });
+                    }
+
+                    // Sort by priority desc
+                    prioritized.sort((a, b) => b.priority - a.priority);
+
+                    // Show top 4
+                    return prioritized.slice(0, 4).map((item) => {
+                        const Icon = item.icon;
+                        const colorClass = {
+                            red: "text-red-700 bg-red-50",
+                            orange: "text-orange-700 bg-orange-50",
+                            yellow: "text-yellow-700 bg-yellow-50",
+                            blue: "text-blue-700 bg-blue-50",
+                            indigo: "text-indigo-700 bg-indigo-50",
+                            slate: "text-slate-700 bg-slate-100",
+                            green: "text-green-700 bg-green-50",
+                            cyan: "text-cyan-700 bg-cyan-50"
+                        }[item.color] || "text-slate-700 bg-slate-50";
+
+                        return (
+                            <div key={item.type} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg ${colorClass}`}>
+                                <Icon className="w-3.5 h-3.5" />
+                                <span>{item.label}</span>
+                            </div>
+                        );
+                    });
+                  })()}
                </div>
 
                {/* 3. Metadata Footer */}
