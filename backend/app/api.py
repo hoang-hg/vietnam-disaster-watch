@@ -47,7 +47,7 @@ def events(
     q: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Event).order_by(desc(Event.last_updated_at))
+    query = db.query(Event).order_by(desc(Event.started_at))
     
     if hours:
         since = datetime.utcnow() - timedelta(hours=hours)

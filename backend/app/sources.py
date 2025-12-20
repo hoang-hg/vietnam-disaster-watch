@@ -115,18 +115,33 @@ class Source:
     trusted: bool | None = False
 
 # Short list of hazards for GNews RSS search to avoid extremely long URLs
-GNEWS_HAZARD_KEYWORDS = [
-    "bão", "siêu bão", "áp thấp nhiệt đới", "tin bão", "dự báo bão",
-    "lũ", "lụt", "lũ quét", "ngập lụt", "xả lũ", "vỡ đê",
-    "sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống",
-    "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng",
-    "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm",
-    "rét đậm", "rét hại", "băng giá", "sương muối",
-    "cháy rừng", "nguy cơ cháy rừng",
-    "động đất", "sóng thần", "rung chấn",
-    "thiệt hại", "tốc mái", "sập nhà", "cuốn trôi", "cô lập", "chia cắt",
-    "tìm kiếm cứu nạn", "mất tích", "hỗ trợ khẩn cấp"
-]
+# GNEWS_HAZARD_KEYWORDS = [
+#     "bão", "siêu bão", "áp thấp nhiệt đới", "tin bão", "dự báo bão",
+#     "lũ", "lụt", "lũ quét", "ngập lụt", "xả lũ", "vỡ đê",
+#     "sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống",
+#     "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng",
+#     "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm",
+#     "rét đậm", "rét hại", "băng giá", "sương muối",
+#     "cháy rừng", "nguy cơ cháy rừng",
+#     "động đất", "sóng thần", "rung chấn",
+#     "thiệt hại", "tốc mái", "sập nhà", "cuốn trôi", "cô lập", "chia cắt",
+#     "thời tiết hôm nay", "cảnh báo thiên tai", "dự báo thời tiết",
+#     "tìm kiếm cứu nạn", "mất tích", "hỗ trợ khẩn cấp"
+# ]
+
+GNEWS_HAZARD_KEYWORDS = [ "thiệt hại","tổn thất","sập nhà","tốc mái","đổ nhà","đổ tường","nhà bị sập", "nhà bị tốc mái","nhà bị hư hỏng","hư hỏng","cuốn trôi","trôi nhà","ngập nhà", 
+"ngập lụt","vỡ đê","tràn đê","vỡ bờ","chia cắt","cô lập","mất mùa", "mất trắng","chết đuối","bị vùi lấp","người chết","tử vong","thiệt mạng", "thi thể","nạn nhân","thương vong","bị thương",
+"trọng thương","nhẹ thương", "mất tích","mất liên lạc","tìm kiếm","tìm thấy thi thể","sơ tán","sơ tán khẩn cấp", "di dời","di dời dân","di dời khẩn cấp","tránh trú","lánh nạn","neo đậu","vào bờ", 
+"lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế","vận chuyển cứu trợ", "hỗ trợ","hỗ trợ khẩn cấp","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn", "huy động lực lượng","xuất quân","triển khai lực lượng",
+"ứng phó","ứng phó khẩn cấp", "khắc phục","khắc phục hậu quả","xử lý sự cố","sửa chữa","tu bổ","phục hồi", "tái thiết","tổng kết thiệt hại","thống kê thiệt hại","đánh giá thiệt hại", "cảnh báo","cảnh báo khẩn","dự báo",
+"tin khẩn","công điện","công điện khẩn", "chỉ đạo","chỉ thị","lệnh","quyết định","nghị quyết","ban bố","ban hành", "tình trạng khẩn cấp","tình huống khẩn cấp","trạng thái khẩn cấp","khẩn cấp", "khẩn trương","gấp rút",
+"hỏa tốc","cấp bách","nguy hiểm","nguy cấp","nguy kịch", "mất an toàn","đe dọa","đe dọa nghiêm trọng","rủi ro cao","nguy cơ cao","cấm", "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa","đóng cửa trường","cho nghỉ học", 
+"nghỉ học","tạm dừng","tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn", "cuộc họp khẩn","ban chỉ huy","ban chỉ đạo","trực ban","trực 24/24","túc trực", "ứng trực","mưa to đến rất to","mưa đặc biệt lớn","mưa cực đoan",
+"mưa kỷ lục", "báo động 1","báo động 2","báo động 3","báo động khẩn cấp","mực nước báo động", "lũ trên sông","lũ bùn đá","lũ bùn","xói lở","xâm thực","sạt trượt","trượt sườn", "đứt gãy taluy","đá lăn","ranh mặn","cống ngăn mặn","độ mặn phần nghìn", 
+"nguy cơ cháy rừng rất cao","cấp cháy rừng cấp","cấp dự báo cháy rừng", "bão", "siêu bão", "áp thấp nhiệt đới", "tin bão", "dự báo bão", "lũ", "lụt", "lũ quét", "ngập lụt", "xả lũ", "vỡ đê",
+"sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống", "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng", "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm", "rét đậm", "rét hại", "băng giá", "sương muối", "cháy rừng", 
+"nguy cơ cháy rừng", "động đất", "sóng thần", "rung chấn", "thiệt hại", "tốc mái", "sập nhà", "cuốn trôi", "cô lập", "chia cắt", "thời tiết hôm nay", "cảnh báo thiên tai", "dự báo thời tiết",
+"tìm kiếm cứu nạn", "mất tích", "hỗ trợ khẩn cấp" ]
 
 def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_terms: List[str] | None = None) -> str:
     """Build Google News RSS URL as fallback.

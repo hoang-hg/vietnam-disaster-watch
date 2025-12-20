@@ -1,0 +1,42 @@
+Loading sources from: D:\viet-disaster-watch\backend\sources.json
+Found 58 sources defined.
+
+SOURCE NAME               | TYPE    | STATUS                    | TIME  
+---------------------------------------------------------------------------
+[OK]   Thanh Niên             | Primary | OK (500 entries)          | 1.39s
+[OK]   Thanh Niên             | Backup  | OK (12 entries)           | 0.84s
+[OK]   VietNamNet             | Primary | OK (60 entries)           | 2.77s
+[OK]   VnExpress              | Primary | OK (60 entries)           | 0.41s
+[OK]   VnExpress              | Backup  | OK (44 entries)           | 0.32s
+[OK]   Tuổi Trẻ               | Primary | OK (50 entries)           | 0.27s
+[OK]   Tuổi Trẻ               | Backup  | OK (50 entries)           | 0.20s
+[OK]   Dân Trí                | Primary | OK (100 entries)          | 0.64s
+[OK]   Dân Trí                | Backup  | OK (100 entries)          | 0.71s
+[OK]   Nhân Dân               | Primary | OK (50 entries)           | 0.86s
+[OK]   Nhân Dân               | Backup  | OK (50 entries)           | 0.95s
+[OK]   Tiền Phong             | Primary | OK (50 entries)           | 1.29s
+[OK]   Pháp luật & Đời sống   | Primary | OK (25 entries)           | 1.35s
+[OK]   Pháp luật & Đời sống   | Backup  | OK (25 entries)           | 1.75s
+[OK]   Znews                  | Primary | OK (46 entries)           | 0.91s
+[OK]   Znews                  | Backup  | OK (50 entries)           | 1.72s
+[OK]   Kênh 14                | Primary | OK (500 entries)          | 1.76s
+[OK]   tuyenquang.gov.vn      | Primary | OK (5 entries)            | 0.39s
+[OK]   baolaocai.vn           | Primary | OK (50 entries)           | 1.68s
+[OK]   baolaocai.vn           | Backup  | OK (50 entries)           | 1.01s
+[OK]   baosonla.org.vn        | Primary | OK (60 entries)           | 0.56s
+[OK]   baophutho.vn           | Primary | OK (12 entries)           | 2.72s
+[OK]   baohatinh.vn           | Primary | OK (50 entries)           | 1.17s
+[OK]   baohatinh.vn           | Backup  | OK (50 entries)           | 1.05s
+[OK]   baogialai.com.vn       | Primary | OK (50 entries)           | 1.11s
+[OK]   baogialai.com.vn       | Backup  | OK (50 entries)           | 1.22s
+[OK]   Báo Tin tức (TTXVN)    | Primary | OK (10 entries)           | 0.60s
+[OK]   Báo Tin tức (TTXVN)    | Backup  | OK (10 entries)           | 0.82s
+[OK]   Người Lao Động         | Primary | OK (500 entries)          | 1.98s
+[OK]   Người Lao Động         | Backup  | OK (60 entries)           | 0.76s
+[OK]   Quân đội Nhân dân      | Primary | OK (50 entries)           | 2.78s
+[OK]   VietnamPlus (TTXVN)    | Primary | OK (50 entries)           | 0.42s
+[OK]   VietnamPlus (TTXVN)    | Backup  | OK (50 entries)           | 0.48s
+[OK]   Cổng TTĐT Chính phủ (Công báo) | Primary | OK (20 entries)           | 2.26s
+[OK]   Cổng TTĐT Chính phủ (Công báo) | Backup  | OK (848 entries)          | 2.27s
+---------------------------------------------------------------------------
+SUMMARY: [OK] Healthy: 35 | [EMPTY] Empty: 0 | [FAIL] Broken: 0

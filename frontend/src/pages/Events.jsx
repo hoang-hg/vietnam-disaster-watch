@@ -54,42 +54,59 @@ export default function Events() {
     return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Fetch base data first (filtered by Type and Date on server for efficiency)
-        const params = new URLSearchParams();
-        params.append("limit", "200"); // Get enough data 
-        if (type) params.append("type", type);
-        if (startDate) params.append("start_date", startDate);
-        if (endDate) params.append("end_date", endDate);
-        // Note: We don't send 'q' and 'province' to server anymore to support smart local filtering
+  const fetchEvents = async (isBackground = false) => {
+    try {
+      if (!isBackground) setLoading(true);
+      setError(null);
+      
+      // Fetch base data first (filtered by Type and Date on server for efficiency)
+      const params = new URLSearchParams();
+      params.append("limit", "200"); // Get enough data 
+      if (type) params.append("type", type);
+      if (startDate) params.append("start_date", startDate);
+      if (endDate) params.append("end_date", endDate);
+      // Note: We don't send 'q' and 'province' to server anymore to support smart local filtering
 
-        const evs = await getJson(`/api/events?${params.toString()}`);
-        
-        let filteredEvents = evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
+      const evs = await getJson(`/api/events?${params.toString()}`);
+      
+      let filteredEvents = evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
 
-        // Client-side smart filtering for Text and Province (unaccented support)
-        if (q) {
-            const query = normalizeStr(q);
-            filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title).includes(query));
-        }
-        if (province) {
-            const query = normalizeStr(province);
-            filteredEvents = filteredEvents.filter(e => e.province && normalizeStr(e.province).includes(query));
-        }
-        
-        setEvents(filteredEvents);
-        setCurrentPage(1);
-      } catch (e) {
-        setError(e.message || "Load failed");
-      } finally {
-        setLoading(false);
+      // Client-side smart filtering for Text and Province (unaccented support)
+      if (q) {
+          const query = normalizeStr(q);
+          filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title).includes(query));
       }
-    })();
+      if (province) {
+          const query = normalizeStr(province);
+          filteredEvents = filteredEvents.filter(e => e.province && normalizeStr(e.province).includes(query));
+      }
+      
+      setEvents(filteredEvents);
+      // Only reset page on explicit filter change (user interaction), NOT on background refresh
+      // But here we can't easily distinguish generic 'fetch' from 'filter change' using just this function.
+      // Ideally, setCurrentPage(1) should be called by the filter setters or a separate effect tracking filter changes.
+      // For now, we'll assume if it's NOT background, it might be a filter change or initial load.
+      if (!isBackground) setCurrentPage(1);
+      
+    } catch (e) {
+      console.error("Fetch error:", e);
+      if (!isBackground) setError(e.message || "Load failed");
+    } finally {
+      if (!isBackground) setLoading(false);
+    }
+  };
+
+  // Initial load & Filter change
+  useEffect(() => {
+    fetchEvents(false);
+  }, [q, type, province, startDate, endDate]);
+
+  // Auto-refresh every 15 seconds (reduced from 60s for better responsiveness)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchEvents(true);
+    }, 15000); // 15 seconds
+    return () => clearInterval(interval);
   }, [q, type, province, startDate, endDate]);
 
   const clearFilters = () => {

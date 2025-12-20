@@ -1,44 +1,28 @@
-services:
-  db:
-    image: postgres:16
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: viet_disaster_watch
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+version: '3.8'
 
+services:
   backend:
-    build: ./backend
+    build: 
+      context: ./backend
+    container_name: viet_disaster_backend
+    restart: always
     ports:
       - "8000:8000"
     volumes:
-      - ./backend/data:/app/data
+      - ./backend_data:/app/data
       - ./backend/logs:/app/logs
     environment:
-      - APP_DB_URL=postgresql://postgres:password@db:5432/viet_disaster_watch
-      - CRAWL_INTERVAL_MINUTES=10
-      - APP_TIMEZONE=Asia/Ho_Chi_Minh
-    depends_on:
-      db:
-        condition: service_healthy
+      - APP_DB_URL=sqlite:////app/data/app.db
+      - PYTHONUNBUFFERED=1
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_BASE=http://localhost:8000
+    container_name: viet_disaster_frontend
+    restart: always
     ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_BASE=http://localhost:8000
+      - "80:80"
     depends_on:
       - backend
-
-volumes:
-  postgres_data:
