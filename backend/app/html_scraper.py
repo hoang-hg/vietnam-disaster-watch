@@ -146,9 +146,14 @@ class HTMLScraper:
         """Scrape Thoi Tiet Vietnam (KTTV) - Targeted Scrape."""
         if not _HAS_BS4: return []
 
+        # Target valid news page on the new official domain
         url = "https://www.thoitietvietnam.gov.vn/kttv/" 
         response = await self._get_with_retry(url)
-        if not response: return []
+        if not response: 
+            # Try alternative old domain if first fails
+            url = "https://nchmf.gov.vn/kttv/"
+            response = await self._get_with_retry(url)
+            if not response: return []
 
         response.encoding = "utf-8"
         articles = []
@@ -165,7 +170,7 @@ class HTMLScraper:
                 
                 href = link.get('href', '').strip()
                 # Specific pattern for news posts on this site
-                if "post" not in href or ".html" not in href:
+                if "post" not in href:
                     continue
                 
                 # Fix relative URL
@@ -198,6 +203,8 @@ class HTMLScraper:
                 })
         except Exception as e:
             logger.debug(f"Error scraping KTTV: {e}")
+        
+        return articles
 
 
 

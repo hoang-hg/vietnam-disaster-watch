@@ -1,11 +1,14 @@
 import re
 import unicodedata
+import logging
 from typing import List
 from datetime import datetime
 from dateutil import parser as dtparser
 from . import sources
 from .sources import DISASTER_KEYWORDS as SOURCE_DISASTER_KEYWORDS
 from . import risk_lookup
+
+logger = logging.getLogger(__name__)
 
 # CONSTANTS & CONFIG
 
@@ -17,10 +20,10 @@ IMPACT_KEYWORDS = {
             "tử vong tại chỗ", "tử vong sau khi", "đã tử vong", "chết cháy", "tử vong do ngạt", "ngạt khói", "ngạt khí", "chết đuối", "đuối nước", "ngạt nước", "bị cuốn trôi tử vong", "bị vùi lấp tử vong", "bị chôn vùi tử vong"
         ],
         "regex": [
-            r"\b(ít nhất|tối thiểu|khoảng|hơn)?\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu|học sinh|công nhân|chiến sĩ)\s*(chết|tử vong|thiệt mạng|tử nạn|tử thương|thương vong)\b",
-            r"\b(làm|khiến)\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu|học sinh)\s*(chết|tử vong|thiệt mạng|thương vong)\b",
-            r"\b(tìm thấy|phát hiện)\s*(thi thể|xác)\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu|học sinh)?\b",
-            r"\b(cướp đi sinh mạng|tước đi sinh mạng)\s*(của)?\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu)\b"
+            r"\b(?P<qualifier>ít nhất|tối thiểu|khoảng|hơn)?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|học sinh|công nhân|chiến sĩ)\s*(chết|tử vong|thiệt mạng|tử nạn|tử thương|thương vong)\b",
+            r"\b(làm|khiến)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|học sinh)\s*(chết|tử vong|thiệt mạng|thương vong)\b",
+            r"\b(tìm thấy|phát hiện)\s*(thi thể|xác)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|học sinh)?\b",
+            r"\b(cướp đi sinh mạng|tước đi sinh mạng)\s*(của)?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu)\b"
         ]
     },
 
@@ -30,9 +33,9 @@ IMPACT_KEYWORDS = {
             "trôi mất", "bị nước cuốn", "bị lũ cuốn","bị vùi lấp", "bị chôn vùi", "mắc kẹt", "bị mắc kẹt","đang tìm kiếm", "tổ chức tìm kiếm", "công tác tìm kiếm","tìm kiếm cứu nạn", "cứu nạn", "cứu hộ", "tìm kiếm cứu hộ"
         ],
         "regex": [
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu|công nhân|thuyền viên|ngư dân|nhân khẩu)(?:[^0-9]{0,20})?\s*(bị|đã)?\s*(mất tích|mất liên lạc|chưa tìm thấy|chưa liên lạc được|không rõ tung tích|cuốn trôi|lũ cuốn|nước cuốn|vùi lấp|mắc kẹt)\b",
-            r"\b(tìm kiếm|chưa tìm thấy|chưa liên lạc được|mất liên lạc|vẫn chưa liên lạc được|chưa xác định tung tích|chưa rõ tung tích)\s*(với|cho|with)?\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu|công nhân|nhóm)?\b",
-            r"\b(cuốn trôi|cuốn|vùi lấp|chôn vùi)\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu)\b"
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|công nhân|thuyền viên|ngư dân|nhân khẩu)(?:[^0-9]{0,20})?\s*(bị|đã)?\s*(mất tích|mất liên lạc|chưa tìm thấy|chưa liên lạc được|không rõ tung tích|cuốn trôi|lũ cuốn|nước cuốn|vùi lấp|mắc kẹt)\b",
+            r"\b(tìm kiếm|chưa tìm thấy|chưa liên lạc được|mất liên lạc|vẫn chưa liên lạc được|chưa xác định tung tích|chưa rõ tung tích)\s*(với|cho|with)?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|công nhân|nhóm)?\b",
+            r"\b(cuốn trôi|cuốn|vùi lấp|chôn vùi)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu)\b"
         ]
     },
 
@@ -42,10 +45,10 @@ IMPACT_KEYWORDS = {
             "đưa vào bệnh viện", "cấp cứu", "điều trị", "sơ cứu", "chuyển viện", "đang điều trị", "được điều trị"
         ],
         "regex": [
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu|ca)\s*(bị thương|trọng thương|nhập viện|cấp cứu|đa chấn thương|thương tích|xây xát|bị bỏng|bất tỉnh|gãy xương|chấn thương)\b",
-            r"\b(làm|khiến|gây)\s*(b|trọng thương|bị bỏng|bất tỉnh|gãy xương|đa chấn thương)\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu)\b",
-            r"\b(đưa|chuyển|sơ cứu|điều trị cho|cấp cứu cho|ghi nhận|có)(?:[^0-9]{0,30})?\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân|em|cháu)(?:[^a-z0-9]{0,10})?\s*(đi|tới|bị|do)?\s*(cấp cứu|bệnh viện|viện|xây xát|bỏng|bất tỉnh|gãy xương|chấn thương)\b",
-            r"\b(bị thương|bị xây xát|bị bỏng|bất tỉnh|gãy xương|chấn thương)\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(người|nạn nhân)\b"
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|ca)\s*(bị thương|trọng thương|nhập viện|cấp cứu|đa chấn thương|thương tích|xây xát|bị bỏng|bất tỉnh|gãy xương|chấn thương)\b",
+            r"\b(làm|khiến|gây)\s*(bị|trọng thương|bị bỏng|bất tỉnh|gãy xương|đa chấn thương)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu)\b",
+            r"\b(đưa|chuyển|sơ cứu|điều trị cho|cấp cứu cho|ghi nhận|có)(?:[^0-9]{0,30})?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu)(?:[^a-z0-9]{0,10})?\s*(đi|tới|bị|do)?\s*(cấp cứu|bệnh viện|viện|xây xát|bỏng|bất tỉnh|gãy xương|chấn thương)\b",
+            r"\b(bị thương|bị xây xát|bị bỏng|bất tỉnh|gãy xương|chấn thương)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân)\b"
         ]
     },
 
@@ -56,10 +59,10 @@ IMPACT_KEYWORDS = {
             "tìm kiếm trên biển", "lai dắt", "kéo về bờ", "cứu nạn", "cứu hộ"
         ],
         "regex": [
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(tàu cá|tàu hàng|tàu du lịch|tàu|ghe chài|ghe|thuyền thúng|thuyền viên|ngư dân|thuyền|phương tiện|sà lan)\s*(bị|đã)?\s*(chìm|đắm|lật|trôi dạt|mất liên lạc|hư hỏng|mất tích|gặp nạn)\b", 
-            r"\b(chìm|đắm|lật|trôi dạt|đánh chìm|lai dắt|cứu hộ|cứu nạn)\s*(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(tàu cá|tàu hàng|tàu du lịch|tàu|ghe chài|ghe|thuyền thúng|thuyền viên|ngư dân|thuyền|phương tiện|sà lan)\b",
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(ngư dân|thuyền viên)(?:[^0-9]{0,20})?\s*(b|đã)?\s*(mất liên lạc|mất tích|trôi dạt|gặp nạn)\b",
-            r"\b(mất liên lạc|cứu hộ|cứu nạn|liên lạc được)\s*(với|cho|with)?\s*(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(tàu cá|tàu hàng|tàu du lịch|tàu|ghe chài|ghe|thuyền thúng|ngư dân|thuyền viên|thuyền|phương tiện|sà lan)\b"
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>tàu cá|tàu hàng|tàu du lịch|tàu|ghe chài|ghe|thuyền thúng|thuyền viên|ngư dân|thuyền|phương tiện|sà lan)\s*(bị|đã)?\s*(chìm|đắm|lật|trôi dạt|mất liên lạc|hư hỏng|mất tích|gặp nạn)\b", 
+            r"\b(chìm|đắm|lật|trôi dạt|đánh chìm|lai dắt|cứu hộ|cứu nạn)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>tàu cá|tàu hàng|tàu du lịch|tàu|ghe chài|ghe|thuyền thúng|thuyền viên|ngư dân|thuyền|phương tiện|sà lan)\b",
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>ngư dân|thuyền viên)(?:[^0-9]{0,20})?\s*(bị|đã)?\s*(mất liên lạc|mất tích|trôi dạt|gặp nạn)\b",
+            r"\b(mất liên lạc|cứu hộ|cứu nạn|liên lạc được)\s*(với|cho|with)?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>tàu cá|tàu hàng|tàu du lịch|tàu|ghe chài|ghe|thuyền thúng|ngư dân|thuyền viên|thuyền|phương tiện|sà lan)\b"
         ]
     },
 
@@ -88,10 +91,12 @@ IMPACT_KEYWORDS = {
             "cây đổ", "đổ cây", "gãy cây", "gãy đổ"
         ],
         "regex": [
-            r"\b(thiệt hại|tổn thất)(?:[^0-9]{0,30})?\s*(?:ước|ước tính|khoảng|lên tới|hơn|trên|ban đầu|\s)*(\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?(?:\s*[–-]\s*\d+(?:[.,]\d+)?)?)\s*(tỷ|triệu)\s*(đồng|VND)\b",
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(căn nhà|ngôi nhà|nhà văn hóa|trường học|cột điện|nhà|căn|hộ|cầu|cống|trường|lớp|trụ sở|cột)(?:[^0-9]{0,20})?\s*(bị|đã|có)?\s*(sập|đổ sập|tốc mái|hư hỏng|hư hại|ngập|sạt lở|gãy đổ|vùi lấp|nứt|sụt lún|sửa|sửa chữa|chia cắt|cô lập|cháy|mất điện|mất nước|ảnh hưởng|trôi|ngập úng)\b",
-            r"\b(sập|đổ sập|tốc mái|hư hỏng|hư hại|ngập|cuốn trôi|vùi lấp|làm sập|gãy đổ|nứt|sụt lún|sửa|chia cắt|cô lập|cháy|mất điện|mất nước|ảnh hưởng|trôi|ngập úng)(?:[^0-9]{0,20})?\s*(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(căn nhà|ngôi nhà|nhà văn hóa|trường học|cột điện|nhà|căn|hộ|cầu|cống|trường|lớp|trụ sở|cột)\b",
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(căn nhà|ngôi nhà|hộ|nhà|căn)(?:[^0-9]{0,10})?\s*(có|bị)?\s*(nhà)?\s*(bị)?\s*(sạt lở|sập|trôi|lũ cuốn|vùi lấp|chia cắt|cô lập|cháy|mất điện|mất nước|ảnh hưởng)\b"
+            r"\b(thiệt hại|tổn thất)(?:[^0-9]{0,30})?\s*(?P<qualifier>ước|ước tính|khoảng|lên tới|hơn|trên|ban đầu|\s)*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?(?:\s*[–-]\s*\d+(?:[.,]\d+)?)?)\s*(?P<unit>tỷ|triệu)\s*(đồng|VND)\b",
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>căn nhà|ngôi nhà|nhà văn hóa|trường học|cột điện|nhà|căn|hộ|cầu|cống|trường|lớp|trụ sở|cột)(?:[^0-9]{0,20})?\s*(bị|đã|có)?\s*(sập|đổ sập|tốc mái|hư hỏng|hư hại|ngập|sạt lở|gãy đổ|vùi lấp|nứt|sụt lún|chia cắt|cô lập|cháy|mất điện|mất nước|ngập úng|trôi)\b",
+            r"\b(sập|đổ sập|tốc mái|hư hỏng|hư hại|ngập|cuốn trôi|vùi lấp|làm sập|gãy đổ|nứt|sụt lún|chia cắt|cô lập|cháy|mất điện|mất nước|trôi|ngập úng)(?:[^0-9]{0,20})?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>căn nhà|ngôi nhà|nhà văn hóa|trường học|cột điện|nhà|căn|hộ|cầu|cống|trường|lớp|trụ sở|cột)\b",
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>căn nhà|ngôi nhà|hộ|nhà|căn)(?:[^0-9]{0,10})?\s*(?:đã|bị|có)?\s*(?:nhà\s*)?(?:bị\s*)?(sạt lở|sập|trôi|lũ cuốn|vùi lấp|chia cắt|cô lập|cháy|mất điện|mất nước|ảnh hưởng)\b",
+            # Infrastructure & Specific objects
+            r"\b(sập|đổ|gãy|hư hỏng|tốc mái|cuốn trôi)\s*(hoàn toàn|hàng loạt)?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>mét|m)?\s*(tường rào|mái tôn|nhà xưởng|kho|chuồng trại|trạm biến áp|đường dây|cột điện|cây xanh|cây)\b"
         ]
     },
 
@@ -111,11 +116,10 @@ IMPACT_KEYWORDS = {
             "mất sóng", "gián đoạn thông tin", "mất mạng"
         ],
         "regex": [
-            # “cấm đường quốc lộ 6”, “đóng đường tỉnh lộ 159”
-            r"\b(cấm|đóng|tạm dừng|tạm ngưng)\s*(đường|lưu thông)\b",
-            r"\b(sơ tán|di dời|di tản)\s*(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(người|hộ|hộ dân|nhân khẩu)\b",
-            r"\b(sơ tán|di dời|di tản)\s*(khẩn cấp)?\s*(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(người|hộ|hộ dân|nhân khẩu)\b",
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(người|hộ|hộ dân|nhân khẩu)(?:[^0-9]{0,20})?\s*(phải|cần|đã)?\s*(sơ tán|di dời|di tản)\b"
+            r"\b(cấm|đóng|tạm dừng|tạm ngưng)\s*(?P<unit>đường|lưu thông)\b",
+            r"\b(sơ tán|di dời|di tản)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>người|hộ|hộ dân|nhân khẩu)\b",
+            r"\b(sơ tán|di dời|di tản)\s*(?P<qualifier>khẩn cấp)?\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>người|hộ|hộ dân|nhân khẩu)\b",
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>người|hộ|hộ dân|nhân khẩu)(?:[^0-9]{0,20})?\s*(phải|cần|đã)?\s*(sơ tán|di dời|di tản)\b"
         ]
     },
 
@@ -136,13 +140,11 @@ IMPACT_KEYWORDS = {
             "lồng bè", "lồng nuôi", "bè cá", "mất trắng thủy sản", "trôi lồng bè"
         ],
         "regex": [
-            # hectares: 12 ha lúa / 2,5 ha hoa màu / 5 sào ruộng
-            # Added "sào", "tấn" (for yield loss)
-            r"\b(\d+(?:[.,]\d+)?)\s*(ha|hecta|héc ta|sào|tấn)\b",
-            # counts: 3.000 con gia cầm chết
-            r"\b(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(con)\s*(trâu|bò|lợn|gà|vịt|gia súc|gia cầm)\b",
-            # aquaculture: 3 lồng bè (Num Unit)
-            r"\b(\d+(?:\s*[–-]\s*\d+)?)\s*(lồng bè|lồng|bè)\b"
+            r"\b(?P<num>\d+(?:[.,]\d+)?)\s*(?P<unit>ha|hecta|héc ta|sào|tấn)\s*(lúa|hoa màu|cây trồng|ruộng|diện tích|mía|ngô|bắp|rau|cà phê|tiêu|điều|bị|ngập|hư hại|thiệt hại|mất trắng|đổ ngã)\b",
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>con)\s*(trâu|bò|lợn|gà|vịt|gia súc|gia cầm)\b",
+            r"\b(?P<num>\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>lồng bè|lồng|bè)\b",
+            r"\b(vỡ|tràn|mất trắng)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>ao|đầm|lồng bè|ha|mẫu|công)\s*(nuôi|tôm|cá|thủy sản)?\b",
+            r"\b(chết|trôi)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>con|tấn|kg)?\s*(tôm|cá|gia súc|gia cầm|lợn|gà|bò)\b"
         ]
     },
 
@@ -159,9 +161,39 @@ NEGATION_TERMS = {
     "deaths": ["không có người chết", "không có thương vong", "chưa ghi nhận thương vong", "không ghi nhận thiệt hại về người"],
     "missing": ["không có người mất tích", "không ai mất tích", "chưa ghi nhận mất tích"],
     "injured": ["không ai bị thương", "không có người bị thương", "không ghi nhận thương vong"],
-    "damage": ["không gây thiệt hại", "chưa có thiệt hại", "không có thiệt hại về tài sản"],
+    "damage": ["không gây thiệt hại", "chưa có thiệt hại", "không có thiệt hại về tài sản", "không gây thiệt hại về người", "không ghi nhận thiệt hại", "không có thiệt hại đáng kể", "chưa thống kê được thiệt hại"],
     "general": ["bác bỏ", "tin đồn", "dự kiến", "diễn tập", "kịch bản", "giả định", "trước khi"]
 }
+
+def safe_no_accent(pat: str) -> bool:
+    """
+    Determine if a regex pattern is safe to match against unaccented text.
+    Prevents single-word disaster terms (like 'bão' -> 'bao') from matching
+    unrelated words (like 'báo động', 'bạo hành').
+    """
+    # 1. Whitelist high-confidence hazard words that are relatively unique
+    # We allow these even if they are single words because 'lu', 'loc', 'ret' 
+    # are less likely to cause massive noise than 'bao' or 'mua'.
+    hazard_whitelist = ["lũ", "lụt", "lốc", "rét"]
+    if any(hw in pat.lower() for hw in hazard_whitelist):
+        return True
+
+    # 2. Extract "Effective" content by stripping regex syntax
+    # Remove lookarounds (?...) and char classes [\w] etc.
+    p = re.sub(r"\(\?[:=!<>]+.*?\)", "", pat)
+    p = re.sub(r"\\(?:[wsdbwWSD]|b|B)", " ", p)
+    p = re.sub(r"[\(\)\|\{\}\[\]\*\+\?\.\^\\\$]", " ", p)
+    p = re.sub(r"\s+", " ", p).strip()
+
+    # 3. Strict Safety Heuristic
+    # Pattern is safe if it is long enough (> 12 chars) to be specific.
+    # OR it is a multi-word phrase AND long enough to avoid short word collisions (e.g. 'bo bao' vs 'bo bao')
+    if len(p) >= 12:
+        return True
+    if " " in p and len(p) >= 10:
+        return True
+        
+    return False
 
 def normalize_text(text: str) -> str:
     """
@@ -314,8 +346,9 @@ DISASTER_RULES = [
     # Bão (loại trừ: đi bão, bão giá, bão mạng, bão lòng, cơn bão số... khi nói về giá cả)
     r"(?<!\w)(?<!đi\s)(?<!dự\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\w)",
     r"bão\s*số\s*\d+",
-    r"siêu\s*bão", r"hoàn\s*lưu\s*bão", r"tâm\s*bão",
+    r"siêu\s*bão", r"hoàn\s*lưu\s*(?:bão|gây\s*mưa)", r"tâm\s*bão", r"tâm\s*bão.*đất\s*liền",
     r"đổ\s*bộ", r"đi\s*vào\s*biển\s*đông", r"tiến\s*vào\s*biển\s*đông",
+    r"gió\s*giật\s*mạnh",
     # Áp thấp (loại trừ: huyết áp thấp, cao áp thấp)
     r"(?<!huyết\s)áp\s*thấp\s*nhiệt\s*đới",
     r"(?<!huyết\s)(?<!cao\s)áp\s*thấp(?!\w)",
@@ -339,20 +372,24 @@ DISASTER_RULES = [
     r"mưa\s*đặc\s*biệt\s*lớn", r"mưa\s*diện\s*rộng", r"mưa\s*kéo\s*dài",
     r"mưa\s*kỷ\s*lục", r"mưa\s*cực\s*đoan", r"mưa\s*như\s*trút",
     # Lũ / Ngập (Strict boundaries)
-    r"(?<!\w)lũ(?!\w)(?!\s*lượt)(?!\s*khách)",
-    r"(?<!\w)lụt(?!\w)", r"lũ\s*lụt", r"lũ\s*lớn", r"lũ\s*lịch\s*sử", r"lũ\s*dâng",
+    r"(?<!\w)(?<!xe\s)lũ(?!\w)(?!\s*lượt)(?!\s*khách)",
+    r"(?<!\w)lụt(?!\w)", r"lũ\s+lụt", r"lũ\s+lớn", r"lũ\s+lịch\s+sử", r"lũ\s+dâng",
+    r"nước\s+lũ", r"lũ\s+lên\s+nhanh", r"lũ\s+thượng\s+nguồn", r"lũ\s+bùn", r"dòng\s+chảy\s+xiết",
     r"(?<!\w)ngập(?!\w)(?!\s*đầu\s*tư)(?!\s*tràn)(?!\s*trong)(?!\s*ngụa)(?!\s*mặn)",
-    r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu",
-    r"ngập\s*cục\s*bộ", r"nước\s*lên\s*nhanh", r"mực\s*nước\s*dâng", r"đỉnh\s*lũ",
-    r"báo\s*động\s*(?:1|2|3|I|II|III)", r"vượt\s*báo\s*động",
-    r"vỡ\s*đê", r"vỡ\s*kè", r"tràn\s*đê", r"tràn\s*bờ", r"vỡ\s*đập", r"sự\s*cố\s*đập", r"xả\s*lũ",
-    r"hồ\s*chứa", r"thủy\s*lợi", r"tràn\s*đập", r"tràn\s*qua\s*đập",
+    r"ngập\s+lụt", r"ngập\s+úng", r"ngập\s+sâu", r"ngập\s+tới\s+nóc", r"ngập\s+ngang\s+ngực", r"ngập\s+quá\s+bánh\s+xe",
+    r"ngập\s+cục\s+vộ", r"nước\s+lên\s+nhanh", r"mực\s+nước\s+dâng", r"đỉnh\s+lũ",
+    r"báo\s+động\s+(?:1|2|3|I|II|III)", r"vượt\s+báo\s+động",
+    r"vỡ\s+đê", r"vỡ\s+kè", r"tràn\s+đê", r"tràn\s+bờ", r"vỡ\s+đập", r"sự\s+cố\s+đập", r"xả\s+lũ",
+    r"hồ\s+chứa", r"thủy\s+lợi", r"tràn\s+đập", r"tràn\s+qua\s+đập",
+    r"vỡ\s+bờ\s+bao", r"tràn\s+bờ\s+bao", r"bờ\s+bao", r"cống\s+ngăn\s+triều", r"xả\s+tràn", r"mở\s+cửa\s+xả", r"xả\s+điều\s+tiết",
+    r"qua\s+tràn", r"ngập.*tràn", r"cầu\s+tràn", r"chia\s+cắt.*giao\s+thông",
     # Lũ quét / Lũ ống
-    r"lũ\s*quét", r"lũ\s*ống", r"nước\s*lũ\s*cuốn\s*trôi",
+    r"lũ\s+quét", r"lũ\s+ống", r"nước\s+lũ\s+cuốn\s+trôi", r"lũ\s+bùn\s+đá",
     # Sạt lở / Sụt lún (Loại trừ: đất đai, bất động sản, vận chuyển đất)
-    r"(?<!\w)sạt(?!\w)", r"sạt\s*lở(?!\s*giá)", r"sạt\s*lở\s*đất", r"lở\s*đất", r"trượt\s*đất", r"trượt\s*lở",
-    r"sạt\s*taluy", r"taluy", r"sạt\s*lở\s*bờ\s*sông", r"sạt\s*lở\s*bờ\s*biển",
-    r"sụt\s*lún", r"hố\s*tử\s*thần", r"hố\s*sụt", r"nứt\s*đất", r"sụp\s*đường", r"sụp\s*lún"
+    r"(?<!\w)sạt(?!\w)", r"sạt\s+lở(?!\s+giá)", r"sạt\s+lở\s+đất", r"lở\s+đất", r"trượt\s+đất", r"trượt\s+lở",
+    r"sạt\s+taluy", r"taluy", r"đứt\s+gãy\s+taluy", r"sạt\s+lở\s+bờ\s+sông", r"sạt\s+lở\s+bờ\s+biển",
+    r"taluy\s+dương", r"taluy\s+âm", r"sạt\s+mái", r"sạt\s+vai\s+đường", r"trượt\s+mái", r"nứt\s+toác", r"hàm\s+ếch", r"sạt\s+trượt",
+    r"sụt\s+lún", r"hố\s+tử\s+thần", r"hố\s+sụt", r"nứt\s+đất", r"sụp\s+đường", r"sụp\s+lún"
   ]),
 
   # 4) Nắng nóng, Hạn hán, Xâm nhập mặn
@@ -360,12 +397,15 @@ DISASTER_RULES = [
     # Nắng nóng
     r"nắng\s*nóng", r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt",
     r"nhiệt\s*độ\s*kỷ\s*lục", r"oi\s*bức", r"nhiệt\s*độ\s*cao",
+    r"nhiệt\s*độ\s*cảm\s*nhận", r"chỉ\s*số\s*UV", r"cảnh\s*báo\s*nắng\s*nóng",
     # Hạn hán
     r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước", r"cạn\s*kiệt",
-    r"khát\s*nước", r"nứt\s*nẻ", r"đất\s*khô\s*nứt", r"cạn\s*hồ",
+    r"khát\s*nước", r"nứt\s*nẻ", r"đất\s*khô\s*nứt", r"cạn\s*hồ", r"nứt\s*nẻ.*ruộng",
+    r"thiếu\s*nước\s*sinh\s*hoạt", r"lấy\s*nước\s*ngọt", r"thiếu\s*nước\s*sản\s*xuất",
     # Mặn
     r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn", r"mặn\s*xâm\s*nhập",
-    r"hạn\s*mặn", r"(?<!\w)ppt(?!\w)", r"(?<!\w)g/l(?!\w)"
+    r"hạn\s*mặn", r"(?<!\w)ppt(?!\w)", r"(?<!\w)g/l(?!\w)", r"xã\s*vùng\s*mặn", r"nước.*nhiễm\s*mặn",
+    r"nước\s*mặn\s*xâm\s*nhập\s*sâu", r"ranh\s*mặn", r"đẩy\s*mặn"
   ]),
 
   # 5) Gió mạnh, Sương mù (trên biển và đất liền)
@@ -373,6 +413,8 @@ DISASTER_RULES = [
     # Gió
     r"gió\s*mạnh", r"gió\s*giật", r"gió\s*mùa", r"gió\s*cấp", r"gió\s*lớn",
     r"biển\s*động", r"sóng\s*lớn", r"sóng\s*cao", r"cấm\s*biển", r"sóng\s*to",
+    r"cấm\s*tàu\s*thuyền", r"neo\s*đậu\s*tránh\s*trú", r"khu\s*neo\s*đậu", r"tránh\s*trú\s*bão",
+    r"sóng\s*cao\s*\d+\s*mét", r"biển\s*động\s*mạnh", r"vùng\s*nguy\s*hiểm", r"giật\s*trên\s*cấp",
     # Sương mù
     r"sương\s*mù", r"sương\s*mù\s*dày\s*đặc", r"mù\s*dày\s*đặc",
     r"tầm\s*nhìn\s*hạn\s*chế", r"giảm\s*tầm\s*nhìn"
@@ -393,7 +435,8 @@ DISASTER_RULES = [
     # Explicitly wildfire only
     r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
     r"PCCCR", r"cháy\s*thực\s*bì", r"rừng\s*phòng\s*hộ", r"rừng\s*sản\s*xuất", 
-    r"đám\s*cháy\s*rừng", r"lửa\s*rừng", r"rừng\s*tràm", r"rừng\s*thông", r"keo\s*lá\s*tràm"
+    r"đám\s*cháy\s*rừng", r"lửa\s*rừng", r"rừng\s*tràm", r"rừng\s*thông", r"keo\s*lá\s*tràm",
+    r"dập\s*lửa", r"chữa\s*cháy\s*rừng", r"đường\s*băng\s*cản\s*lửa", r"trực\s*thăng\s*chữa\s*cháy", r"bùng\s*phát\s*trở\s*lại", r"đám\s*cháy\s*lan\s*rộng"
   ]),
 
   # 8) Động đất, Sóng thần
@@ -402,7 +445,8 @@ DISASTER_RULES = [
     # Removed ambiguous "nứt đất/nhà" (common in landslides)
     r"sóng\s*thần", r"cảnh\s*báo\s*sóng\s*thần", r"tsunami",
     r"richter", r"chấn\s*tiêu", r"tâm\s*chấn",
-    r"magnitude"
+    r"magnitude",
+    r"rung\s*lắc", r"cảm\s*nhận\s*rung", r"chấn\s*động", r"cấp\s*báo\s*động\s*sóng\s*thần"
   ])
 ]
 
@@ -416,13 +460,7 @@ DISASTER_CONTEXT = [
   r"trung\s*tâm\s*dự\s*báo", r"đài\s*khí\s*tượng", r"thủy\s*văn",
   r"ban\s*chỉ\s*huy", r"ban\s*chỉ\s*đạo", r"phòng\s*chống\s*thiên\s*tai", 
   r"sở\s*nn&ptnt", r"bộ\s*nông\s*nghiệp", r"ubnd",
-  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện", r"khẩn\s*cấp",
-  # Recovery / Relief (Moved from Negatives to Positive Context)
-  r"khắc\s*phục", r"hỗ\s*trợ", r"cứu\s*trợ", r"ủng\s*hộ",
-  r"thăm\s*hỏi", r"chia\s*sẻ", r"quyên\s*góp", r"tiếp\s*nhận",
-  r"sửa\s*chữa", r"khôi\s*phục", r"tái\s*thiết", r"bồi\s*thường",
-  r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn",
-  r"bệnh\s*viện", r"điều\s*trị", r"bác\s*sĩ", r"cấp\s*cứu"
+  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện"
 ]
 
 # RECOVERY Keywords for Event Stage Classification
@@ -433,8 +471,9 @@ RECOVERY_KEYWORDS = [
     r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn" 
 ]
 
-# 1. HARD NEGATIVE: Absolute Veto (Metaphors, Sports, Showbiz, Accidents)
-HARD_NEGATIVE = [
+# 1. ABSOLUTE VETO: Strictly Non-Disaster Contexts (Metaphor, Showbiz, Game, Sport)
+# These will be blocked even if they contain "bão", "lũ", "sạt lở" keywords.
+ABSOLUTE_VETO = [
   # Bão (Metaphorical)
   r"bão\s*giá", r"cơn\s*bão\s*(?:dư\s*luận|truyền\s*thông|tin\s*giả|mạng)(?!\w)",
   r"bão\s*sale", r"bão\s*like", r"bão\s*scandal", r"cơn\s*bão\s*tài\s*chính",
@@ -449,61 +488,18 @@ HARD_NEGATIVE = [
   r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)",
   r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí)",
   r"địa\s*chấn\s*(?:showbiz|làng\s*giải\s*trí|V-pop|V-League)",
-  
-  # === ADDED NOISE FILTERS ===
-  # Economy / Real Estate
-  r"bất\s*động\s*sản", r"cơn\s*sốt\s*đất", r"sốt\s*đất", r"đất\s*nền", r"chung\s*cư",
-  r"dự\s*án\s*nhà\s*ở", r"shophouse", r"biệt\s*thự", r"đấu\s*giá\s*đất",
-  r"lãi\s*suất", r"tín\s*dụng", r"ngân\s*hàng", r"tỉ\s*giá", r"VN-Index", r"chứng\s*khoán", r"cổ\s*phiếu",
-  r"giá\s*(?:vàng|heo|cà\s*phê|lúa|xăng|dầu|trái\s*cây)", r"tăng\s*giá", r"giảm\s*giá", r"hạ\s*nhiệt\s*(?:giá|thị\s*trường)",
-  r"xuất\s*khẩu", r"nhập\s*khẩu", r"GDP", r"tăng\s*trưởng\s*kinh\s*tế",
-
-  # Traffic Accidents (Distinguish from Disaster)
-  r"tai\s*nạn\s*giao\s*thông", r"va\s*chạm\s*xe", r"tông\s*xe", r"tông\s*chết",
-  r"xe\s*tải", r"xe\s*khách", r"xe\s*đầu\s*kéo", r"xe\s*container", r"xe\s*buýt",
-  r"(?<!thiên\s)tai\s*nạn\s*liên\s*hoàn", r"vi\s*phạm\s*nồng\s*độ\s*cồn",
 
   # Sports
   r"bóng\s*đá", r"cầu\s*thủ", r"đội\s*tuyển", r"World\s*Cup", r"V-League", r"Sea\s*Games",
   r"AFF\s*Cup", r"huấn\s*luyện\s*viên", r"bàn\s*thắng", r"ghi\s*bàn", r"vô\s*địch",
   r"huy\s*chương", r"HCV", r"HCB", r"HCD",
 
-  # Showbiz / Events
+  # Showbiz / Events / Arts
   r"showbiz", r"hoa\s*hậu", r"người\s*mẫu", r"ca\s*sĩ", r"diễn\s*viên", r"liveshow",
   r"scandal", r"drama", r"sao\s*Việt", r"khánh\s*thành", r"khai\s*trương", r"kỷ\s*niệm\s*ngày",
-  
-  
-  r"án\s*mạng", r"giết\s*người", r"cướp\s*giật", r"trộm\s*cắp", r"cát\s*tặc", r"khai\s*thác\s*cát",
-  # Removed súng/bắn for military/rescue flare context
-  r"hung\s*thủ", r"nghi\s*phạm",
-  r"truy\s*nã", r"đối\s*tượng\s*lừa\s*đảo", r"đối\s*tượng\s*ma\s*túy", r"đối\s*tượng\s*truy\s*nã",
-  r"bắt\s*giữ", r"bị\s*can", r"xử\s*phạt", r"xét\s*xử", r"phiên\s*tòa",
-  r"tử\s*hình", r"án\s*tù", r"tội\s*phạm",
-
-  # Fire / Explosion (Urban/Industrial - Not Forest)
-  # Removed aggressive 'cháy nhà/xưởng' and 'hỏa hoạn' to avoid FP on wildfire descriptions.
-  # Positive rules for wildfire are specific enough.
-  r"lửa\s*ngùn\s*ngụt", 
-  r"bà\s*hỏa", r"chập\s*điện", r"nổ\s*bình\s*gas",
-  r"bom\s*mìn", r"vật\s*liệu\s*nổ", r"thuốc\s*nổ", r"đạn\s*pháo", r"chiến\s*tranh", r"thời\s*chiến",
-
-  # Pollution / Environment 
-  r"quan\s*trắc\s*môi\s*trường", r"rác\s*thải",
-  r"chất\s*lượng\s*không\s*khí", r"(?<!\w)AQI(?!\w)", r"bụi\s*mịn", r"chỉ\s*số\s*không\s*khí",
-
-  r"giàn\s*giáo", r"sập\s*giàn\s*giáo", r"tai\s*nạn\s*lao\s*động", r"an\s*toàn\s*lao\s*động",
-  r"công\s*trình\s*xây\s*dựng", r"thi\s*công",
-  r"thiết\s*kế\s*nội\s*thất", r"trần\s*thạch\s*cao", r"la\s*phông", r"tấm\s*ốp",
-  r"trang\s*trí\s*nhà", r"nhà\s*đẹp", r"căn\s*hộ\s*mẫu", r"chung\s*cư\s*cao\s*cấp", r"biệt\s*thự",
-  r"bảo\s*trì", r"bảo\s*dưỡng", r"nghiệm\s*thu", r"lắp\s*đặt", r"hệ\s*thống\s*kỹ\s*thuật",
-  r"tủ\s*điện", r"thẩm\s*duyệt\s*PCCC", r"tập\s*huấn\s*PCCC", r"diễn\s*tập\s*PCCC",
-
-  # Extended Traffic Noise
-  r"xe\s*cứu\s*thương", r"biển\s*số\s*xe", r"đấu\s*giá\s*biển\s*số",
-  r"đăng\s*kiểm", r"giấy\s*phép", r"phạt\s*nguội",
-  
-  # Other Misc
-  r"tặng\s*quà", r"trao\s*quà", r"từ\s*thiện", r"hiến\s*máu", # Filter out pure charity events if not linked to active disaster keywords strongly
+  r"kỷ\s*niệm\s*\d+\s*năm", r"chương\s*trình\s*nghệ\s*thuật", r"đêm\s*nhạc", r"đêm\s*diễn",
+  r"tiết\s*mục", r"hợp\s*xướng", r"giao\s*lưu\s*nghệ\s*thuật", r"(?:phát|truyền)\s*hình\s*trực\s*tiếp\s*chương\s*trình",
+  r"tuần\s*lễ\s*thời\s*trang", r"triển\s*lãm\s*nghệ\s*thuật",
 
   # Administrative / Legal / Political (Non-disaster)
   r"giấy\s*chứng\s*nhận", r"sổ\s*đỏ", r"quyền\s*sử\s*dụng\s*đất", r"giao\s*đất", r"chuyển\s*nhượng",
@@ -512,35 +508,24 @@ HARD_NEGATIVE = [
   r"vụ\s*án", r"tranh\s*chấp", r"khiếu\s*nại", r"tố\s*cáo", r"điều\s*tra\s*viên", r"bị\s*can",
   r"kháng\s*chiến", r"đại\s*biểu\s*quốc\s*hội", r"tổng\s*tuyển\s*cử", r"chính\s*trị",
   r"phân\s*công\s*công\s*tác", r"nhân\s*sự", r"bầu\s*cử", r"nhiệm\s*kỳ",
-  
+
   # Education
   r"đại\s*học", r"cao\s*đẳng", r"tuyển\s*sinh", r"đào\s*tạo", r"giáo\s*dục", r"học\s*bổng",
   r"tốt\s*nghiệp", r"thạc\s*sĩ", r"tiến\s*sĩ",
-  
-  # Finance / Banking (Specific)
-  r"vốn\s*điều\s*lệ", r"tăng\s*vốn", r"cổ\s*đông", r"lợi\s*nhuận", r"doanh\s*thu",
-  r"ADB", r"WB", r"IMF", r"ODA", # International banks often in economic news
   
   # Health / Lifestyle
   r"ung\s*thư", r"tế\s*bào", r"tiểu\s*đường", r"huyết\s*áp", r"đột\s*quỵ",
   r"dinh\s*dưỡng", r"thực\s*phẩm", r"món\s*ăn", r"đặc\s*sản", r"giảm\s*cân", r"làm\s*đẹp",
   r"ngăn\s*ngừa\s*bệnh", r"sức\s*khỏe\s*sinh\s*sản",
 
-  # Tech / Internet / Misc
-  r"Google", r"Facebook", r"Youtube", r"TikTok", r"Zalo\s*Pay", r"tính\s*năng", r"cập\s*nhật",
+  # Entertainment Misc
   r"tra\s*từ", r"từ\s*điển", r"bài\s*hát", r"ca\s*khúc", r"MV", r"triệu\s*view", r"top\s*trending",
-  r"công\s*nghệ\s*số", r"dữ\s*liệu", r"trao\s*quyền", r"thủ\s*tục",
   r"văn\s*hóa", r"nghệ\s*thuật", r"triển\s*lãm", r"khai\s*mạc", r"lễ\s*hội",
   r"tình\s*yêu\s*lan\s*tỏa", r"đánh\s*thức\s*những\s*lãng\s*quên",
   
   # Metaphors (Reinforced)
   r"bão\s*tố\s*cuộc\s*đời", r"sóng\s*gió\s*cuộc\s*đời", r"bão\s*tố\s*tình\s*yêu",
   r"bão\s*lòng",
-  
-  # Transport / Aviation / Urban Traffic
-  r"kẹt\s*xe", r"ùn\s*tắc", r"giao\s*thông\s*đô\s*thị",
-
-  # === NEW: MODERN VIETNAMESE PATTERNS (2024+) ===
   
   # E-commerce / Shopping
   r"lũ\s*(?:lượt|fan|like|view|đơn\s*hàng|order)",
@@ -583,7 +568,7 @@ HARD_NEGATIVE = [
   r"VinFast", r"xe\s*điện", r"iPhone", r"Samsung", r"ra\s*mắt\s*sản\s*phẩm",
   
   # Smart Home / IoT
-  r"nhà\s*thông\s*minh", r"smart\s*home", r"AI", r"trí\s*tuệ\s*nhân\s*tạo",
+  r"nhà\s*thông\s*minh", r"smart\s*home",
   
   # Travel / Tourism
   r"combo\s*du\s*lịch", r"săn\s*vé\s*máy\s*bay",
@@ -594,18 +579,134 @@ HARD_NEGATIVE = [
   # COVID-related metaphors (not actual disaster)
   r"làn\s*sóng\s*(?:COVID|covid|dịch)\s*thứ",
   r"bão\s*COVID", r"bão\s*F0",
+
+  # User Feedback Blocklist (Dec 2025)
+  # Social / Good Samaritan / Daily Incidents
+  r"nhặt\s*được", r"rơi\s*(?:ví|tiền|vàng)", r"trả\s*lại\s*(?:tiền|tài\s*sản)", r"giao\s*nộp.*công\s*an",
+  r"thang\s*máy", r"mắc\s*kẹt.*thang\s*máy",
   
+  # Festivities / Tourism / Showbiz
+  r"check-in", r"giáng\s*sinh", r"noel", r"nhà\s*thờ", r"phố\s*đi\s*bộ",
+  r"biển\s*người", r"chen\s*chân", r"liveshow", r"scandal", r"drama",
+  
+  # Infrastructure / Traffic / Accidents (Absolute block for traffic noise)
+  r"thông\s*xe", r"cao\s*tốc", r"ùn\s*ứ.*(?:lễ|tết|cuối\s*tuần)", r"bến\s*xe",
+  r"thi\s*công.*dự\s*án", r"tiến\s*độ.*dự\s*án", r"xe\s*tải", r"xe\s*khách", r"va\s*chạm\s*xe",
+  r"tai\s*nạn\s*giao\s*thông", r"tông\s*xe", r"tông\s*chết", r"không\s*có\s*vùng\s*cấm",
+  
+  # Aviation / Transport (Non-disaster)
+  r"cơ\s*trưởng", r"sân\s*bay", r"hạ\s*cánh", r"cất\s*cánh", r"hàng\s*không", r"phi\s*công",
+  
+  # Urban/Social Fire (Not Forest)
+  r"cháy\s*nhà", r"cháy\s*xưởng", r"cháy\s*quán", r"cháy\s*xe", r"chập\s*điện", r"nổ\s*bình\s*gas",
+  
+  # Political / Admin / Education / Finance
+  r"HĐND", r"hội\s*đồng\s*nhân\s*dân", r"tiếp\s*xúc\s*cử\s*tri", r"kỳ\s*họp",
+  r"Quốc\s*hội", r"Chính\s*phủ", r"nghị\s*quyết", r"nghị\s*định", r"bổ\s*nhiệm",
+  r"trường\s*đại\s*học", r"tuyển\s*sinh", r"học\s*bổng", r"tốt\s*nghiệp",
+  r"ngoại\s*giao", r"hội\s*kiến", r"tiếp\s*kiến", r"đối\s*ngoại", r"quyết\s*sách",
+  r"Đảng\s*ủy", r"Đảng\s*viên", r"bí\s*thư(?!\s*đã\s*chỉ\s*đạo)",
+  r"giảm\s*nghèo", r"xây\s*dựng\s*nông\s*thôn\s*mới", r"chỉ\s*số\s*giá\s*tiêu\s*dùng",
+  r"đầu\s*tư", r"kinh\s*doanh", r"thị\s*trường", r"bất\s*động\s*sản", r"giá\s*đất",
+  r"trung\s*tâm\s*y\s*tế", r"bệnh\s*viện.*(hiện\s*đại|chất\s*lượng|trang\s*thiết\s*bị)",
+  r"Nguyễn\s*Đức\s*Hải", r"Phan\s*Đình\s*Trạc", r"Nguyễn\s*Hồng\s*Diên",
+  r"lương\s*cơ\s*bản", r"tăng\s*lương", r"lương\s*hưu", r"nghỉ\s*hưu", r"lộ\s*trình\s*lương",
+  r"BHYT", r"bhyt", r"hiến\s*máu", r"giọt\s*máu", r" runner", r"giải\s*chạy",
+  r"hóa\s*đơn", r"ngân\s*sách", r"quy\s*hoạch", r"sân\s*bay",
+  
+  # Violence / Crimes / Legal
+  r"bạo\s*hành", r"đánh\s*đập", r"hành\s*hung", r"bắt\s*giữ", r"vụ\s*án", r"điều\s*tra",
+  r"khởi\s*tố", r"truy\s*tố", r"xét\s*xử", r"bị\s*cáo", r"tử\s*hình", r"chung\s*thân",
+  r"bắt\s*cóc", r"lừa\s*đảo", r"trục\s*lợi", r"giả\s*chết", r"karaoke", r"ma\s*túy", r"tội\s*phạm",
+  r"lãnh\s*đạo\s*tỉnh", r"thanh\s*tra", r"kiến\s*nghị\s*xử\s*lý", r"sai\s*phạm",
+  r"quân\s*đội.*biểu\s*diễn", r"tàu\s*ngầm", r"phi\s*đội", r"phi\s*trường", r"vé\s*máy\s*bay",
+  r"CSGT", r"cảnh\s*sát\s*giao\s*thông", r"tổ\s*công\s*tác", r"quái\s*xế",
+  r"MTTQ", r"Mặt\s*trận\s*Tổ\s*quốc", r"kinh\s*tế\s*cửa\s*khẩu",
+  r"AstroWind", r"Tailwind\s*CSS", r"\.docx\b", r"\.pdf\b", r"\.doc\b",
+  r"đuối\s*nước", r"hồ\s*bơi", r"ngập\s*mặn.*vùng\s*nuôi",
+    r"xe\s*lu", r"xe\s*cẩu", r"xe\s*ủi", r"xe\s*ben", r"mất\s*thắng", r"mất\s*phanh",
+    r"khai\s*thác\s*đá", r"hoàng\s*thành", r"di\s*tích", r"di\s*sản", r"trùng\s*tu", r"phục\s*hồi(?!\s*sản\s*xuất)",
+    r"không\s*tiền\s*mặt", r"khoáng\s*sản", r"ăn\s*gian", r"bền\s*vững", r"đô\s*thị\s*bền\s*vững",
+    r"biên\s*giới", r"ngoại\s*giao", r"hội\s*đàm", r"hợp\s*tác\s*quốc\s*tế",
+    r"khen\s*thưởng", r"lao\s*động\s*giỏi", r"thi\s*đua", r"ăn\s*mừng",
+    r"thâu\s*tóm", r"đất\s*vàng", r"thùng\s*rượu", r"phát\s*triển\s*đô\s*thị",
+    r"hộ\s*dân(?!\s*bị\s*cô\s*lập)(?!\s*bị\s*thiệt\s*hại\s*nặng)",
+    r"câu\s*cá", r"câu\s*trúng", r"mất\s*tích(?!\s*do\s*lũ)(?!\s*do\s*bão)(?!\s*khi\s*đánh\s*bắt)",
+    r"thanh\s*nhiên\s*mất\s*tích", r"nữ\s*sinh\s*mất\s*tích", r"học\s*sinh\s*mất\s*tích",
+    r"lan\s*tỏa(?!\s*lâm\s*nguy)"
+]
+
+# 2. CONDITIONAL VETO: Noise that can co-exist with disaster (Economy, Accident, etc.)
+# These will be blocked ONLY if there is NO specific hazard score or metrics.
+CONDITIONAL_VETO = [
+  # Economy / Real Estate
+  r"bất\s*động\s*sản", r"cơn\s*sốt\s*đất", r"sốt\s*đất", r"đất\s*nền", r"chung\s*cư",
+  r"dự\s*án\s*nhà\s*ở", r"shophouse", r"biệt\s*thự", r"đấu\s*giá\s*đất",
+  r"lãi\s*suất", r"tín\s*dụng", r"ngân\s*hàng", r"tỉ\s*giá", r"VN-Index", r"chứng\s*khoán", r"cổ\s*phiếu",
+  r"giá\s*(?:vàng|heo|cà\s*phê|lúa|xăng|dầu|trái\s*cây)", r"tăng\s*giá", r"giảm\s*giá", r"hạ\s*nhiệt\s*(?:giá|thị\s*trường)",
+  r"xuất\s*khẩu", r"nhập\s*khẩu", r"GDP", r"tăng\s*trưởng\s*kinh\s*tế",
+  r"thủ\s*tục", r"trao\s*quyền",
+  
+  # Tech / Internet / AI (Moved from Absolute Veto)
+  r"Google", r"Facebook", r"Youtube", r"TikTok", r"Zalo\s*Pay", r"tính\s*năng", r"cập\s*nhật",
+  r"công\s*nghệ\s*số", r"dữ\s*liệu", r"\bAI\b", r"trí\s*tuệ\s*nhân\s*tạo",
+  
+  # Traffic Accidents (Distinguish from Disaster)
+  r"tai\s*nạn\s*giao\s*thông", r"va\s*chạm\s*xe", r"tông\s*xe", r"tông\s*chết",
+  r"xe\s*tải", r"xe\s*khách", r"xe\s*đầu\s*kéo", r"xe\s*container", r"xe\s*buýt",
+  r"hướng\s*dẫn", r"bí\s*quyết", r"cách\s*xử\s*lý", r"quy\s*trình(?!\s*xả\s*lũ)", r"mẹo\s*hay",
+  r"biện\s*pháp(?!\s*khẩn\s*cấp)", r"kỹ\s*năng(?!\s*cứu\s*hộ)", r"phòng\s*tránh",
+  r"(?<!thiên\s)tai\s*nạn\s*liên\s*hoàn", r"vi\s*phạm\s*nồng\s*độ\s*cồn",
+  
+  # Fire / Explosion (Urban/Industrial - Not Forest)
+  r"lửa\s*ngùn\s*ngụt", 
+  r"bà\s*hỏa", r"chập\s*điện", r"nổ\s*bình\s*gas",
+  r"cháy\s*nhà", r"nhà\s*bốc\s*cháy", r"hỏa\s*hoạn\s*nhà\s*dân",
+  r"cháy.*quán", r"cháy.*xưởng", r"cháy.*xe",
+  r"bom\s*mìn", r"vật\s*liệu\s*nổ", r"thuốc\s*nổ", r"đạn\s*pháo", r"chiến\s*tranh", r"thời\s*chiến",
+  
+  # Pollution / Environment 
+  r"quan\s*trắc\s*môi\s*trường", r"rác\s*thải",
+  r"chất\s*lượng\s*không\s*khí", r"(?<!\w)AQI(?!\w)", r"bụi\s*mịn", r"chỉ\s*số\s*không\s*khí",
+  
+  # Construction / Maintenance
+  r"giàn\s*giáo", r"sập\s*giàn\s*giáo", r"tai\s*nạn\s*lao\s*động", r"an\s*toàn\s*lao\s*động",
+  r"công\s*trình\s*xây\s*dựng", r"thi\s*công",
+  r"thiết\s*kế\s*nội\s*thất", r"trần\s*thạch\s*cao", r"la\s*phông", r"tấm\s*ốp",
+  r"trang\s*trí\s*nhà", r"nhà\s*đẹp", r"căn\s*hộ\s*mẫu", r"chung\s*cư\s*cao\s*cấp", r"biệt\s*thự",
+  r"bảo\s*trì", r"bảo\s*dưỡng", r"nghiệm\s*thu", r"lắp\s*đặt", r"hệ\s*thống\s*kỹ\s*thuật",
+  r"tủ\s*điện", r"thẩm\s*duyệt\s*PCCC", r"tập\s*huấn\s*PCCC", r"diễn\s*tập\s*PCCC",
+  
+  # Traffic Admin
+  r"xe\s*cứu\s*thương", r"biển\s*số\s*xe", r"đấu\s*giá\s*biển\s*số",
+  r"đăng\s*kiểm", r"giấy\s*phép", r"phạt\s*nguội",
+  
+  # Finance / Banking (Specific)
+  r"vốn\s*điều\s*lệ", r"tăng\s*vốn", r"cổ\s*đông", r"lợi\s*nhuận", r"doanh\s*thu",
+  r"ADB", r"WB", r"IMF", r"ODA",
+  
+  # Crime / Legal
+  r"án\s*mạng", r"giết\s*người", r"cướp\s*giật", r"trộm\s*cắp", r"cát\s*tặc", r"khai\s*thác\s*cát",
+  r"hung\s*thủ", r"nghi\s*phạm",
+  r"truy\s*nã", r"đối\s*tượng\s*lừa\s*đảo", r"đối\s*tượng\s*ma\s*túy", r"đối\s*tượng\s*truy\s*nã",
+  r"bắt\s*giữ", r"bị\s*can", r"xử\s*phạt", r"xét\s*xử", r"phiên\s*tòa",
+  r"tử\s*hình", r"án\s*tù", r"tội\s*phạm",
+
   # Political / Diplomatic (Metaphorical)
   r"bão\s*(?:ngoại\s*giao|chính\s*trị)", 
   r"rung\s*chấn\s*chính\s*trường",
   
-  # === SIMPLIFIED: ONLY FILTER TRULY UNRELATED CONTENT ===
-  # System is for "comprehensive disaster risk reporting" including:
-  #   - Active disasters, warnings, forecasts
-  #   - Recovery, aftermath, reconstruction  
-  #   - Infrastructure investment for disaster prevention
-  #   - Weather forecasts and updates
-  # ONLY filter spam, entertainment, pure politics, animals, etc.
+  # Social Vices / Crime (Anti-Disaster Context)
+  r"mại\s*dâm", r"mua\s*bán\s*dâm", r"gái\s*bán\s*dâm", r"khách\s*mua\s*dâm",
+  r"chứa\s*chấp", r"môi\s*giới\s*mại\s*dâm", r"tú\s*bà", r"động\s*lắc",
+  r"đánh\s*bạc", r"sát\s*phạt", r"sới\s*bạc", r"cá\s*độ",
+  r"ma\s*túy", r"thuốc\s*lắc", r"pay\s*lak", r"bay\s*lắc",
+  
+  # Military Sports / Ceremonies (Distinguish from Rescue)
+  r"liên\s*đoàn\s*võ\s*thuật", r"võ\s*thuật\s*quân\s*đội",
+  r"đại\s*hội\s*nhiệm\s*kỳ", r"đại\s*hội\s*thể\s*dục\s*thể\s*thao",
+  r"hội\s*thao", r"hội\s*thi\s*quân\s*sự", r"giải\s*đấu",
+  r"vovinam", r"karate", r"taekwondo", r"võ\s*cổ\s*truyền", r"judo", r"sambo",
   
   # === SIMPLIFIED: ONLY FILTER TRULY UNRELATED CONTENT ===
   # System is for "comprehensive disaster risk reporting" including:
@@ -696,7 +797,7 @@ SOFT_NEGATIVE = [
 ]
 
 # Combined Negative List for backward compatibility (used in NO_ACCENT generation)
-DISASTER_NEGATIVE = HARD_NEGATIVE + SOFT_NEGATIVE
+DISASTER_NEGATIVE = ABSOLUTE_VETO + CONDITIONAL_VETO + SOFT_NEGATIVE
 
 # Removed old compiled patterns
 POLLUTION_TERMS = [r"ô\s*nhiễm", r"AQI", r"PM2\.5", r"bụi\s*mịn"]
@@ -710,26 +811,62 @@ for label, pats in DISASTER_RULES:
 DISASTER_CONTEXT_NO_ACCENT = [risk_lookup.strip_accents(p) for p in DISASTER_CONTEXT]
 DISASTER_NEGATIVE_NO_ACCENT = [risk_lookup.strip_accents(p) for p in DISASTER_NEGATIVE]
 
+# === OPTIMIZATION: PRE-COMPILE REGEX ===
+# Compile patterns once at module level to avoid recompilation overhead
+logger.info("Compiling NLP regex patterns...")
+DISASTER_RULES_RE = []
+for label, pats in DISASTER_RULES:
+    compiled_acc = [re.compile(p, re.IGNORECASE) for p in pats]
+    # Compile unaccented version only if safe
+    compiled_no = []
+    for p in pats:
+        if safe_no_accent(p):
+            p_no = risk_lookup.strip_accents(p)
+            compiled_no.append(re.compile(p_no, re.IGNORECASE))
+        else:
+            compiled_no.append(None) # Marker for unsafe
+            
+    DISASTER_RULES_RE.append((label, compiled_acc, compiled_no))
+
+ABSOLUTE_VETO_RE = [re.compile(p, re.IGNORECASE) for p in ABSOLUTE_VETO]
+CONDITIONAL_VETO_RE = [re.compile(p, re.IGNORECASE) for p in CONDITIONAL_VETO]
+SOFT_NEGATIVE_RE = [re.compile(p, re.IGNORECASE) for p in SOFT_NEGATIVE]
+# DISASTER_CONTEXT is just list of strings, let's compile it too (though unused in code logic below yet, wait, Context Matches uses it)
+# Currently Context Matches loop iterates DISASTER_CONTEXT enum string. Let's pre-compile.
+DISASTER_CONTEXT_RE = [re.compile(p, re.IGNORECASE) for p in DISASTER_CONTEXT]
+POLLUTION_TERMS_RE = [re.compile(p, re.IGNORECASE) for p in POLLUTION_TERMS]
+logger.info("NLP regex compilation complete.")
+
 # Build impact extraction patterns with named groups and qualifier support
 def _build_impact_patterns():
     """
     Build regex patterns for extracting impact metrics.
     Uses regexes defined in IMPACT_KEYWORDS.
+    Returns (patterns_acc, patterns_no).
     """
-    patterns = {}
+    patterns_acc = {}
+    patterns_no = {}
     
     for impact_type, data in IMPACT_KEYWORDS.items():
         regex_list = data.get("regex", [])
-        patterns[impact_type] = []
+        patterns_acc[impact_type] = []
+        patterns_no[impact_type] = []
         for r_str in regex_list:
             try:
-                patterns[impact_type].append(re.compile(r_str, re.IGNORECASE))
+                # Accented version
+                p_acc = re.compile(r_str, re.IGNORECASE)
+                patterns_acc[impact_type].append(p_acc)
+                
+                # Unaccented version (if safe)
+                if safe_no_accent(r_str):
+                    r_no = risk_lookup.strip_accents(r_str)
+                    patterns_no[impact_type].append(re.compile(r_no, re.IGNORECASE))
             except re.error as e:
                 print(f"Error compiling regex for {impact_type}: {r_str} -> {e}")
                 
-    return patterns
+    return patterns_acc, patterns_no
 
-IMPACT_PATTERNS = _build_impact_patterns()
+IMPACT_PATTERNS, IMPACT_PATTERNS_NO = _build_impact_patterns()
 RE_AGENCY = re.compile(r"(Tổng\s+cục\s+KTTV|Cục\s+Quản\s+lý\s+đê\s+điều|Ban\s+Chỉ\s+đạo.*?PCTT|Trung\s+tâm\s+Dự\s+báo.*?KTTV|Viện\s+Vật\s+lý\s+Địa\s+cầu|Tổng\s+cục\s+Lâm\s+nghiệp|Trung\s+tâm\s+báo\s+tin\s+động\s+đất)", re.IGNORECASE)
 
 WEIGHT_RULE = 3.0
@@ -853,18 +990,19 @@ def compute_disaster_signals(text: str) -> dict:
 
     rule_matches = []
     # Check Rules (Iterate both accented and unaccented)
-    for i, (label, patterns) in enumerate(DISASTER_RULES):
+    # OPTIMIZED: Use DISASTER_RULES_RE
+    for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):
         matched = False
-        # Match Accented on t
-        for p in patterns:
-            if re.search(p, t, re.IGNORECASE):
+        # Match Accented on t (compiled)
+        for pat_re in compiled_acc:
+            if pat_re.search(t):
                 matched = True; break
-        # Disable Unaccented Check to prevent False Positives (bao -> bão, lu -> lũ)
-        # if not matched:
-        #     _, patterns_no = DISASTER_RULES_NO_ACCENT[i]
-        #     for p in patterns_no:
-        #         if re.search(p, t0, re.IGNORECASE):
-        #             matched = True; break
+        
+        # Safe Unaccented Check
+        if not matched:
+            for pat_re_no in compiled_no:
+                if pat_re_no and pat_re_no.search(t0):
+                    matched = True; break
         if matched: rule_matches.append(label)
 
     hazard_score = len(set(rule_matches))
@@ -905,35 +1043,56 @@ def compute_disaster_signals(text: str) -> dict:
 
     score = rule_score + impact_score + agency_score + source_score + province_score
 
-    # Context Matches
+    # Context Matches (Optimized)
     context_hits = []
-    for i, p_str in enumerate(DISASTER_CONTEXT):
+    # Use DISASTER_CONTEXT_RE
+    for i, pat_re in enumerate(DISASTER_CONTEXT_RE):
         matched = False
-        if re.search(p_str, t, re.IGNORECASE): matched = True
-        # Disable Unaccented Check for Context
-        # else:
-        #     p_no = DISASTER_CONTEXT_NO_ACCENT[i]
-        #     if re.search(p_no, t0, re.IGNORECASE): matched = True
-        if matched: context_hits.append(p_str)
+        if pat_re.search(t): matched = True
         
-    for pt in POLLUTION_TERMS:
-        if re.search(pt, t, re.IGNORECASE): context_hits.append(pt)
+        # Unaccented Check for Context (Optional, apply same safe logic if needed)
+        # For now, let's skip to save CPU unless strictly needed, context is supplementary
+        
+        if matched: 
+            # Get original string for logging
+            context_hits.append(DISASTER_CONTEXT[i])
+        
+    # Pollution Terms (Optimized)
+    for pat_re in POLLUTION_TERMS_RE:
+        if pat_re.search(t): context_hits.append("pollution_term") # Just marker
+    
     context_score = len(context_hits)
 
-    # NEGATIVE CHECKS (Split)
-    hard_negative = False
-    for p in HARD_NEGATIVE:
-        if re.search(p, t, re.IGNORECASE): 
-            hard_negative = True; break
+    # NEGATIVE CHECKS (Split & Optimized)
+    # 1. Absolute Veto
+    absolute_veto = False
+    negative_matches = []
+    for pat_re in ABSOLUTE_VETO_RE:
+        if pat_re.search(t): 
+            absolute_veto = True
+            negative_matches.append(pat_re.pattern)
+            break
+    
+    # 2. Conditional Veto
+    conditional_veto = False
+    if not absolute_veto:
+        for pat_re in CONDITIONAL_VETO_RE:
+             if pat_re.search(t):
+                 conditional_veto = True
+                 negative_matches.append(pat_re.pattern)
+                 break
             
+    # Soft Negative (Optimized)
     soft_negative = False
-    if not hard_negative:
-        for p in SOFT_NEGATIVE:
-            if re.search(p, t, re.IGNORECASE):
-                soft_negative = True; break
+    if not absolute_veto and not conditional_veto:
+        for pat_re in SOFT_NEGATIVE_RE:
+            if pat_re.search(t):
+                soft_negative = True
+                negative_matches.append(pat_re.pattern)
+                break
 
-    metrics = extract_disaster_metrics(t)
-    impact_details = extract_impact_details(t)
+    metrics = extract_disaster_metrics(text)
+    impact_details = extract_impact_details(text)
 
     return {
         "rule_matches": rule_matches,
@@ -943,10 +1102,15 @@ def compute_disaster_signals(text: str) -> dict:
         "score": score,
         "hazard_score": hazard_score,
         "context_score": context_score,
-        "hard_negative": hard_negative,
+        "absolute_veto": absolute_veto,
+        "conditional_veto": conditional_veto,
+        "hard_negative": absolute_veto, # Legacy compat
         "soft_negative": soft_negative,
+        "negative_hit": negative_matches,
         "metrics": metrics,
-        "impact_details": impact_details
+        "impact_details": impact_details,
+        "is_province_match": best_prov != "unknown",
+        "is_agency_match": agency_match is not None
     }
 
 def determine_event_stage(text: str) -> str:
@@ -969,42 +1133,91 @@ def determine_event_stage(text: str) -> str:
     return "IMPACT"
 
 
-def contains_disaster_keywords(text: str, trusted_source: bool = False) -> bool:
+def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool = False) -> bool:
     """
-    Simplified Logic (Hybrid v3):
-    1. HARD NEGATIVE -> Absolute Rejection (filters spam, metaphors, unrelated).
-    2. HAZARD KEYWORD -> Accept immediately (includes recovery, infrastructure, forecasts).
-    3. METRICS -> Accept if specific disaster metrics found (e.g. rainfall, water level).
-    
-    Removed complex scoring thresholds to improve recall for valid disaster news.
+    Stricter Filtering (v4):
+    - Separate Title and Body context.
+    - Block diplomatic/admin noise.
+    - Veto metaphors and social news aggressively.
     """
-    sig = compute_disaster_signals(text)
+    # Use full text for signal detection but remember title importance
+    full_text = f"{title}\n{text}" if title else text
+    sig = compute_disaster_signals(full_text)
+    t_lower = full_text.lower()
+    title_lower = title.lower() if title else ""
     
     # 0. VIP Whitelist (Critical Warnings that bypass ALL filters)
     # Rescue valid storm warnings/aid that might get caught by aggressive filters
     for vip in sources.VIP_TERMS:
+        # Check title first, it's more definitive
+        if title and re.search(vip, title, re.IGNORECASE):
+            return True
         if re.search(vip, text, re.IGNORECASE):
             return True
 
-    # 1. Absolute Veto (The "Shield")
-    if sig["hard_negative"]:
-        return False
+    # 1. ABSOLUTE VETO (The "Shield")
+    # Block immediately if matched (Metaphors, Showbiz, Game, Sport, Crime, Admin)
+    # [STRICTER] Apply veto to TITLE separately. If title has veto, REJECT immediately.
+    if title:
+        title_sig = compute_disaster_signals(title)
+        if title_sig["absolute_veto"]:
+            return False
+
+    if sig["absolute_veto"]:
+        # Only allow bypass if very strong hazard or real metrics (excluding duration)
+        real_metrics_dict = {k: v for k, v in sig["metrics"].items() if k != "duration_days"}
+        has_strong_signal = sig["hazard_score"] >= 3 or bool(real_metrics_dict)
+        if not has_strong_signal:
+            return False
+
+    # 2. CONDITIONAL VETO
+    if sig["conditional_veto"]:
+        has_real_signal = sig["hazard_score"] > 0 or bool(sig["metrics"])
+        if not has_real_signal:
+            return False
         
-    # 2. Hazard Keyword Found (One of 158 terms from sources.py or DISASTER_RULES)
-    if sig["hazard_score"] > 0:
+    # 2b. Hazard Keyword Found (Stricter Logic)
+    # Require HIGH-CONFIDENCE support if hazard signal is weak (only 1 match).
+    has_strong_support = (
+        sig["context_score"] >= 2  
+        or bool(sig["metrics"])    # Real weather metrics
+        or bool(sig["agency"])     # Official agency
+        # Require impact AND at least 1 context word (location/agency) to avoid accident noise
+        or (len(sig["impact_hits"]) >= 1 and (sig["context_score"] >= 1 or sig["is_province_match"]))
+    )
+    
+    if sig["hazard_score"] >= 2:
         return True
-        
-    # 3. Warning/Forecast Signatures (NEW: To capture "Tin bão", "Cảnh báo lũ", "Dự báo thời tiết")
+    
+    if sig["hazard_score"] == 1:
+        # If only 1 hazard type, require strong support
+        if has_strong_support:
+            return True
+        # If no strong support but from trusted source, allow (legacy)
+        if trusted_source and sig["context_score"] >= 1:
+            return True
+        # Reject un-trusted 1-hazard articles with only weak support
+        return False
+
+    # 3. Warning/Forecast Signatures
     # Even if exact hazard key is tricky, if we see "Dự báo" + "mưa lớn/bão/lũ", we take it.
-    if re.search(r"(dự\s*báo|cảnh\s*báo|tin\s*(?:không\s*khí\s*lạnh|bão|lũ|mưa|nắng\s*nóng))", text, re.IGNORECASE):
-        # Must also have some disaster-ish context if not a direct hazard term
-        if sig["context_score"] > 0 or re.search(r"(thời\s*tiết|thiên\s*tai|nguy\s*hiểm)", text, re.IGNORECASE):
+    # [STRICTER] REQUIRE hazard_score > 0 for forecast logic to avoid non-weather warnings.
+    forecast_keys = r"(dự\s*báo|cảnh\s*báo|tin\s*(?:không\s*khí\s*lạnh|bão|lũ|mưa|nắng\s*nóng))"
+    if sig["hazard_score"] > 0 and re.search(forecast_keys, full_text, re.IGNORECASE):
+        # High confidence if in title
+        if title_lower and re.search(forecast_keys, title_lower):
+             return True
+        # Medium confidence if in body with support
+        if sig["context_score"] >= 2 or re.search(r"(thời\s*tiết|thiên\s*tai|nguy\s*hiểm)", full_text, re.IGNORECASE):
             return True
 
-    # 4. Metrics Fallback (e.g. "Mưa 200mm", "Sức gió cấp 12" without explicit keyword?)
-    # Rare case, but good safety net.
-    if sig["metrics"]: 
-        return True
+    # 4. Metrics Fallback (e.g. "Mưa 200mm", "Sức gió cấp 12")
+    # [STRICTER] Only if we have at least 1 hazard keyword OR context.
+    # [REFINED] Do NOT use duration_days as the sole metric for fallback, as it's common in social/recruitment news.
+    real_metrics = {k: v for k, v in sig["metrics"].items() if k != "duration_days"}
+    if real_metrics: 
+        if sig["hazard_score"] > 0 or sig["context_score"] > 0:
+            return True
         
     # No keywords, no metrics -> Reject
     return False
@@ -1028,8 +1241,10 @@ def title_contains_disaster_keyword(title: str) -> bool:
     t = title.lower()
     
     # Negative veto first
-    for p in DISASTER_NEGATIVE:
-        if re.search(p, t, re.IGNORECASE):
+    # [OPTIMIZED] Only use ABSOLUTE_VETO for titles. 
+    # Do NOT use Soft/Conditional veto here because titles like "Khởi công hồ chứa" (Soft Neg) might be relevant.
+    for pat_re in ABSOLUTE_VETO_RE:
+        if pat_re.search(t):
             return False
             
     # Positive check
@@ -1203,8 +1418,19 @@ def classify_disaster(text: str, title: str = "") -> dict:
     # Sort by Priority
     all_hazards.sort(key=lambda h: PRIO.index(h["type"]) if h["type"] in PRIO else 99)
     
+    primary = "unknown"
+    if all_hazards:
+        primary = all_hazards[0]["type"]
+    else:
+        # Check for Recovery/Relief keywords as fallback
+        rel_text = f"{title}\n{text}".lower()
+        if any(re.search(kw, rel_text) for kw in RECOVERY_KEYWORDS):
+            primary = "recovery"
+        elif any(re.search(kw, rel_text, re.IGNORECASE) for kw in sources.VIP_TERMS):
+             primary = "relief_aid"
+
     return {
-        "primary_type": all_hazards[0]["type"],
+        "primary_type": primary,
         "primary_level": 1,
         "all_hazards": all_hazards
     }
@@ -1303,103 +1529,126 @@ def extract_impact_details(text: str) -> dict:
     Extract specific impact metrics using regex patterns.
     Matches positional groups from user-defined regexes.
     Handles negation and float values.
+    Supports accent-insensitive matching.
     """
     impacts = {}
     
-    # Normalize text (lower, strip accents/spaces)
-    # Note: Regexes must be compatible with lowercased text (compile with re.I)
-    t = normalize_text(text)
+    # Use canonical versions (accented and unaccented)
+    t, t0 = risk_lookup.canon(text or "")
     
-    for impact_type, patterns in IMPACT_PATTERNS.items():
+    for impact_type in IMPACT_KEYWORDS.keys():
         found_items = []
-        for pat in patterns:
-            for m in pat.finditer(t):
-                # NEGATION CHECK
-                start, end = m.span()
-                pre_text = t[max(0, start - 30):start]
-                post_text = t[end:min(len(t), end + 30)]
-                
-                # Check specific negations for this type + general negations
-                specific_negs = NEGATION_TERMS.get(impact_type, [])
-                general_negs = NEGATION_TERMS.get("general", [])
-                all_negs = specific_negs + general_negs
-                
-                if any(neg in pre_text for neg in all_negs) or any(neg in post_text for neg in all_negs):
-                    continue
+        seen_spans = [] # track (start, end) to avoid duplicates from t and t0
+        
+        # Pass 1: Accented (t)
+        # Pass 2: Unaccented (t0) using IMPACT_PATTERNS_NO
+        passes = [
+            (t, IMPACT_PATTERNS.get(impact_type, [])),
+            (t0, IMPACT_PATTERNS_NO.get(impact_type, []))
+        ]
+        
+        for text_to_search, patterns in passes:
+            for pat in patterns:
+                for m in pat.finditer(text_to_search):
+                    # Check for overlap with already found spans
+                    start, end = m.span()
+                    is_duplicate = False
+                    for s_start, s_end in seen_spans:
+                        # If overlap found
+                        if max(start, s_start) < min(end, s_end):
+                            is_duplicate = True
+                            break
+                    if is_duplicate: continue
+                    seen_spans.append((start, end))
 
-                # Parse groups pattern: First number-like group is value
-                groups = m.groups()
-                val = 0
-                unit = None
+                    # NEGATION CHECK
+                    pre_text = text_to_search[max(0, start - 100):start]
+                    post_text = text_to_search[end:min(len(text_to_search), end + 100)]
                 
-                # Heuristic to find Value (Num) vs Unit
-                for g in groups:
-                    if not g: continue
+                    # Check specific negations for this type + general negations
+                    specific_negs = NEGATION_TERMS.get(impact_type, [])
+                    general_negs = NEGATION_TERMS.get("general", [])
+                    all_negs = specific_negs + general_negs
                     
-                    # Try parsing as number (including range support)
-                    g_clean = re.sub(r"[^0-9–-]", "", g) # Keep digits and hyphens
-                    if g_clean and (g_clean[0].isdigit() or g_clean.startswith("-")):
-                         # If it's a range like "3-5"
-                         if "-" in g or "–" in g:
-                             nums = re.findall(r"\d+", g)
-                             if nums:
-                                 val = [int(n) for n in nums]
-                         else:
-                             val = _to_int(g)
-                             
-                         # Specific override for float types if needed (damage, agriculture)
-                         if impact_type in ("damage", "agriculture") and isinstance(val, int):
-                              try:
-                                  if ',' in g:
-                                      val = float(g.replace(',', '.'))
-                                  elif '.' in g and len(g.split('.')[1]) != 3: 
-                                      val = float(g)
-                              except:
-                                  pass
-                         break
-                
-                if val:
-                    # Find unit (first non-number, non-qualifier string)
-                    for g in groups:
-                        if not g: continue
-                        # If it's a number, skip
-                        if re.sub(r"[^0-9–-]", "", g).isdigit(): continue
-                        # Skip qualifiers
-                        if g.lower() in ("ít nhất", "tối thiểu", "khoảng", "hơn", "trên", "gần", "tới", "lên tới", "ước tính", "ước", "ban đầu", "dự kiến"): continue
-                        
-                        # Skip known keywords (e.g. "thiệt hại", "tổn thất") to avoid capturing them as unit
-                        # BUT do not skip if it's a known unit noun like "ngư dân" or "thuyền viên"
-                        terms = IMPACT_KEYWORDS[impact_type].get("terms", [])
-                        is_unit_noun = g.lower() in ("người", "nhà văn hóa", "căn nhà", "ngôi nhà", "trường học", "nhà", "hộ", "căn", "ngôi", "tàu cá", "tàu hàng", "tàu du lịch", "tàu", "thuyền thúng", "thuyền", "thuyền viên", "ngư dân", "ha", "hecta", "tấn", "sào", "lồng bè", "lồng", "bè", "sà lan", "ghe chài", "ghe")
-                        if g.lower() in terms and not is_unit_noun: continue
-                        
-                        # Skip common verbs if they are not the intended unit (heuristic)
-                        if len(g) < 4 and g.lower() in ("làm", "gây", "bị", "đã", "có", "mất", "với", "cho", "vào", "đến"): continue
-                        if g.lower() in ("khẩn cấp", "mất tích", "chìm", "vùi lấp", "tốc mái", "ngập", "thiệt hại", "tổn thất", "nứt", "sửa", "chia cắt", "cô lập", "làm sập", "làm", "khiến", "gây", "tử vong", "thiệt mạng", "cháy", "mất điện", "mất nước", "ảnh hưởng", "trôi", "ngập úng"): continue
+                    if any(neg in pre_text for neg in all_negs) or any(neg in post_text for neg in all_negs):
+                        continue
 
-                        unit = g
-                        break
+                    # Parse Named Groups for precision
+                    # Supports: ?P<num>, ?P<unit>, ?P<qualifier>
+                    gd = m.groupdict()
+                    g_num = gd.get("num")
+                    g_unit = gd.get("unit")
+                    g_qual = gd.get("qualifier")
                     
-                    vals = val if isinstance(val, list) else [val]
-                    for v in vals:
-                        if impact_type in ("deaths", "missing", "injured"):
-                             found_items.append(v)
-                        else:
-                             item = {"num": v}
-                             if unit: item["unit"] = unit
-                             found_items.append(item)
+                    val = 0
+                    unit = g_unit if g_unit else None
+                    
+                    if g_num:
+                        # Try parsing as number (including range support)
+                        g_clean = re.sub(r"[^0-9–-]", "", g_num) # Keep digits and hyphens
+                        if g_clean and (g_clean[0].isdigit() or g_clean.startswith("-")):
+                             # If it's a range like "3-5"
+                             if "-" in g_num or "–" in g_num:
+                                 nums = re.findall(r"\d+", g_num)
+                                 if nums:
+                                     val = [int(n) for n in nums]
+                             else:
+                                 val = _to_int(g_num)
+                                 
+                             # Specific override for float types if needed (damage, agriculture)
+                             # If unit is ha, hecta, tỷ, triệu, or temperature/salinity (handled elsewhere mostly)
+                             if impact_type in ("damage", "agriculture") and isinstance(val, int):
+                                  try:
+                                      if ',' in g_num:
+                                          val = float(g_num.replace(',', '.'))
+                                      elif '.' in g_num and len(g_num.split('.')[1]) != 3: 
+                                          val = float(g_num)
+                                  except:
+                                      pass
+                    
+                    if val:
+                        vals = val if isinstance(val, list) else [val]
+                        for v in vals:
+                            if impact_type in ("deaths", "missing", "injured"):
+                                 found_items.append(v)
+                            else:
+                                 item = {"num": v}
+                                 if unit: item["unit"] = unit
+                                 found_items.append(item)
 
         
         # Special case for text numbers ("một nghìn", "hàng trăm")
         if impact_type == "damage":
-             # Text numbers check
-             if "nghìn" in t or "ngàn" in t:
-                 m = re.search(r"(một|hai|ba|bốn|năm|sáu|bảy|tám|chín|hàng|vài)\s*(nghìn|ngàn)\s*(ngôi|căn)?\s*(nhà|hộ)", t)
-                 if m:
-                     if m.group(1) == "một": found_items.append({"num": 1000, "unit": "nhà"})
-                     elif m.group(1) == "hàng": found_items.append({"num": 1000, "unit": "nhà"})
-             # "Một" for single house damage (only if no numeric damage for houses found)
-             elif "một" in t and any(x in t for x in ["ngôi nhà", "căn nhà", "thiệt hại một nhà"]):
+             # Text numbers check with Multiplier
+             # Supports: "ba nghìn", "hàng trăm", "vài chục"
+             pattern = r"\b(một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười|chục|trăm|hàng|vài)\s*(nghìn|ngàn|triệu|tỷ|trăm|chục)\s*(?:ngôi|căn|cái)?\s*(nhà|hộ|công trình|kios)"
+             m = re.search(pattern, t) # Accented
+             if not m:
+                 # Try unaccented on t0 with stripped pattern
+                 m = re.search(risk_lookup.strip_accents(pattern), t0)
+                 
+             if m:
+                 num_map = {
+                     "một": 1, "mot": 1, "hai": 2, "ba": 3, "bốn": 4, "bon": 4, "năm": 5, "nam": 5,
+                     "sáu": 6, "sau": 6, "bảy": 7, "bay": 7, "tám": 8, "tam": 8, "chín": 9, "chin": 9, "mười": 10, "muoi": 10,
+                     "chục": 10, "chuc": 10, "trăm": 100, "tram": 100, "nghìn": 1000, "nghin": 1000, "ngàn": 1000, "ngan": 1000,
+                     "hàng": 2, "hang": 2, "vài": 3, "vai": 3
+                 }
+                 mul_map = {
+                     "chục": 10, "chuc": 10, "trăm": 100, "tram": 100, "nghìn": 1000, "nghin": 1000, "ngàn": 1000, "ngan": 1000, 
+                     "triệu": 1000000, "trieu": 1000000, "tỷ": 1000000000, "ty": 1000000000
+                 }
+                 
+                 w_num = m.group(1)
+                 w_mul = m.group(2)
+                 
+                 base_num = num_map.get(w_num, 1)
+                 multiplier = mul_map.get(w_mul, 1)
+                 
+                 final_val = base_num * multiplier
+                 found_items.append({"num": final_val, "unit": "nhà"})
+             # "Một" for single house damage
+             elif ("một" in t or "mot" in t0) and any(x in t or risk_lookup.strip_accents(x) in t0 for x in ["ngôi nhà", "căn nhà", "thiệt hại một nhà"]):
                  # Check if we already have a house damage match
                  already_has_house = False
                  for obj in found_items:

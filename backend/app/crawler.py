@@ -258,7 +258,7 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
 
 
 
-async def _process_once_async(force_update: bool = False) -> dict:
+async def _process_once_async(force_update: bool = False, only_sources: list[str] = None) -> dict:
     """Async implementation of a single crawl run."""
     db: Session = SessionLocal()
     new_count = 0
@@ -267,6 +267,9 @@ async def _process_once_async(force_update: bool = False) -> dict:
         # Build list of feed urls with fallback chain per source
         sources_feeds: dict = {}  # source.name -> list of urls (primary, backup, gnews)
         for src in SOURCES:
+            if only_sources and src.name not in only_sources:
+                continue
+                
             feed_urls = []
             
             # Add primary and backup RSS if available
@@ -370,7 +373,7 @@ async def _process_once_async(force_update: bool = False) -> dict:
                     # - Trusted sources passed easier.
                     # - Untrusted sources need Impact/Metrics.
                     # - Hard Negatives filtered out.
-                    is_relevant = nlp.contains_disaster_keywords(text_for_nlp, trusted_source=src.trusted)
+                    is_relevant = nlp.contains_disaster_keywords(summary_raw, title=title, trusted_source=src.trusted)
                     
                     if not is_relevant:
                         continue
@@ -452,7 +455,7 @@ async def _process_once_async(force_update: bool = False) -> dict:
                         missing=_get_impact_value(impacts["missing"]),
                         injured=_get_impact_value(impacts["injured"]),
                         damage_billion_vnd=_get_impact_value(impacts["damage_billion_vnd"]),
-                        agency=impacts["agency"],
+                        agency=impacts["agency"][:255] if impacts["agency"] else None,
                         summary=summary,
                         image_url=_extract_image_url(entry),
                         impact_details=nlp.extract_impact_details(text_for_nlp) 
@@ -542,7 +545,8 @@ async def _process_once_async(force_update: bool = False) -> dict:
                                     if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
                                         article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
                                     if full_impacts.get("agency") is not None and article.agency is None:
-                                        article.agency = full_impacts.get("agency")
+                                        raw_agency = full_impacts.get("agency")
+                                        article.agency = raw_agency[:255] if raw_agency else None
                                     if article.province in (None, "unknown"):
                                         prov = nlp.extract_province(full_text)
                                         if prov and prov != "unknown":
@@ -645,7 +649,7 @@ async def _process_once_async(force_update: bool = False) -> dict:
                                 missing=impacts["missing"],
                                 injured=impacts["injured"],
                                 damage_billion_vnd=impacts["damage_billion_vnd"],
-                                agency=impacts["agency"],
+                                agency=impacts["agency"][:255] if impacts["agency"] else None,
                                 summary=summary,
                                 impact_details=nlp.extract_impact_details(text_for_nlp)
                             )
@@ -695,7 +699,8 @@ async def _process_once_async(force_update: bool = False) -> dict:
                                     if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
                                         article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
                                     if full_impacts.get("agency") is not None and article.agency is None:
-                                        article.agency = full_impacts.get("agency")
+                                        raw_agency = full_impacts.get("agency")
+                                        article.agency = raw_agency[:255] if raw_agency else None
                                     if article.province in (None, "unknown"):
                                         prov = nlp.extract_province(full_text)
                                         if prov and prov != "unknown":
@@ -750,9 +755,9 @@ async def _process_once_async(force_update: bool = False) -> dict:
     finally:
         db.close()
 
-def process_once(force: bool = False) -> dict:
+def process_once(force: bool = False, only_sources: list[str] = None) -> dict:
     """Synchronous wrapper used by the scheduler/background jobs."""
-    return asyncio.run(_process_once_async(force_update=force))
+    return asyncio.run(_process_once_async(force_update=force, only_sources=only_sources))
 
 
 def main():

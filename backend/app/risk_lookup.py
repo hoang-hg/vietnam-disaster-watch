@@ -37,8 +37,10 @@ def canon(text: str) -> Tuple[str, str]:
     t = normalize_text(text)
     t0 = strip_accents(t)
 
-    # normalize punctuation -> space
-    t0 = re.sub(r"[^a-zA-Z0-9\s]", " ", t0)
+    # normalize punctuation -> space, but PRESERVE decimals (e.g. 2.5)
+    # We replace punctuation with space ONLY if it's not between digits or part of a decimal
+    t0 = re.sub(r"(?<!\d)[.,]|[.,](?!\d)", " ", t0)
+    t0 = re.sub(r"[^a-zA-Z0-9.,\s]", " ", t0)
     t0 = re.sub(r"\s+", " ", t0).strip()
 
     # alias expansion (on t0)
@@ -75,8 +77,8 @@ def extract_beaufort_max(text: str) -> Optional[int]:
     t, t0 = canon(text)
     vals: list[int] = []
 
-    # cấp/cap X
-    for m in re.finditer(r"(?:cấp|cap)\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+    # cấp/cap X (exclude 'khẩn cấp')
+    for m in re.finditer(r"(?<!khan\s)(?<!khẩn\s)(?:cấp|cap)\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
         a = int(m.group(1))
         b = int(m.group(2)) if m.group(2) else a
         vals.append(max(a, b))
@@ -175,8 +177,12 @@ def extract_duration_days_count(text: str) -> int:
 
 def extract_quake_mag(text: str) -> Optional[float]:
     _, t0 = canon(text)
-    m = re.search(r"\b(?:m|mw|ml)\s*(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
+    m = re.search(r"\b(?:mw|ml)\s*(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
     if m: return float(m.group(1).replace(",", "."))
+    # For single 'm', require it to be 'm 5.0' appearing after 'dong dat' or 'chan dong'
+    if re.search(r"(?:dong\s*dat|chan\s*dong|dia\s*chan)", t0):
+        m = re.search(r"\bm\s*(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
+        if m: return float(m.group(1).replace(",", "."))
     m = re.search(r"(\d+(?:[.,]\d+)?)\s*do\s*(?:richter)?\b|do\s*lon[^0-9]{0,10}(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
     if m:
         g = m.group(1) or m.group(2)

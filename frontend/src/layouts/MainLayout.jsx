@@ -36,7 +36,7 @@ export default function MainLayout({ children }) {
                     </div>
                     {/* Text Logo */}
                     <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
-                        BÁO <span className="text-[#e04f23]">TỔNG HỢP THIÊN TAI</span>
+                        BÁO TỔNG HỢP RỦI RO THIÊN TAI
                     </span>
                 </Link>
             </div>
@@ -105,10 +105,51 @@ export default function MainLayout({ children }) {
       </main>
 
       {/* Footer (Simplified) */}
-      <footer className="bg-white border-t border-slate-200 mt-auto py-8 flex-none">
-        <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-            <p className="font-bold text-slate-700 uppercase mb-2">Báo Tổng Hợp Rủi Ro Thiên Tai - VietN Disaster Watch</p>
-            <p>Tổng hợp tin tức thiên tai tự động từ các nguồn chính thống.</p>
+      {/* Footer (Professional) */}
+      <footer className="bg-white border-t border-slate-200 mt-auto flex-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 text-sm">
+                
+                {/* Column 1: Liên hệ */}
+                <div className="md:col-span-2 space-y-3">
+                    <h3 className="font-bold text-slate-900 uppercase tracking-wider">Liên hệ</h3>
+                    <ul className="space-y-2 text-slate-600">
+                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Giới thiệu</a></li>
+                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Điều khoản sử dụng</a></li>
+                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Chính sách bảo mật</a></li>
+                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Quảng cáo</a></li>
+                    </ul>
+                </div>
+
+                {/* Column 2: Khác */}
+                <div className="md:col-span-2 space-y-3">
+                    <h3 className="font-bold text-slate-900 uppercase tracking-wider">Khác</h3>
+                    <ul className="space-y-2 text-slate-600">
+                        <li><Link to="/map" className="hover:text-[#2fa1b3] transition-colors">Bản đồ rủi ro</Link></li>
+                        <li><Link to="/events" className="hover:text-[#2fa1b3] transition-colors">Dòng sự kiện</Link></li>
+                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">RSS Feeds</a></li>
+                    </ul>
+                </div>
+
+                {/* Column 3: License / Info (Right aligned equivalent) */}
+                <div className="md:col-span-8 md:text-right space-y-2 text-slate-500 text-xs leading-relaxed border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
+                    <p>
+                        <span className="font-bold text-slate-900 uppercase text-sm block mb-1">
+                            BÁO TỔNG HỢP RỦI RO THIÊN TAI - VIỆT NAM DISASTER WATCHING
+                        </span>
+                        <span>Đơn vị thiết lập: Nhóm nghiên cứu & Phát triển.</span>
+                    </p>
+                    <p>
+                         Hệ thống tự động tổng hợp tin tức thiên tai từ các nguồn chính thống (KTTV Quốc gia, Báo Chính Phủ, TTXVN, v.v...) nhằm cung cấp cái nhìn toàn cảnh về tình hình thiên tai tại Việt Nam.
+                    </p>
+                    <p>
+                        Địa chỉ: Hà Nội, Việt Nam. Email: contact@vietndisasterwatch.com <br/>
+                    </p>
+                    <p className="italic mt-2">
+                        Lưu ý: Các thông tin dự báo chỉ mang tính chất tham khảo, vui lòng theo dõi các bản tin chính thức từ cơ quan chức năng địa phương.
+                    </p>
+                </div>
+            </div>
         </div>
       </footer>
     </div>

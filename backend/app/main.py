@@ -33,7 +33,18 @@ async def on_startup():
     scheduler.add_job(
         process_once,
         trigger=IntervalTrigger(minutes=settings.crawl_interval_minutes),
-        id="crawl_job",
+        id="crawl_job_general",
+        replace_existing=True,
+    )
+    
+    # 2. KTTV Special Schedule (Fast Update: 2 minutes)
+    # We use a lambda or wrapper to pass arguments if needed, 
+    # but apscheduler supports args/kwargs.
+    scheduler.add_job(
+        process_once,
+        trigger=IntervalTrigger(minutes=10),
+        id="crawl_job_kttv",
+        kwargs={"only_sources": ["KTTV Quốc gia"]}, # Prioritize KTTV 
         replace_existing=True,
     )
     scheduler.start()

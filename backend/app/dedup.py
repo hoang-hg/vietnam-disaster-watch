@@ -81,6 +81,16 @@ def find_duplicate_article(
     """
     
     try:
+        # Strategy 0: GLOBAL Check for exact URL match (ignoring time window) 
+        # This prevents UniqueConstraint violations for re-scraped old articles.
+        exact_match = db.query(Article).filter(
+            Article.domain == domain,
+            Article.url == url
+        ).first()
+        
+        if exact_match:
+            return exact_match
+
         norm_url = normalize_url(url)
 
         # Candidates in time window

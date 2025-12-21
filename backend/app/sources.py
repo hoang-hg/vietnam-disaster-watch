@@ -97,11 +97,10 @@ CONTEXT_KEYWORDS = [
 
 # VIP Terms (Critical warnings/actions that bypass all filters)
 VIP_TERMS = [
-    r"tin\s*bão", r"bão\s*(?:số|gần\s*biển\s*đông|đổ\s*bộ)", 
-    r"áp\s*thấp\s*nhiệt\s*đới", r"ATNĐ",
-    r"hỗ\s*trợ\s*khẩn\s*cấp", r"viện\s*trợ.*thiên\s*tai",
-    r"dự\s*báo\s*thời\s*tiết", r"cảnh\s*báo\s*mưa", r"tin\s*không\s*khí\s*lạnh",
-    r"dự\s*báo\s*bão", r"cảnh\s*báo\s*lũ", r"nguy\s*cơ\s*sạt\s*lở"
+    r"tin\s*bão\s*(?:khẩn\s*cấp|số\s*\d+)", r"bão\s*(?:gần\s*biển\s*đông|đổ\s*bộ)", 
+    r"áp\s*thấp\s*nhiệt\s*đới\s*khẩn\s*cấp", r"\bATNĐ\b",
+    r"hỗ\s*trợ\s*khẩn\s*cấp.*thiên\s*tai", r"viện\s*trợ.*thiên\s*tai",
+    r"cảnh\s*báo\s*lũ\s*khẩn\s*cấp", r"nguy\s*cơ\s*sạt\s*lở\s*rất\s*cao"
 ]
 
 

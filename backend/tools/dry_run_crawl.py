@@ -91,7 +91,7 @@ async def dry_run():
         f.write("="*60 + "\n\n")
         
         for idx, item in enumerate(accepted_details, 1):
-            f.write(f"{idx}. [{item['source']}] {item['title']}\n")
+            f.write(f"{idx:3d}. [{item['type'].upper():<15}] H={item['h_score']} C={item['c_score']} M={item['metrics']} [{item['source']}] {item['title']} (Rules: {item['rules']})\n")
             
     print(f"\n✅ Da xuat danh sach {len(accepted_details)} tin ra file 'crawled_news_list.txt'.")
     print("-" * 60)
@@ -101,7 +101,7 @@ async def dry_run():
         print("   (No disaster news found at this exact moment)")
     else:
         for item in accepted_details:
-            print(f" + [{item['source']}] {item['title']}")
+            print(f" + [{item['type'].upper():<15}] [{item['source']}] {item['title']}")
             
     print("\n❌ REJECTED NOISE SAMPLES (What was filtered out):")
     for item in rejected_samples[:15]: # Show top 15 noise examples
@@ -127,17 +127,30 @@ async def fetch_and_process(client, source_name, url, method):
             full_text = f"{title}\n{desc}"
             
             # === THE NLP FILTER ===
-            # trusted_source=False to be strict
-            is_valid = nlp.contains_disaster_keywords(full_text, trusted_source=False)
+            # Pass title separately to trigger title-based veto
+            is_valid = nlp.contains_disaster_keywords(desc, title=title, trusted_source=False)
             
-            item = {"source": source_name, "title": title}
             if is_valid:
                 res["accepted"] += 1
+                info = nlp.classify_disaster(desc, title=title)
+                sig = nlp.compute_disaster_signals(f"{title}\n{desc}")
+                dtype = info.get("primary_type", "unknown")
+                item = {
+                    "source": source_name, 
+                    "title": title, 
+                    "type": dtype,
+                    "h_score": sig["hazard_score"],
+                    "c_score": sig["context_score"],
+                    "metrics": list(sig["metrics"].keys()),
+                    "rules": "|".join(sig["rule_matches"])
+                }
                 res["accepted_items"].append(item)
             else:
+                item = {"source": source_name, "title": title}
                 res["rejected_items"].append(item)
                 
-    except Exception:
+    except Exception as e:
+        # print(f"Error fetching {source_name}: {e}")
         pass
     
     return res
