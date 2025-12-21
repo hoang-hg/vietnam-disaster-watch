@@ -6,7 +6,7 @@
       "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
       "backup_rss": "https://thanhnien.vn/rss/tin-24h.rss",
       "note": "Updated Backup to Tin-24h",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VietNamNet",
@@ -14,7 +14,7 @@
       "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
       "backup_rss": null,
       "note": "Backup 404, Primary OK",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VnExpress",
@@ -22,7 +22,7 @@
       "primary_rss": "https://vnexpress.net/rss/thoi-su.rss",
       "backup_rss": "https://vnexpress.net/rss/tin-moi-nhat.rss",
       "note": "Official RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Tuổi Trẻ",
@@ -30,7 +30,7 @@
       "primary_rss": "https://tuoitre.vn/rss/thoi-su.rss",
       "backup_rss": "https://tuoitre.vn/rss/tin-moi-nhat.rss",
       "note": "Official RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Dân Trí",
@@ -38,7 +38,7 @@
       "primary_rss": "https://dantri.com.vn/rss/thoi-su.rss",
       "backup_rss": "https://dantri.com.vn/rss/home.rss",
       "note": "RSS available",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Lao Động",
@@ -46,7 +46,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS landing exists; run RSS discovery. Using GNews meanwhile.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Nhân Dân",
@@ -54,7 +54,7 @@
       "primary_rss": "https://nhandan.vn/rss/xa-hoi-1361.rss",
       "backup_rss": "https://nhandan.vn/rss/home.rss",
       "note": "Added Backup Home RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Tiền Phong",
@@ -62,7 +62,7 @@
       "primary_rss": "https://tienphong.vn/rss/xa-hoi-2.rss",
       "backup_rss": null,
       "note": "RSS available",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "CAND",
@@ -70,7 +70,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
      {
       "name": "Pháp luật & Đời sống",
@@ -78,7 +78,7 @@
       "primary_rss": "https://doisongphapluat.com.vn/rss/tin-tuc.rss",
       "backup_rss": "https://doisongphapluat.com.vn/rss/phap-luat.rss",
       "note": "RSS updated per patch (via main-rss.html)",
-      "trusted": true
+      "trusted": false
     },
     {
         "name": "Znews",
@@ -86,7 +86,7 @@
         "primary_rss": "https://znews.vn/rss/xa-hoi.rss",
         "backup_rss": "https://znews.vn/rss/thoi-su.rss",
         "note": "RSS available",
-        "trusted": true
+        "trusted": false
     },
     {
         "name": "Kênh 14",
@@ -94,7 +94,7 @@
         "primary_rss": "https://kenh14.vn/xa-hoi.rss",
         "backup_rss": null,
         "note": "RSS available",
-        "trusted": true
+        "trusted": false
     },
     {
       "name": "baocaobang.vn",
@@ -102,7 +102,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS Empty/Broken. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "tuyenquang.gov.vn",
@@ -110,7 +110,7 @@
       "primary_rss": "https://www.tuyenquang.gov.vn/rss.xml",
       "backup_rss": null,
       "note": "Official Gov Portal",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baotuyenquang.com.vn",
@@ -118,7 +118,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "laocai.gov.vn",
@@ -126,7 +126,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baolaocai.vn",
@@ -134,7 +134,7 @@
       "primary_rss": "https://baolaocai.vn/rss/home.rss",
       "backup_rss": "https://baolaocai.vn/rss/index.rss",
       "note": "Official Province News",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "dienbientv.vn",
@@ -142,7 +142,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "laichau.gov.vn",
@@ -150,7 +150,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baosonla.org.vn",
@@ -158,7 +158,7 @@
       "primary_rss": "https://baosonla.vn/rss/xa-hoi.rss",
       "backup_rss": null,
       "note": "Official Province News",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baothainguyen.vn",
@@ -166,7 +166,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baolangson.vn",
@@ -174,7 +174,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS Empty. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoquangninh.com.vn",
@@ -182,7 +182,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baophutho.vn",
@@ -190,7 +190,7 @@
       "primary_rss": "http://baophutho.vn/feed",
       "backup_rss": null,
       "note": "RSS updated per validation",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoninhbinh.org.vn",
@@ -198,7 +198,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baonghean.vn",
@@ -206,7 +206,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baohatinh.vn",
@@ -214,7 +214,7 @@
       "primary_rss": "https://baohatinh.vn/rss/home.rss",
       "backup_rss": "https://baohatinh.vn/rss/index.rss",
       "note": "Official Province News",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoquangtri.vn",
@@ -222,7 +222,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "huengaynay.vn",
@@ -230,7 +230,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Huế Ngày Nay (News)",
@@ -238,7 +238,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Subdomain GNews Search",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baodanang.vn",
@@ -246,7 +246,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoquangngai.vn",
@@ -254,7 +254,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baobinhdinh.vn",
@@ -262,7 +262,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown (some sites use /Default.aspx)",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baophuyen.com.vn",
@@ -270,7 +270,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baokhanhhoa.vn",
@@ -278,7 +278,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baoninhthuan.com.vn",
@@ -286,7 +286,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown (homepage sometimes /home.htm)",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baogialai.com.vn",
@@ -294,7 +294,7 @@
       "primary_rss": "https://baogialai.com.vn/rss/home.rss",
       "backup_rss": "https://baogialai.com.vn/rss/index.rss",
       "note": "RSS updated per validation",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "baodaklak.vn",
@@ -302,7 +302,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Added from user list; RSS unknown",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Báo Tin tức (TTXVN)",
@@ -310,7 +310,7 @@
       "primary_rss": "https://baotintuc.vn/thoi-su.rss",
       "backup_rss": "https://baotintuc.vn/tin-moi-nhat.rss",
       "note": "Official RSS from /rss.htm",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "SGGP",
@@ -325,7 +325,7 @@
       "primary_rss": "https://nld.com.vn/rss/thoi-su.rss",
       "backup_rss": "https://nld.com.vn/rss/home.rss",
       "note": "Corrected RSS path",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Quân đội Nhân dân",
@@ -333,7 +333,7 @@
       "primary_rss": "https://www.qdnd.vn/rss/cate/tin-tuc-moi-nhat.rss",
       "backup_rss": null,
       "note": "Army Breaking News",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VNA Net",
@@ -348,7 +348,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS Empty. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Soha",
@@ -356,7 +356,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "24h",
@@ -364,7 +364,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Báo Chính Phủ",
@@ -372,7 +372,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VietnamPlus (TTXVN)",
@@ -380,7 +380,7 @@
       "primary_rss": "https://www.vietnamplus.vn/rss/xa-hoi.rss",
       "backup_rss": "https://www.vietnamplus.vn/rss/thoi-su.rss",
       "note": "Official VNA",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VTV News",
@@ -388,7 +388,7 @@
       "primary_rss": "https://vtv.vn/rss/xa-hoi.rss",
       "backup_rss": "https://vtv.vn/rss/home.rss",
       "note": "Updated to Official RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Nông Nghiệp & Môi trường",
@@ -396,7 +396,7 @@
       "primary_rss": "https://nongnghiepmoitruong.vn/thoi-su-nong-nghiep-moi-truong.rss",
       "backup_rss": "https://nongnghiepmoitruong.vn/moi-truong.rss",
       "note": "Replaced Nông Nghiệp VN",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Báo Dân tộc và Phát triển",
@@ -404,7 +404,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS Empty. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Báo Giao thông",
@@ -412,7 +412,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404. Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Cổng TTĐT Chính phủ (Công báo)",
@@ -420,7 +420,7 @@
       "primary_rss": "http://congbao.chinhphu.vn/cac_van_ban_moi_ban_hanh.rss",
       "backup_rss": "http://congbao.chinhphu.vn/cac_so_cong_bao_moi_dang.rss",
       "note": "Official Gazette",
-      "trusted": true
+      "trusted": false
     },
 
     {
@@ -429,7 +429,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Using HTML Scraper fallback.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "KTTV Ninh Bình",
@@ -437,7 +437,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "User requested; fallback to GNews",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Cục PCTT (MARD)",
@@ -445,7 +445,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "User requested; fallback to GNews",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "PCTT Hà Nội",
@@ -453,7 +453,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "User requested; fallback to GNews",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Cục Kiểm lâm (PCCCR)",
@@ -461,7 +461,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Dashboard-based (watch/v2). using GNews fallback until API polling implemented.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Bnews (TTXVN)",
@@ -469,7 +469,7 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS broken (HTTP 500). Using GNews.",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Người Đưa Tin",
@@ -477,10 +477,10 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "RSS 404/Unknown. Using GNews.",
-      "trusted": true
+      "trusted": false
     }
   ],
-  "gnews_fallback": true,
+  "gnews_fallback": false,
   "gnews_context_terms": [],
   "gnews_min_articles": 2,
   "request_timeout": 30,

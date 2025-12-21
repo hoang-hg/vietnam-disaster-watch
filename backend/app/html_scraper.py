@@ -252,7 +252,7 @@ class HTMLScraper:
                     title = link.get_text(strip=True)
                     
                     # Filter by length and keyword
-                    if len(title) < 20 or len(title) > 200:
+                    if len(title) < 20 or len(title) > 500:
                         continue
                     if title in seen_titles:
                         continue

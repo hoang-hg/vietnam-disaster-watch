@@ -606,12 +606,13 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             summary_raw_scraper = html.unescape(scraped.get("summary", "") or scraped.get("description", "") or "")
                             text_for_nlp = title + " " + summary_raw_scraper
                             
-                            # Pre-filter: require title keyword OR allow if source is trusted
-                            # Note: thotietvietnam is trusted, so it skips this check usually
-                            if not (src.trusted or nlp.title_contains_disaster_keyword(title)):
+                            # Pre-filter using main NLP: 
+                            # - Explicitly check using full NLP (Veto/Rules)
+                            # - Pass trusted_source=src.trusted to allow lighter threshold for official sources
+                            if not nlp.contains_disaster_keywords(summary_raw_scraper, title=title, trusted_source=src.trusted):
                                 article_hash = get_article_hash(title, src.domain)
                                 diag = nlp.diagnose(title)
-                                print(f"[SKIP] {src.name} #{article_hash}: title-miss score={diag['score']:.1f} reason={diag['reason']}")
+                                print(f"[SKIP] {src.name} #{article_hash}: nlp-rejected score={diag['score']:.1f} reason={diag['reason']}")
                                 continue
                             
                             

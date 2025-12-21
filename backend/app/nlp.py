@@ -415,6 +415,7 @@ DISASTER_RULES = [
     r"biển\s*động", r"sóng\s*lớn", r"sóng\s*cao", r"cấm\s*biển", r"sóng\s*to",
     r"cấm\s*tàu\s*thuyền", r"neo\s*đậu\s*tránh\s*trú", r"khu\s*neo\s*đậu", r"tránh\s*trú\s*bão",
     r"sóng\s*cao\s*\d+\s*mét", r"biển\s*động\s*mạnh", r"vùng\s*nguy\s*hiểm", r"giật\s*trên\s*cấp",
+    r"chìm\s*tàu", r"lật\s*tàu", r"sóng\s*đánh\s*chìm", r"trôi\s*dạt",
     # Sương mù
     r"sương\s*mù", r"sương\s*mù\s*dày\s*đặc", r"mù\s*dày\s*đặc",
     r"tầm\s*nhìn\s*hạn\s*chế", r"giảm\s*tầm\s*nhìn"
@@ -460,7 +461,8 @@ DISASTER_CONTEXT = [
   r"trung\s*tâm\s*dự\s*báo", r"đài\s*khí\s*tượng", r"thủy\s*văn",
   r"ban\s*chỉ\s*huy", r"ban\s*chỉ\s*đạo", r"phòng\s*chống\s*thiên\s*tai", 
   r"sở\s*nn&ptnt", r"bộ\s*nông\s*nghiệp", r"ubnd",
-  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện"
+  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện",
+  r"nắng\s*nóng", r"hạn\s*hán", r"xâm\s*nhập\s*mặn", r"khô\s*hạn", r"thiếu\s*nước"
 ]
 
 # RECOVERY Keywords for Event Stage Classification
@@ -480,6 +482,7 @@ ABSOLUTE_VETO = [
   r"bão\s*sao\s*kê", r"bão\s*(?:chấn\s*thương|sa\s*thải)(?!\w)",
   r"(?<!thiên\s)bão\s*lòng", r"dông\s*bão\s*(?:cuộc\s*đời|tình\s*cảm|nội\s*tâm)",
   r"siêu\s*bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu)", 
+  r"bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu)",
   r"bão\s*view", r"bão\s*comment", r"bão\s*order", r"bão\s*đơn",
   r"bão\s*hàng", r"bão\s*flash\s*sale", r"bão\s*voucher",
   r"siêu\s*dự\s*án", r"siêu\s*công\s*trình",
@@ -594,10 +597,9 @@ ABSOLUTE_VETO = [
   r"thi\s*công.*dự\s*án", r"tiến\s*độ.*dự\s*án", r"xe\s*tải", r"xe\s*khách", r"va\s*chạm\s*xe",
   r"tai\s*nạn\s*giao\s*thông", r"tông\s*xe", r"tông\s*chết", r"không\s*có\s*vùng\s*cấm",
   
-  # Aviation / Transport (Non-disaster)
-  r"cơ\s*trưởng", r"sân\s*bay", r"hạ\s*cánh", r"cất\s*cánh", r"hàng\s*không", r"phi\s*công",
-  
   # Urban/Social Fire (Not Forest)
+  # (Moved 'sân bay', 'hàng không' to Conditional Veto to allow weather disruption news)
+  r"cơ\s*trưởng", r"phi\s*công",
   r"cháy\s*nhà", r"cháy\s*xưởng", r"cháy\s*quán", r"cháy\s*xe", r"chập\s*điện", r"nổ\s*bình\s*gas",
   
   # Political / Admin / Education / Finance
@@ -631,9 +633,17 @@ ABSOLUTE_VETO = [
     r"khen\s*thưởng", r"lao\s*động\s*giỏi", r"thi\s*đua", r"ăn\s*mừng",
     r"thâu\s*tóm", r"đất\s*vàng", r"thùng\s*rượu", r"phát\s*triển\s*đô\s*thị",
     r"hộ\s*dân(?!\s*bị\s*cô\s*lập)(?!\s*bị\s*thiệt\s*hại\s*nặng)",
-    r"câu\s*cá", r"câu\s*trúng", r"mất\s*tích(?!\s*do\s*lũ)(?!\s*do\s*bão)(?!\s*khi\s*đánh\s*bắt)",
-    r"thanh\s*nhiên\s*mất\s*tích", r"nữ\s*sinh\s*mất\s*tích", r"học\s*sinh\s*mất\s*tích",
-    r"lan\s*tỏa(?!\s*lâm\s*nguy)"
+    r"hộ\s*dân(?!\s*bị\s*cô\s*lập)(?!\s*bị\s*thiệt\s*hại\s*nặng)",
+    r"câu\s*cá", r"câu\s*trúng", 
+    # Removed rigid 'mất tích' veto to prevent false negatives in disaster reports
+    r"lan\s*tỏa(?!\s*lâm\s*nguy)",
+    r"lan\s*tỏa(?!\s*lâm\s*nguy)",
+    
+    # New Daily Life Noise (Strict Block)
+    r"xổ\s*số", r"vietlott", r"trúng\s*số", r"giải\s*đặc\s*biệt", r"vé\s*số",
+    r"ngoại\s*tình", r"đánh\s*ghen", r"ly\s*hôn", r"ly\s*thân", r"tiểu\s*tam",
+    r"tước\s*bằng\s*lái", r"tước\s*giấy\s*phép", r"phạt\s*nguội", r"đăng\s*kiểm",
+    r"giảm\s*cân", r"tăng\s*cân", r"thực\s*phẩm\s*chức\s*năng", r"làm\s*đẹp", r"trắng\s*da"
 ]
 
 # 2. CONDITIONAL VETO: Noise that can co-exist with disaster (Economy, Accident, etc.)
@@ -684,6 +694,9 @@ CONDITIONAL_VETO = [
   # Finance / Banking (Specific)
   r"vốn\s*điều\s*lệ", r"tăng\s*vốn", r"cổ\s*đông", r"lợi\s*nhuận", r"doanh\s*thu",
   r"ADB", r"WB", r"IMF", r"ODA",
+  
+  # Aviation (Moved from Absolute)
+  r"sân\s*bay", r"hàng\s*không", r"hạ\s*cánh", r"cất\s*cánh",
   
   # Crime / Legal
   r"án\s*mạng", r"giết\s*người", r"cướp\s*giật", r"trộm\s*cắp", r"cát\s*tặc", r"khai\s*thác\s*cát",
@@ -791,9 +804,13 @@ SOFT_NEGATIVE = [
   r"giải\s*thưởng", r"vinh\s*danh",
   # Tai nạn (Soft Negative - pass if caused by storm/flood)
   r"tai\s*nạn\s*giao\s*thông", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
+  r"tai\s*nạn\s*giao\s*thông", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
   # Fire non-wildfire
-  r"cháy\s*(?:nhà|xe|kho|xưởng|chung\s*cư|công\s*ty|chợ|siêu\s*thị|tàu\s*cá|quán)",
-  r"hỏa\s*hoạn\s*(?:tại|ở)\s*(?:khu|kho|nhà|xưởng)"
+  r"hỏa\s*hoạn\s*(?:tại|ở)\s*(?:khu|kho|nhà|xưởng)",
+  
+  # Missing Persons (moved from Absolute Veto to Soft/Conditional)
+  r"mất\s*tích(?!\s*do\s*lũ)(?!\s*do\s*bão)(?!\s*khi\s*đánh\s*bắt)",
+  r"thanh\s*nhiên\s*mất\s*tích", r"nữ\s*sinh\s*mất\s*tích", r"học\s*sinh\s*mất\s*tích",
 ]
 
 # Combined Negative List for backward compatibility (used in NO_ACCENT generation)
@@ -1193,9 +1210,10 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
         # If only 1 hazard type, require strong support
         if has_strong_support:
             return True
-        # If no strong support but from trusted source, allow (legacy)
-        if trusted_source and sig["context_score"] >= 1:
-            return True
+        # If no strong support but from trusted source, allow liberally
+        # [UPDATED] If trusted, accept hazard=1 even without context, relying on Absolute Veto to catch spam.
+        if trusted_source:
+             return True
         # Reject un-trusted 1-hazard articles with only weak support
         return False
 
