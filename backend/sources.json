@@ -233,6 +233,14 @@
       "trusted": false
     },
     {
+      "name": "Huế Ngày Nay (News)",
+      "domain": "news.huengaynay.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Subdomain GNews Search",
+      "trusted": false
+    },
+    {
       "name": "baodanang.vn",
       "domain": "baodanang.vn",
       "primary_rss": null,
@@ -377,25 +385,17 @@
     {
       "name": "VTV News",
       "domain": "vtv.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS 404. Using GNews.",
+      "primary_rss": "https://vtv.vn/rss/xa-hoi.rss",
+      "backup_rss": "https://vtv.vn/rss/home.rss",
+      "note": "Updated to Official RSS",
       "trusted": true
     },
     {
-      "name": "Nông Nghiệp Việt Nam",
-      "domain": "nongnghiep.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS Empty. Using GNews.",
-      "trusted": false
-    },
-    {
-      "name": "Tài nguyên & Môi trường",
-      "domain": "baotainguyenmoitruong.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS Empty. Using GNews.",
+      "name": "Nông Nghiệp & Môi trường",
+      "domain": "nongnghiepmoitruong.vn",
+      "primary_rss": "https://nongnghiepmoitruong.vn/thoi-su-nong-nghiep-moi-truong.rss",
+      "backup_rss": "https://nongnghiepmoitruong.vn/moi-truong.rss",
+      "note": "Replaced Nông Nghiệp VN",
       "trusted": false
     },
     {
@@ -425,10 +425,10 @@
 
     {
       "name": "KTTV Quốc gia",
-      "domain": "nchmf.gov.vn",
+      "domain": "thoitietvietnam.gov.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "RSS returns 404. Using GNews fallback.",
+      "note": "Using HTML Scraper fallback.",
       "trusted": true
     },
     {

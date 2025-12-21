@@ -36,6 +36,19 @@ try:
          # Fallback for some python versions where attribute might be missing but bit works
          _ctx.options |= 0x4
     
+    # 2. Allow Unsafe Legacy Renegotiation (Fix for baotintuc.vn)
+    # This is often needed for older OpenSSL 3+ systems connecting to ancient servers
+    try:
+        # constant might not be exposed in all python versions, value is 0x40000 
+        _ctx.options |= getattr(ssl, "OP_legacy_server_connect", 0x4)
+        # Some OS/Distros need system configuration, but in python we can try to set the option manually:
+        # Note: In strict OpenSSL 3 environments, this might still fail if global conf forbids it.
+        # Check if we can lower security level (only works on some systems)
+        if hasattr(_ctx, 'set_ciphers'):
+            _ctx.set_ciphers('DEFAULT@SECLEVEL=1')
+    except Exception:
+        pass
+
     # Apply globally to urllib (which feedparser uses)
     ssl._create_default_https_context = lambda: _ctx
 except Exception as e:
@@ -165,6 +178,12 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
     results: dict = {}
     timeout = httpx.Timeout(timeout_seconds)
     limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+    
+    # Default headers for feed fetching
+    default_headers = {
+        "Accept": "application/rss+xml, application/xml;q=0.9, */*;q=0.8"
+    }
+    headers = {**default_headers, **headers}
 
     # load persisted feed state for ETag/Last-Modified
     feed_state = _load_feed_state()
@@ -548,16 +567,26 @@ async def _process_once_async(force_update: bool = False) -> dict:
                 
                 break  # Don't try other feeds for this source, we got articles
             
-            if not feed_worked:
-                # Try HTML scraper as final fallback if all feeds failed
+                break  # Don't try other feeds for this source, we got articles
+            
+            # Force HTML scraper for known difficult sources w/ custom scrapers
+            force_html_scrape = "thoitietvietnam" in src.domain or "nchmf" in src.domain
+
+            if (not feed_worked) or force_html_scrape:
+                # Try HTML scraper
                 try:
-                    print(f"[INFO] {src.name} - attempting HTML scraper fallback...")
+                    if force_html_scrape:
+                         print(f"[INFO] {src.name} - forcing HTML scraper execution...")
+                    else:
+                         print(f"[INFO] {src.name} - attempting HTML scraper fallback...")
+
                     scraper = HTMLScraper(timeout=settings.request_timeout_seconds)
                     scraped_articles = await scraper.scrape_source(src.domain)
                     
                     if scraped_articles:
-                        stat["feed_used"] = "html_scraper"
-                        stat["elapsed"] = 0
+                        stat["feed_used"] = f"{stat['feed_used']}, html_scraper" if stat["feed_used"] else "html_scraper"
+                        # Reset elapsed since this is async/parallel to feed
+                        # stat["elapsed"] += ... 
                         print(f"[OK] {src.name} using html_scraper ({len(scraped_articles)} articles)")
                         
                         # Process scraped articles
@@ -574,13 +603,16 @@ async def _process_once_async(force_update: bool = False) -> dict:
                             text_for_nlp = title + " " + summary_raw_scraper
                             
                             # Pre-filter: require title keyword OR allow if source is trusted
+                            # Note: thotietvietnam is trusted, so it skips this check usually
                             if not (src.trusted or nlp.title_contains_disaster_keyword(title)):
                                 article_hash = get_article_hash(title, src.domain)
                                 diag = nlp.diagnose(title)
                                 print(f"[SKIP] {src.name} #{article_hash}: title-miss score={diag['score']:.1f} reason={diag['reason']}")
                                 continue
                             
-                            disaster_type = nlp.classify_disaster(text_for_nlp)
+                            
+                            disaster_info = nlp.classify_disaster(text_for_nlp)
+                            disaster_type = disaster_info.get("primary_type", "unknown")
                             province = nlp.extract_province(text_for_nlp)
                             
                             impacts = nlp.extract_impacts(summary_raw_scraper or title)

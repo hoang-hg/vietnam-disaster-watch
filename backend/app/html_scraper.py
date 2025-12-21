@@ -142,6 +142,65 @@ class HTMLScraper:
         response.encoding = "utf-8"
         return self._extract_generic_links(response.text, "sggp.org.vn", max_items=15)
 
+    async def scrape_thoitietvietnam(self) -> List[dict]:
+        """Scrape Thoi Tiet Vietnam (KTTV) - Targeted Scrape."""
+        if not _HAS_BS4: return []
+
+        url = "https://www.thoitietvietnam.gov.vn/kttv/" 
+        response = await self._get_with_retry(url)
+        if not response: return []
+
+        response.encoding = "utf-8"
+        articles = []
+        try:
+            soup = BeautifulSoup(response.text, "html.parser")
+            # The list of news is usually in a specific container, but generic 'a' search works if we filter by URL pattern
+            # The links look like /kttv/vi-VN/1/title-postID.html
+            all_links = soup.find_all('a', href=True)
+            
+            seen_titles = set()
+            for link in all_links:
+                if len(articles) >= 20:
+                    break
+                
+                href = link.get('href', '').strip()
+                # Specific pattern for news posts on this site
+                if "post" not in href or ".html" not in href:
+                    continue
+                
+                # Fix relative URL
+                if href.startswith("/"):
+                    full_url = "https://www.thoitietvietnam.gov.vn" + href
+                elif not href.startswith("http"):
+                    # relative without slash?
+                    full_url = "https://www.thoitietvietnam.gov.vn/kttv/" + href
+                else:
+                    full_url = href
+
+                title = link.get_text(strip=True)
+                if not title or len(title) < 10:
+                    continue
+
+                # Deduplicate
+                if title in seen_titles:
+                    continue
+                seen_titles.add(title)
+
+                # For this TRUSTED source, we DO NOT filter by disaster keywords here.
+                # We let the crawler/NLP pipeline decide, or we accept all because it is a specialized source.
+                
+                articles.append({
+                    "title": title,
+                    "url": full_url,
+                    "source": "thoitietvietnam.gov.vn",
+                    "summary": "",
+                    "scraped_at": datetime.utcnow().isoformat()
+                })
+        except Exception as e:
+            logger.debug(f"Error scraping KTTV: {e}")
+
+
+
     async def scrape_source(self, domain: str) -> List[dict]:
         """Route to appropriate scraper based on domain."""
         if not _HAS_BS4:
@@ -160,6 +219,8 @@ class HTMLScraper:
             return await self.scrape_nld()
         elif "sggp" in domain_lower:
             return await self.scrape_sggp()
+        elif "thoitietvietnam" in domain_lower or "nchmf" in domain_lower:
+            return await self.scrape_thoitietvietnam()
         else:
             logger.debug(f"No scraper implemented for {domain}")
             return []

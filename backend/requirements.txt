@@ -10,3 +10,5 @@ APScheduler==3.10.4
 beautifulsoup4==4.12.2
 psycopg2-binary==2.9.11
 alembic==1.13.1
+urllib3>=1.26.18
+requests>=2.31.0

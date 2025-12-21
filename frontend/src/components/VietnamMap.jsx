@@ -1,9 +1,8 @@
-import { MapContainer, TileLayer, Marker, Popup, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { THEME_COLORS } from '../theme';
 import { fmtType } from '../api';
-import VIETNAM_LOCATIONS from '../data/vietnam_locations.json';
 
 // Fix for default marker icon issues in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -14,23 +13,21 @@ L.Icon.Default.mergeOptions({
 });
 
 export default function VietnamMap({ points }) {
-  const center = [16.0, 108.0];
+  const center = [16.5, 107.0]; // Slightly adjusted center for "Big Vietnam" feel
 
   return (
     <MapContainer 
         center={center} 
-        zoom={5} 
-        scrollWheelZoom={true} // Enable scroll
-        zoomControl={true} // Enable button
-        className="w-full h-full z-0"
-        style={{ background: '#f8fafc' }}
+        zoom={5} // Zoom 5 makes Vietnam fill the view (desktop)
+        scrollWheelZoom={true} 
+        zoomControl={true} 
+        className="w-full h-full z-0 font-sans"
+        style={{ background: '#aadaff' }}
     >
       <TileLayer
         attribution='&copy; Google Maps'
-        url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+        url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&hl=vi&gl=vn"
       />
-
-
 
       {/* Dynamic Disaster Events */}
       {points.map((p) => {
@@ -39,12 +36,6 @@ export default function VietnamMap({ points }) {
         
         // Color based on type
         const color = THEME_COLORS[p.disaster_type] || THEME_COLORS.unknown;
-        // Tailwind mapped color for the ripple usually needs to be hex, THEME_COLORS has names. 
-        // For simplicity let's stick to a safe default map or expand THEME_COLORS logic.
-        // Actually THEME_COLORS in theme.js might be distinct names (blue, red) not hex.
-        // Let's use a mapping for safety or hex values.
-        
-        // Custom ripple effect marker
         
         // Render icon
         const icon = L.divIcon({
@@ -52,9 +43,7 @@ export default function VietnamMap({ points }) {
           html: `
             <div class="relative flex items-center justify-center w-8 h-8 group hover:scale-110 transition-transform">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style="background-color: ${color}"></span>
-                <span class="relative inline-flex items-center justify-center w-6 h-6 rounded-full border-2 border-white shadow-md text-white font-bold" style="background-color: ${color}">
-                    
-                </span>
+                <span class="relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-white shadow-md" style="background-color: ${color}"></span>
             </div>
           `,
           iconSize: [32, 32],
@@ -73,7 +62,9 @@ export default function VietnamMap({ points }) {
                     >
                         {fmtType(p.disaster_type)}
                     </span>
-
+                    <span className="text-[10px] text-slate-400">
+                        {new Date(p.published_at).toLocaleDateString()}
+                    </span>
                 </div>
               </div>
             </Popup>

@@ -9,9 +9,12 @@ import {
   Bell
 } from "lucide-react";
 
+
+
 export default function MainLayout({ children }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const isMapPage = location.pathname.startsWith("/map");
 
   const navigation = [
     { name: "TỔNG QUAN", href: "/", current: location.pathname === "/" },
@@ -20,9 +23,9 @@ export default function MainLayout({ children }) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans">
+    <div className="flex flex-col min-h-screen bg-slate-100 font-sans">
       {/* Top Header (White) */}
-      <header className="bg-white border-b border-slate-100">
+      <header className="bg-white border-b border-slate-100 flex-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
             {/* Logo / Brand */}
             <div className="flex-shrink-0 flex items-center">
@@ -51,7 +54,7 @@ export default function MainLayout({ children }) {
       </header>
 
       {/* Navigation Bar (Teal - Bao Moi Style) */}
-      <nav className="bg-[#2fa1b3] shadow-md sticky top-0 z-50">
+      <nav className="bg-[#2fa1b3] shadow-md sticky top-0 z-50 flex-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center h-12">
                 {/* Desktop/Tablet Nav */}
@@ -97,14 +100,14 @@ export default function MainLayout({ children }) {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className={`flex-1 flex flex-col ${isMapPage ? 'w-full' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full'}`}>
         {children}
       </main>
 
       {/* Footer (Simplified) */}
-      <footer className="bg-white border-t border-slate-200 mt-auto py-8">
+      <footer className="bg-white border-t border-slate-200 mt-auto py-8 flex-none">
         <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-            <p className="font-bold text-slate-700 uppercase mb-2">Báo Cảnh Báo Thiên Tai - Viet Disaster Watch</p>
+            <p className="font-bold text-slate-700 uppercase mb-2">Báo Tổng Hợp Rủi Ro Thiên Tai - VietN Disaster Watch</p>
             <p>Tổng hợp tin tức thiên tai tự động từ các nguồn chính thống.</p>
         </div>
       </footer>
