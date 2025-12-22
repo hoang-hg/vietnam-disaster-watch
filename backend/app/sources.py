@@ -199,67 +199,51 @@ class Source:
     note: str | None = None
     trusted: bool | None = False
 
-# GNews Search Strategy: Tiered Anchors & Context Filters
-# Fixed Anchors: Disaster types only (to ensure recall)
-GNEWS_ANCHORS = [
-    "bão", "áp thấp nhiệt đới", "lũ", "lũ quét", "ngập lụt", "sạt lở", 
-    "cháy rừng", "động đất", "sóng thần", "triều cường", "nước dâng", 
-    "xâm nhập mặn", "hạn hán", "nắng nóng", "dông lốc", "mưa đá", 
-    "rét đậm", "rét hại", "mưa lớn"
-]
-
-# Contextual Filters: Signs of actual event/impact (sampled deterministicly per domain)
-GNEWS_FILTERS = [
-    "thiệt hại", "tổn thất", "sập nhà", "tốc mái", "cuốn trôi", "vùi lấp",
-    "chia cắt", "cô lập", "sơ tán", "di dời", "cứu hộ", "cứu nạn", "tiếp tế",
-    "mất tích", "thương vong", "tử vong", "thiệt mạng", "khắc phục", "hỗ trợ khẩn cấp",
-    "xả lũ", "vỡ đê", "sạt lở kè", "ngập sâu", "ngập diện rộng", "cấm biển"
-]
-
-def dedup_terms(terms):
-    """Clean and deduplicate keywords."""
-    seen = set()
-    out = []
-    for t in terms:
-        k = t.strip().lower()
-        if k and k not in seen:
-            seen.add(k)
-            out.append(t.strip())
-    return out
+GNEWS_HAZARD_KEYWORDS = [ "thiệt hại","tổn thất", "đổ nhà","đổ tường","nhà bị sập", "nhà bị tốc mái","nhà bị hư hỏng","hư hỏng","cuốn trôi",
+"trôi nhà","ngập nhà","vỡ đê","tràn đê","vỡ bờ","chia cắt", "cô lập","mất mùa", "mất trắng","chết đuối","bị vùi lấp","người chết","tử vong","thiệt mạng", 
+"thi thể","nạn nhân","thương vong","bị thương", "trọng thương","nhẹ thương", "mất tích","mất liên lạc","tìm kiếm","tìm thấy thi thể","sơ tán","sơ tán khẩn cấp", 
+"di dời","di dời dân","di dời khẩn cấp","tránh trú","lánh nạn","neo đậu","vào bờ", "lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế","vận chuyển cứu trợ", 
+"hỗ trợ","hỗ trợ khẩn cấp","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn", "huy động lực lượng","xuất quân","triển khai lực lượng",
+"ứng phó","ứng phó khẩn cấp", "khắc phục","khắc phục hậu quả","xử lý sự cố","sửa chữa","tu bổ","phục hồi", "tái thiết","tổng kết thiệt hại","thống kê thiệt hại",
+"đánh giá thiệt hại", "cảnh báo","cảnh báo khẩn","dự báo", "tin khẩn","công điện","công điện khẩn", "tình trạng khẩn cấp","tình huống khẩn cấp","trạng thái khẩn cấp","khẩn cấp", "khẩn trương","gấp rút",
+"hỏa tốc","cấp bách","nguy hiểm","nguy cấp","nguy kịch", "mất an toàn","đe dọa","đe dọa nghiêm trọng","rủi ro cao","nguy cơ cao","cấm", "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa","đóng cửa trường","cho nghỉ học", 
+"nghỉ học","tạm dừng","tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn", "cuộc họp khẩn","ban chỉ huy","ban chỉ đạo","trực ban","trực 24/24","túc trực", "ứng trực","mưa to đến rất to","mưa đặc biệt lớn","mưa cực đoan",
+"mưa kỷ lục", "báo động 1","báo động 2","báo động 3","báo động khẩn cấp","mực nước báo động", "lũ trên sông","lũ bùn đá","lũ bùn","xói lở","xâm thực","sạt trượt","trượt sườn", "đứt gãy taluy","đá lăn","ranh mặn","cống ngăn mặn","độ mặn phần nghìn", 
+"nguy cơ cháy rừng rất cao","cấp cháy rừng cấp","cấp dự báo cháy rừng", "bão", "siêu bão", "áp thấp nhiệt đới", "tin bão", "dự báo bão", "lũ", "lụt", "lũ quét", "ngập lụt", "xả lũ", "vỡ đê",
+"sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống", "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng", "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm", "rét đậm", "rét hại", "băng giá", "sương muối", "cháy rừng", 
+"động đất", "sóng thần", "rung chấn", "tốc mái", "sập nhà", "thời tiết hôm nay", "cảnh báo thiên tai", "dự báo thời tiết",
+"tìm kiếm cứu nạn", "mất tích", "hỗ trợ khẩn cấp", "tin cảnh báo", "tin dự báo" ]
 
 def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_terms: List[str] | None = None) -> str:
-    """Build Google News RSS URL with Tiered Search and Deterministic Sampling.
-    
-    Structure: site:domain (ANCHORS) (CONTEXT_FILTERS)
-    This ensures we only capture actual disaster events, not generic weather talk.
+    """Build Google News RSS URL as fallback.
+
+    If both hazard_terms and context_terms are provided, build a query that
+    requires a hazard term and a context term to reduce false positives.
+    Automatically quotes terms with spaces to prevent keyword splitting.
     """
+    # Use condensed list for GNews if no specific hazards provided to keep URL short
+    hazards = hazard_terms or GNEWS_HAZARD_KEYWORDS
+    
+    # Helper to quote terms with spaces
+    def _quote(terms):
+        return [f'"{t.strip()}"' if ' ' in t.strip() else t.strip() for t in terms]
+
+    hazards = _quote(hazards)
+    
+    # Randomly sample if list is too huge to avoid URL length issues (optional, but good for safety)
     import random
-    
-    def _quote(ts):
-        return [f'"{t}"' if ' ' in t else t for t in ts]
+    if len(hazards) > 25:
+        hazards = random.sample(hazards, 25)
 
-    # 1. Prepare Anchors (Disaster Types)
-    anchors = dedup_terms(hazard_terms or GNEWS_ANCHORS)
-    # If list is too long for GNews (unlikely for anchors), keep top 15
-    if len(anchors) > 15:
-        anchors = anchors[:15]
-    
-    # 2. Prepare Context Filters (Impact/Action)
-    filters = dedup_terms(context_terms or GNEWS_FILTERS)
-    
-    # 3. Deterministic Sampling for stability across runs for the same domain
-    max_filters = 15 # Limit combined query length to avoid GNews rejections
-    if len(filters) > max_filters:
-        rnd = random.Random(domain) # Stable seed per domain
-        filters = rnd.sample(filters, max_filters)
-
-    # 4. Compose Query
-    anchors_q = " OR ".join(_quote(anchors))
-    filters_q = " OR ".join(_quote(filters))
-    
-    query = f"site:{domain} ({anchors_q}) ({filters_q})"
     base = "https://news.google.com/rss/search?q="
     
+    # Build query
+    query = f"site:{domain} (" + " OR ".join(hazards) + ")"
+    
+    if context_terms:
+        contexts = _quote(context_terms)
+        query += " (" + " OR ".join(contexts) + ")"
+        
     return base + urllib.parse.quote(query) + "&hl=vi&gl=VN&ceid=VN:vi"
 
 
