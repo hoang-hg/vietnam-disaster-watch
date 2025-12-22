@@ -21,6 +21,11 @@ import urllib3
 # Suppress InsecureRequestWarning for cleaner logs
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+import socket
+# Set a global timeout for all socket operations (affects feedparser/urllib)
+# This prevents hanging forever on slow Vietnamese government or news servers.
+socket.setdefaulttimeout(30)
+
 # GLOBAL SSL PATCh: Allow Legacy Renegotiation
 # Many VN sites (doisongphapluat, gov.vn) use older SSL config that OpenSSL 3 rejects.
 # This forces Python to use a relaxed SSL context for urllib (used by feedparser).
@@ -176,8 +181,9 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
     Returns mapping url -> dict(text/elapsed,error,not_modified,status_code).
     """
     results: dict = {}
-    timeout = httpx.Timeout(timeout_seconds)
-    limits = httpx.Limits(max_keepalive_connections=10, max_connections=20)
+    # Increased limits and shorter timeouts for faster cycle
+    timeout = httpx.Timeout(timeout_seconds, connect=10.0, read=20.0)
+    limits = httpx.Limits(max_keepalive_connections=20, max_connections=50)
     
     # Default headers for feed fetching
     default_headers = {

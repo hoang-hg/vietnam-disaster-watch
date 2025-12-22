@@ -249,15 +249,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Sự kiện mới"
-          value={stats?.events_24h || 0}
-          sub="Trong 24h qua"
+          value={stats?.events_count || 0}
+          sub={stats?.window_label || "Trong 24h qua"}
           icon={AlertTriangle}
-          trend={stats?.events_24h > 0 ? "up" : "neutral"}
+          trend={stats?.events_count > 0 ? "up" : "neutral"}
           color="text-red-600"
         />
         <StatCard
           title="Tỉnh thành ảnh hưởng"
-          value={riskiest ? riskiest.length : 0}
+          value={stats?.provinces_count || 0}
           sub="Vùng nguy cơ"
           icon={MapPin}
           trend="neutral"
@@ -266,12 +266,12 @@ export default function Dashboard() {
         <StatCard
           title="Thương vong & Mất tích"
           value={(stats?.impacts?.deaths || 0) + (stats?.impacts?.missing || 0)}
-          sub={`Bị thương: ${stats?.impacts?.injured || 0} người`}
+          sub={stats?.window_label ? `Ghi nhận: ${stats?.impacts?.injured || 0} người bị thương` : `Bị thương: ${stats?.impacts?.injured || 0} người`}
           icon={AlertTriangle}
           color="text-red-500"
         />
         <StatCard
-          title="Nhóm thiên tai nguy hiểm nhất"
+          title="Nhóm thiên tai nguy cấp"
           value={chartData && chartData.length > 0 ? chartData[0].name : "N/A"}
           sub={chartData && chartData.length > 0 ? `Chiếm số lượng lớn nhất (${chartData[0].count} vụ)` : "Chưa có dữ liệu"}
           icon={TrendingUp}

@@ -46,38 +46,51 @@ async def on_startup():
         # sources.json is in backend root (parent of app package)
         root_dir = Path(__file__).resolve().parent.parent
         srcs = load_sources_from_json(str(root_dir / "sources.json"))
-        return [s.name for s in srcs if any(kw in s.name for kw in ["KTTV", "Viện Vật lý", "Đê điều", "PCTT", "Cứu nạn"])]
+        return [s.name for s in srcs if any(kw in s.name for kw in ["KTTV Quốc gia", "KTTV Ninh Bình", 
+        "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", 
+        "KTTV An Giang", "KTTV Hưng Yên", "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)"])]
 
     # Tier 2: Major National News (Medium Frequency: 30 mins)
     # These sources have high coverage and fast reporting but are not official disaster agencies.
     def get_tier2_sources():
         return [
             "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
-            "VietnamPlus (TTXVN)", "Báo Tin tức (TTXVN)", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM"
+            "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
+            "VietNamNet", "Nhân Dân", "Tiền Phong", "Người Lao Động", "Quân đội Nhân dân", "Báo Chính Phủ", 
+            "Nông Nghiệp & Môi trường", "Báo Dân tộc và Phát triển","Báo Giao thông", "Cổng TTĐT Chính phủ (Công báo)",
+            "Bnews", "Báo Nông nghiệp VN", "Tạp chí Giao thông", "Báo Công lý", "Báo Văn hóa", "Báo Xây dựng",
+            "VnEconomy", "VTC News", "Báo Quốc tế", "Dân Việt", "VOV", "Báo Công Thương", "Vietnam.vn",
+            "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
         ]
 
-    # Tier 1: 15 mins
+    # Job 1: Group 1 (Critical Official Sources) - Frequency: 1 HOUR (60 mins)
+    # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier1_sources()),
-        trigger=IntervalTrigger(minutes=15),
-        id="crawl_tier1_official",
+        trigger=IntervalTrigger(minutes=60, jitter=30),
+        id="crawl_group1_critical",
         replace_existing=True,
+        misfire_grace_time=60
     )
 
-    # Tier 2: 30 mins
+    # Job 2: Group 2 (Major National News) - Frequency: 3 HOURS (180 mins)
+    # Coverage: VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí, VTV, VOV...
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier2_sources()),
-        trigger=IntervalTrigger(minutes=30),
-        id="crawl_tier2_major",
+        trigger=IntervalTrigger(minutes=180, jitter=60),
+        id="crawl_group2_major",
         replace_existing=True,
+        misfire_grace_time=180
     )
 
-    # Tier 3: 60 mins (Full Sweep including 63 Province Papers)
+    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 6 HOURS (360 mins)
+    # Performs a complete scan of all sources in sources.json.
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=60),
-        id="crawl_tier3_full",
+        trigger=IntervalTrigger(minutes=360, jitter=120),
+        id="crawl_group3_full",
         replace_existing=True,
+        misfire_grace_time=300
     )
 
     scheduler.start()

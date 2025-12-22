@@ -176,43 +176,75 @@ def stats_summary(
         start = datetime.utcnow() - timedelta(hours=hours)
         end = datetime.utcnow()
     
+    # Statistics Logic for Dashboard
+    # Statistics Logic for Dashboard (V4 - Ultra Strict)
+    STRICT_EXCLUSION = [
+        "nhật bản", "indonesia", "thái lan", "trung quốc", "mỹ", "hàn quốc", "nga", "philippines", 
+        "brazil", "châu âu", "thế giới", "vũ hán", "tokyo", "seoul", "bangkok", "manila",
+        "tổng kết", "nhìn lại", "năm 2024", "năm 2023", "năm 2022", "kỷ niệm", "lịch sử",
+        "sau bão", "kể từ", "từ đầu năm", "tổng số", "con số thực", "địa cầu", "năm 2025", "năm 2026", "năm 2027"
+    ]
+    
+    # 1. Total Activity: Recent articles updated
     total_articles = db.query(Article).filter(Article.published_at >= start, Article.published_at < end).count()
-    total_events = db.query(Event).filter(Event.last_updated_at >= start, Event.last_updated_at < end).count()
+    
+    # 2. Daily New Events: Only count events that BEGAN in this window
+    new_events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    
+    # Python-side aggregation with strict filters
+    grouped_impacts = {} 
+    official_types = ["storm", "flood_landslide", "heat_drought", "wind_fog", "storm_surge", "extreme_other", "wildfire", "quake_tsunami"]
+    type_counts = {t: 0 for t in official_types}
+    type_counts["unknown"] = 0
+    provinces_seen = set()
+    filtered_events = []
 
-    # Aggregate impacts with Deduplication Logic
-    # Problem: Bad clustering caused duplicate events for the same disaster -> SUM would double count.
-    # Solution: Group by (province, type) and take MAX impacts per group, then SUM the groups.
-    
-    events_in_window = db.query(Event).filter(Event.last_updated_at >= start, Event.last_updated_at < end).all()
-    
-    # Python-side aggregation
-    grouped_impacts = {} # key: (province, type) -> {deaths: max, missing: max, ...}
-    
-    type_counts = {t: 0 for t in ["storm", "flood", "landslide", "earthquake", "tsunami", "wind_hail", "wildfire", "extreme_weather", "unknown"]}
-
-    for ev in events_in_window:
-        # Count types (we might overcount events here, but that's acceptable for "Activity Level")
-        if ev.disaster_type in type_counts:
-            type_counts[ev.disaster_type] += 1
+    for ev in new_events:
+        title_lower = ev.title.lower() if ev.title else ""
+        
+        # SKIP Foreign News and Historical Summaries in Stats
+        if any(kw in title_lower for kw in STRICT_EXCLUSION):
+            continue
             
-        key = (ev.province, ev.disaster_type)
+        filtered_events.append(ev)
+
+        dtype = ev.disaster_type
+        if dtype in type_counts:
+            type_counts[dtype] += 1
+        else:
+            type_counts["unknown"] += 1
+            
+        if ev.province and ev.province != "unknown" and ev.province != "Toàn quốc":
+            provinces_seen.add(ev.province)
+
+        key = (ev.province, dtype)
         if key not in grouped_impacts:
             grouped_impacts[key] = {"deaths": 0, "missing": 0, "injured": 0}
             
-        # Take MAX to avoid double counting same event duplicates
-        grouped_impacts[key]["deaths"] = max(grouped_impacts[key]["deaths"], ev.deaths or 0)
-        grouped_impacts[key]["missing"] = max(grouped_impacts[key]["missing"], ev.missing or 0)
-        grouped_impacts[key]["injured"] = max(grouped_impacts[key]["injured"], ev.injured or 0)
+        # Impact Clean-up Logic (MAX_REALISTIC_IMPACT = 100)
+        def clean_num(n):
+            val = n or 0
+            if 1900 <= val <= 2030 or val > 100: return 0
+            return val
+
+        d = clean_num(ev.deaths)
+        m = clean_num(ev.missing)
+        i = clean_num(ev.injured)
+
+        grouped_impacts[key]["deaths"] = max(grouped_impacts[key]["deaths"], d)
+        grouped_impacts[key]["missing"] = max(grouped_impacts[key]["missing"], m)
+        grouped_impacts[key]["injured"] = max(grouped_impacts[key]["injured"], i)
         
-    # Final Summation
     total_deaths = sum(item["deaths"] for item in grouped_impacts.values())
     total_missing = sum(item["missing"] for item in grouped_impacts.values())
     total_injured = sum(item["injured"] for item in grouped_impacts.values())
 
     return {
         "window_hours": hours,
-        "articles_24h": total_articles,
-        "events_24h": total_events,
+        "window_label": f"Trong {hours}h qua",
+        "articles_count": total_articles,
+        "events_count": len(filtered_events),
+        "provinces_count": len(provinces_seen),
         "impacts": {
             "deaths": total_deaths,
             "missing": total_missing,

@@ -316,23 +316,29 @@ DISASTER_RULES = [
   ("storm", [
     r"(?<!\w)(?<!đi\s)(?<!dự\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\w)",
     r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
-    r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"xoáy\s*thuận\s*nhiệt\s*đới",
+    r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"ATND", r"xoáy\s*thuận\s*nhiệt\s*đới",
+    r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"bán\s*kính\s*gió\s*mạnh",
+    r"vùng\s*nguy\s*hiểm", r"tọa\s*độ\s*tâm\s*bão", r"vĩ\s*độ\s*tâm\s*bão", r"kinh\s*độ\s*tâm\s*bão",
+    r"cường\s*độ\s*gió", r"bão\s*(?:suy\s*yếu|mạnh\s*lên)", r"áp\s*thấp\s*mạnh\s*lên", r"tan\s*dần",
     r"đổ\s*bộ", r"đặc\s*biệt\s*nguy\s*hiểm\s*trên\s*biển", r"hành\s*lang\s*bão",
     r"sức\s*gió\s*mạnh\s*nhất\s*vùng\s*gần\s*tâm\s*bão", r"di\s*chuyển\s*theo\s*hướng\s*tây",
     r"gió\s*bão", r"mưa\s*hoàn\s*lưu", r"bão\s*khẩn\s*cấp", r"tin\s*bão\s*cuối\s*cùng",
     r"đi\s*vào\s*biển\s*đông", r"tiến\s*vào\s*biển\s*đông", r"gió\s*giật\s*mạnh",
     r"áp\s*thấp\s*(?:mạnh\s*lên|suy\s*yếu)", r"cơn\s*bão\s*mạnh", r"tin\s*về\s*bão",
-    r"xoáy\s*thuận", r"vùng\s*xoáy", r"áp\s*cao\s*cận\s*nhiệt", r"rãnh\s*thấp", r"tổ\s*hợp\s*thời\s*tiết\s*xấu"
+    r"xoáy\s*thuận", r"vùng\s*xoáy", r"áp\s*cao\s*cận\s*nhiệt", r"rãnh\s*thấp", r"t tổ\s*hợp\s*thời\s*tiết\s*xấu",
+    r"bao\s*so\s*3", r"ap\s*thap\s*nhiet\s*doi", r"bản\s*tin\s*dự\s*báo\s*bão", r"cập\s*nhật\s*bão"
   ]),
 
 
-  # 2) Nước dâng, Triều cường (Moved UP to prioritize over flood)
+  # 2) Nước dâng, Triều cường (Storm Surge / Tidal Flood - Decision 18 Art 3.5)
   ("storm_surge", [
-    r"triều\s*cường", r"nước\s*dâng", r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng",
-    r"đỉnh\s*triều", r"ngập\s*do\s*triều", r"sóng\s*lớn\s*đánh\s*tràn"
+    r"triều\s*cường", r"nước\s*dâng", r"nước\s*dâng\s*do\s*(?:bão|áp\s*thấp\s*nhiệt\s*đới|gió\s*mạnh)", 
+    r"nước\s*biển\s*dâng", r"đỉnh\s*triều", r"ngập\s*do\s*triều", r"sóng\s*lớn\s*đánh\s*tràn",
+    r"dâng\s*cao\s*bất\s*thường", r"ngập\s*ven\s*biển", r"tràn\s*qua\s*kè", r"sóng\s*tràn",
+    r"kỳ\s*triều\s*cường", r"triều\s*cao", r"đỉnh\s*triều\s*kỷ\s*lục", r"vượt\s*báo\s*động\s*triều"
   ]),
 
-  # 3) Lũ, Ngập lụt, Sạt lở, Sụt lún (Flood & Landslide)
+  # 3) Lũ, Ngập lụt, Sạt lở, Mưa lớn (Decision 18 Art 3.2: Mưa lớn is now here)
   ("flood_landslide", [
     r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn\s*đá", r"lũ\s*lịch\s*sử", r"lũ\s*đầu\s*nguồn",
     r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu", r"ngập\s*cục\s*bộ", r"biển\s*nước", r"ngập\s*(?:nhà|đường|phố)",
@@ -342,10 +348,18 @@ DISASTER_RULES = [
     r"chia\s*cắt", r"cô\s*lập", r"cuốn\s*trôi", r"vùi\s*lấp", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
     r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"sụt\s*lún\s*đất", r"nứt\s*đất", r"trượt\s*mái\s*đê", r"mưa\s*lũ",
     r"taluy\s*(?:âm|dương)", r"trượt\s*mái\s*sườn", r"sạt\s*trượt\s*ven\s*sông", r"điều\s*tiết\s*xả\s*lũ",
-    r"lưu\s*lượng\s*về\s*hồ", r"ngập\s*lụt\s*trên\s*diện\s*rộng"
+    r"lưu\s*lượng\s*về\s*hồ", r"ngập\s*lụt\s*trên\s*diện\s*rộng",
+    # Mưa lớn patterns (Decision 18 requirements)
+    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"tổng\s*lượng\s*mưa",
+    r"mưa\s*diện\s*rộng", r"mưa\s*kéo\s*dài", r"mưa\s*trên\s*\d+\s*mm", r"mưa\s*vượt\s*\d+\s*mm",
+    r"mưa\s*kỷ\s*lục", r"mưa\s*như\s*trút", r"mưa\s*xối\s*xả", r"mưa\s*tầm\s*tã",
+    # Hydrology details
+    r"lũ\s*trên\s*các\s*sông", r"lũ\s*hạ\s*lưu", r"lũ\s*thượng\s*nguồn", r"lũ\s*lên\s*nhanh",
+    r"vỡ\s*đập", r"sự\s*cố\s*hồ\s*đập", r"xả\s*tràn", r"xả\s*khẩn\s*cấp",
+    r"sạt\s*lở\s*kè", r"hố\s*sụt", r"nứt\s*nhà"
   ]),
 
-  # 4) Nắng nóng, Hạn hán, Xâm nhập mặn (Heat, Drought & Salinity)
+  # 4) Nắng nóng, Hạn hán, Xâm nhập mặn (Heat, Drought & Salinity - Decision 18 Art 3.3)
   ("heat_drought", [
     r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
     r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước\s*ngọt", r"nứt\s*nẻ", r"khát\s*nước",
@@ -353,38 +367,43 @@ DISASTER_RULES = [
     r"thiếu\s*nước\s*sinh\s*hoạt", r"xe\s*chở\s*nước\s*ngọt", r"mất\s*mùa\s*do\s*hạn\s*mặn",
     r"độ\s*mặn\s*phần\s*nghìn", r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn",
     r"đất\s*khô\s*cằn", r"cạn\s*hồ", r"hạn\s*hán\s*kéo\s*dài",
-    r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"ranh\s*mặn\s*4g/l", r"thiếu\s*hụt\s*nguồn\s*nước"
+    r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"ranh\s*mặn\s*4g/l", r"thiếu\s*hụt\s*nguồn\s*nước",
+    r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn", r"kiệt\s*nước", r"mực\s*nước\s*xuống\s*thấp",
+    r"lấy\s*nước\s*ngọt", r"vận\s*hành\s*cống\s*ngăn\s*mặn"
   ]),
 
-  # 5) Gió mạnh, Sương mù (Wind & Fog)
+  # 5) Gió mạnh trên biển, Sương mù (Wind & Fog - Decision 18 Art 3.4)
   ("wind_fog", [
     r"gió\s*mạnh\s*trên\s*biển", r"gió\s*giật\s*mạnh", r"sóng\s*cao\s*\d+\s*mét",
     r"biển\s*động\s*mạnh", r"cấm\s*biển", r"cấm\s*tàu\s*thuyền", r"sóng\s*to\s*vây\s*quanh",
     r"sương\s*mù\s*dày\s*đặc", r"mù\s*quang", r"tầm\s*nhìn\s*xa\s*dưới\s*1km",
     r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc",
-    r"gió\s*cấp\s*Beaufort", r"gió\s*giật\s*cấp\s*(?:10|11|12|13|14|15|16|17)",
-    r"tầm\s*nhìn\s*xa\s*hạn\s*chế", r"biển\s*động\s*rất\s*mạnh"
+    r"gió\s*cấp\s*Beaufort", r"gió\s*giật\s*cấp\s*\d+",
+    r"tầm\s*nhìn\s*xa\s*hạn\s*chế", r"biển\s*động\s*rất\s*mạnh",
+    r"biển\s*động", r"biển\s*động\s*mạnh", r"biển\s*động\s*rất\s*mạnh"
   ]),
-  # 6) Thời tiết cực đoan (Extreme Weather: Tornado, Hail, Lightning, Cold)
+  # 6) Thời tiết cực đoan (Lốc, Sét, Mưa đá, Rét hại - Decision 18 Art 3.6)
   ("extreme_other", [
-    r"dông\s*lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc", r"mưa\s*đá",
+    r"dông\s*lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc", r"mưa\s*đá", r"mưa\s*đá\s*trắng\s*trời",
     r"sét\s*đánh", r"giông\s*sét", r"mưa\s*to\s*kèm\s*theo\s*dông\s*lốc",
-    r"rét\s*đậm\s*rét\s*hại", r"băng\s*giá", r"sương\s*muối", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
-    r"mưa\s*đặc\s*biệt\s*lớn", r"mưa\s*xối\s*xả", r"mưa\s*tầm\s*tã",
-    r"mưa\s*như\s*trút", r"mưa\s*trút\s*xuống", r"rét\s*buốt", r"băng\s*giá\s*phủ\s*trắng",
+    r"rét\s*đậm\s*rét\s*hại", r"rét\s*hại", r"băng\s*giá", r"sương\s*muối", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
+    r"rét\s*buốt", r"băng\s*giá\s*phủ\s*trắng",
     r"mưa\s*tuyết", r"tuyết\s*rơi"
   ]),
-  # 7) Cháy rừng (Wildfire)
+  # 7) Cháy rừng (Wildfire - Decision 18 Art 3.7)
   ("wildfire", [
     r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
     r"PCCCR", r"cháy\s*thực\s*bì", r"lửa\s*rừng", r"cháy\s*lan\s*rộng",
-    r"quy\s*chế\s*phòng\s*cháy\s*chữa\s*cháy\s*rừng", r"trực\s*cháy\s*rừng"
+    r"quy\s*chế\s*phòng\s*cháy\s*chữa\s*cháy\s*rừng", r"trực\s*cháy\s*rừng",
+    r"cấp\s*cháy\s*rừng\s*cấp\s*(?:IV|V|4|5)", r"nguy\s*cơ\s*cháy\s*rừng\s*rất\s*cao",
+    r"cháy\s*rừng\s*(?:phòng\s*hộ|đặc\s*dụng|sản\s*xuất)", r"đốt\s*thực\s*bì", r"đốt\s*nương"
   ]),
-  # 8) Động đất, Sóng thần (Quake & Tsunami)
+  # 8) Động đất, Sóng thần (Quake & Tsunami - Decision 18 Art 3.8-10)
   ("quake_tsunami", [
     r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"sóng\s*thần", r"richter",
     r"tâm\s*chấn", r"chấn\s*tiêu", r"đất\s*rung\s*lắc", r"viện\s*vật\s*lý\s*địa\s*cầu",
-    r"magnitude", r"rung\s*lắc\s*mạnh", r"thang\s*richter", r"cấp\s*báo\s*động\s*sóng\s*thần"
+    r"magnitude", r"rung\s*lắc\s*mạnh", r"thang\s*richter", r"cấp\s*báo\s*động\s*sóng\s*thần",
+    r"\b(?:m|mw|ml)\s*[=:]?\s*\d+(?:[.,]\d+)?", r"độ\s*lớn\s*\d+(?:[.,]\d+)?", r"\d+(?:[.,]\d+)?\s*độ\s*richter"
   ])
 ]
 
@@ -1419,25 +1438,51 @@ def classify_disaster(text: str, title: str = "") -> dict:
         if weight > 0:
             hazard_weights[label] = weight
 
-    # ROOT CAUSE BOOSTING:
-    # Boost "Cause" events (Storm, Quake) if specific naming patterns are found.
-    # This prevents "Effect" events (Flood, Landslide) from dominating due to high keyword frequency.
+    # ROOT CAUSE BOOSTING & TIE-BREAKING (Decision 18/2021 Implementation):
     
-    # 1. Storm Boosting: "Bão số X", "Siêu bão Name", "Áp thấp nhiệt đới"
+    # 1. Storm Boosting vs Wind/Fog: If any storm-core (bão, ATNĐ) exists, prioritize storm.
     if "storm" in hazard_weights:
-        if re.search(r"(?:bão|áp thấp).*?(?:số\s*\d+|[A-ZĐ][a-zà-ỹ]+)", t_title, re.IGNORECASE):
-            hazard_weights["storm"] += 5  # Strong boost for named storms/depressions
+        # Boost named storms
+        if re.search(r"(?:bão|áp thấp|ATNĐ|ATND).*?(?:số\s*\d+|[A-ZĐ][a-zà-ỹ]+)", t_title, re.IGNORECASE):
+            hazard_weights["storm"] += 10
+        # Tie-break: Reduce wind_fog if storm is present
+        if "wind_fog" in hazard_weights:
+            hazard_weights["wind_fog"] -= 5
 
-    # 2. Quake Boosting: "Động đất" + magnitude/scale
+    # 2. Surge vs Saltwater Tie-break: Decision 18 Clause 3.3 and 3.5.
+    # Salinity (heat_drought) vs Coastal surge (storm_surge).
+    salinity_markers = ["mặn", "độ mặn", "xâm nhập mặn", "ranh mặn"]
+    if "storm_surge" in hazard_weights and "heat_drought" in hazard_weights:
+        if any(sm in full_text.lower() for sm in salinity_markers):
+             hazard_weights["heat_drought"] += 5  # Favor Salinity
+             hazard_weights["storm_surge"] -= 2
+        else:
+             hazard_weights["storm_surge"] += 3   # Favor Surge/Tide
+
+    # 3. Wildfire Context Filter: Must have forest indicators to avoid general fire news.
+    if "wildfire" in hazard_weights:
+        forest_indicators = [
+            "rừng", "thực bì", "khoảnh", "tiểu khu", "lâm phần", "lâm nghiệp", "diện tích", "thảm thực vật"
+        ]
+        if not any(fi in full_text.lower() for fi in forest_indicators):
+            # Penalty if it's just "PCCCR" without forest context
+            hazard_weights["wildfire"] -= 10
+
+    # 4. Quake Boosting: "Động đất" + magnitude/scale
     if "quake_tsunami" in hazard_weights:
-        if re.search(r"(?:động đất|rung chấn|dư chấn).*?(?:độ|richter|magnitude|M\s*\d)", t_title, re.IGNORECASE):
-            hazard_weights["quake_tsunami"] += 4
+        if re.search(r"(?:động đất|rung chấn|dư chấn|độ lớn).*?(?:độ|richter|magnitude|M|MW|ML)\s*\d", t_title, re.IGNORECASE):
+            hazard_weights["quake_tsunami"] += 10
 
-    # 3. Surge Boosting: "Triều cường" + peak/level matching
-    if "storm_surge" in hazard_weights:
-         if "triều cường" in t_title or "nước dâng" in t_title:
-             hazard_weights["storm_surge"] += 3
-
+    PRIO = [
+        "quake_tsunami",
+        "storm_surge",
+        "storm",
+        "flood_landslide", 
+        "wildfire", 
+        "heat_drought", 
+        "wind_fog", 
+        "extreme_other"
+    ]
 
     if not hazard_weights:
         # Check for Recovery/Relief keywords as fallback
@@ -1450,35 +1495,24 @@ def classify_disaster(text: str, title: str = "") -> dict:
              
         return {
             "primary_type": primary,
-            "primary_level": 1 if primary != "unknown" else 0,
-            "all_hazards": []
+            "hazard_weights": {},
+            "is_disaster": False
         }
     
-    # Priority for tie-breaking
-    PRIO = [
-        "quake_tsunami",
-        "storm_surge",
-        "storm",
-        "flood_landslide", 
-        "wildfire", 
-        "heat_drought", 
-        "wind_fog", 
-        "extreme_other"
-    ]
-    
-    # Select Primary: Highest weighted score first, then PRIO
+    # Select Primary: Highest weighted score first, then PRIO position
     sorted_hazards = sorted(
         hazard_weights.items(),
         key=lambda item: (-item[1], PRIO.index(item[0]) if item[0] in PRIO else 99)
     )
     
     primary = sorted_hazards[0][0]
-    all_hazards = [{"type": k, "weight": v, "level": 1} for k, v in hazard_weights.items()]
-    
+    if hazard_weights.get(primary, 0) <= 0:
+        primary = "unknown"
+
     return {
         "primary_type": primary,
-        "primary_level": 1,
-        "all_hazards": all_hazards
+        "hazard_weights": hazard_weights,
+        "is_disaster": primary not in ["unknown", "recovery", "relief_aid"]
     }
 
 
