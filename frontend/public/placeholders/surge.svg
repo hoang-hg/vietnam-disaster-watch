@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#f0f9ff;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0369a1" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <rect x="0" y="400" width="800" height="200" fill="#0284c7"/>
+       <path d="M0,400 Q100,350 200,400 T400,400 T600,400 T800,400" fill="none" stroke="#0ea5e9" stroke-width="5"/>
+       <path d="M100,300 L100,600 M120,300 L120,600" stroke="#334155" stroke-width="10"/> -- Gauge
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#0369a1" opacity="0.8">NƯỚC DÂNG</text>
+</svg>

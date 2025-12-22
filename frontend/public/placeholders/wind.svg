@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#f1f5f9;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#334155" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <path d="M100,200 Q400,100 700,200" fill="none" stroke="#64748b" stroke-width="20" stroke-linecap="round" opacity="0.5"/>
+       <path d="M50,300 Q350,200 650,300" fill="none" stroke="#475569" stroke-width="20" stroke-linecap="round" opacity="0.7"/>
+       <path d="M150,400 Q450,300 750,400" fill="none" stroke="#334155" stroke-width="20" stroke-linecap="round" opacity="0.5"/>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#334155" opacity="0.8">GIÓ MẠNH / LỐC</text>
+</svg>

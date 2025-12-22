@@ -127,7 +127,7 @@ export default function Events() {
   const hasFilters = q || type || province || startDate || endDate;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Page Header */}
       <div className="mb-6">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -222,8 +222,8 @@ export default function Events() {
         </div>
       )}
 
-      {/* Results Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Results Grid - Compact 4 cols */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {currentEvents.map((e) => (
           <a
             key={e.id}
@@ -234,12 +234,16 @@ export default function Events() {
             <div className="h-1.5 w-full bg-blue-500"></div>
             
             {/* 0. Image Area */}
-            <div className="w-full h-48 bg-slate-100 overflow-hidden relative">
+            <div className={`w-full h-40 bg-slate-100 overflow-hidden relative ${e.image_url?.endsWith('.svg') ? 'flex items-center justify-center' : ''}`}>
                  {e.image_url ? (
                     <img 
                       src={e.image_url} 
                       alt={e.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      className={
+                          e.image_url.endsWith('.svg')
+                            ? "w-20 h-20 object-contain opacity-50 transition-transform duration-500 group-hover:scale-110" 
+                            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      }
                     />
                  ) : (
                     <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
@@ -255,8 +259,8 @@ export default function Events() {
             </div>
 
             {/* 1. Header: Title + Province */}
-            <div className="p-5 flex-1 flex flex-col">
-               <h2 className="text-base font-semibold text-slate-900 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors">
+            <div className="p-4 flex-1 flex flex-col">
+               <h2 className="text-sm font-bold text-slate-900 line-clamp-3 mb-2 group-hover:text-blue-600 transition-colors leading-snug">
                   {e.title}
                </h2>
                

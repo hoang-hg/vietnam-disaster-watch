@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#ffedd5;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#c2410c" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <circle cx="400" cy="250" r="80" fill="#f97316"/>
+       <path d="M0,500 L800,500" stroke="#c2410c" stroke-width="4"/>
+       <path d="M100,500 L150,550 M200,500 L250,550 M500,500 L550,550" stroke="#c2410c" stroke-width="4"/>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#c2410c" opacity="0.8">NẮNG NÓNG & HẠN HÁN</text>
+</svg>

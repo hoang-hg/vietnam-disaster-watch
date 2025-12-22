@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#e2e8f0;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#334155" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <g transform="translate(400,300) scale(3)">
+        <path d="M0,0 C20,-20 50,0 30,30 C0,50 -20,20 -10,-10 Z" fill="#64748b" opacity="0.8">
+            <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="10s" repeatCount="indefinite"/>
+        </path>
+        <path d="M0,0 C-30,30 -60,0 -40,-30 C0,-60 30,-30 10,10 Z" fill="#94a3b8" opacity="0.8">
+            <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="8s" repeatCount="indefinite"/>
+        </path>
+       </g>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#334155" opacity="0.8">BÃO / ÁP THẤP NHIỆT ĐỚI</text>
+</svg>

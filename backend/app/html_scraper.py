@@ -142,71 +142,125 @@ class HTMLScraper:
         response.encoding = "utf-8"
         return self._extract_generic_links(response.text, "sggp.org.vn", max_items=15)
 
-    async def scrape_thoitietvietnam(self) -> List[dict]:
-        """Scrape Thoi Tiet Vietnam (KTTV) - Targeted Scrape."""
+    async def scrape_kttv_portal(self, domain: str) -> List[dict]:
+        """Scrape any KTTV portal (National or Provincial) - Targeted Scrape."""
         if not _HAS_BS4: return []
 
-        # Target valid news page on the new official domain
-        url = "https://www.thoitietvietnam.gov.vn/kttv/" 
+        # Build start URL based on domain
+        if "thoitietvietnam" in domain:
+            url = f"https://www.thoitietvietnam.gov.vn/kttv/"
+        elif domain.startswith("http"):
+            url = domain
+        else:
+            url = f"https://{domain}/kttv/" if "kttv.gov.vn" in domain and domain != "kttv.gov.vn" else f"https://{domain}"
+
         response = await self._get_with_retry(url)
-        if not response: 
-            # Try alternative old domain if first fails
-            url = "https://nchmf.gov.vn/kttv/"
-            response = await self._get_with_retry(url)
-            if not response: return []
+        if not response:
+            # Try standard /kttv/ path if root fails
+            if not url.endswith("/kttv/"):
+                url_alt = url.rstrip("/") + "/kttv/"
+                response = await self._get_with_retry(url_alt)
+            
+            if not response:
+                # Fallback to nchmf for national domain
+                if "thoitietvietnam" in domain or "nchmf" in domain:
+                    url = "https://nchmf.gov.vn/kttv/"
+                    response = await self._get_with_retry(url)
+                
+                if not response: return []
 
         response.encoding = "utf-8"
         articles = []
         try:
             soup = BeautifulSoup(response.text, "html.parser")
-            # The list of news is usually in a specific container, but generic 'a' search works if we filter by URL pattern
-            # The links look like /kttv/vi-VN/1/title-postID.html
-            all_links = soup.find_all('a', href=True)
+            # Provincial sites often have news in these containers
+            content_containers = soup.find_all(['ul', 'div'], class_=re.compile(r'list-news|uk-list|news-list|tin-tuc|lastest-news', re.I))
             
             seen_titles = set()
+            all_links = []
+            
+            if content_containers:
+                for container in content_containers:
+                    all_links.extend(container.find_all('a', href=True))
+            
+            # If no containers found, try all links
+            if not all_links:
+                all_links = soup.find_all('a', href=True)
+
+            base_domain = domain if not domain.startswith("www.") else domain[4:]
+
             for link in all_links:
-                if len(articles) >= 20:
+                if len(articles) >= 30:
                     break
                 
                 href = link.get('href', '').strip()
-                # Specific pattern for news posts on this site
-                if "post" not in href:
-                    continue
-                
-                # Fix relative URL
-                if href.startswith("/"):
-                    full_url = "https://www.thoitietvietnam.gov.vn" + href
-                elif not href.startswith("http"):
-                    # relative without slash?
-                    full_url = "https://www.thoitietvietnam.gov.vn/kttv/" + href
-                else:
-                    full_url = href
-
                 title = link.get_text(strip=True)
-                if not title or len(title) < 10:
+                
+                # If title is empty, check 'title' or 'alt' attribute
+                if not title:
+                    title = link.get('title', '') or link.get('alt', '')
+                
+                if not title or len(title) < 15:
                     continue
 
                 # Deduplicate
                 if title in seen_titles:
                     continue
-                seen_titles.add(title)
+                
+                # Filter out utility links (contact, login, etc)
+                if any(x in href.lower() for x in ['contact', 'login', 'signup', 'feedback', 'search']):
+                    continue
+                
+                # Heuristic for news links in KTTV portals:
+                # 1. Contains 'post', 'view', 'detail', 'tin-tuc'
+                # 2. Ends with .html or has a numeric ID
+                is_news = False
+                if any(x in href.lower() for x in ['post', 'view', 'detail', 'tin-tuc', 'news', 'dubao']):
+                    is_news = True
+                elif re.search(r'/\d+/?$', href) or re.search(r'-\d+\.html', href):
+                    is_news = True
+                
+                if not is_news:
+                    continue
 
-                # For this TRUSTED source, we DO NOT filter by disaster keywords here.
-                # We let the crawler/NLP pipeline decide, or we accept all because it is a specialized source.
+                # Fix relative URL
+                full_url = href
+                if not href.startswith("http"):
+                    if href.startswith("/"):
+                        full_url = f"https://{domain.rstrip('/')}{href}"
+                    else:
+                        full_url = f"{url.rstrip('/')}/{href}"
+
+                # Attempt to find summary/description
+                summary = ""
+                # Strategy: Look inside the same container for p, span, or div with class summary/desc
+                parent = link.find_parent(['li', 'div', 'article'])
+                if parent:
+                    desc_tag = parent.find(['p', 'div', 'span'], class_=re.compile(r'summary|desc|lead|snippet|short', re.I))
+                    if desc_tag:
+                        summary = desc_tag.get_text(strip=True)
+                    else:
+                        # Fallback: Look for any p or div that isn't the title link
+                        all_p = parent.find_all('p')
+                        for p in all_p:
+                            p_text = p.get_text(strip=True)
+                            if p_text and p_text != title:
+                                summary = p_text
+                                break
+
+                seen_titles.add(title)
                 
                 articles.append({
                     "title": title,
                     "url": full_url,
-                    "source": "thoitietvietnam.gov.vn",
-                    "summary": "",
+                    "source": domain,
+                    "summary": summary,
                     "scraped_at": datetime.utcnow().isoformat()
                 })
         except Exception as e:
-            logger.debug(f"Error scraping KTTV: {e}")
+            logger.debug(f"Error scraping KTTV portal {domain}: {e}")
         
         return articles
-
-
 
     async def scrape_source(self, domain: str) -> List[dict]:
         """Route to appropriate scraper based on domain."""
@@ -226,8 +280,8 @@ class HTMLScraper:
             return await self.scrape_nld()
         elif "sggp" in domain_lower:
             return await self.scrape_sggp()
-        elif "thoitietvietnam" in domain_lower or "nchmf" in domain_lower:
-            return await self.scrape_thoitietvietnam()
+        elif "thoitietvietnam" in domain_lower or "nchmf" in domain_lower or "kttv" in domain_lower:
+            return await self.scrape_kttv_portal(domain)
         else:
             logger.debug(f"No scraper implemented for {domain}")
             return []

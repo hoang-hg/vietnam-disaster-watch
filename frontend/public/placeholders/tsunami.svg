@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#ecfeff;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0e7490" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <path d="M0,500 Q200,200 400,100 Q600,0 800,400 V600 H0 Z" fill="#06b6d4"/>
+       <path d="M600,150 Q700,100 750,200" stroke="white" stroke-width="10" fill="none"/>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#0e7490" opacity="0.8">SÓNG THẦN</text>
+</svg>

@@ -22,9 +22,14 @@ urllib3.disable_warnings()
 
 async def dry_run():
     print("Loading sources configuration...")
-    sources = src_module.load_sources_from_json()
-    config = src_module.load_config_from_json()
-    print(f"Loaded {len(sources)} sources definition.")
+    # Fix: sources.json is in backend root
+    sources_file = backend_path / "sources.json"
+    if not sources_file.exists():
+        print(f"Error: {sources_file} not found!")
+        return
+
+    sources = src_module.load_sources_from_json(str(sources_file))
+    print(f"Loaded {len(sources)} sources from {sources_file.name}.")
     
     total_scanned = 0
     total_accepted = 0

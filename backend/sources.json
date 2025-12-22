@@ -6,7 +6,7 @@
       "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",
       "backup_rss": "https://thanhnien.vn/rss/tin-24h.rss",
       "note": "Updated Backup to Tin-24h",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VietNamNet",
@@ -14,7 +14,7 @@
       "primary_rss": "https://vietnamnet.vn/rss/thoi-su.rss",
       "backup_rss": null,
       "note": "Backup 404, Primary OK",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VnExpress",
@@ -22,7 +22,7 @@
       "primary_rss": "https://vnexpress.net/rss/thoi-su.rss",
       "backup_rss": "https://vnexpress.net/rss/tin-moi-nhat.rss",
       "note": "Official RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Tuổi Trẻ",
@@ -30,7 +30,7 @@
       "primary_rss": "https://tuoitre.vn/rss/thoi-su.rss",
       "backup_rss": "https://tuoitre.vn/rss/tin-moi-nhat.rss",
       "note": "Official RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Dân Trí",
@@ -38,15 +38,15 @@
       "primary_rss": "https://dantri.com.vn/rss/thoi-su.rss",
       "backup_rss": "https://dantri.com.vn/rss/home.rss",
       "note": "RSS available",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Lao Động",
       "domain": "laodong.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS landing exists; run RSS discovery. Using GNews meanwhile.",
-      "trusted": true
+      "primary_rss": "https://laodong.vn/rss/thoi-su.rss",
+      "backup_rss": "https://laodong.vn/rss/home.rss",
+      "note": "Official RSS - Highly reliable for social impact.",
+      "trusted": false
     },
     {
       "name": "Nhân Dân",
@@ -54,7 +54,7 @@
       "primary_rss": "https://nhandan.vn/rss/xa-hoi-1361.rss",
       "backup_rss": "https://nhandan.vn/rss/home.rss",
       "note": "Added Backup Home RSS",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "Tiền Phong",
@@ -62,7 +62,7 @@
       "primary_rss": "https://tienphong.vn/rss/xa-hoi-2.rss",
       "backup_rss": null,
       "note": "RSS available",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "CAND",
@@ -79,22 +79,6 @@
       "backup_rss": "https://doisongphapluat.com.vn/rss/phap-luat.rss",
       "note": "RSS updated per patch (via main-rss.html)",
       "trusted": true
-    },
-    {
-        "name": "Znews",
-        "domain": "znews.vn",
-        "primary_rss": "https://znews.vn/rss/xa-hoi.rss",
-        "backup_rss": "https://znews.vn/rss/thoi-su.rss",
-        "note": "RSS available",
-        "trusted": false
-    },
-    {
-        "name": "Kênh 14",
-        "domain": "kenh14.vn",
-        "primary_rss": "https://kenh14.vn/xa-hoi.rss",
-        "backup_rss": null,
-        "note": "RSS available",
-        "trusted": false
     },
     {
       "name": "baocaobang.vn",
@@ -257,28 +241,28 @@
       "trusted": false
     },
     {
-      "name": "baobinhdinh.vn",
+      "name": "Báo Bình Định",
       "domain": "baobinhdinh.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown (some sites use /Default.aspx)",
-      "trusted": false
+      "note": "Coastal hot-spot for Typhoons/Lụt.",
+      "trusted": true
     },
     {
-      "name": "baophuyen.com.vn",
+      "name": "Báo Phú Yên",
       "domain": "baophuyen.com.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
-      "trusted": false
+      "note": "Coastal hot-spot for Typhoons/Lụt.",
+      "trusted": true
     },
     {
-      "name": "baokhanhhoa.vn",
+      "name": "Báo Khánh Hòa",
       "domain": "baokhanhhoa.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
-      "trusted": false
+      "note": "Coastal hot-spot for Typhoons/Lụt.",
+      "trusted": true
     },
     {
       "name": "baoninhthuan.com.vn",
@@ -297,12 +281,12 @@
       "trusted": true
     },
     {
-      "name": "baodaklak.vn",
+      "name": "Báo Đắk Lắk",
       "domain": "baodaklak.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "Added from user list; RSS unknown",
-      "trusted": false
+      "note": "Central Highlands hot-spot for floods.",
+      "trusted": true
     },
     {
       "name": "Báo Tin tức (TTXVN)",
@@ -317,7 +301,8 @@
       "domain": "sggp.org.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "RSS not available - fallback to GNews"
+      "note": "RSS not available - fallback to GNews",
+      "trusted": false
     },
     {
       "name": "Người Lao Động",
@@ -332,39 +317,8 @@
       "domain": "qdnd.vn",
       "primary_rss": "https://www.qdnd.vn/rss/cate/tin-tuc-moi-nhat.rss",
       "backup_rss": null,
-      "note": "Army Breaking News",
+      "note": "Dữ liệu thực tế hiện hiện trường & cứu hộ cực kỳ tin cậy.",
       "trusted": true
-    },
-    {
-      "name": "VNA Net",
-      "domain": "vnanet.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "SSL error - fallback to GNews"
-    },
-    {
-      "name": "Báo Mới",
-      "domain": "baomoi.com",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS Empty. Using GNews.",
-      "trusted": false
-    },
-    {
-      "name": "Soha",
-      "domain": "soha.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS 404. Using GNews.",
-      "trusted": false
-    },
-    {
-      "name": "24h",
-      "domain": "24h.com.vn",
-      "primary_rss": null,
-      "backup_rss": null,
-      "note": "RSS 404. Using GNews.",
-      "trusted": false
     },
     {
       "name": "Báo Chính Phủ",
@@ -380,7 +334,7 @@
       "primary_rss": "https://www.vietnamplus.vn/rss/xa-hoi.rss",
       "backup_rss": "https://www.vietnamplus.vn/rss/thoi-su.rss",
       "note": "Official VNA",
-      "trusted": true
+      "trusted": false
     },
     {
       "name": "VTV News",
@@ -436,7 +390,79 @@
       "domain": "kttv.ninhbinh.gov.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "User requested; fallback to GNews",
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Thanh Hóa",
+      "domain": "kttv.thanhhoa.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Nghệ An",
+      "domain": "kttv.nghean.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Quảng Bình",
+      "domain": "kttv.quangbinh.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Thái Bình",
+      "domain": "kttv.thaibinh.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Bắc Giang",
+      "domain": "kttv.bacgiang.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Lâm Đồng",
+      "domain": "kttv.lamdong.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Nam Bộ",
+      "domain": "kttv-nambo.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Trung Trung Bộ",
+      "domain": "kttvtrungtrungbo.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
+      "trusted": true
+    },
+    {
+      "name": "KTTV Tây Nguyên",
+      "domain": "kttvtaynguyen.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Using HTML Scraper fallback.",
       "trusted": true
     },
     {
@@ -476,8 +502,120 @@
       "domain": "nguoiduatin.vn",
       "primary_rss": null,
       "backup_rss": null,
-      "note": "RSS 404/Unknown. Using GNews.",
+      "note": "Tổng hợp tin từ báo lớn, độ ưu tiên thấp.",
       "trusted": false
+    },
+    {
+      "name": "Viện Vật lý Địa cầu",
+      "domain": "igp-vast.vn",
+      "primary_rss": "https://igp-vast.vn/tin-tuc.rss",
+      "backup_rss": null,
+      "note": "Nguồn DUY NHẤT tin động đất & sóng thần chính thức.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Nông nghiệp VN",
+      "domain": "nongnghiep.vn",
+      "primary_rss": "https://nongnghiep.vn/rss/thoi-su.rss",
+      "backup_rss": "https://nongnghiep.vn/rss/nong-nghiep.rss",
+      "note": "Chuyên sâu Cháy rừng, Hạn hán, Xâm nhập mặn.",
+      "trusted": true
+    },
+    {
+      "name": "Tạp chí Giao thông",
+      "domain": "tapchigiaothong.vn",
+      "primary_rss": "https://tapchigiaothong.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Thông tin Sạt lở đèo dốc và hạ tầng mạch máu.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Cần Thơ",
+      "domain": "baocantho.com.vn",
+      "primary_rss": "https://baocantho.com.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Trọng tâm Xâm nhập mặn & Triều cường miền Tây.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Hà Giang",
+      "domain": "baohagiang.vn",
+      "primary_rss": "https://baohagiang.vn/rss/",
+      "backup_rss": null,
+      "note": "Theo dõi Lũ quét & Sạt lở đất vùng cao.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Quảng Nam",
+      "domain": "baoquangnam.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Điểm nóng lũ lụt & sạt lở miền Trung.",
+      "trusted": true
+    },
+    {
+      "name": "Cục Quản lý đê điều",
+      "domain": "dyke.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Dữ liệu hạ tầng đê điều & xả lũ hồ chứa. Ưu tiên cào HTML trực tiếp.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Thanh Hóa",
+      "domain": "baothanhhoa.vn",
+      "primary_rss": "https://baothanhhoa.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Điểm nóng bão & lũ lụt Bắc Trung Bộ.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Kon Tum",
+      "domain": "baokontum.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Theo dõi Động đất & Sạt lở Tây Nguyên.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Hòa Bình",
+      "domain": "baohoabinh.com.vn",
+      "primary_rss": "https://baohoabinh.com.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "An toàn hồ đập & sạt lở đất.",
+      "trusted": true
+    },
+    {
+      "name": "VMRCC (Cứu nạn hàng hải)",
+      "domain": "mrcc.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Tin tìm kiếm cứu nạn tàu thuyền trên biển.",
+      "trusted": true
+    },
+    {
+      "name": "Pháp luật TP.HCM",
+      "domain": "plo.vn",
+      "primary_rss": "https://plo.vn/thoi-su.rss",
+      "backup_rss": "https://plo.vn/xa-hoi.rss",
+      "note": "Chuyên sâu pháp lý & hiện trường đô thị.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Tiền Giang",
+      "domain": "tiengiang.gov.vn",
+      "primary_rss": "https://tiengiang.gov.vn/RSS/Nong-nghiep---Phat-trien-nong-thon.xml",
+      "backup_rss": "https://tiengiang.gov.vn/RSS/Tin-tuc.xml",
+      "note": "Cực kỳ quan trọng về Xâm nhập mặn & Nông nghiệp.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Bến Tre",
+      "domain": "baobentre.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Điểm nóng xâm nhập mặn.",
+      "trusted": true
     }
   ],
   "gnews_fallback": false,

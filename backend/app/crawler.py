@@ -574,7 +574,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 break  # Don't try other feeds for this source, we got articles
             
             # Force HTML scraper for known difficult sources w/ custom scrapers
-            force_html_scrape = "thoitietvietnam" in src.domain or "nchmf" in src.domain
+            force_html_scrape = "thoitietvietnam" in src.domain or "nchmf" in src.domain or "kttv" in src.domain
 
             if (not feed_worked) or force_html_scrape:
                 # Try HTML scraper

@@ -227,80 +227,51 @@ NUMBER_WORDS = {
     "không": 0, "một": 1, "mốt": 1, "1": 1, "hai": 2, "2": 2, "ba": 3, "3": 3,
     "bốn": 4, "tư": 4, "4": 4, "năm": 5, "5": 5, "sáu": 6, "6": 6, "bảy": 7, "7": 7,
     "tám": 8, "8": 8, "chín": 9, "9": 9, "mười": 10, "10": 10,
-    "vài": 3, "hàng chục": 20, "một trăm": 100, "hai trăm": 200, "ba trăm": 300, 
-    "năm trăm": 500, "nghìn": 1000, "một nghìn": 1000,
+    "vài": 3, "chục": 10, "mấy chục": 30, "hàng chục": 20, "trăm": 100, "vài trăm": 300, "một trăm": 100, "hai trăm": 200, "ba trăm": 300, 
+    "năm trăm": 500, "nghìn": 1000, "ngàn": 1000, "một nghìn": 1000, "vạn": 10000, "hàng vạn": 20000,
+    "triệu": 1000000, "tỷ": 1000000000, "tỉ": 1000000000
 }
 
-# 34 PROVINCES MAPPING (NEW SAU SAP NHAP)
-# Format: New_Name -> List of Old_Names to match in text
+# 34 PROVINCES MAPPING (NEW - Effective July 1, 2025)
+# Format: New_Name -> List of Old_Names/Variants to match in text
 PROVINCE_MAPPING = {
-    # Miền Bắc
-    "Hà Nội": ["Hà Nội", "HN", "Ha Noi"],
-    "Hà Giang": ["Hà Giang"],
-    "Cao Bằng": ["Cao Bằng"],
-    "Bắc Kạn": ["Bắc Kạn"],
-    "Tuyên Quang": ["Tuyên Quang"],
-    "Lào Cai": ["Lào Cai"],
-    "Điện Biên": ["Điện Biên"],
-    "Lai Châu": ["Lai Châu"],
-    "Sơn La": ["Sơn La"],
-    "Yên Bái": ["Yên Bái"],
-    "Hòa Bình": ["Hòa Bình"],
-    "Thái Nguyên": ["Thái Nguyên"],
-    "Lạng Sơn": ["Lạng Sơn"],
-    "Quảng Ninh": ["Quảng Ninh"],
-    "Bắc Giang": ["Bắc Giang"],
-    "Phú Thọ": ["Phú Thọ"],
-    "Vĩnh Phúc": ["Vĩnh Phúc"],
-    "Bắc Ninh": ["Bắc Ninh"],
-    "Hải Dương": ["Hải Dương"],
-    "Hải Phòng": ["Hải Phòng"],
-    "Hưng Yên": ["Hưng Yên"],
-    "Thái Bình": ["Thái Bình"],
-    "Hà Nam": ["Hà Nam"],
-    "Nam Định": ["Nam Định"],
-    "Ninh Bình": ["Ninh Bình"],
-    # Miền Trung
-    "Thanh Hóa": ["Thanh Hóa"],
-    "Nghệ An": ["Nghệ An"],
-    "Hà Tĩnh": ["Hà Tĩnh"],
-    "Quảng Bình": ["Quảng Bình"],
-    "Quảng Trị": ["Quảng Trị"],
-    "Thừa Thiên Huế": ["Thừa Thiên Huế", "Huế", "TT-Huế", "T.T.Huế"],
-    "Đà Nẵng": ["Đà Nẵng"],
-    "Quảng Nam": ["Quảng Nam"],
-    "Quảng Ngãi": ["Quảng Ngãi"],
-    "Bình Định": ["Bình Định"],
-    "Phú Yên": ["Phú Yên"],
-    "Khánh Hòa": ["Khánh Hòa"],
-    "Ninh Thuận": ["Ninh Thuận"],
-    "Bình Thuận": ["Bình Thuận"],
-    # Tây Nguyên
-    "Kon Tum": ["Kon Tum"],
-    "Gia Lai": ["Gia Lai"],
-    "Đắk Lắk": ["Đắk Lắk", "Dak Lak"],
-    "Đắk Nông": ["Đắk Nông", "Dak Nong"],
-    "Lâm Đồng": ["Lâm Đồng"],
-    # Miền Nam
-    "TP Hồ Chí Minh": ["Hồ Chí Minh", "TP.HCM", "TPHCM", "Sài Gòn"],
-    "Bình Phước": ["Bình Phước"],
-    "Tây Ninh": ["Tây Ninh"],
-    "Bình Dương": ["Bình Dương"],
-    "Đồng Nai": ["Đồng Nai"],
-    "Bà Rịa - Vũng Tàu": ["Bà Rịa", "Vũng Tàu", "BR-VT", "BRVT"],
-    "Long An": ["Long An"],
-    "Tiền Giang": ["Tiền Giang"],
-    "Bến Tre": ["Bến Tre"],
-    "Trà Vinh": ["Trà Vinh"],
-    "Vĩnh Long": ["Vĩnh Long"],
-    "Đồng Tháp": ["Đồng Tháp"],
-    "An Giang": ["An Giang"],
-    "Kiên Giang": ["Kiên Giang"],
-    "Cần Thơ": ["Cần Thơ"],
-    "Hậu Giang": ["Hậu Giang"],
-    "Sóc Trăng": ["Sóc Trăng"],
-    "Bạc Liêu": ["Bạc Liêu"],
-    "Cà Mau": ["Cà Mau"],
+    # I. Units kept as is (11 units)
+    "Hà Nội": ["Hà Nội", "HN", "Ha Noi", "Thủ đô Hà Nội"],
+    "Huế": ["Thành phố Huế", "TP Huế", "Thừa Thiên Huế", "TT Huế", "Thua Thien Hue"],
+    "Lai Châu": ["Lai Châu", "Lai Chau"],
+    "Điện Biên": ["Điện Biên", "Dien Bien"],
+    "Sơn La": ["Sơn La", "Son La"],
+    "Lạng Sơn": ["Lạng Sơn", "Lang Son"],
+    "Quảng Ninh": ["Quảng Ninh", "Quang Ninh"],
+    "Thanh Hóa": ["Thanh Hóa", "Thanh Hoa"],
+    "Nghệ An": ["Nghệ An", "Nghe An"],
+    "Hà Tĩnh": ["Hà Tĩnh", "Ha Tinh"],
+    "Cao Bằng": ["Cao Bằng", "Cao Bang"],
+
+    # II. New units formed by merger (23 units)
+    "Tuyên Quang": ["Tuyên Quang", "Hà Giang", "Ha Giang", "Tuyen Quang"],
+    "Lào Cai": ["Lào Cai", "Yên Bái", "Yen Bai", "Lao Cai"],
+    "Thái Nguyên": ["Thái Nguyên", "Bắc Kạn", "Bac Kan", "Thai Nguyen"],
+    "Phú Thọ": ["Phú Thọ", "Vĩnh Phúc", "Hòa Bình", "Phu Tho", "Vinh Phuc", "Hoa Binh"],
+    "Bắc Ninh": ["Bắc Ninh", "Bắc Giang", "Bac Ninh", "Bac Giang"],
+    "Hưng Yên": ["Hưng Yên", "Thái Bình", "Hung Yen", "Thai Binh"],
+    "Hải Phòng": ["Hải Phòng", "Hải Dương", "Hai Phong", "Hai Duong", "HP"],
+    "Ninh Bình": ["Ninh Bình", "Hà Nam", "Nam Định", "Ninh Binh", "Ha Nam", "Nam Dinh"],
+    "Quảng Trị": ["Quảng Trị", "Quảng Bình", "Quang Tri", "Quang Binh"],
+    "Đà Nẵng": ["Đà Nẵng", "Quảng Nam", "Da Nang", "Quang Nam", "ĐN"],
+    "Quảng Ngãi": ["Quảng Ngãi", "Kon Tum", "Quang Ngai", "Kon Tum", "QNg"],
+    "Gia Lai": ["Gia Lai", "Bình Định", "Gia Lai", "Binh Dinh"],
+    "Khánh Hòa": ["Khánh Hòa", "Ninh Thuận", "Khanh Hoa", "Ninh Thuan"],
+    "Lâm Đồng": ["Lâm Đồng", "Đắk Nông", "Bình Thuận", "Lam Dong", "Dak Nong", "Binh Thuan"],
+    "TP Hồ Chí Minh": ["Hồ Chí Minh", "TP.HCM", "TPHCM", "Sài Gòn", "Bà Rịa - Vũng Tàu", "Bà Rịa", "Vũng Tàu", "Bình Dương", "HCMC", "Sai Gon", "BRVT", "Binh Duong", "SG"],
+    "Đồng Nai": ["Đồng Nai", "Bình Phước", "Dong Nai", "Binh Phuoc"],
+    "Long An": ["Long An", "Tây Ninh", "Long An", "Tay Ninh"],
+    "An Giang": ["An Giang", "Kiên Giang", "An Giang", "Kien Giang"],
+    "Cần Thơ": ["Cần Thơ", "Hậu Giang", "Sóc Trăng", "Can Tho", "Hau Giang", "Soc Trang"],
+    "Tiền Giang": ["Tiền Giang", "Bến Tre", "Tien Giang", "Ben Tre"],
+    "Vĩnh Long": ["Vĩnh Long", "Đồng Tháp", "Vinh Long", "Dong Thap"],
+    "Bạc Liêu": ["Bạc Liêu", "Cà Mau", "Bac Lieu", "Ca Mau"],
+    "Trà Vinh": ["Trà Vinh", "Tra Vinh"]
 }
 
 # List of valid (new) province names
@@ -341,21 +312,17 @@ for reg in PROVINCE_REGIONS:
 # DISASTER RULES & PATTERNS
 
 DISASTER_RULES = [
-  # 1) Bão & áp thấp nhiệt đới
+  # 1) Bão & áp thấp nhiệt đới (Storm/Tropical Cyclone)
   ("storm", [
-    # Bão (loại trừ: đi bão, bão giá, bão mạng, bão lòng, cơn bão số... khi nói về giá cả)
     r"(?<!\w)(?<!đi\s)(?<!dự\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\w)",
-    r"bão\s*số\s*\d+",
-    r"siêu\s*bão", r"hoàn\s*lưu\s*(?:bão|gây\s*mưa)", r"tâm\s*bão", r"tâm\s*bão.*đất\s*liền",
-    r"đổ\s*bộ", r"đi\s*vào\s*biển\s*đông", r"tiến\s*vào\s*biển\s*đông",
-    r"gió\s*giật\s*mạnh",
-    # Áp thấp (loại trừ: huyết áp thấp, cao áp thấp)
-    r"(?<!huyết\s)áp\s*thấp\s*nhiệt\s*đới",
-    r"(?<!huyết\s)(?<!cao\s)áp\s*thấp(?!\w)",
-    r"(?<!\w)ATNĐ(?!\w)", r"vùng\s*áp\s*thấp",
-    r"xoáy\s*thuận\s*nhiệt\s*đới", r"nhiễu\s*động\s*nhiệt\s*đới",
-    r"gió\s*mạnh\s*cấp\s*\d+", r"gió\s*giật\s*cấp\s*\d+",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
+    r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
+    r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"xoáy\s*thuận\s*nhiệt\s*đới",
+    r"đổ\s*bộ", r"đặc\s*biệt\s*nguy\s*hiểm\s*trên\s*biển", r"hành\s*lang\s*bão",
+    r"sức\s*gió\s*mạnh\s*nhất\s*vùng\s*gần\s*tâm\s*bão", r"di\s*chuyển\s*theo\s*hướng\s*tây",
+    r"gió\s*bão", r"mưa\s*hoàn\s*lưu", r"bão\s*khẩn\s*cấp", r"tin\s*bão\s*cuối\s*cùng",
+    r"đi\s*vào\s*biển\s*đông", r"tiến\s*vào\s*biển\s*đông", r"gió\s*giật\s*mạnh",
+    r"áp\s*thấp\s*(?:mạnh\s*lên|suy\s*yếu)", r"cơn\s*bão\s*mạnh", r"tin\s*về\s*bão",
+    r"xoáy\s*thuận", r"vùng\s*xoáy", r"áp\s*cao\s*cận\s*nhiệt", r"rãnh\s*thấp", r"tổ\s*hợp\s*thời\s*tiết\s*xấu"
   ]),
 
 
@@ -365,89 +332,59 @@ DISASTER_RULES = [
     r"đỉnh\s*triều", r"ngập\s*do\s*triều", r"sóng\s*lớn\s*đánh\s*tràn"
   ]),
 
-  # 3) Lũ, Ngập lụt, Sạt lở, Sụt lún (Grouped as flood_landslide)
+  # 3) Lũ, Ngập lụt, Sạt lở, Sụt lún (Flood & Landslide)
   ("flood_landslide", [
-    # Mưa lớn (driver)
-    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"mưa\s*cực\s*lớn",
-    r"mưa\s*đặc\s*biệt\s*lớn", r"mưa\s*diện\s*rộng", r"mưa\s*kéo\s*dài",
-    r"mưa\s*kỷ\s*lục", r"mưa\s*cực\s*đoan", r"mưa\s*như\s*trút",
-    # Lũ / Ngập (Strict boundaries)
-    r"(?<!\w)(?<!xe\s)lũ(?!\w)(?!\s*lượt)(?!\s*khách)",
-    r"(?<!\w)lụt(?!\w)", r"lũ\s+lụt", r"lũ\s+lớn", r"lũ\s+lịch\s+sử", r"lũ\s+dâng",
-    r"nước\s+lũ", r"lũ\s+lên\s+nhanh", r"lũ\s+thượng\s+nguồn", r"lũ\s+bùn", r"dòng\s+chảy\s+xiết",
-    r"(?<!\w)ngập(?!\w)(?!\s*đầu\s*tư)(?!\s*tràn)(?!\s*trong)(?!\s*ngụa)(?!\s*mặn)",
-    r"ngập\s+lụt", r"ngập\s+úng", r"ngập\s+sâu", r"ngập\s+tới\s+nóc", r"ngập\s+ngang\s+ngực", r"ngập\s+quá\s+bánh\s+xe",
-    r"ngập\s+cục\s+vộ", r"nước\s+lên\s+nhanh", r"mực\s+nước\s+dâng", r"đỉnh\s+lũ",
-    r"báo\s+động\s+(?:1|2|3|I|II|III)", r"vượt\s+báo\s+động",
-    r"vỡ\s+đê", r"vỡ\s+kè", r"tràn\s+đê", r"tràn\s+bờ", r"vỡ\s+đập", r"sự\s+cố\s+đập", r"xả\s+lũ",
-    r"hồ\s+chứa", r"thủy\s+lợi", r"tràn\s+đập", r"tràn\s+qua\s+đập",
-    r"vỡ\s+bờ\s+bao", r"tràn\s+bờ\s+bao", r"bờ\s+bao", r"cống\s+ngăn\s+triều", r"xả\s+tràn", r"mở\s+cửa\s+xả", r"xả\s+điều\s+tiết",
-    r"qua\s+tràn", r"ngập.*tràn", r"cầu\s+tràn", r"chia\s+cắt.*giao\s+thông",
-    # Lũ quét / Lũ ống
-    r"lũ\s+quét", r"lũ\s+ống", r"nước\s+lũ\s+cuốn\s+trôi", r"lũ\s+bùn\s+đá",
-    # Sạt lở / Sụt lún (Loại trừ: đất đai, bất động sản, vận chuyển đất)
-    r"(?<!\w)sạt(?!\w)", r"sạt\s+lở(?!\s+giá)", r"sạt\s+lở\s+đất", r"lở\s+đất", r"trượt\s+đất", r"trượt\s+lở",
-    r"sạt\s+taluy", r"taluy", r"đứt\s+gãy\s+taluy", r"sạt\s+lở\s+bờ\s+sông", r"sạt\s+lở\s+bờ\s+biển",
-    r"taluy\s+dương", r"taluy\s+âm", r"sạt\s+mái", r"sạt\s+vai\s+đường", r"trượt\s+mái", r"nứt\s+toác", r"hàm\s+ếch", r"sạt\s+trượt",
-    r"sụt\s+lún", r"hố\s+tử\s+thần", r"hố\s+sụt", r"nứt\s+đất", r"sụp\s+đường", r"sụp\s+lún"
+    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn\s*đá", r"lũ\s*lịch\s*sử", r"lũ\s*đầu\s*nguồn",
+    r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu", r"ngập\s*cục\s*bộ", r"biển\s*nước", r"ngập\s*(?:nhà|đường|phố)",
+    r"sạt\s*lở\s*đất", r"trượt\s*lở\s*đất", r"sụt\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hàm\s*ếch",
+    r"vỡ\s*đê", r"tràn\s*đê", r"sự\s*cố\s+đập", r"xả\s+lũ", r"hồ\s+chứa\s+thủy\s+điện", r"thủy\s*lợi",
+    r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lũ\s*dâng\s*cao", r"báo\s*động\s*(?:1|2|3|I|II|III)",
+    r"chia\s*cắt", r"cô\s*lập", r"cuốn\s*trôi", r"vùi\s*lấp", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
+    r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"sụt\s*lún\s*đất", r"nứt\s*đất", r"trượt\s*mái\s*đê", r"mưa\s*lũ",
+    r"taluy\s*(?:âm|dương)", r"trượt\s*mái\s*sườn", r"sạt\s*trượt\s*ven\s*sông", r"điều\s*tiết\s*xả\s*lũ",
+    r"lưu\s*lượng\s*về\s*hồ", r"ngập\s*lụt\s*trên\s*diện\s*rộng"
   ]),
 
-  # 4) Nắng nóng, Hạn hán, Xâm nhập mặn
+  # 4) Nắng nóng, Hạn hán, Xâm nhập mặn (Heat, Drought & Salinity)
   ("heat_drought", [
-    # Nắng nóng
-    r"nắng\s*nóng", r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt",
-    r"nhiệt\s*độ\s*kỷ\s*lục", r"oi\s*bức", r"nhiệt\s*độ\s*cao",
-    r"nhiệt\s*độ\s*cảm\s*nhận", r"chỉ\s*số\s*UV", r"cảnh\s*báo\s*nắng\s*nóng",
-    # Hạn hán
-    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước", r"cạn\s*kiệt",
-    r"khát\s*nước", r"nứt\s*nẻ", r"đất\s*khô\s*nứt", r"cạn\s*hồ", r"nứt\s*nẻ.*ruộng",
-    r"thiếu\s*nước\s*sinh\s*hoạt", r"lấy\s*nước\s*ngọt", r"thiếu\s*nước\s*sản\s*xuất",
-    # Mặn
-    r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn", r"mặn\s*xâm\s*nhập",
-    r"hạn\s*mặn", r"(?<!\w)ppt(?!\w)", r"(?<!\w)g/l(?!\w)", r"xã\s*vùng\s*mặn", r"nước.*nhiễm\s*mặn",
-    r"nước\s*mặn\s*xâm\s*nhập\s*sâu", r"ranh\s*mặn", r"đẩy\s*mặn"
+    r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
+    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước\s*ngọt", r"nứt\s*nẻ", r"khát\s*nước",
+    r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn", r"ranh\s*mặn", r"mặn\s*xâm\s*nhập\s*sâu",
+    r"thiếu\s*nước\s*sinh\s*hoạt", r"xe\s*chở\s*nước\s*ngọt", r"mất\s*mùa\s*do\s*hạn\s*mặn",
+    r"độ\s*mặn\s*phần\s*nghìn", r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn",
+    r"đất\s*khô\s*cằn", r"cạn\s*hồ", r"hạn\s*hán\s*kéo\s*dài",
+    r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"ranh\s*mặn\s*4g/l", r"thiếu\s*hụt\s*nguồn\s*nước"
   ]),
 
-  # 5) Gió mạnh, Sương mù (trên biển và đất liền)
+  # 5) Gió mạnh, Sương mù (Wind & Fog)
   ("wind_fog", [
-    # Gió
-    r"gió\s*mạnh", r"gió\s*giật", r"gió\s*mùa", r"gió\s*cấp", r"gió\s*lớn",
-    r"biển\s*động", r"sóng\s*lớn", r"sóng\s*cao", r"cấm\s*biển", r"sóng\s*to",
-    r"cấm\s*tàu\s*thuyền", r"neo\s*đậu\s*tránh\s*trú", r"khu\s*neo\s*đậu", r"tránh\s*trú\s*bão",
-    r"sóng\s*cao\s*\d+\s*mét", r"biển\s*động\s*mạnh", r"vùng\s*nguy\s*hiểm", r"giật\s*trên\s*cấp",
-    r"chìm\s*tàu", r"lật\s*tàu", r"sóng\s*đánh\s*chìm", r"trôi\s*dạt",
-    # Sương mù
-    r"sương\s*mù", r"sương\s*mù\s*dày\s*đặc", r"mù\s*dày\s*đặc",
-    r"tầm\s*nhìn\s*hạn\s*chế", r"giảm\s*tầm\s*nhìn"
+    r"gió\s*mạnh\s*trên\s*biển", r"gió\s*giật\s*mạnh", r"sóng\s*cao\s*\d+\s*mét",
+    r"biển\s*động\s*mạnh", r"cấm\s*biển", r"cấm\s*tàu\s*thuyền", r"sóng\s*to\s*vây\s*quanh",
+    r"sương\s*mù\s*dày\s*đặc", r"mù\s*quang", r"tầm\s*nhìn\s*xa\s*dưới\s*1km",
+    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc",
+    r"gió\s*cấp\s*Beaufort", r"gió\s*giật\s*cấp\s*(?:10|11|12|13|14|15|16|17)",
+    r"tầm\s*nhìn\s*xa\s*hạn\s*chế", r"biển\s*động\s*rất\s*mạnh"
   ]),
-
-  # 6) Thời tiết cực đoan khác (Lốc, Sét, Mưa đá, Rét)
+  # 6) Thời tiết cực đoan (Extreme Weather: Tornado, Hail, Lightning, Cold)
   ("extreme_other", [
-    # Dông lốc
-    r"(?<!\w)dông(?!\w)", r"dông\s*lốc", r"(?<!\w)lốc(?!\w)", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc",
-    # Mưa đá, Sét
-    r"mưa\s*đá", r"(?<!\w)sét(?!\w)", r"giông\s*sét", r"sét\s*đánh",
-    # Rét, Băng giá
-    r"rét\s*đậm", r"rét\s*hại", r"không\s*khí\s*lạnh", r"sương\s*muối", r"băng\s*giá"
+    r"dông\s*lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc", r"mưa\s*đá",
+    r"sét\s*đánh", r"giông\s*sét", r"mưa\s*to\s*kèm\s*theo\s*dông\s*lốc",
+    r"rét\s*đậm\s*rét\s*hại", r"băng\s*giá", r"sương\s*muối", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
+    r"mưa\s*đặc\s*biệt\s*lớn", r"mưa\s*xối\s*xả", r"mưa\s*tầm\s*tã",
+    r"mưa\s*như\s*trút", r"mưa\s*trút\s*xuống", r"rét\s*buốt", r"băng\s*giá\s*phủ\s*trắng",
+    r"mưa\s*tuyết", r"tuyết\s*rơi"
   ]),
-
-  # 7) Cháy rừng
+  # 7) Cháy rừng (Wildfire)
   ("wildfire", [
-    # Explicitly wildfire only
     r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
-    r"PCCCR", r"cháy\s*thực\s*bì", r"rừng\s*phòng\s*hộ", r"rừng\s*sản\s*xuất", 
-    r"đám\s*cháy\s*rừng", r"lửa\s*rừng", r"rừng\s*tràm", r"rừng\s*thông", r"keo\s*lá\s*tràm",
-    r"dập\s*lửa", r"chữa\s*cháy\s*rừng", r"đường\s*băng\s*cản\s*lửa", r"trực\s*thăng\s*chữa\s*cháy", r"bùng\s*phát\s*trở\s*lại", r"đám\s*cháy\s*lan\s*rộng"
+    r"PCCCR", r"cháy\s*thực\s*bì", r"lửa\s*rừng", r"cháy\s*lan\s*rộng",
+    r"quy\s*chế\s*phòng\s*cháy\s*chữa\s*cháy\s*rừng", r"trực\s*cháy\s*rừng"
   ]),
-
-  # 8) Động đất, Sóng thần
+  # 8) Động đất, Sóng thần (Quake & Tsunami)
   ("quake_tsunami", [
-    r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn",
-    # Removed ambiguous "nứt đất/nhà" (common in landslides)
-    r"sóng\s*thần", r"cảnh\s*báo\s*sóng\s*thần", r"tsunami",
-    r"richter", r"chấn\s*tiêu", r"tâm\s*chấn",
-    r"magnitude",
-    r"rung\s*lắc", r"cảm\s*nhận\s*rung", r"chấn\s*động", r"cấp\s*báo\s*động\s*sóng\s*thần"
+    r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"sóng\s*thần", r"richter",
+    r"tâm\s*chấn", r"chấn\s*tiêu", r"đất\s*rung\s*lắc", r"viện\s*vật\s*lý\s*địa\s*cầu",
+    r"magnitude", r"rung\s*lắc\s*mạnh", r"thang\s*richter", r"cấp\s*báo\s*động\s*sóng\s*thần"
   ])
 ]
 
@@ -457,12 +394,14 @@ DISASTER_CONTEXT = [
   r"sơ\s*tán", r"di\s*dời", r"cứu\s*hộ", r"cứu\s*nạn",
   r"thiệt\s*hại", r"thương\s*vong", r"mất\s*tích", r"bị\s*thương",
   r"chia\s*cắt", r"cô\s*lập", r"mất\s*điện", r"mất\s*liên\s*lạc",
-  # Official Sources
+  # Official Sources & Response
   r"trung\s*tâm\s*dự\s*báo", r"đài\s*khí\s*tượng", r"thủy\s*văn",
   r"ban\s*chỉ\s*huy", r"ban\s*chỉ\s*đạo", r"phòng\s*chống\s*thiên\s*tai", 
   r"sở\s*nn&ptnt", r"bộ\s*nông\s*nghiệp", r"ubnd",
-  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện",
-  r"nắng\s*nóng", r"hạn\s*hán", r"xâm\s*nhập\s*mặn", r"khô\s*hạn", r"thiếu\s*nước"
+  r"tin\s*bão", r"tin\s*áp\s*thấp", r"công\s*điện", r"hỏa\s*tốc",
+  r"nắng\s*nóng", r"hạn\s*hán", r"xâm\s*nhập\s*mặn", r"khô\s*hạn", r"thiếu\s*nước",
+  r"phân\s*bổ\s*nguồn\s*vốn", r"trích\s*ngân\s*sách", r"huy\s*động\s*lực\s*lượng",
+  r"bốn\s*tại\s*chỗ", r"kịch\s*bản\s*ứng\s*phó", r"diễn\s*tập\s*mưa\s*lũ"
 ]
 
 # RECOVERY Keywords for Event Stage Classification
@@ -470,27 +409,31 @@ RECOVERY_KEYWORDS = [
     r"khắc\s*phục", r"hỗ\s*trợ", r"cứu\s*trợ", r"ủng\s*hộ",
     r"thăm\s*hỏi", r"chia\s*sẻ", r"quyên\s*góp", r"tiếp\s*nhận",
     r"sửa\s*chữa", r"khôi\s*phục", r"tái\s*thiết", r"bồi\s*thường",
-    r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn" 
+    r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn",
+    r"tái\s*định\s*cư", r"ổn\s*định\s*cuộc\s*sống", r"vệ\s*sinh\s*môi\s*trường",
+    r"tổng\s*kết\s*thiệt\s*hại", r"dựng\s*lại\s*nhà"
 ]
 
 # 1. ABSOLUTE VETO: Strictly Non-Disaster Contexts (Metaphor, Showbiz, Game, Sport)
 # These will be blocked even if they contain "bão", "lũ", "sạt lở" keywords.
 ABSOLUTE_VETO = [
   # Bão (Metaphorical)
-  r"bão\s*giá", r"cơn\s*bão\s*(?:dư\s*luận|truyền\s*thông|tin\s*giả|mạng)(?!\w)",
+  r"bão\s*giá", r"cơn\s*bão\s*(?:dư\s*luận|truyền\s*thông|tin\s*giả|mạng|tin\s*đồn|showbiz)(?!\w)",
   r"bão\s*sale", r"bão\s*like", r"bão\s*scandal", r"cơn\s*bão\s*tài\s*chính",
-  r"bão\s*sao\s*kê", r"bão\s*(?:chấn\s*thương|sa\s*thải)(?!\w)",
+  r"bão\s*sao\s*kê", r"bão\s*(?:chấn\s*thương|sa\s*thải|thất\s*nghiệp)(?!\w)",
   r"(?<!thiên\s)bão\s*lòng", r"dông\s*bão\s*(?:cuộc\s*đời|tình\s*cảm|nội\s*tâm)",
-  r"siêu\s*bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu)", 
+  r"siêu\s*bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu|quà\s*tặng)", 
   r"bão\s*(?:giảm\s*giá|khuyến\s*mãi|hàng\s*hiệu)",
   r"bão\s*view", r"bão\s*comment", r"bão\s*order", r"bão\s*đơn",
   r"bão\s*hàng", r"bão\s*flash\s*sale", r"bão\s*voucher",
-  r"siêu\s*dự\s*án", r"siêu\s*công\s*trình",
+  r"siêu\s*dự\s*án", r"siêu\s*công\s*trình", r"siêu\s*xe",
   
   # Động đất / Lũ / Sóng (Metaphorical)
-  r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ)",
-  r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí)",
-  r"địa\s*chấn\s*(?:showbiz|làng\s*giải\s*trí|V-pop|V-League)",
+  r"rung\s*chấn\s*(?:dư\s*luận|thị\s*trường|sân\s*cỏ|điện\s*ảnh)",
+  r"chấn\s*động\s*(?:dư\s*luận|showbiz|làng\s*giải\s*trí|MXH)",
+  r"địa\s*chấn\s*(?:showbiz|làng\s*giải\s*trí|V-pop|V-League|tình\s*trường)",
+  r"cơn\s*lũ\s*(?:tin\s*giả|tội\s*phạm|rác\s*thải\s*số)",
+  r"làn\s*sóng\s*(?:tẩy\s*chay|di\s*cư\s*số|công\s*nghệ)",
 
   # Sports
   r"bóng\s*đá", r"cầu\s*thủ", r"đội\s*tuyển", r"World\s*Cup", r"V-League", r"Sea\s*Games",
@@ -513,7 +456,7 @@ ABSOLUTE_VETO = [
   r"phân\s*công\s*công\s*tác", r"nhân\s*sự", r"bầu\s*cử", r"nhiệm\s*kỳ",
 
   # Education
-  r"đại\s*học", r"cao\s*đẳng", r"tuyển\s*sinh", r"đào\s*tạo", r"giáo\s*dục", r"học\s*bổng",
+  r"đại\s*học", r"cao\s*đẳng", r"tuyển\s*sinh", r"học\s*bổng",
   r"tốt\s*nghiệp", r"thạc\s*sĩ", r"tiến\s*sĩ",
   
   # Health / Lifestyle
@@ -583,38 +526,39 @@ ABSOLUTE_VETO = [
   r"làn\s*sóng\s*(?:COVID|covid|dịch)\s*thứ",
   r"bão\s*COVID", r"bão\s*F0",
 
-  # User Feedback Blocklist (Dec 2025)
+  # User Feedback Blocklist (Enhanced 2025)
   # Social / Good Samaritan / Daily Incidents
   r"nhặt\s*được", r"rơi\s*(?:ví|tiền|vàng)", r"trả\s*lại\s*(?:tiền|tài\s*sản)", r"giao\s*nộp.*công\s*an",
-  r"thang\s*máy", r"mắc\s*kẹt.*thang\s*máy",
+  r"thang\s*máy", r"mắc\s*kẹt.*thang\s*máy", r"móc\s*túi", r"trộm\s*cắp", r"cướp\s*giật",
   
-  # Festivities / Tourism / Showbiz
+  # Festivities / Tourism / Showbiz / Culture / Cooking
   r"check-in", r"giáng\s*sinh", r"noel", r"nhà\s*thờ", r"phố\s*đi\s*bộ",
   r"biển\s*người", r"chen\s*chân", r"liveshow", r"scandal", r"drama",
+  r"du\s*lịch", r"lễ\s*hội", r"văn\s*hóa", r"nghệ\s*thuật", r"trưng\s*bày", r"triển\s*lãm",
+  r"làng\s*hoa", r"cây\s*kiểng", r"sinh\s*vật\s*cảnh", r"khai\s*hội", r"tour", r"lữ\s*hành",
+  r"ẩm\s*thực", r"món\s*ngon", r"đặc\s*sản", r"nấu\s*ăn", r"đầu\s*bếp", r"nhà\s*hàng",
+  r"thi\s*bơi", r"đua\s*thuyền.*(hội|lễ)", r"bơi\s*lội.*(thi|giải)",
   
-  # Infrastructure / Traffic / Accidents (Absolute block for traffic noise)
+  # Infrastructure / Traffic / Accidents
   r"thông\s*xe", r"cao\s*tốc", r"ùn\s*ứ.*(?:lễ|tết|cuối\s*tuần)", r"bến\s*xe",
   r"thi\s*công.*dự\s*án", r"tiến\s*độ.*dự\s*án", r"xe\s*tải", r"xe\s*khách", r"va\s*chạm\s*xe",
   r"tai\s*nạn\s*giao\s*thông", r"tông\s*xe", r"tông\s*chết", r"không\s*có\s*vùng\s*cấm",
+  r"phạt\s*nguội", r"giấy\s*phép\s*lái\s*xe", r"đăng\s*kiểm",
   
   # Urban/Social Fire (Not Forest)
-  # (Moved 'sân bay', 'hàng không' to Conditional Veto to allow weather disruption news)
   r"cơ\s*trưởng", r"phi\s*công",
   r"cháy\s*nhà", r"cháy\s*xưởng", r"cháy\s*quán", r"cháy\s*xe", r"chập\s*điện", r"nổ\s*bình\s*gas",
   
-  # Political / Admin / Education / Finance
+  # Administrative / Political / Finance
   r"HĐND", r"hội\s*đồng\s*nhân\s*dân", r"tiếp\s*xúc\s*cử\s*tri", r"kỳ\s*họp",
   r"Quốc\s*hội", r"Chính\s*phủ", r"nghị\s*quyết", r"nghị\s*định", r"bổ\s*nhiệm",
-  r"trường\s*đại\s*học", r"tuyển\s*sinh", r"học\s*bổng", r"tốt\s*nghiệp",
   r"ngoại\s*giao", r"hội\s*kiến", r"tiếp\s*kiến", r"đối\s*ngoại", r"quyết\s*sách",
   r"Đảng\s*ủy", r"Đảng\s*viên", r"bí\s*thư(?!\s*đã\s*chỉ\s*đạo)",
   r"giảm\s*nghèo", r"xây\s*dựng\s*nông\s*thôn\s*mới", r"chỉ\s*số\s*giá\s*tiêu\s*dùng",
   r"đầu\s*tư", r"kinh\s*doanh", r"thị\s*trường", r"bất\s*động\s*sản", r"giá\s*đất",
-  r"trung\s*tâm\s*y\s*tế", r"bệnh\s*viện.*(hiện\s*đại|chất\s*lượng|trang\s*thiết\s*bị)",
-  r"Nguyễn\s*Đức\s*Hải", r"Phan\s*Đình\s*Trạc", r"Nguyễn\s*Hồng\s*Diên",
   r"lương\s*cơ\s*bản", r"tăng\s*lương", r"lương\s*hưu", r"nghỉ\s*hưu", r"lộ\s*trình\s*lương",
   r"BHYT", r"bhyt", r"hiến\s*máu", r"giọt\s*máu", r" runner", r"giải\s*chạy",
-  r"hóa\s*đơn", r"ngân\s*sách", r"quy\s*hoạch", r"sân\s*bay",
+  r"hóa\s*đơn", r"ngân\s*sách", r"quy\s*hoạch", r"đấu\s*giá", r"đấu\s*thầu",
   
   # Violence / Crimes / Legal
   r"bạo\s*hành", r"đánh\s*đập", r"hành\s*hung", r"bắt\s*giữ", r"vụ\s*án", r"điều\s*tra",
@@ -635,6 +579,10 @@ ABSOLUTE_VETO = [
     r"hộ\s*dân(?!\s*bị\s*cô\s*lập)(?!\s*bị\s*thiệt\s*hại\s*nặng)",
     r"hộ\s*dân(?!\s*bị\s*cô\s*lập)(?!\s*bị\s*thiệt\s*hại\s*nặng)",
     r"câu\s*cá", r"câu\s*trúng", 
+
+    # Human Interest / Social Stories (False Positives for "vùi lấp", "cuốn trôi")
+    r"được\s*nhận\s*nuôi", r"nhận\s*nuôi", r"bỏ\s*rơi", r"trẻ\s*sơ\s*sinh", r"bé\s*sơ\s*sinh",
+    r"tắm\s*sông", r"tắm\s*suối", r"tắm\s*biển", r"đi\s*bơi", r"đuối\s*nước(?!\s*do\s*lũ)",
     # Removed rigid 'mất tích' veto to prevent false negatives in disaster reports
     r"lan\s*tỏa(?!\s*lâm\s*nguy)",
     r"lan\s*tỏa(?!\s*lâm\s*nguy)",
@@ -798,12 +746,11 @@ SOFT_NEGATIVE = [
   r"đại\s*hội", r"bầu\s*cử", r"ứng\s*cử", r"đại\s*biểu", r"quốc\s*hội",
   r"mặt\s*trận\s*tổ\s*quốc", r"MTTQ", r"ủy\s*ban", r"kiểm\s*tra", r"giám\s*sát",
   r"thăng\s*quân\s*hàm", r"bổ\s*nhiệm", r"kỷ\s*luật", r"nghị\s*quyết",
-  r"thủ\s*tướng", r"bộ\s*trưởng", r"lãnh\s*đạo",
-  r"khởi\s*công", r"khánh\s*thành", r"nghiệm\s*thu", 
+  r"thủ\s*tướng", r"bộ\s*trưởng", r"lãnh\s*đạo", r"ngoại\s*giao", r"hội\s*đàm",
+  r"khởi\s*công", r"khánh\s*thành", r"nghiệm\s*thu", r"bản\s*tin\s*cuối\s*ngày",
   r"an\s*ninh\s*mạng", r"chuyển\s*đổi\s*số", r"công\s*nghệ", r"startup",
-  r"giải\s*thưởng", r"vinh\s*danh",
+  r"giải\s*thưởng", r"vinh\s*danh", r"kỷ\s*niệm", r"văn\s*hóa\s*văn\s*nghệ",
   # Tai nạn (Soft Negative - pass if caused by storm/flood)
-  r"tai\s*nạn\s*giao\s*thông", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
   r"tai\s*nạn\s*giao\s*thông", r"xe\s*tải", r"xe\s*container", r"xe\s*khách",
   # Fire non-wildfire
   r"hỏa\s*hoạn\s*(?:tại|ở)\s*(?:khu|kho|nhà|xưởng)",
@@ -852,6 +799,17 @@ SOFT_NEGATIVE_RE = [re.compile(p, re.IGNORECASE) for p in SOFT_NEGATIVE]
 # Currently Context Matches loop iterates DISASTER_CONTEXT enum string. Let's pre-compile.
 DISASTER_CONTEXT_RE = [re.compile(p, re.IGNORECASE) for p in DISASTER_CONTEXT]
 POLLUTION_TERMS_RE = [re.compile(p, re.IGNORECASE) for p in POLLUTION_TERMS]
+
+# Sensitive Locations compiled list
+SENSITIVE_LOCATIONS_RE = [re.compile(rf"(?<!\w){re.escape(loc)}(?!\w)", re.IGNORECASE) for loc in sources.SENSITIVE_LOCATIONS]
+
+# Weight configuration (Externalize? No, keep here for simplicity)
+WEIGHT_RULE = 3.0
+WEIGHT_IMPACT = 2.0
+WEIGHT_AGENCY = 2.0
+WEIGHT_SOURCE = 1.0
+WEIGHT_PROVINCE = 0.5
+WEIGHT_SENSITIVE_LOCATION = 1.0 # New weight for sensitive locations
 logger.info("NLP regex compilation complete.")
 
 # Build impact extraction patterns with named groups and qualifier support
@@ -1006,23 +964,23 @@ def compute_disaster_signals(text: str) -> dict:
     t, t0 = risk_lookup.canon(text or "")
 
     rule_matches = []
+    hazard_counts = {}
     # Check Rules (Iterate both accented and unaccented)
     # OPTIMIZED: Use DISASTER_RULES_RE
     for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):
-        matched = False
+        count = 0
         # Match Accented on t (compiled)
+        matched_label = False
         for pat_re in compiled_acc:
             if pat_re.search(t):
-                matched = True; break
+                count += 1
+                matched_label = True
         
-        # Safe Unaccented Check
-        if not matched:
-            for pat_re_no in compiled_no:
-                if pat_re_no and pat_re_no.search(t0):
-                    matched = True; break
-        if matched: rule_matches.append(label)
+        if matched_label:
+            rule_matches.append(label)
+            hazard_counts[label] = count
 
-    hazard_score = len(set(rule_matches))
+    hazard_score = len(rule_matches)
     rule_score = WEIGHT_RULE if hazard_score else 0.0
 
     impact_hits = []
@@ -1078,6 +1036,14 @@ def compute_disaster_signals(text: str) -> dict:
     for pat_re in POLLUTION_TERMS_RE:
         if pat_re.search(t): context_hits.append("pollution_term") # Just marker
     
+    # Sensitive Locations Check
+    sensitive_found = []
+    for i, pat_re in enumerate(SENSITIVE_LOCATIONS_RE):
+        if pat_re.search(t):
+            loc_name = sources.SENSITIVE_LOCATIONS[i]
+            sensitive_found.append(loc_name)
+            context_hits.append(f"sensitive_loc:{loc_name}")
+            
     context_score = len(context_hits)
 
     # NEGATIVE CHECKS (Split & Optimized)
@@ -1118,7 +1084,9 @@ def compute_disaster_signals(text: str) -> dict:
         "province": best_prov if best_prov != "unknown" else None,
         "score": score,
         "hazard_score": hazard_score,
+        "hazard_counts": hazard_counts,
         "context_score": context_score,
+        "sensitive_locations": sensitive_found,
         "absolute_veto": absolute_veto,
         "conditional_veto": conditional_veto,
         "hard_negative": absolute_veto, # Legacy compat
@@ -1127,7 +1095,8 @@ def compute_disaster_signals(text: str) -> dict:
         "metrics": metrics,
         "impact_details": impact_details,
         "is_province_match": best_prov != "unknown",
-        "is_agency_match": agency_match is not None
+        "is_agency_match": agency_match is not None,
+        "is_sensitive_location": len(sensitive_found) > 0
     }
 
 def determine_event_stage(text: str) -> str:
@@ -1172,6 +1141,26 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
         if re.search(vip, text, re.IGNORECASE):
             return True
 
+    # 0.1. DEFINITIVE EVENTS PASS (Strong Identifiers)
+    # If the title clearly mentions a Named Storm, Quake, Tsunami, or Surge -> PASS
+    # This comes BEFORE Veto to save valid events that might have some noise.
+    if title:
+        # Storm Naming: "Bão số 3", "Bão Yagi", "Áp thấp nhiệt đới"
+        if re.search(r"(?:bão|áp thấp).*?(?:số\s*\d+|[A-ZĐ][a-zà-ỹ]+)", title_lower, re.IGNORECASE):
+            return True
+        # Quake/Tsunami: "Động đất", "Sóng thần", "Rung chấn"
+        if re.search(r"(?:động đất|sóng thần|rung chấn)", title_lower, re.IGNORECASE):
+            return True
+        # Surge/Hail: "Triều cường", "Mưa đá", "Lũ quét" (Strong definitive hazards)
+        if re.search(r"(?:triều cường|mưa đá|lũ quét|sạt lở đất|lũ ống)", title_lower, re.IGNORECASE):
+            return True
+        # Forecast/Official Warning Pass (e.g. "Bản tin dự báo...", "Đài Khí tượng...")
+        # Only if title explicitly targets forecast/warning
+        if re.search(r"^(?:bản)?\s*tin\s*(?:dự\s*báo|cảnh\s*báo|khí\s*tượng|thủy\s*văn)", title_lower, re.IGNORECASE):
+             return True
+        if "đài khí tượng" in title_lower or "trung tâm dự báo" in title_lower:
+             return True
+
     # 1. ABSOLUTE VETO (The "Shield")
     # Block immediately if matched (Metaphors, Showbiz, Game, Sport, Crime, Admin)
     # [STRICTER] Apply veto to TITLE separately. If title has veto, REJECT immediately.
@@ -1210,11 +1199,12 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
         # If only 1 hazard type, require strong support
         if has_strong_support:
             return True
-        # If no strong support but from trusted source, allow liberally
-        # [UPDATED] If trusted, accept hazard=1 even without context, relying on Absolute Veto to catch spam.
+        # If no strong support but from trusted source, allow with SMALL support
+        # (Avoid "Flower news" by requiring at least a province OR 1 context keyword)
         if trusted_source:
-             return True
-        # Reject un-trusted 1-hazard articles with only weak support
+             if sig["is_province_match"] or sig["context_score"] >= 1:
+                 return True
+        # Reject others
         return False
 
     # 3. Warning/Forecast Signatures
@@ -1407,21 +1397,67 @@ def classify_disaster(text: str, title: str = "") -> dict:
     """
     # Combine text for better signal detection
     full_text = f"{title}\n{text}" if title else text
-    sig = compute_disaster_signals(full_text)
+    # Weighted matching: Title matches count for 2, Body for 1
+    t_title, _ = risk_lookup.canon(title or "")
+    t_body, _ = risk_lookup.canon(text or "")
     
-    matches = list(set(sig["rule_matches"])) # Deduplicate
+    hazard_weights = {}
+    for label, compiled_acc, _ in DISASTER_RULES_RE:
+        weight = 0
+        # Title matches (Priority 2)
+        for pat in compiled_acc:
+            if pat.search(t_title):
+                weight += 2
+        
+        # Body matches (Priority 1)
+        # To avoid overcounting, we only count the body if not already perfectly matched in title or just sum them up
+        # Summing is safer to detect "dominant" topics
+        for pat in compiled_acc:
+            if pat.search(t_body):
+                weight += 1
+        
+        if weight > 0:
+            hazard_weights[label] = weight
+
+    # ROOT CAUSE BOOSTING:
+    # Boost "Cause" events (Storm, Quake) if specific naming patterns are found.
+    # This prevents "Effect" events (Flood, Landslide) from dominating due to high keyword frequency.
     
-    if not matches:
+    # 1. Storm Boosting: "Bão số X", "Siêu bão Name", "Áp thấp nhiệt đới"
+    if "storm" in hazard_weights:
+        if re.search(r"(?:bão|áp thấp).*?(?:số\s*\d+|[A-ZĐ][a-zà-ỹ]+)", t_title, re.IGNORECASE):
+            hazard_weights["storm"] += 5  # Strong boost for named storms/depressions
+
+    # 2. Quake Boosting: "Động đất" + magnitude/scale
+    if "quake_tsunami" in hazard_weights:
+        if re.search(r"(?:động đất|rung chấn|dư chấn).*?(?:độ|richter|magnitude|M\s*\d)", t_title, re.IGNORECASE):
+            hazard_weights["quake_tsunami"] += 4
+
+    # 3. Surge Boosting: "Triều cường" + peak/level matching
+    if "storm_surge" in hazard_weights:
+         if "triều cường" in t_title or "nước dâng" in t_title:
+             hazard_weights["storm_surge"] += 3
+
+
+    if not hazard_weights:
+        # Check for Recovery/Relief keywords as fallback
+        rel_text = f"{title}\n{text}".lower()
+        primary = "unknown"
+        if any(re.search(kw, rel_text) for kw in RECOVERY_KEYWORDS):
+            primary = "recovery"
+        elif any(re.search(kw, rel_text, re.IGNORECASE) for kw in sources.VIP_TERMS):
+             primary = "relief_aid"
+             
         return {
-            "primary_type": "unknown",
-            "primary_level": 0,
+            "primary_type": primary,
+            "primary_level": 1 if primary != "unknown" else 0,
             "all_hazards": []
         }
     
-    # Simple Priority for Primary Type
+    # Priority for tie-breaking
     PRIO = [
         "quake_tsunami",
-        "storm_surge", # Prioritize surge over storm for specificity 
+        "storm_surge",
         "storm",
         "flood_landslide", 
         "wildfire", 
@@ -1430,107 +1466,19 @@ def classify_disaster(text: str, title: str = "") -> dict:
         "extreme_other"
     ]
     
-    # Build list
-    all_hazards = [{"type": m, "level": 1} for m in matches] # Default Level 1
+    # Select Primary: Highest weighted score first, then PRIO
+    sorted_hazards = sorted(
+        hazard_weights.items(),
+        key=lambda item: (-item[1], PRIO.index(item[0]) if item[0] in PRIO else 99)
+    )
     
-    # Sort by Priority
-    all_hazards.sort(key=lambda h: PRIO.index(h["type"]) if h["type"] in PRIO else 99)
+    primary = sorted_hazards[0][0]
+    all_hazards = [{"type": k, "weight": v, "level": 1} for k, v in hazard_weights.items()]
     
-    primary = "unknown"
-    if all_hazards:
-        primary = all_hazards[0]["type"]
-    else:
-        # Check for Recovery/Relief keywords as fallback
-        rel_text = f"{title}\n{text}".lower()
-        if any(re.search(kw, rel_text) for kw in RECOVERY_KEYWORDS):
-            primary = "recovery"
-        elif any(re.search(kw, rel_text, re.IGNORECASE) for kw in sources.VIP_TERMS):
-             primary = "relief_aid"
-
     return {
         "primary_type": primary,
         "primary_level": 1,
         "all_hazards": all_hazards
-    }
-
-def detect_flood_station(text: str) -> dict:
-    """
-    Detect flood monitoring station mentions in text using flood_zones.json.
-    Returns:
-    {
-        "has_station": bool,           # Whether any station was detected
-        "stations": [                   # List of detected stations
-            {
-                "name": str,            # Station name
-                "river": str,           # River name
-                "province": str,        # Province
-                "region": int,          # Flood region (1-4) per Decision 18
-                "confidence": float     # Match confidence (0-1)
-            }
-        ],
-        "primary_region": int | None   # Most confident region (for risk calc)
-    }
-    """
-    from . import risk_lookup
-    
-    # Get FLOOD_ZONES_DATA from risk_lookup
-    # It's already loaded there
-    if not hasattr(risk_lookup, 'FLOOD_ZONES_DATA') or not risk_lookup.FLOOD_ZONES_DATA:
-        return {"has_station": False, "stations": [], "primary_region": None}
-    
-    t, t0 = risk_lookup.canon(text)
-    stations_found = []
-    
-    # Search through all regions
-    for region_key, stations_list in risk_lookup.FLOOD_ZONES_DATA.items():
-        # Extract region number (khu_vuc_1 -> 1)
-        region_num = int(region_key.replace("khu_vuc_", ""))
-        
-        for station_info in stations_list:
-            station_name = station_info.get("ten_tram")
-            river_name = station_info.get("ten_song")
-            province = station_info.get("tinh")
-            
-            confidence = 0.0
-            match_reasons = []
-            
-            # Match station name (highest confidence)
-            if station_name:
-                station_t0 = risk_lookup.strip_accents(station_name).lower()
-                if station_t0 in t0:
-                    confidence = 0.9
-                    match_reasons.append("station_name")
-            
-            # Match river + province (medium confidence)
-            if river_name and province and confidence < 0.9:
-                river_t0 = risk_lookup.strip_accents(river_name).lower()
-                prov_t0 = risk_lookup.strip_accents(province).lower()
-                
-                if river_t0 in t0 and prov_t0 in t0:
-                    confidence = 0.7
-                    match_reasons.append("river_province")
-            
-            # Add to results if confident enough
-            if confidence >= 0.7:
-                stations_found.append({
-                    "name": station_name or f"Trạm {river_name}",
-                    "river": river_name,
-                    "province": province,
-                    "region": region_num,
-                    "confidence": confidence,
-                    "match_reasons": match_reasons
-                })
-    
-    # Sort by confidence
-    stations_found.sort(key=lambda x: -x["confidence"])
-    
-    # Determine primary region (highest confidence)
-    primary_region = stations_found[0]["region"] if stations_found else None
-    
-    return {
-        "has_station": len(stations_found) > 0,
-        "stations": stations_found,
-        "primary_region": primary_region
     }
 
 

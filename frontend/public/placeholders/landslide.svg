@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#fef3c7;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#78350f" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <path d="M0,600 L300,200 L600,600 Z" fill="#d97706"/>
+       <path d="M400,300 L500,600 L800,600 L800,400 Z" fill="#b45309"/>
+       <circle cx="450" cy="250" r="10" fill="#78350f">
+         <animate attributeName="cy" from="250" to="580" dur="1s" repeatCount="indefinite" />
+       </circle>
+       <circle cx="480" cy="280" r="15" fill="#78350f">
+         <animate attributeName="cy" from="280" to="590" dur="1.2s" begin="0.2s" repeatCount="indefinite" />
+       </circle>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#78350f" opacity="0.8">SẠT LỞ ĐẤT</text>
+</svg>

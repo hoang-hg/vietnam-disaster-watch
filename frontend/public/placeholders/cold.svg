@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#eff6ff;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e3a8a" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <path d="M400,150 L420,250 L500,250 L440,310 L460,400 L400,340 L340,400 L360,310 L300,250 L380,250 Z" fill="#93c5fd"/>
+       <circle cx="200" cy="200" r="10" fill="white" opacity="0.6"/>
+       <circle cx="600" cy="400" r="15" fill="white" opacity="0.6"/>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#1e3a8a" opacity="0.8">RÉT HẠI & CỰC ĐOAN</text>
+</svg>

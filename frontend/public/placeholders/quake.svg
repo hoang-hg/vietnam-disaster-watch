@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" style="background-color:#ecfccb;">
+    <defs>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse" opacity="0.05">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#365314" stroke-width="1"/>
+        </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#grid)" />
+    <path d="M0,500 L800,500" stroke="#3f6212" stroke-width="10"/>
+       <path d="M300,500 L350,300 L400,500 M350,300 L350,150 L380,150" fill="none" stroke="#3f6212" stroke-width="5"/>
+       <path d="M350,150 L450,50 L550,150 L350,150" fill="#a3e635"/> -- House broken
+       <path d="M100,450 L200,550 M250,450 L350,550 M600,450 L700,550" stroke="#3f6212" stroke-width="5"/>
+    <text x="50%" y="90%" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#365314" opacity="0.8">ĐỘNG ĐẤT</text>
+</svg>
