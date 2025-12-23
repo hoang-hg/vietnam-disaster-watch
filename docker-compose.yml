@@ -21,6 +21,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app
       - ./backend_data:/app/data
       - ./backend/logs:/app/logs
     environment:

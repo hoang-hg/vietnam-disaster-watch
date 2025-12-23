@@ -748,8 +748,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             
             stat["articles_added"] = src_info["articles_added"]
             per_source_stats.append(stat)
-
-        db.commit()
+            db.commit()
+            
         total_elapsed = time.perf_counter() - start_total
         print(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
 
