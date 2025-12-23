@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: viet_disaster_db
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
   backend:
     build: 
       context: ./backend
@@ -12,8 +24,10 @@ services:
       - ./backend_data:/app/data
       - ./backend/logs:/app/logs
     environment:
-      - APP_DB_URL=sqlite:////app/data/app.db
+      - APP_DB_URL=postgresql://postgres:password@db:5432/postgres
       - PYTHONUNBUFFERED=1
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -26,3 +40,5 @@ services:
       - "80:80"
     depends_on:
       - backend
+volumes:
+  db_data
