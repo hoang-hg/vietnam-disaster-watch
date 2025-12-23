@@ -42,4 +42,4 @@ services:
     depends_on:
       - backend
 volumes:
-  db_data
+  db_data:
