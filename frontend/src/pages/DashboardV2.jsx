@@ -166,6 +166,14 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+          <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+          <div className="text-sm font-medium">
+            Lỗi tải dữ liệu: {error}. Đang thử kết nối lại với máy chủ...
+          </div>
+        </div>
+      )}
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

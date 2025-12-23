@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from sqlalchemy.sql import text
-from .database import get_db
+from .database import get_db, engine
 from .models import Article, Event
 from .schemas import ArticleOut, EventOut, EventDetailOut
 from datetime import datetime, timedelta
@@ -181,8 +181,8 @@ def stats_summary(
     STRICT_EXCLUSION = [
         "nhật bản", "indonesia", "thái lan", "trung quốc", "mỹ", "hàn quốc", "nga", "philippines", 
         "brazil", "châu âu", "thế giới", "vũ hán", "tokyo", "seoul", "bangkok", "manila",
-        "tổng kết", "nhìn lại", "năm 2024", "năm 2023", "năm 2022", "kỷ niệm", "lịch sử",
-        "sau bão", "kể từ", "từ đầu năm", "tổng số", "con số thực", "địa cầu", "năm 2025", "năm 2026", "năm 2027"
+        "tổng kết", "nhìn lại", "kỷ niệm", "lịch sử",
+        "sau bão", "kể từ", "từ đầu năm", "con số thực", "địa cầu"
     ]
     
     # 1. Total Activity: Recent articles updated (Exclude outliers from main count)
@@ -273,12 +273,19 @@ def stats_timeline(hours: int = Query(24, ge=1, le=168), db: Session = Depends(g
     """Timeline: số sự kiện theo giờ trong N giờ qua"""
     since = datetime.utcnow() - timedelta(hours=hours)
     
-    # SQLite: GROUP BY strftime('%Y-%m-%d %H:00:00', last_updated_at)
+    # Database agnostic hour grouping
+    if engine.url.drivername.startswith("postgresql"):
+        # Postgres: date_trunc('hour', last_updated_at)
+        time_func = func.date_trunc('hour', Event.last_updated_at)
+    else:
+        # SQLite: strftime('%Y-%m-%d %H:00:00', last_updated_at)
+        time_func = func.strftime('%Y-%m-%d %H:00:00', Event.last_updated_at)
+
     query = db.query(
-        func.strftime('%Y-%m-%d %H:00:00', Event.last_updated_at).label('hour'),
+        time_func.label('hour'),
         func.count(Event.id).label('count')
     ).filter(Event.last_updated_at >= since).group_by(
-        func.strftime('%Y-%m-%d %H:00:00', Event.last_updated_at)
+        'hour'
     ).order_by('hour')
     
     data = []
@@ -422,7 +429,7 @@ def stats_heatmap(hours: int = Query(24, ge=1, le=168), db: Session = Depends(ge
     ).filter(
         Event.last_updated_at >= since,
         Event.province != 'unknown'
-    ).group_by(Event.province).order_by(desc('count'))
+    ).group_by(Event.province).order_by(desc(func.count(Event.id)))
     
     data = []
     for province, count in query.all():
@@ -456,7 +463,7 @@ def top_risky_province(
         Event.last_updated_at >= start,
         Event.last_updated_at < end,
         Event.province != 'unknown'
-    ).group_by(Event.province).order_by(desc('count'), desc('latest')).limit(1)
+    ).group_by(Event.province).order_by(desc(func.count(Event.id)), desc(func.max(Event.last_updated_at))).limit(1)
     
     result = query.first()
     if result:
@@ -472,10 +479,15 @@ def sources_health():
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     report_file = logs_dir / 'source_status.json'
     
-    if not report_file.exists():
-        return {"error": "Report not generated yet. Please wait for the first scheduled run."}
-    
+    # Look for logs in both possible locations (dev and docker)
     try:
+        if not report_file.exists():
+            backend_dir = Path(__file__).resolve().parents[1]
+            report_file = backend_dir / 'logs' / 'source_status.json'
+            
+        if not report_file.exists():
+            return {"error": "Report not generated yet."}
+            
         with report_file.open('r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
