@@ -263,6 +263,11 @@ export default function Dashboard() {
           trend={stats?.events_count > 0 ? "up" : "neutral"}
           color="text-red-600"
         />
+        {stats?.needs_verification_count > 0 && (
+          <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-bounce">
+            {stats.needs_verification_count} tin cần xác minh
+          </div>
+        )}
         <StatCard
           title="Tỉnh thành ảnh hưởng"
           value={stats?.provinces_count || 0}

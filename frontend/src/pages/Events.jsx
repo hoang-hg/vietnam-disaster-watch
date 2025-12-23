@@ -255,6 +255,11 @@ export default function Events() {
                     <Badge tone={TYPE_TONES[e.disaster_type] || "slate"}>
                        {fmtType(e.disaster_type)}
                     </Badge>
+                    {e.needs_verification === 1 && (
+                       <Badge tone="red" className="animate-pulse">
+                          Cần kiểm chứng
+                       </Badge>
+                    )}
                  </div>
             </div>
 

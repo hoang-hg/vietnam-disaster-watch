@@ -97,6 +97,11 @@ export default function EventDetail() {
             <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"}>
               {fmtType(ev.disaster_type)}
             </Badge>
+            {ev.needs_verification === 1 && (
+              <Badge tone="red" className="animate-pulse">
+                Dữ liệu cần kiểm chứng
+              </Badge>
+            )}
             <div className="text-xs text-gray-600">
               Tổng hợp từ {ev.sources_count} báo
             </div>
@@ -230,6 +235,11 @@ export default function EventDetail() {
                       <span className="font-medium">Xác nhận: {a.agency}</span>
                     </>
                   ) : null}
+                  {a.needs_verification === 1 && (
+                     <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse">
+                        SỐ LIỆU CẦN XÁC MINH
+                     </span>
+                  )}
                 </div>
                 {a.summary ? (
                   <div className="mt-2 text-xs text-gray-700 line-clamp-2">
