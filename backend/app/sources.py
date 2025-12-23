@@ -199,20 +199,22 @@ class Source:
     note: str | None = None
     trusted: bool | None = False
 
-GNEWS_HAZARD_KEYWORDS = [ "thiệt hại","tổn thất", "đổ nhà","đổ tường","nhà bị sập", "nhà bị tốc mái","nhà bị hư hỏng","hư hỏng","cuốn trôi",
+GNEWS_HAZARD_KEYWORDS = [ "thiệt hại","tổn thất", "đổ nhà","đổ tường", "hư hỏng","cuốn trôi",
 "trôi nhà","ngập nhà","vỡ đê","tràn đê","vỡ bờ","chia cắt", "cô lập","mất mùa", "mất trắng","chết đuối","bị vùi lấp","người chết","tử vong","thiệt mạng", 
-"thi thể","nạn nhân","thương vong","bị thương", "trọng thương","nhẹ thương", "mất tích","mất liên lạc","tìm kiếm","tìm thấy thi thể","sơ tán","sơ tán khẩn cấp", 
-"di dời","di dời dân","di dời khẩn cấp","tránh trú","lánh nạn","neo đậu","vào bờ", "lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế","vận chuyển cứu trợ", 
-"hỗ trợ","hỗ trợ khẩn cấp","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn", "huy động lực lượng","xuất quân","triển khai lực lượng",
-"ứng phó","ứng phó khẩn cấp", "khắc phục","khắc phục hậu quả","xử lý sự cố","sửa chữa","tu bổ","phục hồi", "tái thiết","tổng kết thiệt hại","thống kê thiệt hại",
-"đánh giá thiệt hại", "cảnh báo","cảnh báo khẩn","dự báo", "tin khẩn","công điện","công điện khẩn", "tình trạng khẩn cấp","tình huống khẩn cấp","trạng thái khẩn cấp","khẩn cấp", "khẩn trương","gấp rút",
+"thi thể","nạn nhân","thương vong","bị thương", "trọng thương", "mất tích","mất liên lạc","tìm kiếm","sơ tán",
+"di dời","tránh trú","vào bờ", "lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế", 
+"hỗ trợ","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn", "huy động lực lượng","xuất quân","triển khai lực lượng",
+"ứng phó","khắc phục","xử lý sự cố","sửa chữa","tu bổ","phục hồi", "tái thiết","thiệt hại",
+"đánh giá thiệt hại", "cảnh báo","cảnh báo khẩn","dự báo", "tin khẩn","công điện", "tình trạng khẩn cấp","tình huống khẩn cấp","trạng thái khẩn cấp","khẩn cấp", "khẩn trương","gấp rút",
 "hỏa tốc","cấp bách","nguy hiểm","nguy cấp","nguy kịch", "mất an toàn","đe dọa","đe dọa nghiêm trọng","rủi ro cao","nguy cơ cao","cấm", "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa","đóng cửa trường","cho nghỉ học", 
 "nghỉ học","tạm dừng","tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn", "cuộc họp khẩn","ban chỉ huy","ban chỉ đạo","trực ban","trực 24/24","túc trực", "ứng trực","mưa to đến rất to","mưa đặc biệt lớn","mưa cực đoan",
-"mưa kỷ lục", "báo động 1","báo động 2","báo động 3","báo động khẩn cấp","mực nước báo động", "lũ trên sông","lũ bùn đá","lũ bùn","xói lở","xâm thực","sạt trượt","trượt sườn", "đứt gãy taluy","đá lăn","ranh mặn","cống ngăn mặn","độ mặn phần nghìn", 
-"nguy cơ cháy rừng rất cao","cấp cháy rừng cấp","cấp dự báo cháy rừng", "bão", "siêu bão", "áp thấp nhiệt đới", "tin bão", "dự báo bão", "lũ", "lụt", "lũ quét", "ngập lụt", "xả lũ", "vỡ đê",
+"mưa kỷ lục", "báo động","mực nước báo động", "lũ trên sông","lũ bùn đá","lũ bùn","xói lở","xâm thực","sạt trượt","trượt sườn", "đứt gãy taluy","đá lăn","ranh mặn","cống ngăn mặn","độ mặn phần nghìn", 
+"bão", "siêu bão", "áp thấp nhiệt đới", "lũ quét", "ngập lụt", "xả lũ",
 "sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống", "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng", "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm", "rét đậm", "rét hại", "băng giá", "sương muối", "cháy rừng", 
-"động đất", "sóng thần", "rung chấn", "tốc mái", "sập nhà", "thời tiết hôm nay", "cảnh báo thiên tai", "dự báo thời tiết",
-"tìm kiếm cứu nạn", "mất tích", "hỗ trợ khẩn cấp", "tin cảnh báo", "tin dự báo" ]
+"động đất", "sóng thần", "rung chấn", "tốc mái", "sập nhà", "cảnh báo thiên tai", "dự báo thời tiết", "mưa lũ", "sóng lớn", "mưa dông",
+"tin cảnh báo", "tin dự báo", "công điện", "ATNĐ", "gió mạnh", "biển động", "sương mù", "dông lốc", "sét đánh", "rét đậm rét hại"
+]
+
 
 def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_terms: List[str] | None = None) -> str:
     """Build Google News RSS URL as fallback.
@@ -232,8 +234,8 @@ def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_
     
     # Randomly sample if list is too huge to avoid URL length issues (optional, but good for safety)
     import random
-    if len(hazards) > 25:
-        hazards = random.sample(hazards, 25)
+    if len(hazards) > 50:
+        hazards = random.sample(hazards, 50)
 
     base = "https://news.google.com/rss/search?q="
     
