@@ -100,7 +100,7 @@ viet-disaster-watch/
 │   │   ├── nlp.py           # Logic xử lý ngôn ngữ & phân loại 8 nhóm thiên tai
 │   │   ├── crawler.py       # Bộ thu thập dữ liệu (kèm cơ chế DEDUP & Retry)
 │   │   ├── api.py           # API Endpoints
-│   │   └── sources.py       # Cấu hình 38 nguồn tin & Keyword Groups
+│   │   └── sources.py       # Cấu hình nguồn tin
 │   ├── data/                # Dữ liệu SQLite (Dev mode)
 │   └── logs/                # Logs hệ thống crawl
 ├── frontend/
