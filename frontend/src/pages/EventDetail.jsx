@@ -22,6 +22,18 @@ const TYPE_TONES = {
   unknown: "slate",
 };
 
+const isJunkImage = (url) => {
+  if (!url) return true;
+  const junkPatterns = [
+      'googleusercontent.com', 
+      'gstatic.com', 
+      'news_logo', 
+      'default_image',
+      'placeholder'
+  ];
+  return junkPatterns.some(p => url.toLowerCase().includes(p));
+};
+
 export default function EventDetail() {
   const { id } = useParams();
   const [ev, setEv] = useState(null);
@@ -143,7 +155,7 @@ export default function EventDetail() {
               .slice(0, 3)
               .join("<br/><br/>"); // Use line breaks for HTML
             
-            const heroImage = ev.articles.find(a => a.image_url)?.image_url;
+            const heroImage = ev.articles.find(a => a.image_url && !isJunkImage(a.image_url))?.image_url;
             
             if (!combined && !heroImage) return null;
             const limit = 800;
@@ -208,12 +220,14 @@ export default function EventDetail() {
                 <div className="absolute -left-2.5 top-1 h-5 w-5 rounded-full bg-blue-500" />
                 <div className="flex items-start justify-between gap-3">
                   <a
-                    className="font-medium underline decoration-gray-300 hover:decoration-gray-600 text-blue-600 hover:text-blue-800 text-sm"
-                    href={a.url}
-                    target="_blank"
+                    className={`font-medium text-sm transition-all ${a.is_broken ? 'text-slate-400 cursor-not-allowed no-underline' : 'underline decoration-gray-300 hover:decoration-gray-600 text-blue-600 hover:text-blue-800'}`}
+                    href={a.is_broken ? '#' : a.url}
+                    onClick={(e) => a.is_broken && e.preventDefault()}
+                    target={a.is_broken ? '_self' : '_blank'}
                     rel="noreferrer"
                   >
                     {a.title}
+                    {a.is_broken && <span className="ml-2 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">BÀI GỐC ĐÃ GỠ</span>}
                   </a>
                 </div>
                 <div className="mt-1 text-xs text-gray-600 flex flex-wrap gap-2">
@@ -235,18 +249,23 @@ export default function EventDetail() {
                       <span className="font-medium">Xác nhận: {a.agency}</span>
                     </>
                   ) : null}
-                  {a.needs_verification === 1 && (
+                   {a.needs_verification === 1 && (
                      <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse">
                         SỐ LIỆU CẦN XÁC MINH
                      </span>
                   )}
+                  {a.is_broken && (
+                     <span className="bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                        ĐÃ LƯU TRỮ TẠI HỆ THỐNG
+                     </span>
+                  )}
                 </div>
                 {a.summary ? (
-                  <div className="mt-2 text-xs text-gray-700 line-clamp-2">
+                  <div className={`mt-2 text-xs text-gray-700 ${a.is_broken ? '' : 'line-clamp-2'}`}>
                     {a.summary}
                   </div>
                 ) : null}
-                {a.image_url ? (
+                {a.image_url && !isJunkImage(a.image_url) ? (
                   <div className="mt-3">
                     <img 
                       src={a.image_url} 

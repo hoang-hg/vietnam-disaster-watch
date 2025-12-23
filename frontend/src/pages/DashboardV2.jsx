@@ -42,29 +42,49 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [quickFilter, setQuickFilter] = useState("all"); // all, casualties, damage, provinces
 
-  /* Helper to normalize string for search (remove tones) */
-  const normalizeStr = (str) => {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const VALID_PROVINCES = [
+    "Hà Nội", "Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Thái Nguyên", "Phú Thọ", "Bắc Ninh", "Hưng Yên", "Hải Phòng", "Ninh Bình", "Quảng Trị", "Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Khánh Hòa", "Lâm Đồng", "TP Hồ Chí Minh", "Đồng Nai", "Long An", "An Giang", "Cần Thơ", "Tiền Giang", "Vĩnh Long", "Bạc Liêu", "Trà Vinh"
+  ];
+
+  /* Helper to normalize string for search (remove tones and spaces) */
+  const normalizeStr = (str, removeSpaces = false) => {
+    let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (removeSpaces) res = res.replace(/\s+/g, '');
+    return res;
   }
 
   const events = useMemo(() => {
     let list = rawEvents;
     if (hazardType !== "all") list = list.filter(e => e.disaster_type === hazardType);
     if (provQuery) {
-        const q = normalizeStr(provQuery);
-        list = list.filter(e => e.province && normalizeStr(e.province).includes(q));
+        const q = normalizeStr(provQuery, true); // remove spaces from query
+        list = list.filter(e => e.province && normalizeStr(e.province, true).includes(q));
     }
     if (searchQuery) {
         const q = normalizeStr(searchQuery);
         list = list.filter(e => e.title && normalizeStr(e.title).includes(q));
     }
+    // Quick Filter from StatCards
+    if (quickFilter === "casualties") {
+        list = list.filter(e => (e.deaths || 0) + (e.missing || 0) + (e.injured || 0) > 0);
+    } else if (quickFilter === "damage") {
+        list = list.filter(e => {
+            const hasAmount = (e.damage_billion_vnd || 0) > 0;
+            const details = e.details || {};
+            const hasDetails = (details.homes?.length > 0) || (details.agriculture?.length > 0) || (details.infrastructure?.length > 0) || (details.marine?.length > 0);
+            return hasAmount || hasDetails;
+        });
+    } else if (quickFilter === "provinces") {
+        list = list.filter(e => e.province && VALID_PROVINCES.includes(e.province));
+    }
     return list;
-  }, [rawEvents, hazardType, provQuery, searchQuery]);
+  }, [rawEvents, hazardType, provQuery, searchQuery, quickFilter]);
 
   useEffect(() => {
     setPage(0);
-  }, [hours, hazardType, provQuery, searchQuery]);
+  }, [hours, hazardType, provQuery, searchQuery, quickFilter]);
 
   async function load() {
     try {
@@ -256,39 +276,54 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Sự kiện mới"
+          title={`Sự kiện mới (${hours}h)`}
           value={stats?.events_count || 0}
-          sub={stats?.window_label || "Trong 24h qua"}
-          icon={AlertTriangle}
+          sub={stats?.needs_verification_count > 0 ? `${stats.needs_verification_count} tin cần xác minh` : "Dữ liệu thời gian thực"}
+          icon={Activity}
           trend={stats?.events_count > 0 ? "up" : "neutral"}
-          color="text-red-600"
+          color="text-blue-600"
+          active={quickFilter === "all"}
+          onClick={() => setQuickFilter("all")}
         />
-        {stats?.needs_verification_count > 0 && (
-          <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm animate-bounce">
-            {stats.needs_verification_count} tin cần xác minh
-          </div>
-        )}
+        
         <StatCard
           title="Tỉnh thành ảnh hưởng"
           value={stats?.provinces_count || 0}
-          sub="Vùng nguy cơ"
+          sub={`Ghi nhận trong ${hours}h qua`}
           icon={MapPin}
           trend="neutral"
           color="text-orange-600"
+          active={quickFilter === "provinces"}
+          onClick={() => setQuickFilter(quickFilter === "provinces" ? "all" : "provinces")}
         />
+
         <StatCard
-          title="Thương vong & Mất tích"
-          value={(stats?.impacts?.deaths || 0) + (stats?.impacts?.missing || 0)}
-          sub={stats?.window_label ? `Ghi nhận: ${stats?.impacts?.injured || 0} người bị thương` : `Bị thương: ${stats?.impacts?.injured || 0} người`}
+          title="Báo cáo thiệt hại người"
+          value={(() => {
+              return rawEvents.filter(e => (e.deaths || 0) + (e.missing || 0) + (e.injured || 0) > 0).length;
+          })()}
+          sub="Sự kiện ghi nhận thương vong"
           icon={AlertTriangle}
           color="text-red-500"
+          active={quickFilter === "casualties"}
+          onClick={() => setQuickFilter(quickFilter === "casualties" ? "all" : "casualties")}
         />
+
         <StatCard
-          title="Nhóm thiên tai nguy cấp"
-          value={chartData && chartData.length > 0 ? chartData[0].name : "N/A"}
-          sub={chartData && chartData.length > 0 ? `Chiếm số lượng lớn nhất (${chartData[0].count} vụ)` : "Chưa có dữ liệu"}
+          title="Báo cáo thiệt hại tài sản"
+          value={(() => {
+              return rawEvents.filter(e => {
+                  const hasAmount = (e.damage_billion_vnd || 0) > 0;
+                  const details = e.details || {};
+                  const hasDetails = (details.homes?.length > 0) || (details.agriculture?.length > 0) || (details.infrastructure?.length > 0) || (details.marine?.length > 0);
+                  return hasAmount || hasDetails;
+              }).length;
+          })()}
+          sub="Sự kiện ghi nhận mất mát tài sản"
           icon={TrendingUp}
-          color="text-indigo-500"
+          color="text-emerald-500"
+          active={quickFilter === "damage"}
+          onClick={() => setQuickFilter(quickFilter === "damage" ? "all" : "damage")}
         />
       </div>
 

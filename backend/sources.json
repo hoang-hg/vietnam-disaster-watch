@@ -1095,10 +1095,106 @@
       "backup_rss": null,
       "note": "Official Government Portal",
       "trusted": true
+    },
+    {
+      "name": "Bộ Giao thông Vận tải",
+      "domain": "mt.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Thông tin sạt lở, hỏng hóc hạ tầng giao thông.",
+      "trusted": true
+    },
+    {
+      "name": "Tập đoàn Điện lực Việt Nam (EVN)",
+      "domain": "evn.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Thông tin xả lũ các hồ chứa thủy điện.",
+      "trusted": true
+    },
+    {
+      "name": "Hội Chữ thập đỏ Việt Nam",
+      "domain": "redcross.org.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Dữ liệu cứu trợ và thiệt hại thực tế.",
+      "trusted": true
+    },
+    {
+      "name": "Trung tâm Dự báo KTTV Quốc gia",
+      "domain": "nchmf.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Nguồn dự báo thời tiết & thiên tai chính thống nhất.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Tài nguyên & Môi trường",
+      "domain": "baotainguyenmoitruong.vn",
+      "primary_rss": "https://baotainguyenmoitruong.vn/rss",
+      "backup_rss": null,
+      "note": "Phân tích sâu về biến đổi khí hậu và địa chất.",
+      "trusted": true
+    },
+    {
+      "name": "Bộ Tài nguyên và Môi trường",
+      "domain": "monre.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Cổng thông tin quản lý nhà nước về môi trường.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Sức khỏe & Đời sống",
+      "domain": "suckhoedoisong.vn",
+      "primary_rss": "https://suckhoedoisong.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Cảnh báo y tế và dịch bệnh vùng thiên tai.",
+      "trusted": true
+    },
+    {
+      "name": "Ủy ban Quốc gia Tìm kiếm Cứu nạn",
+      "domain": "vinasar.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Dữ liệu cứu hộ cứu nạn quân sự và dân sự.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Yên Bái",
+      "domain": "baoyenbai.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Trọng điểm sạt lở và lũ quét vùng núi phía Bắc.",
+      "trusted": true
+    },
+    {
+      "name": "Tổng cục Thống kê (GSO)",
+      "domain": "gso.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Nguồn xác thực cuối cùng về thiệt hại kinh tế và người.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Kinh tế & Đô thị",
+      "domain": "kinhtedothi.vn",
+      "primary_rss": "https://kinhtedothi.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Thông tin ngập úng đô thị và hạ tầng Hà Nội.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Đại Đoàn Kết",
+      "domain": "daidoanket.vn",
+      "primary_rss": "http://daidoanket.vn/rss/thoi-su.rss",
+      "backup_rss": null,
+      "note": "Mạng lưới phóng viên cơ sở rộng khắp.",
+      "trusted": true
     }
   ],
   "gnews_fallback": false,
-  "gnews_context_terms": [],
+  "gnews_context_terms": ["lũ lụt", "bão", "sạt lở", "thiên tai", "động đất", "cháy rừng", "xả lũ", "ngập lụt"],
   "gnews_min_articles": 2,
   "request_timeout": 30,
   "max_articles_per_source": 10

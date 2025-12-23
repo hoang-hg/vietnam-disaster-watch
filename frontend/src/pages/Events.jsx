@@ -7,7 +7,7 @@ import {
   fmtVndBillion,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X } from "lucide-react";
+import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle } from "lucide-react";
 
 // Updated tones for 8 groups
 const TYPE_TONES = {
@@ -24,12 +24,10 @@ const TYPE_TONES = {
 
 // Extract provinces for dropdown
 // Must match PROVINCE_MAPPING keys in backend/app/nlp.py
+// Extract provinces for dropdown
+// Must match PROVINCE_MAPPING keys in backend/app/nlp.py
 const PROVINCES = [
-  "Thủ đô Hà Nội", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Điện Biên", "Lai Châu", "Sơn La", 
-  "Thái Nguyên", "Lạng Sơn", "Quảng Ninh", "Phú Thọ", "Bắc Ninh", "Hải Phòng", "Hưng Yên", 
-  "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "Huế", "Đà Nẵng", 
-  "Quảng Ngãi", "Khánh Hòa", "Gia Lai", "Đắk Lắk", "Lâm Đồng", "Tây Ninh", "Đồng Nai", 
-  "Thành phố Hồ Chí Minh", "Vĩnh Long", "Đồng Tháp", "An Giang", "Cần Thơ", "Cà Mau"
+  "Hà Nội", "Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Thái Nguyên", "Phú Thọ", "Bắc Ninh", "Hưng Yên", "Hải Phòng", "Ninh Bình", "Quảng Trị", "Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Khánh Hòa", "Lâm Đồng", "TP Hồ Chí Minh", "Đồng Nai", "Long An", "An Giang", "Cần Thơ", "Tiền Giang", "Vĩnh Long", "Bạc Liêu", "Trà Vinh"
 ].sort();
 
 export default function Events() {
@@ -49,9 +47,12 @@ export default function Events() {
   
   const [error, setError] = useState(null);
 
-  /* Helper to normalize string for search (remove tones) */
-  const normalizeStr = (str) => {
-    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  /* Helper to normalize string for search (remove tones and spaces) */
+  const normalizeStr = (str, removeSpaces = false) => {
+    if (!str) return "";
+    let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (removeSpaces) res = res.replace(/\s+/g, '');
+    return res;
   }
 
   const fetchEvents = async (isBackground = false) => {
@@ -73,12 +74,19 @@ export default function Events() {
 
       // Client-side smart filtering for Text and Province (unaccented support)
       if (q) {
-          const query = normalizeStr(q);
-          filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title).includes(query));
+          const query = normalizeStr(q, true);
+          filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title, true).includes(query));
       }
       if (province) {
-          const query = normalizeStr(province);
-          filteredEvents = filteredEvents.filter(e => e.province && normalizeStr(e.province).includes(query));
+          // Special cases for HCM / HN
+          let query = normalizeStr(province, true);
+          if (query === "tphochiminh") query = "hochiminh"; // allow matching "TP. Hồ Chí Minh" with just "hochiminh"
+          
+          filteredEvents = filteredEvents.filter(e => {
+            if (!e.province) return false;
+            let target = normalizeStr(e.province, true);
+            return target.includes(query) || query.includes(target);
+          });
       }
       
       setEvents(filteredEvents);
@@ -125,6 +133,19 @@ export default function Events() {
   const currentEvents = events.slice(startIndex, endIndex);
 
   const hasFilters = q || type || province || startDate || endDate;
+
+  // Check if image is a generic Google News logo or broken
+  const isJunkImage = (url) => {
+    if (!url) return true;
+    const junkPatterns = [
+        'googleusercontent.com', 
+        'gstatic.com', 
+        'news_logo', 
+        'default_image',
+        'placeholder'
+    ];
+    return junkPatterns.some(p => url.toLowerCase().includes(p));
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -234,20 +255,39 @@ export default function Events() {
             <div className="h-1.5 w-full bg-blue-500"></div>
             
             {/* 0. Image Area */}
-            <div className={`w-full h-40 bg-slate-100 overflow-hidden relative ${e.image_url?.endsWith('.svg') ? 'flex items-center justify-center' : ''}`}>
-                 {e.image_url ? (
+            <div className={`w-full h-40 overflow-hidden relative flex items-center justify-center ${isJunkImage(e.image_url) ? 'bg-gradient-to-br' : 'bg-slate-100'}`}>
+                 {!isJunkImage(e.image_url) ? (
                     <img 
                       src={e.image_url} 
                       alt={e.title} 
                       className={
                           e.image_url.endsWith('.svg')
                             ? "w-20 h-20 object-contain opacity-50 transition-transform duration-500 group-hover:scale-110" 
-                            : "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            : "w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       }
                     />
                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-slate-100 text-slate-300">
-                        <Activity className="w-12 h-12 opacity-20" />
+                    <div className={`w-full h-full flex items-center justify-center transition-colors duration-300 ${
+                        e.disaster_type === 'storm' ? 'from-blue-500 to-blue-700' :
+                        e.disaster_type === 'flood_landslide' ? 'from-cyan-500 to-cyan-700' :
+                        e.disaster_type === 'heat_drought' ? 'from-orange-400 to-orange-600' :
+                        e.disaster_type === 'wildfire' ? 'from-red-500 to-red-700' :
+                        e.disaster_type === 'quake_tsunami' ? 'from-emerald-500 to-emerald-700' :
+                        e.disaster_type === 'wind_fog' ? 'from-slate-400 to-slate-600' :
+                        e.disaster_type === 'storm_surge' ? 'from-purple-500 to-purple-700' :
+                        'from-slate-300 to-slate-500'
+                    }`}>
+                        {(() => {
+                            const IconProps = { className: "w-16 h-16 text-white/30" };
+                            if (e.disaster_type === 'storm') return <CloudRainWind {...IconProps} />;
+                            if (e.disaster_type === 'flood_landslide') return <Waves {...IconProps} />;
+                            if (e.disaster_type === 'heat_drought') return <Sun {...IconProps} />;
+                            if (e.disaster_type === 'wildfire') return <Flame {...IconProps} />;
+                            if (e.disaster_type === 'wind_fog') return <Wind {...IconProps} />;
+                            if (e.disaster_type === 'quake_tsunami') return <Mountain {...IconProps} />;
+                            if (e.disaster_type === 'storm_surge') return <Waves {...IconProps} />;
+                            return <AlertTriangle {...IconProps} />;
+                        })()}
                     </div>
                  )}
                  {/* Badge Overlay */}

@@ -227,6 +227,22 @@ class HTMLScraper:
         response.encoding = "utf-8"
         return self._extract_generic_links(response.text, "bnews.vn", max_items=15)
 
+    async def scrape_suckhoedoisong(self) -> List[dict]:
+        """Scrape Báo Sức khỏe & Đời sống news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://suckhoedoisong.vn/thoi-su.htm")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "suckhoedoisong.vn", max_items=15)
+
+    async def scrape_monre_news(self) -> List[dict]:
+        """Scrape Báo Tài nguyên & Môi trường news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://baotainguyenmoitruong.vn/thoi-su")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "baotainguyenmoitruong.vn", max_items=15)
+
     async def scrape_generic(self, domain: str) -> List[dict]:
         """Generic fallback scraper for any domain."""
         if not _HAS_BS4: return []
@@ -397,7 +413,11 @@ class HTMLScraper:
             return await self.scrape_vtcnews()
         elif "bnews" in domain_lower:
             return await self.scrape_bnews()
-        elif any(x in domain_lower for x in ["thoitietvietnam", "nchmf", "kttv", "phongchongthientai", "dyke.gov.vn", "chinhphu.vn", "mrcc.gov.vn"]):
+        elif "suckhoedoisong" in domain_lower:
+            return await self.scrape_suckhoedoisong()
+        elif "baotainguyenmoitruong" in domain_lower:
+            return await self.scrape_monre_news()
+        elif any(x in domain_lower for x in ["gov.vn", "nchmf.gov.vn", "thoitietvietnam.gov.vn", "phongchongthientai.mard.gov.vn", "dyke.gov.vn", "mrcc.gov.vn", "vinasar.gov.vn"]):
             return await self.scrape_kttv_portal(domain)
         else:
             return await self.scrape_generic(domain)

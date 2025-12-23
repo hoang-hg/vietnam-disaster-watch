@@ -1,12 +1,19 @@
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
-export default function StatCard({ title, value, sub, icon: Icon, trend, color = "text-blue-600" }) {
+export default function StatCard({ title, value, sub, icon: Icon, trend, color = "text-blue-600", onClick, active }) {
   // Extract base color (e.g., from 'text-red-500' get 'red')
   const colorMatch = color.match(/text-([a-z]+)-/);
   const baseColor = colorMatch ? colorMatch[1] : "blue";
   
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+    <div 
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-2xl border transition-all cursor-pointer ${
+        active 
+          ? `border-${baseColor}-500 ring-2 ring-${baseColor}-500/10 shadow-md` 
+          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+      } p-5`}
+    >
       <div className="flex justify-between items-start">
         <div className="max-w-[70%]">
           <p className="text-sm font-medium text-slate-500 line-clamp-1">{title}</p>
@@ -15,7 +22,7 @@ export default function StatCard({ title, value, sub, icon: Icon, trend, color =
           </p>
         </div>
         {Icon && (
-          <div className={`rounded-xl p-2 transition-colors bg-${baseColor}-50 text-${baseColor}-600 group-hover:bg-${baseColor}-100`}>
+          <div className={`rounded-xl p-2 transition-colors ${active ? `bg-${baseColor}-600 text-white` : `bg-${baseColor}-50 text-${baseColor}-600 group-hover:bg-${baseColor}-100`}`}>
             <Icon className="h-5 w-5" />
           </div>
         )}
