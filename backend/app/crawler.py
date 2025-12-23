@@ -464,7 +464,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         agency=impacts["agency"][:255] if impacts["agency"] else None,
                         summary=summary,
                         image_url=_extract_image_url(entry),
-                        impact_details=nlp.extract_impact_details(text_for_nlp) 
+                        impact_details=nlp.extract_impact_details(text_for_nlp),
+                        needs_verification=int(nlp.validate_impacts(impacts))
                     )
 
                     try:
@@ -532,14 +533,14 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         cleaned = [re.sub(r"\s+", " ", p).strip() for p in paras if p and p.strip()]
                                         full_text = "\n\n".join(cleaned[:10]) if cleaned else soup.get_text(separator=" ", strip=True)
                                     else:
-                                        paras = re.findall(r"<p[^>]*>(.*?)</p>", html, flags=re.I | re.S)
+                                        paras = re.findall(r"<p[^>]*>(.*?)</p>", page_html, flags=re.I | re.S)
                                         cleaned = []
                                         for p in paras:
                                             t = re.sub(r"<[^>]+>", "", p)
                                             t = re.sub(r"\s+", " ", t).strip()
                                             if t:
                                                 cleaned.append(t)
-                                        full_text = "\n\n".join(cleaned[:10]) if cleaned else re.sub(r"<[^>]+>", " ", html)
+                                        full_text = "\n\n".join(cleaned[:10]) if cleaned else re.sub(r"<[^>]+>", " ", page_html)
 
                                     full_impacts = nlp.extract_impacts(full_text)
                                     if full_impacts.get("deaths") is not None and article.deaths is None:
@@ -558,11 +559,17 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         if prov and prov != "unknown":
                                             article.province = prov
                                     
+                                    # Re-validate after full text fetch
+                                    needs_v = nlp.validate_impacts(full_impacts)
+                                    
                                     # Attempt to extract image from soup if missing
                                     if not article.image_url and _HAS_BS4 and BeautifulSoup is not None and 'soup' in locals():
                                         img = _extract_image_url(None, soup=soup)
                                         if img:
                                             article.image_url = img
+
+                                    if needs_v:
+                                        article.needs_verification = 1
 
                                     try:
                                         article.full_text = full_text[:100000]
@@ -577,10 +584,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 
                 break  # Don't try other feeds for this source, we got articles
             
-                break  # Don't try other feeds for this source, we got articles
-            
             # Force HTML scraper for known difficult sources w/ custom scrapers
-            force_html_scrape = "thoitietvietnam" in src.domain or "nchmf" in src.domain or "kttv" in src.domain
+            # or if previous RSS feeds failed
+            force_html_scrape = any(x in src.domain for x in ["thoitietvietnam", "nchmf", "kttv"])
 
             if (not feed_worked) or force_html_scrape:
                 # Try HTML scraper
@@ -658,7 +664,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 damage_billion_vnd=impacts["damage_billion_vnd"],
                                 agency=impacts["agency"][:255] if impacts["agency"] else None,
                                 summary=summary,
-                                impact_details=nlp.extract_impact_details(text_for_nlp)
+                                impact_details=nlp.extract_impact_details(text_for_nlp),
+                                needs_verification=int(nlp.validate_impacts(impacts))
                             )
                             
                             try:
@@ -712,6 +719,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         prov = nlp.extract_province(full_text)
                                         if prov and prov != "unknown":
                                             article.province = prov
+                                    
+                                    # Re-validate after full text fetch
+                                    if nlp.validate_impacts(full_impacts):
+                                        article.needs_verification = 1
                                     
                                     # Attempt to extract image from soup if missing
                                     if not article.image_url and _HAS_BS4 and BeautifulSoup is not None and 'soup' in locals():

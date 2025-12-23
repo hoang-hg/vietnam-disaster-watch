@@ -53,6 +53,10 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             counter += 1
             unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}_{counter}"
 
+        # Get coordinates for the province
+        from .nlp import PROVINCE_COORDINATES
+        coords = PROVINCE_COORDINATES.get(article.province, [None, None])
+
         ev = Event(
             key=unique_key,
             title=article.title,
@@ -66,6 +70,9 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             damage_billion_vnd=article.damage_billion_vnd,
             confidence=0.25,
             sources_count=1,
+            lat=coords[0],
+            lon=coords[1],
+            needs_verification=article.needs_verification
         )
         db.add(ev)
         db.flush()
@@ -102,6 +109,9 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             
     if article.damage_billion_vnd is not None:
         ev.damage_billion_vnd = max(ev.damage_billion_vnd or 0.0, article.damage_billion_vnd)
+
+    if article.needs_verification:
+        ev.needs_verification = 1
 
     # Aggregating impact_details into ev.details
     if article.impact_details:

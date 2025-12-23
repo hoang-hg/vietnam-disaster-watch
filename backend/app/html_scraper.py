@@ -24,24 +24,13 @@ try:
 except ImportError:
     _HAS_BS4 = False
 
-# 8 Standardized Disaster Groups (Matching nlp.py)
-DISASTER_RULES = [
-    ("storm", [r"(?<!\w)bão(?!\w)", r"bão\s*số", r"siêu\s*bão", r"áp\s*thấp", r"ATNĐ", r"áp\s*thấp\s*nhiệt\s*đới"]),
-    ("flood_landslide", [r"mưa\s*lũ", r"(?<!\w)lũ(?!\w)", r"(?<!\w)lụt(?!\w)", r"ngập\s*lụt", r"ngập\s*sâu", r"lũ\s*quét", r"lũ\s*ống", r"sạt\s*lở", r"lở\s*đất", r"sụt\s*lún"]),
-    ("heat_drought", [r"nắng\s*nóng", r"hạn\s*hán", r"khô\s*hạn", r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn"]),
-    ("wind_fog", [r"gió\s*mạnh", r"gió\s*giật", r"biển\s*động", r"sóng\s*lớn", r"sương\s*mù"]),
-    ("storm_surge", [r"triều\s*cường", r"nước\s*dâng", r"nước\s*biển\s*dâng"]),
-    ("extreme_other", [r"dông\s*lốc", r"lốc", r"lốc\s*xoáy", r"mưa\s*đá", r"sét", r"rét\s*hại", r"rét\s*đậm", r"băng\s*giá", r"sương\s*muối"]),
-    ("wildfire", [r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng"]),
-    ("quake_tsunami", [r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"nứt\s*đất", r"sóng\s*thần"]),
-]
+# Import Standardized Disaster Groups and Negative Patterns from nlp.py
+from .nlp import DISASTER_RULES as NLP_DISASTER_RULES, DISASTER_NEGATIVE as NLP_DISASTER_NEGATIVE
 
-DISASTER_NEGATIVE = [
-    r"bão\s*(?:giá|sale|like|scandal|lòng|đơn|quà|tài\s*chính)",
-    r"cháy\s*(?:hàng|túi|phim|vé|nhà|xe|chung\s*cư|xưởng|kho)",
-    r"ngập(?:\s*tràn|\s*trong\s*nợ|\s*nợ)",
-    r"\btăng\s*lương\b", r"\bbắt\s*giữ\b", r"\blừa\s*đảo\b", r"\bsập\s*bẫy\b"
-]
+# Convert NLP_DISASTER_RULES (tuple list) to simple regex list for internal keyword check if needed
+# or just use the rules directly.
+DISASTER_RULES = NLP_DISASTER_RULES
+DISASTER_NEGATIVE = NLP_DISASTER_NEGATIVE
 
 def contains_disaster_keywords(text: str) -> bool:
     """Check if text contains disaster keywords using regex patterns."""
@@ -141,6 +130,110 @@ class HTMLScraper:
         
         response.encoding = "utf-8"
         return self._extract_generic_links(response.text, "sggp.org.vn", max_items=15)
+
+    async def scrape_thanhnien(self) -> List[dict]:
+        """Scrape Thanh Niên news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://thanhnien.vn/thoi-su.htm")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "thanhnien.vn", max_items=15)
+
+    async def scrape_vietnamnet(self) -> List[dict]:
+        """Scrape VietNamNet news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://vietnamnet.vn/thoi-su")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "vietnamnet.vn", max_items=15)
+
+    async def scrape_laodong(self) -> List[dict]:
+        """Scrape Lao Động news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://laodong.vn/thoi-su")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "laodong.vn", max_items=15)
+
+    async def scrape_nhandan(self) -> List[dict]:
+        """Scrape Nhân Dân news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://nhandan.vn/xa-hoi")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "nhandan.vn", max_items=15)
+
+    async def scrape_tienphong(self) -> List[dict]:
+        """Scrape Tiền Phong news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://tienphong.vn/xa-hoi")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "tienphong.vn", max_items=15)
+
+    async def scrape_baotintuc(self) -> List[dict]:
+        """Scrape Báo Tin Tức news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://baotintuc.vn/thoi-su.htm")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "baotintuc.vn", max_items=15)
+
+    async def scrape_vtv(self) -> List[dict]:
+        """Scrape VTV News news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://vtv.vn/xa-hoi.htm")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "vtv.vn", max_items=15)
+
+    async def scrape_vov(self) -> List[dict]:
+        """Scrape VOV (Voice of Vietnam) news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://vov.vn/xa-hoi")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "vov.vn", max_items=15)
+
+    async def scrape_vietnamplus(self) -> List[dict]:
+        """Scrape VietnamPlus news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://www.vietnamplus.vn/xa-hoi/")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "vietnamplus.vn", max_items=15)
+
+    async def scrape_vietnamvn(self) -> List[dict]:
+        """Scrape Vietnam.vn (Official Portal)."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://www.vietnam.vn/category/xa-hoi/")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "vietnam.vn", max_items=15)
+
+    async def scrape_vtcnews(self) -> List[dict]:
+        """Scrape VTC News news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://vtcnews.vn/thoi-su")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "vtcnews.vn", max_items=15)
+
+    async def scrape_bnews(self) -> List[dict]:
+        """Scrape Bnews (VNA branch) news listing."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry("https://bnews.vn/thoi-su/50.html")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, "bnews.vn", max_items=15)
+
+    async def scrape_generic(self, domain: str) -> List[dict]:
+        """Generic fallback scraper for any domain."""
+        if not _HAS_BS4: return []
+        response = await self._get_with_retry(f"https://{domain}/")
+        if not response: return []
+        response.encoding = "utf-8"
+        return self._extract_generic_links(response.text, domain, max_items=15)
 
     async def scrape_kttv_portal(self, domain: str) -> List[dict]:
         """Scrape any KTTV portal (National or Provincial) - Targeted Scrape."""
@@ -255,7 +348,7 @@ class HTMLScraper:
                     "url": full_url,
                     "source": domain,
                     "summary": summary,
-                    "scraped_at": datetime.utcnow().isoformat()
+                    "scraped_at": datetime.now(timezone.utc).isoformat()
                 })
         except Exception as e:
             logger.debug(f"Error scraping KTTV portal {domain}: {e}")
@@ -280,11 +373,34 @@ class HTMLScraper:
             return await self.scrape_nld()
         elif "sggp" in domain_lower:
             return await self.scrape_sggp()
-        elif "thoitietvietnam" in domain_lower or "nchmf" in domain_lower or "kttv" in domain_lower:
+        elif "thanhnien" in domain_lower:
+            return await self.scrape_thanhnien()
+        elif "vietnamnet" in domain_lower:
+            return await self.scrape_vietnamnet()
+        elif "laodong" in domain_lower:
+            return await self.scrape_laodong()
+        elif "nhandan" in domain_lower:
+            return await self.scrape_nhandan()
+        elif "tienphong" in domain_lower:
+            return await self.scrape_tienphong()
+        elif "baotintuc" in domain_lower:
+            return await self.scrape_baotintuc()
+        elif "vtv" in domain_lower:
+            return await self.scrape_vtv()
+        elif "vov" in domain_lower:
+            return await self.scrape_vov()
+        elif "vietnamplus" in domain_lower:
+            return await self.scrape_vietnamplus()
+        elif "vietnam.vn" in domain_lower:
+            return await self.scrape_vietnamvn()
+        elif "vtcnews" in domain_lower:
+            return await self.scrape_vtcnews()
+        elif "bnews" in domain_lower:
+            return await self.scrape_bnews()
+        elif any(x in domain_lower for x in ["thoitietvietnam", "nchmf", "kttv", "phongchongthientai", "dyke.gov.vn", "chinhphu.vn", "mrcc.gov.vn"]):
             return await self.scrape_kttv_portal(domain)
         else:
-            logger.debug(f"No scraper implemented for {domain}")
-            return []
+            return await self.scrape_generic(domain)
 
     def _has_disaster_keyword(self, text: str) -> bool:
         """Check if text contains disaster-related keywords."""
@@ -329,7 +445,7 @@ class HTMLScraper:
                         "url": url,
                         "source": domain,
                         "summary": "",
-                        "scraped_at": datetime.utcnow().isoformat()
+                        "scraped_at": datetime.now(timezone.utc).isoformat()
                     })
                 except Exception:
                     continue
@@ -344,13 +460,42 @@ class HTMLScraper:
             logger.warning("HTML scraping disabled - BeautifulSoup4 not available")
             return {}
         
-        results = {
-            "tuoitre.vn": await self.scrape_tuoitre(),
-            "vnexpress.net": await self.scrape_vnexpress(),
-            "dantri.com.vn": await self.scrape_dantri(),
-            "nld.com.vn": await self.scrape_nld(),
-            "sggp.org.vn": await self.scrape_sggp(),
-        }
+        results_list = await asyncio.gather(
+            self.scrape_tuoitre(),
+            self.scrape_vnexpress(),
+            self.scrape_dantri(),
+            self.scrape_nld(),
+            self.scrape_sggp(),
+            self.scrape_thanhnien(),
+            self.scrape_vietnamnet(),
+            self.scrape_vtv(),
+            self.scrape_vov(),
+            self.scrape_vietnamplus(),
+            self.scrape_vietnamvn(),
+            self.scrape_vtcnews(),
+            self.scrape_bnews(),
+            self.scrape_laodong(),
+            self.scrape_nhandan(),
+            self.scrape_tienphong(),
+            self.scrape_baotintuc(),
+            self.scrape_kttv_portal("thoitietvietnam.gov.vn"),
+            return_exceptions=True
+        )
+        
+        keys = [
+            "tuoitre.vn", "vnexpress.net", "dantri.com.vn", "nld.com.vn", "sggp.org.vn", 
+            "thanhnien.vn", "vietnamnet.vn", "vtv.vn", "vov.vn", "vietnamplus.vn",
+            "vietnam.vn", "vtcnews.vn", "bnews.vn", "laodong.vn", "nhandan.vn", "tienphong.vn",
+            "baotintuc.vn", "thoitietvietnam.gov.vn"
+        ]
+        results = {}
+        for i, key in enumerate(keys):
+            if isinstance(results_list[i], list):
+                results[key] = results_list[i]
+            else:
+                logger.error(f"Error scraping {key}: {results_list[i]}")
+                results[key] = []
+        return results
         return results
 
 def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
@@ -395,13 +540,21 @@ def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
 async def test_scraper():
     """Test the HTML scraper."""
     scraper = HTMLScraper()
-    print("Testing HTML scraper...")
+    print("Testing HTML scraper... (Results in logs if console encoding fails)")
     
-    results = await scraper.scrape_all_available()
-    for source, articles in results.items():
-        print(f"\n{source}: {len(articles)} articles found")
-        for article in articles[:3]:
-            print(f"  - {article['title'][:70]}...")
+    try:
+        results = await scraper.scrape_all_available()
+        for source, articles in results.items():
+            msg = f"\n{source}: {len(articles)} articles found"
+            print(msg)
+            for article in articles[:3]:
+                try:
+                    print(f"  - {article['title'][:70]}...")
+                except UnicodeEncodeError:
+                    # Fallback for Windows console
+                    print(f"  - {article['title'][:70].encode('ascii', 'replace').decode()}...")
+    except Exception as e:
+        print(f"Test failed: {e}")
 
 
 if __name__ == "__main__":

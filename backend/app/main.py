@@ -93,6 +93,17 @@ async def on_startup():
         misfire_grace_time=300
     )
 
+    # Job 4: Source Health Monitor (Periodic Check) - Frequency: 12 HOURS (720 mins)
+    # Checks for broken RSS feeds and inactive sources.
+    from .source_monitor import monitor_now
+    scheduler.add_job(
+        lambda: asyncio.run(monitor_now()),
+        trigger=IntervalTrigger(minutes=720, jitter=60),
+        id="source_health_monitor",
+        replace_existing=True,
+        misfire_grace_time=300
+    )
+
     scheduler.start()
 
 @app.on_event("shutdown")

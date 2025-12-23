@@ -274,6 +274,44 @@ PROVINCE_MAPPING = {
     "Trà Vinh": ["Trà Vinh", "Tra Vinh"]
 }
 
+# 34 PROVINCES COORDINATES (Approximate Centroids for Merged Units)
+PROVINCE_COORDINATES = {
+    "Hà Nội": [21.028333, 105.854041],
+    "Huế": [16.463932, 107.586339],
+    "Lai Châu": [22.292167, 103.179866],
+    "Điện Biên": [21.654657, 103.216863],
+    "Sơn La": [21.227677, 104.157594],
+    "Lạng Sơn": [21.848758, 106.614069],
+    "Quảng Ninh": [21.171805, 107.201274],
+    "Thanh Hóa": [19.978157, 105.481611],
+    "Nghệ An": [19.197600, 105.060676],
+    "Hà Tĩnh": [18.350483, 105.762305],
+    "Cao Bằng": [22.742694, 106.106093],
+    "Tuyên Quang": [22.338206, 105.071585],
+    "Lào Cai": [22.306930, 104.182959],
+    "Thái Nguyên": [21.961097, 105.844079],
+    "Phú Thọ": [21.300754, 105.134960],
+    "Bắc Ninh": [21.328217, 106.462526],
+    "Hưng Yên": [20.606585, 106.284347],
+    "Hải Phòng": [20.862328, 106.679927],
+    "Ninh Bình": [20.242114, 105.974621],
+    "Quảng Trị": [17.216696, 106.954825],
+    "Đà Nẵng": [16.068000, 108.212000],
+    "Quảng Ngãi": [14.995374, 108.691729],
+    "Gia Lai": [14.020137, 108.635452],
+    "Khánh Hòa": [12.298075, 108.995039],
+    "Lâm Đồng": [11.661496, 108.133528],
+    "TP Hồ Chí Minh": [10.775525, 106.702105],
+    "Đồng Nai": [11.428545, 107.162425],
+    "Long An": [11.0, 106.3], # Keep current if not in JSON or update with best guess
+    "An Giang": [10.318867, 105.043249],
+    "Cần Thơ": [10.036205, 105.787266],
+    "Tiền Giang": [10.3, 106.2], # Keep current
+    "Vĩnh Long": [10.046765, 106.294744],
+    "Bạc Liêu": [9.2, 105.4], # Keep current
+    "Trà Vinh": [9.9, 106.3], # Keep current
+}
+
 # List of valid (new) province names
 PROVINCES = list(PROVINCE_MAPPING.keys())
 
@@ -1685,3 +1723,48 @@ def extract_impact_details(text: str) -> dict:
                 impacts[impact_type] = unique_res
                 
     return impacts
+
+# --- DATA INTEGRITY: OUTLIER DETECTION ---
+
+IMPACT_THRESHOLDS = {
+    "deaths": 50,           # > 50 in a single article is rare/major
+    "missing": 100,
+    "injured": 200,
+    "damage_billion_vnd": 5000.0, # 5 trillion VND (Yagi-level)
+}
+
+def validate_impacts(impact_dict: dict) -> bool:
+    """
+    Checks if extracted impacts are within realistic thresholds.
+    Returns True if any value looks suspicious/anomalous.
+    """
+    needs_verification = False
+    
+    # Check simple counts
+    for key in ["deaths", "missing", "injured"]:
+        val_list = impact_dict.get(key, [])
+        if val_list and isinstance(val_list, list):
+            if any(v > IMPACT_THRESHOLDS.get(key, 9999) for v in val_list):
+                needs_verification = True
+                break
+    
+    # Check damage (if consolidated list of dicts)
+    if not needs_verification:
+        damage_items = impact_dict.get("damage", [])
+        if damage_items and isinstance(damage_items, list):
+            for item in damage_items:
+                num = item.get("num", 0)
+                unit = (item.get("unit") or "").lower()
+                
+                # Convert to billion VND for threshold check if possible
+                val_billion = 0
+                if "tỷ" in unit or "tỉ" in unit or "bnd" in unit:
+                    val_billion = num
+                elif "triệu" in unit:
+                    val_billion = num / 1000.0
+                
+                if val_billion > IMPACT_THRESHOLDS["damage_billion_vnd"]:
+                    needs_verification = True
+                    break
+
+    return needs_verification

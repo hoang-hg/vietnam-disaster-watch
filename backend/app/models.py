@@ -34,6 +34,8 @@ class Article(Base):
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     event = relationship("Event", back_populates="articles")
 
+    needs_verification: Mapped[bool] = mapped_column(Integer, default=0) # 0=no, 1=yes
+
     __table_args__ = (UniqueConstraint("domain", "url", name="uq_article_url"),)
 
 class Event(Base):
@@ -57,5 +59,6 @@ class Event(Base):
 
     confidence: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1 based on multi-source agreement
     sources_count: Mapped[int] = mapped_column(Integer, default=1)
+    needs_verification: Mapped[bool] = mapped_column(Integer, default=0)
 
     articles = relationship("Article", back_populates="event")

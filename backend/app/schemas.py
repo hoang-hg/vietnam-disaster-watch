@@ -19,6 +19,7 @@ class ArticleOut(BaseModel):
     full_text: str | None
     image_url: str | None
     event_id: int | None
+    needs_verification: int = 0
 
     class Config:
         from_attributes = True
@@ -41,6 +42,7 @@ class EventOut(BaseModel):
 
     confidence: float
     sources_count: int
+    needs_verification: int = 0
     image_url: str | None = None
     source: str | None = None
 

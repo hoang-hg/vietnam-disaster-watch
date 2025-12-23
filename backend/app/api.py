@@ -185,8 +185,18 @@ def stats_summary(
         "sau bão", "kể từ", "từ đầu năm", "tổng số", "con số thực", "địa cầu", "năm 2025", "năm 2026", "năm 2027"
     ]
     
-    # 1. Total Activity: Recent articles updated
-    total_articles = db.query(Article).filter(Article.published_at >= start, Article.published_at < end).count()
+    # 1. Total Activity: Recent articles updated (Exclude outliers from main count)
+    total_articles = db.query(Article).filter(
+        Article.published_at >= start, 
+        Article.published_at < end,
+        Article.needs_verification == 0
+    ).count()
+
+    needs_verification_count = db.query(Article).filter(
+        Article.published_at >= start,
+        Article.published_at < end,
+        Article.needs_verification == 1
+    ).count()
     
     # 2. Daily New Events: Only count events that BEGAN in this window
     new_events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
@@ -204,6 +214,10 @@ def stats_summary(
         
         # SKIP Foreign News and Historical Summaries in Stats
         if any(kw in title_lower for kw in STRICT_EXCLUSION):
+            continue
+
+        # SKIP Data needing verification from consolidated stats
+        if ev.needs_verification == 1:
             continue
             
         filtered_events.append(ev)
@@ -243,6 +257,7 @@ def stats_summary(
         "window_hours": hours,
         "window_label": f"Trong {hours}h qua",
         "articles_count": total_articles,
+        "needs_verification_count": needs_verification_count,
         "events_count": len(filtered_events),
         "provinces_count": len(provinces_seen),
         "impacts": {
@@ -451,3 +466,17 @@ def top_risky_province(
             "latest_update": result[2]
         }
     return {"province": "Chưa có", "events_24h": 0, "latest_update": None}
+@router.get("/stats/sources-health")
+def sources_health():
+    """Returns the latest report from the SourceMonitor."""
+    logs_dir = Path(__file__).resolve().parents[1] / 'logs'
+    report_file = logs_dir / 'source_status.json'
+    
+    if not report_file.exists():
+        return {"error": "Report not generated yet. Please wait for the first scheduled run."}
+    
+    try:
+        with report_file.open('r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        return {"error": f"Failed to read report: {str(e)}"}
