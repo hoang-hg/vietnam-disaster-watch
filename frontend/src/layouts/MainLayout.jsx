@@ -8,6 +8,7 @@ import {
   Grid,
   Bell
 } from "lucide-react";
+import logoIge from "../assets/logo_ige.png";
 
 
 
@@ -31,13 +32,18 @@ export default function MainLayout({ children }) {
             <div className="flex-shrink-0 flex items-center">
                 <Link to="/" className="flex items-center gap-2">
                     {/* Icon Logo */}
-                    <div className="w-10 h-10 bg-[#2fa1b3] rounded-lg flex items-center justify-center text-white shadow-sm">
-                        <Bell className="w-6 h-6 fill-current" />
-                    </div>
-                    {/* Text Logo */}
-                    <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
-                        BÁO TỔNG HỢP RỦI RO THIÊN TAI
-                    </span>
+                        <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
+                            <img 
+                                src={logoIge} 
+                                alt="IGE Logo" 
+                                className="w-full h-full object-contain" 
+                                style={{ mixBlendMode: 'multiply' }}
+                            />
+                        </div>
+                        {/* Text Logo */}
+                        <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
+                            BÁO TỔNG HỢP RỦI RO THIÊN TAI
+                        </span>
                 </Link>
             </div>
 

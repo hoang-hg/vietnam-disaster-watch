@@ -239,7 +239,7 @@ NUMBER_WORDS = {
 PROVINCE_MAPPING = {
     # I. Units kept as is (11 units)
     "Hà Nội": ["Hà Nội", "HN", "Ha Noi", "Thủ đô Hà Nội"],
-    "Huế": ["Thành phố Huế", "TP Huế", "Thừa Thiên Huế", "TT Huế", "Thua Thien Hue"],
+    "Huế": ["Huế", "Thành phố Huế", "TP Huế", "Thừa Thiên Huế", "TT Huế", "Thua Thien Hue"],
     "Lai Châu": ["Lai Châu", "Lai Chau"],
     "Điện Biên": ["Điện Biên", "Dien Bien"],
     "Sơn La": ["Sơn La", "Son La"],
@@ -318,8 +318,73 @@ PROVINCE_COORDINATES = {
 PROVINCES = list(PROVINCE_MAPPING.keys())
 
 PROVINCE_REGIONS = [
-    "Biển Đông", "Nam Trung Bộ", "Bắc Bộ", "Miền Trung", "Miền Bắc", "Miền Nam", "Tây Nguyên", "Trung Bộ", "Nam Bộ"
+    # 1) Miền / vùng
+    "Miền Bắc", "Miền Trung", "Miền Nam",
+    "Bắc Bộ", "Trung Bộ", "Nam Bộ",
+    "Tây Bắc", "Đông Bắc", "Trung du", "Vùng núi",
+    "Đồng bằng sông Hồng",
+    "Bắc Trung Bộ", "Trung Trung Bộ", "Nam Trung Bộ", "Duyên hải Nam Trung Bộ",
+    "Tây Nguyên",
+    "Đông Nam Bộ", "Tây Nam Bộ", "Đồng bằng sông Cửu Long",
+    "Ven biển", "Hải đảo", "Biên giới",
+
+    # 2) Biển / vùng biển / vịnh lớn
+    "Biển Đông", "Biển Tây",
+    "Vịnh Bắc Bộ", "Vịnh Thái Lan",
+
+    # 3) Vịnh / đầm / phá
+    "Vịnh Hạ Long", "Vịnh Lan Hạ", "Vịnh Bái Tử Long",
+    "Vịnh Lăng Cô", "Phá Tam Giang", "Đầm Cầu Hai",
+    "Vịnh Chân Mây", "Vịnh Đà Nẵng",
+    "Vịnh Dung Quất", "Vịnh Quy Nhơn", "Đầm Thị Nại",
+    "Vịnh Vũng Rô", "Vịnh Xuân Đài", "Đầm Ô Loan",
+    "Vịnh Nha Trang", "Vịnh Cam Ranh", "Vịnh Vân Phong",
+    "Vịnh Gành Rái", "Vịnh Rạch Giá", "Vịnh Hà Tiên",
+
+    # 4) Quần đảo / đảo / cụm đảo
+    "Hoàng Sa", "Trường Sa",
+    "Phú Quốc", "Côn Đảo", "Lý Sơn", "Cô Tô", "Cát Bà",
+    "Thổ Chu", "Bạch Long Vĩ", "Nam Du",
+    "Cù Lao Chàm", "Cù Lao Xanh", "Cù Lao Ré",
+    "Hòn Tre", "Hòn Thơm", "Hòn Sơn", "Hòn Mun", "Hòn Tằm",
+    "Hòn Nội", "Đảo Yến", "Điệp Sơn",
+    "Quan Lạn", "Minh Châu",
+
+    # 5) Mũi / đèo / hang-động / núi
+    "Mũi Cà Mau", "Mũi Đại Lãnh", "Mũi Kê Gà", "Mũi Né",
+    "Đèo Hải Vân", "Đèo Ô Quy Hồ", "Đèo Khau Phạ", "Đèo Pha Đin", "Đèo Cù Mông", "Đèo Mã Pí Lèng",
+    "Động Phong Nha", "Động Thiên Đường", "Hang Sơn Đoòng", "Hang Én",
+    "Fansipan", "Núi Bà Đen",
+
+    # 6) Sông / hồ lớn
+    "Sông Hồng", "Sông Đà", "Sông Lô", "Sông Mã", "Sông Cả", "Sông Gianh",
+    "Sông Hương", "Sông Thu Bồn", "Sông Trà Khúc", "Sông Ba",
+    "Sông Đồng Nai", "Sông Sài Gòn", "Sông Tiền", "Sông Hậu",
+    "Vàm Cỏ Đông", "Vàm Cỏ Tây", "Sông Ngàn Phố", "Sông Cửa Long",
+    "Hồ Ba Bể", "Hồ Thác Bà", "Hồ Hòa Bình", "Hồ Núi Cốc",
+    "Hồ Trị An", "Hồ Dầu Tiếng", "Hồ Tuyền Lâm", "Hồ Tà Đùng",
+
+    # 7) Vườn quốc gia / khu bảo tồn
+    "Phong Nha - Kẻ Bàng", "Cúc Phương", "Ba Vì", "Bạch Mã",
+    "Cát Tiên", "Tràm Chim", "U Minh Thượng", "U Minh Hạ",
+    "Yok Đôn", "Chư Mom Ray", "Bidoup - Núi Bà", "Núi Chúa",
+    "VQG Côn Đảo", "VQG Phú Quốc", "VQG Cát Bà",
+
+    # 8) Địa danh / điểm du lịch (khác tên tỉnh/thành phố cấp tỉnh)
+    "Sa Pa", "Bắc Hà", "Mù Cang Chải", "Tà Xùa", "Mộc Châu",
+    "Tràng An", "Tam Cốc - Bích Động", "Tam Đảo",
+    "Hạ Long", "Móng Cái", "Yên Tử",
+    "Hội An", "Bà Nà", "Ngũ Hành Sơn", "Mỹ Sơn", "Lăng Cô",
+    "Đồng Hới",
+    "Đà Lạt", "Nha Trang", "Quy Nhơn", "Phan Thiết",
+    "Hà Tiên", "Châu Đốc", "Sa Đéc", "Cần Giờ", "Đất Mũi",
+    "Gành Đá Dĩa", "Thác Bản Giốc", "Thác Datanla", "Thác Pongour", "Thác Dray Nur",
+
+    # 9) Alias hay gặp (phục vụ match)
+    "TP.HCM", "TP HCM", "HCMC", "Sài Gòn", "Sai Gon",
+    "Da Nang", "Phu Quoc", "Ha Long", "Huế", "Nha Trang", "Quy Nhơn", "Phan Thiết"
 ]
+
 
 # Pre-compute compiled regexes for Provinces and Regions
 PROVINCE_REGEXES = []
@@ -470,7 +535,8 @@ RECOVERY_KEYWORDS = [
     r"sửa\s*chữa", r"khôi\s*phục", r"tái\s*thiết", r"bồi\s*thường",
     r"bảo\s*hiểm", r"trợ\s*cấp", r"phân\s*bổ", r"nguồn\s*vốn",
     r"tái\s*định\s*cư", r"ổn\s*định\s*cuộc\s*sống", r"vệ\s*sinh\s*môi\s*trường",
-    r"tổng\s*kết\s*thiệt\s*hại", r"dựng\s*lại\s*nhà"
+    r"tổng\s*kết\s*thiệt\s*hại", r"dựng\s*lại\s*nhà",
+    r"khen\s*thưởng", r"thành\s*tích", r"biểu\s*dương", r"tấm\s*gương"
 ]
 
 # 1. ABSOLUTE VETO: Strictly Non-Disaster Contexts (Metaphor, Showbiz, Game, Sport)
@@ -1255,16 +1321,29 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
         return True
     
     if sig["hazard_score"] == 1:
-        # If only 1 hazard type, require strong support
-        if has_strong_support:
+        # If only 1 hazard type, be more lenient than before.
+        # User wants to capture preparation/họp bàn/khen thưởng.
+        # These usually have Hazard + (Context or Province or Score >= 5.0)
+        if has_strong_support or sig["score"] >= 5.0:
             return True
-        # If no strong support but from trusted source, allow with SMALL support
-        # (Avoid "Flower news" by requiring at least a province OR 1 context keyword)
+        
+        # If no strong support but has AT LEAST some context/province match -> Allow
+        if sig["is_province_match"] or sig["context_score"] >= 1:
+            return True
+            
+        # If no other signal but score is decent -> Allow
+        if sig["score"] >= 5.0:
+            return True
+
         if trusted_source:
-             if sig["is_province_match"] or sig["context_score"] >= 1:
-                 return True
-        # Reject others
+             return True # For trusted sources, 1 hazard is enough
+             
         return False
+
+    # New: Score-based fallback (if hazard keyword is misspelled or used in title but 
+    # not detected as 'definitive' by rules but still got source/context points)
+    if sig["score"] >= 6.0 and not sig["absolute_veto"]:
+        return True
 
     # 3. Warning/Forecast Signatures
     # Even if exact hazard key is tricky, if we see "Dự báo" + "mưa lớn/bão/lũ", we take it.
@@ -1556,9 +1635,13 @@ def classify_disaster(text: str, title: str = "") -> dict:
     }
 
 
-def summarize(text: str, max_len: int = 220) -> str:
+def summarize(text: str, max_len: int = 220, title: str = "") -> str:
+    if not text:
+        return "Nội dung chi tiết đang được cập nhật..."
     cleaned = re.sub(r"<[^>]+>", "", text)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if title and (cleaned.lower() == title.lower() or len(cleaned) < 20):
+        return "Đang tổng hợp dữ liệu từ bài báo gốc. Vui lòng bấm vào tiêu đề bài báo bên dưới để xem chi tiết."
     if len(cleaned) <= max_len: return cleaned
     return cleaned[:max_len].rsplit(" ", 1)[0] + "…"
 

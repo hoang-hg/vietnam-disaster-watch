@@ -8,7 +8,7 @@ It extracts articles from news listing pages with disaster keyword filtering.
 
 import asyncio
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 import httpx
 import logging
@@ -516,45 +516,210 @@ class HTMLScraper:
                 logger.error(f"Error scraping {key}: {results_list[i]}")
                 results[key] = []
         return results
-        return results
 
-def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
+def decode_gnews_url(url: str) -> str:
     """
-    Synchronous wrapper for fetching full article text, suitable for usage in crawler loop.
-    Extracts the main body text, ignoring nav, footer, etc.
+    Decodes a Google News redirect URL to extract the original article URL.
+    Handles the newer nested Protobuf-like binary format.
+    """
+    if "news.google.com/rss/articles/" not in url:
+        return url
+    
+    try:
+        encoded_part = url.split("articles/")[1].split("?")[0]
+        
+        import base64
+        padding = (4 - len(encoded_part) % 4) % 4
+        encoded_part += "=" * padding
+        
+        # Original binary protobuf
+        decoded = base64.urlsafe_b64decode(encoded_part)
+        
+        # Strategy 1: UTF-8 scan for http
+        content = decoded.decode('utf-8', errors='ignore')
+        match = re.search(r'https?://[^\x00-\x1f\x7f-\xff]+', content)
+        if match:
+            extracted_url = match.group(0)
+            clean_url = re.split(r'[\?\"\'\s\x00]', extracted_url)[0]
+            if "." in clean_url and len(clean_url) > 10:
+                return clean_url
+        
+        # Strategy 2: Greedy search for known news domains (for when bits are scrambled)
+        # This works if the URL is plain but preceded by binary headers.
+        domains = [".vn", ".com.vn", ".net.vn", ".org.vn", ".gov.vn", ".net", ".edu.vn"]
+        for dom in domains:
+            idx = decoded.find(dom.encode())
+            if idx != -1:
+                # Found the domain! Now backtrack to find 'http' or start of path
+                start = decoded.rfind(b"http", 0, idx)
+                if start != -1:
+                    # Found http, extract until next binary junk
+                    end = idx + len(dom)
+                    # Extend end to catch the path
+                    while end < len(decoded) and (33 <= decoded[end] <= 126):
+                        end += 1
+                    extracted = decoded[start:end].decode('utf-8', errors='ignore')
+                    if "." in extracted:
+                        return extracted
+                else:
+                    # Only found domain, try to extract surrounding printable chars
+                    # (Useful for path-only or root matches)
+                    start = idx
+                    while start > 0 and (33 <= decoded[start-1] <= 126):
+                        start -= 1
+                    end = idx + len(dom)
+                    while end < len(decoded) and (33 <= decoded[end] <= 126):
+                        end += 1
+                    extracted = decoded[start:end].decode('utf-8', errors='ignore')
+                    if extracted.startswith(("http", "www")):
+                        if not extracted.startswith("http"): extracted = "https://" + extracted
+                        return extracted
+
+    except Exception:
+        pass
+        
+    return url
+
+async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional[dict]:
+    """
+    Asynchronous version of fetch_article_full_text.
+    Returns a dict with 'text', 'images', 'final_url', and 'is_broken'.
     """
     if not _HAS_BS4: return None
     
+    # 0. Decode Google News URL if possible
+    decoded_url = decode_gnews_url(url)
+    is_gnews = (decoded_url == url and "news.google.com" in url)
+    url = decoded_url
+    
     try:
+        # Use a very browser-like header set
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
         }
-        with httpx.Client(timeout=timeout, follow_redirects=True) as client:
-            resp = client.get(url, headers=headers)
-            resp.raise_for_status()
+        
+        # Google News often fails with IPv6 in some environments, or blocks based on client quirks.
+        # We'll use follow_redirects and a longer timeout for GNews.
+        current_timeout = timeout + (10 if is_gnews else 0)
+        
+        async with httpx.AsyncClient(
+            timeout=current_timeout, 
+            follow_redirects=True,
+            headers=headers,
+            # Force IPv4 if GNews is problematic
+            transport=httpx.AsyncHTTPTransport(local_address="0.0.0.0") if is_gnews else None
+        ) as client:
+            try:
+                resp = await client.get(url)
+                resp.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in [404, 410]:
+                    return {"text": None, "images": [], "final_url": url, "is_broken": True}
+                raise e
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
+                # Last resort fallback: try using system curl if available (often bypasses library-level blocks)
+                if is_gnews:
+                    try:
+                        import subprocess
+                        print(f"[INFO] GNews connection failed, trying system curl fallback for {url}")
+                        result = subprocess.run(
+                            ['curl', '-L', '-s', '-o', 'NUL', '-w', '%{url_effective}', '-A', headers["User-Agent"], url],
+                            capture_output=True, text=True, timeout=10
+                        )
+                        if result.returncode == 0 and result.stdout.strip():
+                            new_url = result.stdout.strip()
+                            if new_url != url:
+                                # Recursively try with the resolved URL
+                                return await fetch_article_full_text_async(new_url, timeout=timeout)
+                    except:
+                        pass
+                raise e
             
-            soup = BeautifulSoup(resp.text, "html.parser")
+            final_url = str(resp.url)
+            html_content = resp.text
             
-            # Remove scripts, styles, etc.
-            for s in soup(["script", "style", "nav", "footer", "header", "aside"]):
+            soup = BeautifulSoup(html_content, "html.parser")
+            
+            # 1. Image Extraction
+            images = []
+            og_img = soup.find("meta", property="og:image")
+            if og_img and og_img.get("content"):
+                images.append(og_img["content"])
+            
+            for img in soup.find_all("img", src=True):
+                src = img["src"]
+                if any(x in src.lower() for x in ["logo", "icon", "avatar", "ads", "advertising"]):
+                    continue
+                if src.startswith("http") and any(src.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+                    if src not in images:
+                        images.append(src)
+                if len(images) > 5: break
+
+            # 2. Text Extraction
+            for s in soup(["script", "style", "nav", "footer", "header", "aside", "iframe", "noscript"]):
                 s.decompose()
             
-            # Common article selectors for VN news sites
-            # Tuoi Tre, VNExpress, Thanh Nien, etc.
-            content_tags = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'content|body|detail|post-content|article-content', re.I))
+            selectors = [
+                "article", ".article-content", ".post-content", ".content-detail", 
+                ".detail-content", ".cms-body", ".fck_detail", ".content_detail",
+                "#main-content-body", ".main-content", ".entry-content"
+            ]
             
-            if content_tags:
-                # Get the biggest one
-                main_content = max(content_tags, key=lambda x: len(x.get_text()))
-                return main_content.get_text(separator=' ', strip=True)
+            content_tag = None
+            for selector in selectors:
+                found = soup.select_one(selector)
+                if found and len(found.get_text()) > 500:
+                    content_tag = found
+                    break
             
-            # Fallback to body text
-            return soup.body.get_text(separator=' ', strip=True) if soup.body else soup.get_text(separator=' ', strip=True)
+            if not content_tag:
+                divs = soup.find_all("div")
+                if divs:
+                    content_tag = max(divs, key=lambda d: len(d.find_all("p")))
+
+            text = ""
+            if content_tag:
+                paras = content_tag.find_all("p")
+                if paras:
+                    text = "\n\n".join([p.get_text(strip=True) for p in paras if len(p.get_text(strip=True)) > 20])
+                else:
+                    text = content_tag.get_text(separator="\n\n", strip=True)
+            else:
+                text = soup.get_text(separator="\n\n", strip=True)
+
+            text = re.sub(r"\n{3,}", "\n\n", text).strip()
+            
+            return {
+                "text": text,
+                "images": images,
+                "final_url": final_url,
+                "is_broken": False
+            }
             
     except Exception as e:
-        logger.error(f"Error fetching full text from {url}: {e}")
+        if "news.google.com" in str(url):
+             logger.debug(f"GNews full-text fetch skipped/failed for {url}: {e}")
+        else:
+             logger.error(f"Error fetching full text async from {url}: {e}")
         return None
 
+def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
+    """Synchronous wrapper for fetching full article text."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            return None 
+        res = loop.run_until_complete(fetch_article_full_text_async(url, timeout))
+        return res["text"] if res else None
+    except Exception:
+        return None
 
 # Simple test function
 async def test_scraper():
@@ -571,11 +736,9 @@ async def test_scraper():
                 try:
                     print(f"  - {article['title'][:70]}...")
                 except UnicodeEncodeError:
-                    # Fallback for Windows console
                     print(f"  - {article['title'][:70].encode('ascii', 'replace').decode()}...")
     except Exception as e:
         print(f"Test failed: {e}")
-
 
 if __name__ == "__main__":
     asyncio.run(test_scraper())

@@ -29,6 +29,7 @@ class Article(Base):
     agency: Mapped[str | None] = mapped_column(String(256), nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_broken: Mapped[int] = mapped_column(Integer, default=0) # 0=no, 1=yes/broken
     impact_details: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
@@ -60,5 +61,6 @@ class Event(Base):
     confidence: Mapped[float] = mapped_column(Float, default=0.0)  # 0..1 based on multi-source agreement
     sources_count: Mapped[int] = mapped_column(Integer, default=1)
     needs_verification: Mapped[bool] = mapped_column(Integer, default=0)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     articles = relationship("Article", back_populates="event")

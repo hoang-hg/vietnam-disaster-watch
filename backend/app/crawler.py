@@ -72,7 +72,7 @@ from .sources import SOURCES, build_gnews_rss, CONFIG
 from . import nlp
 from .dedup import find_duplicate_article, get_article_hash
 from .event_matcher import upsert_event_for_article
-from .html_scraper import HTMLScraper, fetch_article_full_text
+from .html_scraper import HTMLScraper, fetch_article_full_text_async
 
 Base.metadata.create_all(bind=engine)
 
@@ -363,8 +363,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 print(f"[OK] {src.name} using {feed_type} ({len(feed.entries)} entries, {elapsed:.2f}s)")
                 
                 # Process articles from this feed
-                # DO NOT BREAK: Continue to process other feeds (e.g. backup/secondary) to maximize coverage
-                max_articles = 200  # User requested deep crawl
+                # Differentiated limit: Higher for direct RSS, lower for noisy GNews search
+                max_articles = 50 if feed_type == "gnews" else 200
                 for entry in feed.entries[:max_articles]:
                     title = html.unescape(getattr(entry, "title", "")).strip()
                     link = getattr(entry, "link", "").strip()
@@ -382,6 +382,25 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     is_relevant = nlp.contains_disaster_keywords(summary_raw, title=title, trusted_source=src.trusted)
                     
                     if not is_relevant:
+                        try:
+                            diag = nlp.diagnose(text_for_nlp)
+                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
+                            logs_dir.mkdir(parents=True, exist_ok=True)
+                            skip_file = logs_dir / "skip_debug.jsonl"
+                            record = {
+                                "timestamp": datetime.utcnow().isoformat(),
+                                "action": "skip_nlp",
+                                "source": src.name,
+                                "title": title,
+                                "url": link,
+                                "score": diag["score"],
+                                "reason": diag["reason"],
+                                "diagnose": diag["signals"]
+                            }
+                            with skip_file.open("a", encoding="utf-8") as f:
+                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                        except Exception:
+                            pass
                         continue
 
                     # Second-pass: optional classifier rejects low-probability items
@@ -426,7 +445,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     province = nlp.extract_province(text_for_nlp)
 
                     impacts = nlp.extract_impacts(summary_raw or title)
-                    summary_text = nlp.summarize(summary_raw.replace("&nbsp;", " "))
+                    summary_text = nlp.summarize(summary_raw.replace("&nbsp;", " "), title=title)
                     
                     # Detect Event Stage (Warning vs Impact vs Recovery)
                     stage = nlp.determine_event_stage(text_for_nlp)
@@ -447,6 +466,24 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         # Link to existing article instead of creating duplicate
                         article_hash = get_article_hash(title, src.domain)
                         logger.info(f"Skipping duplicate article: {title[:50]}... (hash={article_hash})")
+                        
+                        try:
+                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
+                            logs_dir.mkdir(parents=True, exist_ok=True)
+                            skip_file = logs_dir / "skip_debug.jsonl"
+                            record = {
+                                "timestamp": datetime.utcnow().isoformat(),
+                                "action": "skip_duplicate",
+                                "source": src.name,
+                                "title": title,
+                                "url": link,
+                                "matched_id": duplicate.id,
+                                "matched_title": duplicate.title
+                            }
+                            with skip_file.open("a", encoding="utf-8") as f:
+                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                        except Exception:
+                            pass
                         continue
 
                     article = Article(
@@ -523,26 +560,32 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         if should_fetch:
                             try:
                                 timeout = settings.request_timeout_seconds
-                                async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as aclient:
-                                    resp = await aclient.get(link)
-                                    resp.raise_for_status()
-                                    page_html = resp.text
-                                    if _HAS_BS4 and BeautifulSoup is not None:
-                                        soup = BeautifulSoup(page_html, "html.parser")
-                                        paras = [p.get_text(separator=" ", strip=True) for p in soup.find_all("p")]
-                                        cleaned = [re.sub(r"\s+", " ", p).strip() for p in paras if p and p.strip()]
-                                        full_text = "\n\n".join(cleaned[:10]) if cleaned else soup.get_text(separator=" ", strip=True)
-                                    else:
-                                        paras = re.findall(r"<p[^>]*>(.*?)</p>", page_html, flags=re.I | re.S)
-                                        cleaned = []
-                                        for p in paras:
-                                            t = re.sub(r"<[^>]+>", "", p)
-                                            t = re.sub(r"\s+", " ", t).strip()
-                                            if t:
-                                                cleaned.append(t)
-                                        full_text = "\n\n".join(cleaned[:10]) if cleaned else re.sub(r"<[^>]+>", " ", page_html)
+                                # Integration of the improved Generic Content Extractor
+                                fetch_res = await fetch_article_full_text_async(link, timeout=timeout)
+                                
+                                if fetch_res:
+                                    full_text = fetch_res["text"]
+                                    images = fetch_res["images"]
+                                    final_url = fetch_res["final_url"]
+                                    
+                                    # Update is_broken status
+                                    if fetch_res.get("is_broken"):
+                                        article.is_broken = 1
+                                        
+                                    # Update URL if it was a redirect (important for Google News/Shorteners)
+                                    if final_url and final_url != link:
+                                        article.url = final_url
+                                    
+                                    # Update Image if missing or if we found a better one
+                                    if not article.image_url and images:
+                                        article.image_url = images[0]
+                                    elif article.image_url and images and "googleusercontent" in article.image_url:
+                                        # Prefer original site image over Google proxy image
+                                        article.image_url = images[0]
 
                                     full_impacts = nlp.extract_impacts(full_text)
+                                    
+                                    # Update metrics from full text
                                     if full_impacts.get("deaths") is not None and article.deaths is None:
                                         article.deaths = _get_impact_value(full_impacts.get("deaths"))
                                     if full_impacts.get("missing") is not None and article.missing is None:
@@ -551,9 +594,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         article.injured = _get_impact_value(full_impacts.get("injured"))
                                     if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
                                         article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
+                                    
                                     if full_impacts.get("agency") is not None and article.agency is None:
                                         raw_agency = full_impacts.get("agency")
                                         article.agency = raw_agency[:255] if raw_agency else None
+                                        
                                     if article.province in (None, "unknown"):
                                         prov = nlp.extract_province(full_text)
                                         if prov and prov != "unknown":
@@ -561,22 +606,16 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                     
                                     # Re-validate after full text fetch
                                     needs_v = nlp.validate_impacts(full_impacts)
-                                    
-                                    # Attempt to extract image from soup if missing
-                                    if not article.image_url and _HAS_BS4 and BeautifulSoup is not None and 'soup' in locals():
-                                        img = _extract_image_url(None, soup=soup)
-                                        if img:
-                                            article.image_url = img
-
                                     if needs_v:
                                         article.needs_verification = 1
 
+                                    # SAVE FULL TEXT - This powers the "Archived at System" feature
                                     try:
-                                        article.full_text = full_text[:100000]
+                                        article.full_text = full_text[:100000] # Safety limit
                                     except Exception:
                                         pass
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.debug(f"Full-text fetch failed for {link}: {e}")
                     except Exception:
                         pass
 
@@ -606,7 +645,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         print(f"[OK] {src.name} using html_scraper ({len(scraped_articles)} articles)")
                         
                         # Process scraped articles
-                        for scraped in scraped_articles[:30]:
+                        for scraped in scraped_articles[:50]:
                             title = html.unescape(scraped.get("title", "")).strip()
                             url = scraped.get("url", "").strip()
                             if not title or not url:
@@ -633,7 +672,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             province = nlp.extract_province(text_for_nlp)
                             
                             impacts = nlp.extract_impacts(summary_raw_scraper or title)
-                            summary = nlp.summarize(summary_raw_scraper)
+                            summary = nlp.summarize(summary_raw_scraper, title=title)
                             
                             # Check for duplicates
                             duplicate = find_duplicate_article(

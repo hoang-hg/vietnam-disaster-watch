@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { THEME_COLORS } from '../theme';
 import { fmtType } from '../api';
+import { Link } from 'react-router-dom';
 
 // Fix for default marker icon issues in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -32,10 +33,10 @@ export default function VietnamMap({ points }) {
       {/* Dynamic Disaster Events */}
       {points.map((p) => {
         // Use real lat/lon if available, fallback to nothing
-        if (typeof p.lat !== 'number' || typeof p.lon !== 'number') return null;
+        if (typeof p.lat !== 'number' || typeof (p.lon || p.lng) !== 'number') return null;
         
         // Color based on type
-        const color = THEME_COLORS[p.disaster_type] || THEME_COLORS.unknown;
+        const color = THEME_COLORS[p.disaster_type || p.type] || THEME_COLORS.unknown;
         
         // Render icon
         const icon = L.divIcon({
@@ -51,19 +52,24 @@ export default function VietnamMap({ points }) {
         });
 
         return (
-          <Marker key={p.id} position={[p.lat, p.lon]} icon={icon}>
+          <Marker key={p.id} position={[p.lat, p.lon || p.lng]} icon={icon}>
             <Popup>
               <div className="min-w-[200px]">
-                <div className="font-semibold text-slate-800 text-sm mb-1 leading-tight">{p.title}</div>
+                <Link 
+                  to={`/events/${p.id}`} 
+                  className="font-semibold text-slate-800 text-sm mb-1 leading-tight block hover:text-blue-600 transition-colors"
+                >
+                  {p.title}
+                </Link>
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
                     <span 
                         className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide text-white"
-                        style={{ backgroundColor: THEME_COLORS[p.disaster_type] || THEME_COLORS.unknown }}
+                        style={{ backgroundColor: THEME_COLORS[p.disaster_type || p.type] || THEME_COLORS.unknown }}
                     >
-                        {fmtType(p.disaster_type)}
+                        {fmtType(p.disaster_type || p.type)}
                     </span>
                     <span className="text-[10px] text-slate-400">
-                        {new Date(p.published_at).toLocaleDateString()}
+                        {new Date(p.started_at || p.published_at).toLocaleDateString()}
                     </span>
                 </div>
               </div>

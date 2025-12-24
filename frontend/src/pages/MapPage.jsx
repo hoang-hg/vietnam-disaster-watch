@@ -4,6 +4,7 @@ import VietnamMap from "../components/VietnamMap";
 import { Filter, Calendar, Layers } from "lucide-react";
 import { THEME_COLORS } from "../theme";
 import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
+import logoIge from "../assets/logo_ige.png";
 
 // Build province lookup map
 const PROVINCE_COORDS = {};
@@ -90,27 +91,35 @@ export default function MapPage() {
                 
                 {/* Row 1: Title & Date (Compact) */}
                 <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-2 text-blue-800 font-extrabold text-sm uppercase tracking-tight">
-                        <Layers className="w-4 h-4" />
+                     <div className="flex items-center gap-3 text-blue-900 font-black text-sm uppercase tracking-tight">
+                        <img 
+                            src={logoIge} 
+                            alt="IGE Logo" 
+                            className="w-10 h-10 object-contain" 
+                            style={{ mixBlendMode: 'multiply' }}
+                        />
+                        <Layers className="w-4 h-4 ml-1" />
                         <span>BẢN ĐỒ TỔNG HỢP RỦI RO THIÊN TAI</span>
                      </div>
                      
-                     <div className="flex items-center gap-2 bg-white border border-slate-200 rounded px-2 py-1 shadow-sm">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                        <input 
-                            type="date"
-                            value={startDate} 
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="bg-transparent border-none text-xs text-slate-700 focus:ring-0 p-0 w-[90px]"
-                        />
-                        {endDate && <span className="text-slate-400 text-xs">-</span>}
-                        <input 
-                            type="date"
-                            placeholder="Đến ngày"
-                            value={endDate} 
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="bg-transparent border-none text-xs text-slate-700 focus:ring-0 p-0 w-[90px]"
-                        />
+                     <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm">
+                        <Calendar className="w-4 h-4 text-blue-500" />
+                        <div className="flex items-center gap-1">
+                            <input 
+                                type="date"
+                                value={startDate} 
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="bg-transparent border-none text-xs font-semibold text-slate-700 focus:ring-0 p-0 w-[115px]"
+                            />
+                            {endDate && <span className="text-slate-400 font-bold px-0.5">→</span>}
+                            <input 
+                                type="date"
+                                placeholder="Đến ngày"
+                                value={endDate} 
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="bg-transparent border-none text-xs font-semibold text-slate-700 focus:ring-0 p-0 w-[115px]"
+                            />
+                        </div>
                     </div>
                 </div>
 

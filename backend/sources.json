@@ -1191,10 +1191,60 @@
       "backup_rss": null,
       "note": "Mạng lưới phóng viên cơ sở rộng khắp.",
       "trusted": true
+    },
+    {
+      "name": "Tạp chí Khí tượng Thủy văn",
+      "domain": "tckttv.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Cơ quan ngôn luận khoa học chính thống của ngành KTTV.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Biên phòng",
+      "domain": "bienphong.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Chuyên biệt về cứu hộ biển, biên giới và hải đảo.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Công an TP.HCM",
+      "domain": "congan.com.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Tin nóng về cứu nạn, cứu hộ và sự cố đô thị.",
+      "trusted": true
+    },
+    {
+      "name": "Việt Nam Mới",
+      "domain": "vietnammoi.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Tin tức tổng hợp đa chiều.",
+      "trusted": true
+    },
+    {
+      "name": "Ủy ban Sông Mê Công Việt Nam",
+      "domain": "vnmc.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Theo dõi hạn mặn và mực nước sông Cửu Long.",
+      "trusted": true
+    },
+    {
+      "name": "Báo Điện tử Đảng Cộng sản",
+      "domain": "dangcongsan.vn",
+      "primary_rss": "https://dangcongsan.vn/rss/thoi-su",
+      "backup_rss": null,
+      "note": "Thông tin chỉ đạo chiến lược cấp quốc gia.",
+      "trusted": true
     }
   ],
   "gnews_fallback": false,
-  "gnews_context_terms": ["lũ lụt", "bão", "sạt lở", "thiên tai", "động đất", "cháy rừng", "xả lũ", "ngập lụt"],
+  "gnews_context_terms": ["bão", "áp thấp", "lũ lụt", "mưa lớn", "nắng nóng", "xâm nhập mặn", "gió mạnh", "gió mùa", "dòng chảy", "mưa lũ", "lũ quét",
+   "sạt lở", "hạn hán", "cháy rừng", "động đất", "lốc", "sóng thần", "triều cường", "nước dâng", "sét", "mưa đá", "thiên tai", "mưa dông", "sóng lớn", "thủy triều", "sụt lún",
+   "ngập úng", "ngập sâu", "sương mù", "lũ bùn", "mưa cực đoan", "rét đậm", "rét hại", "băng giá"],
   "gnews_min_articles": 2,
   "request_timeout": 30,
   "max_articles_per_source": 10

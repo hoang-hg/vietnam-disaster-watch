@@ -13,30 +13,42 @@ def migrate():
     """
     logger.info("Starting database migration...")
     
-    with engine.connect() as conn:
-        # 1. Add column to articles table
-        try:
-            logger.info("Checking for 'needs_verification' in 'articles' table...")
-            conn.execute(text("ALTER TABLE articles ADD COLUMN needs_verification INTEGER DEFAULT 0"))
-            conn.commit()
-            logger.info("Successfully added 'needs_verification' to 'articles'.")
-        except Exception as e:
-            if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
-                logger.info("Column 'needs_verification' already exists in 'articles'. Skipping.")
-            else:
-                logger.error(f"Error migrating 'articles': {e}")
+    # Use autocommit mode to prevent transaction blocks from failing subsequent commands
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        # 1. Add columns to articles table
+        columns_to_add = [
+            ("needs_verification", "INTEGER DEFAULT 0"),
+            ("is_broken", "INTEGER DEFAULT 0"),
+            ("full_text", "TEXT")
+        ]
+        
+        for col_name, col_type in columns_to_add:
+            try:
+                logger.info(f"Adding '{col_name}' to 'articles' table...")
+                conn.execute(text(f"ALTER TABLE articles ADD COLUMN {col_name} {col_type}"))
+                logger.info(f"Successfully added '{col_name}' to 'articles'.")
+            except Exception as e:
+                if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
+                    logger.info(f"Column '{col_name}' already exists in 'articles'. Skipping.")
+                else:
+                    logger.error(f"Error migrating 'articles' ({col_name}): {e}")
 
-        # 2. Add column to events table
-        try:
-            logger.info("Checking for 'needs_verification' in 'events' table...")
-            conn.execute(text("ALTER TABLE events ADD COLUMN needs_verification INTEGER DEFAULT 0"))
-            conn.commit()
-            logger.info("Successfully added 'needs_verification' to 'events'.")
-        except Exception as e:
-            if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
-                logger.info("Column 'needs_verification' already exists in 'events'. Skipping.")
-            else:
-                logger.error(f"Error migrating 'events': {e}")
+        # 2. Add columns to events table
+        event_columns = [
+            ("needs_verification", "INTEGER DEFAULT 0"),
+            ("image_url", "TEXT")
+        ]
+        
+        for col_name, col_type in event_columns:
+            try:
+                logger.info(f"Adding '{col_name}' to 'events' table...")
+                conn.execute(text(f"ALTER TABLE events ADD COLUMN {col_name} {col_type}"))
+                logger.info(f"Successfully added '{col_name}' to 'events'.")
+            except Exception as e:
+                if "already exists" in str(e).lower() or "duplicate column" in str(e).lower():
+                    logger.info(f"Column '{col_name}' already exists in 'events'. Skipping.")
+                else:
+                    logger.error(f"Error migrating 'events' ({col_name}): {e}")
 
     logger.info("Migration finished.")
 

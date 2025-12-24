@@ -17,6 +17,7 @@ class ArticleOut(BaseModel):
     agency: str | None
     summary: str | None
     full_text: str | None
+    is_broken: int = 0
     image_url: str | None
     event_id: int | None
     needs_verification: int = 0

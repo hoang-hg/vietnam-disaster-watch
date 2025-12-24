@@ -260,7 +260,12 @@ export default function EventDetail() {
                      </span>
                   )}
                 </div>
-                {a.summary ? (
+                {a.is_broken && a.full_text ? (
+                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-800 leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap">
+                    <div className="font-bold text-[10px] text-slate-400 uppercase mb-2">Nội dung đã lưu trữ</div>
+                    {a.full_text}
+                  </div>
+                ) : a.summary ? (
                   <div className={`mt-2 text-xs text-gray-700 ${a.is_broken ? '' : 'line-clamp-2'}`}>
                     {a.summary}
                   </div>

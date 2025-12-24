@@ -32,8 +32,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         union = len(new_tokens | cand_tokens)
         score = intersection / union if union > 0 else 0.0
         
-        # Threshold: 0.25 (25% overlap words)
-        if score > best_score and score > 0.25:
+        # Threshold: 0.5 (50% overlap words)
+        if score > best_score and score > 0.5:
             best_score = score
             matched_event = cand
             

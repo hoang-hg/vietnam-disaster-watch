@@ -199,52 +199,59 @@ class Source:
     note: str | None = None
     trusted: bool | None = False
 
-GNEWS_HAZARD_KEYWORDS = [ "thiệt hại","tổn thất", "đổ nhà","đổ tường", "hư hỏng","cuốn trôi",
-"trôi nhà","ngập nhà","vỡ đê","tràn đê","vỡ bờ","chia cắt", "cô lập","mất mùa", "mất trắng","chết đuối","bị vùi lấp","người chết","tử vong","thiệt mạng", 
-"thi thể","nạn nhân","thương vong","bị thương", "trọng thương", "mất tích","mất liên lạc","tìm kiếm","sơ tán",
-"di dời","tránh trú","vào bờ", "lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế", 
-"hỗ trợ","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn", "huy động lực lượng","xuất quân","triển khai lực lượng",
-"ứng phó","khắc phục","xử lý sự cố","sửa chữa","tu bổ","phục hồi", "tái thiết","thiệt hại",
-"đánh giá thiệt hại", "cảnh báo","cảnh báo khẩn","dự báo", "tin khẩn","công điện", "tình trạng khẩn cấp","tình huống khẩn cấp","trạng thái khẩn cấp","khẩn cấp", "khẩn trương","gấp rút",
-"hỏa tốc","cấp bách","nguy hiểm","nguy cấp","nguy kịch", "mất an toàn","đe dọa","đe dọa nghiêm trọng","rủi ro cao","nguy cơ cao","cấm", "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa","đóng cửa trường","cho nghỉ học", 
-"nghỉ học","tạm dừng","tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn", "cuộc họp khẩn","ban chỉ huy","ban chỉ đạo","trực ban","trực 24/24","túc trực", "ứng trực","mưa to đến rất to","mưa đặc biệt lớn","mưa cực đoan",
-"mưa kỷ lục", "báo động","mực nước báo động", "lũ trên sông","lũ bùn đá","lũ bùn","xói lở","xâm thực","sạt trượt","trượt sườn", "đứt gãy taluy","đá lăn","ranh mặn","cống ngăn mặn","độ mặn phần nghìn", 
-"bão", "siêu bão", "áp thấp nhiệt đới", "lũ quét", "ngập lụt", "xả lũ",
-"sạt lở", "sụt lún", "đất đá vùi lấp", "lũ ống", "nắng nóng", "hạn hán", "xâm nhập mặn", "triều cường", "nước dâng", "mưa lớn", "lốc xoáy", "mưa đá", "cảnh báo mưa", "dự báo thời tiết nguy hiểm", "rét đậm", "rét hại", "băng giá", "sương muối", "cháy rừng", 
-"động đất", "sóng thần", "rung chấn", "tốc mái", "sập nhà", "cảnh báo thiên tai", "dự báo thời tiết", "mưa lũ", "sóng lớn", "mưa dông",
-"tin cảnh báo", "tin dự báo", "công điện", "ATNĐ", "gió mạnh", "biển động", "sương mù", "dông lốc", "sét đánh", "rét đậm rét hại"
+GNEWS_IMPACT_KEYWORDS = [ 
+    "thiệt hại","tổn thất", "đổ nhà","đổ tường", "hư hỏng","cuốn trôi", "trôi nhà","ngập nhà","vỡ đê","tràn đê",
+    "vỡ bờ","chia cắt", "cô lập","mất mùa", "mất trắng","chết đuối","bị vùi lấp","người chết","tử vong","thiệt mạng", 
+    "thi thể","nạn nhân","thương vong","bị thương", "trọng thương", "mất tích","mất liên lạc","tìm kiếm","sơ tán",
+    "di dời","tránh trú","vào bờ", "lên bờ","về bến","cứu hộ","cứu nạn","cứu trợ","tiếp tế", 
+    "hỗ trợ","trợ cấp","cứu sinh","giải cứu","tìm kiếm cứu nạn", "huy động lực lượng","xuất quân","triển khai lực lượng",
+    "ứng phó","khắc phục","xử lý sự cố","sửa chữa","tu bổ","phục hồi", "tái thiết", "đánh giá thiệt hại", 
+    "cảnh báo khẩn", "tin khẩn","công điện", "tình trạng khẩn cấp","tình huống khẩn cấp", "khẩn trương","gấp rút",
+    "hỏa tốc","cấp bách","nguy hiểm","nguy cấp","nguy kịch", "mất an toàn","đe dọa","đe dọa nghiêm trọng","rủi ro cao",
+    "nguy cơ cao", "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa trường","cho nghỉ học", "nghỉ học","tạm dừng",
+    "tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn", "trực ban","trực 24/24","túc trực", "ứng trực",
+    "mực nước báo động", "xâm thực","sạt trượt","đứt gãy taluy","đá lăn", "tốc mái", "sập nhà", "thời tiết nguy hiểm",
+    "tin dự báo", "tin cảnh báo", "tin khẩn"
 ]
 
 
 def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_terms: List[str] | None = None) -> str:
     """Build Google News RSS URL as fallback.
-
-    If both hazard_terms and context_terms are provided, build a query that
-    requires a hazard term and a context term to reduce false positives.
-    Automatically quotes terms with spaces to prevent keyword splitting.
+    Uses a combination of Impact keywords and Context (Disaster Type) keywords.
     """
-    # Use condensed list for GNews if no specific hazards provided to keep URL short
-    hazards = hazard_terms or GNEWS_HAZARD_KEYWORDS
+    # Use refined impact list for GNews
+    hazards = hazard_terms or GNEWS_IMPACT_KEYWORDS
     
-    # Helper to quote terms with spaces
     def _quote(terms):
         return [f'"{t.strip()}"' if ' ' in t.strip() else t.strip() for t in terms]
 
     hazards = _quote(hazards)
     
-    # Randomly sample if list is too huge to avoid URL length issues (optional, but good for safety)
+    # Google has a ~32 word limit for search queries. 
+    # To be safe and effective, we sample from both lists.
     import random
-    if len(hazards) > 50:
-        hazards = random.sample(hazards, 50)
+    
+    # 1. Sample Impact terms (Hazards) - target 15 terms
+    hazards = hazard_terms or GNEWS_IMPACT_KEYWORDS
+    hazards = _quote(hazards)
+    if len(hazards) > 15:
+        hazards = random.sample(hazards, 15)
+
+    # 2. Sample Context terms (Disaster Types) - target 15 terms
+    contexts = []
+    if context_terms:
+        contexts = _quote(context_terms)
+        if len(contexts) > 15:
+            contexts = random.sample(contexts, 15)
 
     base = "https://news.google.com/rss/search?q="
     
-    # Build query
-    query = f"site:{domain} (" + " OR ".join(hazards) + ")"
+    # Build query: site:domain (Impacts) (Contexts)
+    query_parts = [f"site:{domain}", "(" + " OR ".join(hazards) + ")"]
+    if contexts:
+        query_parts.append("(" + " OR ".join(contexts) + ")")
     
-    if context_terms:
-        contexts = _quote(context_terms)
-        query += " (" + " OR ".join(contexts) + ")"
+    query = " ".join(query_parts)
         
     return base + urllib.parse.quote(query) + "&hl=vi&gl=VN&ceid=VN:vi"
 

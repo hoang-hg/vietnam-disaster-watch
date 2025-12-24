@@ -48,7 +48,8 @@ async def on_startup():
         srcs = load_sources_from_json(str(root_dir / "sources.json"))
         return [s.name for s in srcs if any(kw in s.name for kw in ["KTTV Quốc gia", "KTTV Ninh Bình", 
         "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", 
-        "KTTV An Giang", "KTTV Hưng Yên", "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)"])]
+        "KTTV An Giang", "KTTV Hưng Yên", "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
+        "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"])]
 
     # Tier 2: Major National News (Medium Frequency: 30 mins)
     # These sources have high coverage and fast reporting but are not official disaster agencies.
@@ -63,21 +64,21 @@ async def on_startup():
             "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
         ]
 
-    # Job 1: Group 1 (Critical Official Sources) - Frequency: 1 HOUR (60 mins)
+    # Job 1: Group 1 (Critical Official Sources) - Frequency: 15 mins
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier1_sources()),
-        trigger=IntervalTrigger(minutes=60, jitter=30),
+        trigger=IntervalTrigger(minutes=15, jitter=5),
         id="crawl_group1_critical",
         replace_existing=True,
         misfire_grace_time=60
     )
 
-    # Job 2: Group 2 (Major National News) - Frequency: 3 HOURS (180 mins)
+    # Job 2: Group 2 (Major National News) - Frequency: 60 mins
     # Coverage: VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí, VTV, VOV...
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier2_sources()),
-        trigger=IntervalTrigger(minutes=180, jitter=60),
+        trigger=IntervalTrigger(minutes=60, jitter=15),
         id="crawl_group2_major",
         replace_existing=True,
         misfire_grace_time=180

@@ -209,10 +209,10 @@ export default function Dashboard() {
           <div className="relative">
              <input
                 type="text"
-                placeholder="Tìm tỉnh..."
+                placeholder="Tìm theo tỉnh và thành phố..."
                 value={provQuery}
                 onChange={(e) => setProvQuery(e.target.value)}
-                className="w-32 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400"
+                className="w-64 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400"
              />
              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>

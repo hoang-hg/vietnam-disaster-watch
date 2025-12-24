@@ -5,13 +5,58 @@ export default function StatCard({ title, value, sub, icon: Icon, trend, color =
   const colorMatch = color.match(/text-([a-z]+)-/);
   const baseColor = colorMatch ? colorMatch[1] : "blue";
   
+  const COLOR_MAPS = {
+    blue: {
+      border: "border-blue-500",
+      ring: "ring-blue-500/20",
+      iconBg: "bg-blue-50",
+      iconText: "text-blue-600",
+      iconActive: "bg-blue-600 text-white",
+      hover: "hover:border-blue-300"
+    },
+    indigo: {
+      border: "border-indigo-500",
+      ring: "ring-indigo-500/20",
+      iconBg: "bg-indigo-50",
+      iconText: "text-indigo-600",
+      iconActive: "bg-indigo-600 text-white",
+      hover: "hover:border-indigo-300"
+    },
+    red: {
+      border: "border-red-500",
+      ring: "ring-red-500/20",
+      iconBg: "bg-red-50",
+      iconText: "text-red-600",
+      iconActive: "bg-red-600 text-white",
+      hover: "hover:border-red-300"
+    },
+    emerald: {
+      border: "border-emerald-500",
+      ring: "ring-emerald-500/20",
+      iconBg: "bg-emerald-50",
+      iconText: "text-emerald-600",
+      iconActive: "bg-emerald-600 text-white",
+      hover: "hover:border-emerald-300"
+    },
+    slate: {
+      border: "border-slate-500",
+      ring: "ring-slate-500/20",
+      iconBg: "bg-slate-50",
+      iconText: "text-slate-600",
+      iconActive: "bg-slate-600 text-white",
+      hover: "hover:border-slate-300"
+    }
+  };
+
+  const scheme = COLOR_MAPS[baseColor] || COLOR_MAPS.blue;
+
   return (
     <div 
       onClick={onClick}
       className={`group relative overflow-hidden rounded-2xl border transition-all cursor-pointer ${
         active 
-          ? `border-${baseColor}-500 ring-2 ring-${baseColor}-500/10 shadow-md` 
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+          ? `${scheme.border} ring-4 ${scheme.ring} shadow-lg bg-white` 
+          : `border-slate-200 bg-white ${scheme.hover} hover:shadow-md`
       } p-5`}
     >
       <div className="flex justify-between items-start">
@@ -22,7 +67,7 @@ export default function StatCard({ title, value, sub, icon: Icon, trend, color =
           </p>
         </div>
         {Icon && (
-          <div className={`rounded-xl p-2 transition-colors ${active ? `bg-${baseColor}-600 text-white` : `bg-${baseColor}-50 text-${baseColor}-600 group-hover:bg-${baseColor}-100`}`}>
+          <div className={`rounded-xl p-2 transition-all duration-300 ${active ? scheme.iconActive : `${scheme.iconBg} ${scheme.iconText} group-hover:bg-opacity-80`}`}>
             <Icon className="h-5 w-5" />
           </div>
         )}

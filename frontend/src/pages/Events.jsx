@@ -8,6 +8,7 @@ import {
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
 import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle } from "lucide-react";
+import logoIge from "../assets/logo_ige.png";
 
 // Updated tones for 8 groups
 const TYPE_TONES = {
@@ -255,7 +256,7 @@ export default function Events() {
             <div className="h-1.5 w-full bg-blue-500"></div>
             
             {/* 0. Image Area */}
-            <div className={`w-full h-40 overflow-hidden relative flex items-center justify-center ${isJunkImage(e.image_url) ? 'bg-gradient-to-br' : 'bg-slate-100'}`}>
+            <div className="w-full h-40 overflow-hidden relative flex items-center justify-center bg-slate-50">
                  {!isJunkImage(e.image_url) ? (
                     <img 
                       src={e.image_url} 
@@ -267,27 +268,23 @@ export default function Events() {
                       }
                     />
                  ) : (
-                    <div className={`w-full h-full flex items-center justify-center transition-colors duration-300 ${
-                        e.disaster_type === 'storm' ? 'from-blue-500 to-blue-700' :
-                        e.disaster_type === 'flood_landslide' ? 'from-cyan-500 to-cyan-700' :
-                        e.disaster_type === 'heat_drought' ? 'from-orange-400 to-orange-600' :
-                        e.disaster_type === 'wildfire' ? 'from-red-500 to-red-700' :
-                        e.disaster_type === 'quake_tsunami' ? 'from-emerald-500 to-emerald-700' :
-                        e.disaster_type === 'wind_fog' ? 'from-slate-400 to-slate-600' :
-                        e.disaster_type === 'storm_surge' ? 'from-purple-500 to-purple-700' :
-                        'from-slate-300 to-slate-500'
-                    }`}>
-                        {(() => {
-                            const IconProps = { className: "w-16 h-16 text-white/30" };
-                            if (e.disaster_type === 'storm') return <CloudRainWind {...IconProps} />;
-                            if (e.disaster_type === 'flood_landslide') return <Waves {...IconProps} />;
-                            if (e.disaster_type === 'heat_drought') return <Sun {...IconProps} />;
-                            if (e.disaster_type === 'wildfire') return <Flame {...IconProps} />;
-                            if (e.disaster_type === 'wind_fog') return <Wind {...IconProps} />;
-                            if (e.disaster_type === 'quake_tsunami') return <Mountain {...IconProps} />;
-                            if (e.disaster_type === 'storm_surge') return <Waves {...IconProps} />;
-                            return <AlertTriangle {...IconProps} />;
-                        })()}
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white">
+                        <img 
+                            src={logoIge} 
+                            alt="Logo IGE" 
+                            className="w-24 h-24 object-contain opacity-95 group-hover:scale-110 transition-transform duration-500" 
+                            style={{ mixBlendMode: 'multiply' }}
+                        />
+                        <div className={`mt-2 h-1 w-12 rounded-full ${
+                             e.disaster_type === 'storm' ? 'bg-blue-500' :
+                             e.disaster_type === 'flood_landslide' ? 'bg-cyan-500' :
+                             e.disaster_type === 'heat_drought' ? 'bg-orange-500' :
+                             e.disaster_type === 'wildfire' ? 'bg-red-500' :
+                             e.disaster_type === 'quake_tsunami' ? 'bg-emerald-500' :
+                             e.disaster_type === 'wind_fog' ? 'bg-slate-400' :
+                             e.disaster_type === 'storm_surge' ? 'bg-purple-500' :
+                             'bg-slate-300'
+                        }`}></div>
                     </div>
                  )}
                  {/* Badge Overlay */}
