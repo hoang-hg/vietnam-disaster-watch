@@ -1,12 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { getJson, fmtType, fmtDate, fmtTimeAgo } from "../api.js";
-import { THEME_COLORS, CHART_COLORS } from "../theme.js";
+import { getJson, fmtType, fmtDate } from "../api.js";
+import { THEME_COLORS } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
-import VietnamMap from "../components/VietnamMap.jsx";
+import Badge from "../components/Badge.jsx";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   XAxis,
@@ -26,30 +24,53 @@ import {
   Filter,
   RefreshCw,
   ArrowRight,
-  Search
+  Search,
+  FileText
 } from "lucide-react";
 
+const TYPE_TONES = {
+  storm: "blue",
+  flood_landslide: "cyan",
+  heat_drought: "orange",
+  wind_fog: "slate",
+  storm_surge: "purple",
+  extreme_other: "yellow",
+  wildfire: "red",
+  quake_tsunami: "green",
+  recovery: "indigo",
+  relief_aid: "pink",
+  unknown: "slate",
+};
+
 export default function Dashboard() {
+  const dateInputRef = useRef(null);
   const [stats, setStats] = useState(null);
-  const [riskiest, setRiskiest] = useState(null);
   const [rawEvents, setRawEvents] = useState([]);
   const [articles, setArticles] = useState([]);
-  const [hours, setHours] = useState(24);
+  
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState("");
+  
   const [hazardType, setHazardType] = useState("all");
   const [provQuery, setProvQuery] = useState("");
-  const [page, setPage] = useState(0);
-  const [topProvince, setTopProvince] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState(null);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [quickFilter, setQuickFilter] = useState("all"); // all, casualties, damage, provinces
 
   const VALID_PROVINCES = [
-    "Hà Nội", "Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Thái Nguyên", "Phú Thọ", "Bắc Ninh", "Hưng Yên", "Hải Phòng", "Ninh Bình", "Quảng Trị", "Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Khánh Hòa", "Lâm Đồng", "TP Hồ Chí Minh", "Đồng Nai", "Long An", "An Giang", "Cần Thơ", "Tiền Giang", "Vĩnh Long", "Bạc Liêu", "Trà Vinh"
-  ];
-
-  /* Helper to normalize string for search (remove tones and spaces) */
+    "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
+    "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh",
+    "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình",
+    "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế",
+    "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa",
+    "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp",
+    "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
+  ]; 
+  /* Helper to normalize string for search */
   const normalizeStr = (str, removeSpaces = false) => {
+    if (!str) return "";
     let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     if (removeSpaces) res = res.replace(/\s+/g, '');
     return res;
@@ -59,22 +80,26 @@ export default function Dashboard() {
     let list = rawEvents;
     if (hazardType !== "all") list = list.filter(e => e.disaster_type === hazardType);
     if (provQuery) {
-        const q = normalizeStr(provQuery, true); // remove spaces from query
+        const q = normalizeStr(provQuery, true);
         list = list.filter(e => e.province && normalizeStr(e.province, true).includes(q));
     }
     if (searchQuery) {
         const q = normalizeStr(searchQuery);
         list = list.filter(e => e.title && normalizeStr(e.title).includes(q));
     }
-    // Quick Filter from StatCards
     if (quickFilter === "casualties") {
         list = list.filter(e => (e.deaths || 0) + (e.missing || 0) + (e.injured || 0) > 0);
     } else if (quickFilter === "damage") {
         list = list.filter(e => {
             const hasAmount = (e.damage_billion_vnd || 0) > 0;
-            const details = e.details || {};
-            const hasDetails = (details.homes?.length > 0) || (details.agriculture?.length > 0) || (details.infrastructure?.length > 0) || (details.marine?.length > 0);
-            return hasAmount || hasDetails;
+            const det = e.details || {};
+            return hasAmount || 
+                   (det.homes?.length > 0) || 
+                   (det.agriculture?.length > 0) || 
+                   (det.infrastructure?.length > 0) || 
+                   (det.marine?.length > 0) || 
+                   (det.disruption?.length > 0) || 
+                   (det.damage?.length > 0);
         });
     } else if (quickFilter === "provinces") {
         list = list.filter(e => e.province && VALID_PROVINCES.includes(e.province));
@@ -84,24 +109,23 @@ export default function Dashboard() {
 
   useEffect(() => {
     setPage(0);
-  }, [hours, hazardType, provQuery, searchQuery, quickFilter]);
+  }, [startDate, endDate, hazardType, provQuery, searchQuery, quickFilter]);
 
   async function load() {
     try {
       setLoading(true);
       setError(null);
-      const [s, riskData, evs, arts, topRisk] = await Promise.all([
-        getJson(`/api/stats/summary?hours=${hours}`),
-        getJson(`/api/stats/heatmap?hours=${hours}`),
-        getJson(`/api/events?limit=100&hours=${hours}`), // Increased limit for fuller stats
-        getJson(`/api/articles/latest?limit=20`),
-        getJson(`/api/stats/top-risky-province?hours=${hours}`)
+      let queryParams = `?start_date=${startDate}`;
+      if (endDate) queryParams += `&end_date=${endDate}`;
+
+      const [s, evs, arts] = await Promise.all([
+        getJson(`/api/stats/summary${queryParams}`),
+        getJson(`/api/events${queryParams}&limit=200`),
+        getJson(`/api/articles/latest?limit=20`)
       ]);
       setStats(s);
-      setRiskiest(riskData?.data || []);
       setRawEvents(evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type)));
       setArticles(arts);
-      setTopProvince(topRisk);
     } catch (e) {
       setError(e.message || "Load failed");
     } finally {
@@ -113,68 +137,37 @@ export default function Dashboard() {
     load();
     const t = setInterval(load, 60_000);
     return () => clearInterval(t);
-  }, [hours]);
+  }, [startDate, endDate]);
 
-  const mapPoints = useMemo(
-    () =>
-      events.map((e) => {
-        let lat = e.lat;
-        let lng = e.lng;
+  const isToday = startDate === new Date().toISOString().split('T')[0] && !endDate;
 
-        // Fallback to province centroid if coordinates are missing/invalid
-        if ((!lat || !lng) && e.province && window.__PROVINCE_CENTROIDS__) {
-            const centroid = window.__PROVINCE_CENTROIDS__[e.province];
-            if (centroid) {
-                [lat, lng] = centroid;
-            }
-        }
-        
-        return {
-            id: e.id,
-            title: e.title,
-            lat: lat,
-            lng: lng,
-            type: e.disaster_type,
-        };
-      }),
-    [events]
-  );
+  const handleReset = () => {
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setEndDate("");
+    setProvQuery("");
+    setSearchQuery("");
+    setHazardType("all");
+    setQuickFilter(null);
+    setPage(0);
+  };
+
+  const mapPoints = useMemo(() => 
+    events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      lat: e.lat,
+      lng: e.lng || e.lon,
+      disaster_type: e.disaster_type,
+    })), [events]);
 
   const chartData = useMemo(() => {
-    // 1. Initialize all 8 groups with 0
     const agg = {
-      storm: 0,
-      flood_landslide: 0,
-      heat_drought: 0,
-      wind_fog: 0,
-      storm_surge: 0,
-      extreme_other: 0,
-      wildfire: 0,
-      quake_tsunami: 0,
+      storm: 0, flood_landslide: 0, heat_drought: 0, wind_fog: 0,
+      storm_surge: 0, extreme_other: 0, wildfire: 0, quake_tsunami: 0,
     };
-    
-    // 2. Legacy Map
-    const MAP = {
-        flood: 'flood_landslide',
-        landslide: 'flood_landslide',
-        heavy_rain: 'flood_landslide',
-        earthquake: 'quake_tsunami',
-        tsunami: 'quake_tsunami',
-        wind_hail: 'extreme_other',
-        extreme_weather: 'heat_drought',
-    };
-    
-    // 3. Aggregate
     events.forEach((e) => {
-        const key = MAP[e.disaster_type] || e.disaster_type;
-        if (agg[key] !== undefined) {
-            agg[key]++;
-        } else {
-             // fallback for truly unknown types if any
-             // agg[key] = 1; 
-        }
+        if (agg[e.disaster_type] !== undefined) agg[e.disaster_type]++;
     });
-    
     return Object.entries(agg)
         .map(([k, v]) => ({ 
             name: fmtType(k), 
@@ -184,292 +177,291 @@ export default function Dashboard() {
         .sort((a, b) => b.count - a.count);
   }, [events]);
 
+  const riskiestHotspots = useMemo(() => {
+    const counts = {};
+    events.forEach(e => {
+        if (e.province && VALID_PROVINCES.includes(e.province)) {
+            counts[e.province] = (counts[e.province] || 0) + 1;
+        }
+    });
+    return Object.entries(counts)
+        .map(([province, count]) => ({ province, events: count }))
+        .sort((a, b) => b.events - a.events);
+  }, [events]);
+
   return (
     <div className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-          <div className="text-sm font-medium">
-            Lỗi tải dữ liệu: {error}. Đang thử kết nối lại với máy chủ...
-          </div>
+          <div className="text-sm font-medium">Lỗi tải dữ liệu: {error}</div>
         </div>
       )}
-      {/* Header & Controls */}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Tổng quan</h1>
           <p className="text-slate-500 text-sm mt-1">
-            Cập nhật lần cuối: {new Date().toLocaleTimeString('vi-VN')}
+            Cập nhật: {new Date().toLocaleTimeString('vi-VN')}
           </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
-          
-          {/* Province Search */}
-          <div className="relative">
-             <input
-                type="text"
-                placeholder="Tìm theo tỉnh và thành phố..."
-                value={provQuery}
-                onChange={(e) => setProvQuery(e.target.value)}
-                className="w-64 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400"
-             />
-             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+           <div className="relative">
+              <input
+                 type="text"
+                 placeholder="Tìm theo tỉnh..."
+                 value={provQuery}
+                 onChange={(e) => setProvQuery(e.target.value)}
+                 className="w-48 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+           </div>
 
            <div className="relative">
               <input
                  type="text"
-                 placeholder="Tìm theo tên sự kiện..."
+                 placeholder="Tìm tên sự kiện..."
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
-                 className="w-48 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 placeholder:text-slate-400"
+                 className="w-48 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
            </div>
 
            <div className="relative">
               <select
                   value={hazardType}
                   onChange={(e) => setHazardType(e.target.value)}
-                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer max-w-[180px] truncate"
+                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
                   <option value="all">Tất cả thiên tai</option>
                   <option value="storm">Bão, ATNĐ</option>
                   <option value="flood_landslide">Lũ, Ngập, Sạt lở</option>
                   <option value="heat_drought">Hạn hán, Mặn</option>
                   <option value="wind_fog">Gió, Sương mù</option>
-                  <option value="storm_surge">Nước dâng, Triều cường</option>
-                  <option value="extreme_other">Lốc, Sét, Rét...</option>
+                  <option value="storm_surge">Nước dâng</option>
+                  <option value="extreme_other">Cực đoan khác</option>
                   <option value="wildfire">Cháy rừng</option>
-                  <option value="quake_tsunami">Động đất, Sóng thần</option>
+                  <option value="quake_tsunami">Động đất</option>
               </select>
               <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
            </div>
 
+            <div 
+              onClick={() => dateInputRef.current?.showPicker()}
+              className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-1.5 shadow-sm relative group hover:border-blue-300 transition-all cursor-pointer min-w-[140px] justify-center"
+            >
+              <span className="text-sm font-bold text-slate-700 whitespace-nowrap">
+                 {startDate.split('-').reverse().join('/')}
+              </span>
+              <Calendar className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+              <input 
+                  ref={dateInputRef}
+                  type="date"
+                  value={startDate} 
+                  onChange={(e) => {
+                     setStartDate(e.target.value);
+                     setEndDate(""); 
+                  }}
+                  className="absolute inset-0 opacity-0 -z-10 pointer-events-none"
+              />
+            </div>
 
-
-          <div className="bg-white rounded-lg border border-slate-200 p-1 flex items-center shadow-sm">
-            {[24, 48, 72].map((h) => (
-              <button
-                key={h}
-                onClick={() => setHours(h)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  hours === h
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                {h}h
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={load}
-            className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </button>
+           <button 
+             onClick={handleReset}
+             title="Đặt lại tất cả bộ lọc"
+             className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-500 transition-all shadow-sm group"
+           >
+             <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} />
+           </button>
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title={`Sự kiện mới (${hours}h)`}
+          title={isToday ? "Sự kiện mới (24h)" : `Sự kiện ngày ${startDate}`}
           value={stats?.events_count || 0}
-          sub={stats?.needs_verification_count > 0 ? `${stats.needs_verification_count} tin cần xác minh` : "Dữ liệu thời gian thực"}
+          sub={stats?.needs_verification_count ? `${stats.needs_verification_count} tin cần xác minh` : "Dữ liệu thời gian thực"}
           icon={Activity}
           trend={stats?.events_count > 0 ? "up" : "neutral"}
           color="text-blue-600"
-          active={quickFilter === "all"}
-          onClick={() => setQuickFilter("all")}
+          active={quickFilter === null}
+          onClick={() => setQuickFilter(null)}
         />
-        
         <StatCard
           title="Tỉnh thành ảnh hưởng"
           value={stats?.provinces_count || 0}
-          sub={`Ghi nhận trong ${hours}h qua`}
+          sub="Ghi nhận trong kỳ"
           icon={MapPin}
-          trend="neutral"
           color="text-orange-600"
           active={quickFilter === "provinces"}
-          onClick={() => setQuickFilter(quickFilter === "provinces" ? "all" : "provinces")}
+          onClick={() => setQuickFilter(quickFilter === "provinces" ? null : "provinces")}
         />
-
         <StatCard
-          title="Báo cáo thiệt hại người"
-          value={(() => {
-              return rawEvents.filter(e => (e.deaths || 0) + (e.missing || 0) + (e.injured || 0) > 0).length;
-          })()}
-          sub="Sự kiện ghi nhận thương vong"
+          title="Sự kiện có thiệt hại người"
+          value={stats?.events_with_human_damage || 0}
+          sub="Số vụ ghi nhận thương vong"
           icon={AlertTriangle}
           color="text-red-500"
           active={quickFilter === "casualties"}
-          onClick={() => setQuickFilter(quickFilter === "casualties" ? "all" : "casualties")}
+          onClick={() => setQuickFilter(quickFilter === "casualties" ? null : "casualties")}
         />
-
         <StatCard
-          title="Báo cáo thiệt hại tài sản"
-          value={(() => {
-              return rawEvents.filter(e => {
-                  const hasAmount = (e.damage_billion_vnd || 0) > 0;
-                  const details = e.details || {};
-                  const hasDetails = (details.homes?.length > 0) || (details.agriculture?.length > 0) || (details.infrastructure?.length > 0) || (details.marine?.length > 0);
-                  return hasAmount || hasDetails;
-              }).length;
-          })()}
-          sub="Sự kiện ghi nhận mất mát tài sản"
+          title="Sự kiện có thiệt hại tài sản"
+          value={stats?.events_with_property_damage || 0}
+          sub="Số vụ ghi nhận mất mát tài sản"
           icon={TrendingUp}
           color="text-emerald-500"
           active={quickFilter === "damage"}
-          onClick={() => setQuickFilter(quickFilter === "damage" ? "all" : "damage")}
+          onClick={() => setQuickFilter(quickFilter === "damage" ? null : "damage")}
         />
       </div>
 
-      {/* Main Content Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left Column: Map & Risky Provinces (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Recent Events Table */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center">
               <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-500" />
-                Danh sách sự kiện
+                <Activity className="w-4 h-4 text-emerald-500" /> Danh sách sự kiện
               </h3>
-              <Link to="/events" className="text-xs flex items-center gap-1 text-slate-500 hover:text-slate-900 transition-colors">
+              <Link to="/events" className="text-xs flex items-center gap-1 text-slate-500 hover:text-slate-900">
                 Xem tất cả <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
-            <div className="divide-y divide-slate-100 flex-1">
+            <div className="divide-y divide-slate-100 flex-1 min-h-[1050px]">
               {events.slice(page * 10, (page + 1) * 10).map((event) => (
-                <div key={event.id} className="p-4 hover:bg-slate-50 transition-colors group">
+                <div key={event.id} className="p-4 hover:bg-slate-50 transition-colors group relative border-l-4 border-transparent hover:border-blue-500/30">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={`inline-block w-2 h-2 rounded-full`} style={{ backgroundColor: THEME_COLORS[event.disaster_type] || THEME_COLORS.unknown }}></span>
-                      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <Badge tone={TYPE_TONES[event.disaster_type] || "slate"} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
                         {fmtType(event.disaster_type)}
-                      </span>
+                      </Badge>
                     </div>
                   </div>
-                  <Link to={`/events/${event.id}`} className="block">
-                    <h4 className="font-medium text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1 mb-1">
+                  <Link to={`/events/${event.id}`}>
+                    <h4 className="font-bold text-slate-930 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2 text-sm leading-tight">
                       {event.title}
                     </h4>
                   </Link>
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {event.province}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {fmtDate(event.started_at)}
-                    </span>
+                  <div className="flex items-center gap-4 text-[11px] text-slate-500">
+                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {event.province}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(event.started_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               ))}
-              {events.length === 0 && (
-                <div className="p-8 text-center text-slate-500 text-sm">
-                  Chưa có dữ liệu sự kiện gần đây
-                </div>
-              )}
+              {events.length === 0 && <div className="p-8 text-center text-slate-500 text-sm">Chưa có dữ liệu sự kiện</div>}
             </div>
-            {/* Pagination Controls */}
-            {events.length > 10 && (
-              <div className="p-3 border-t border-slate-100 flex justify-between items-center bg-slate-50/50">
+
+            {/* Pagination Controls - Fixed at Bottom */}
+            {events.length > 0 && (
+              <div className="mt-auto p-4 border-t border-slate-100 flex justify-center items-center gap-2 bg-slate-50/30">
                 <button
                   onClick={() => setPage(p => Math.max(0, p - 1))}
                   disabled={page === 0}
-                  className="px-3 py-1 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Trước
                 </button>
-                <span className="text-xs text-slate-500">
-                  Trang {page + 1} / {Math.ceil(events.length / 10)}
-                </span>
+                
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const totalPages = Math.ceil(events.length / 10);
+                    const currentPage = page + 1;
+                    const items = [];
+                    for (let i = 1; i <= totalPages; i++) {
+                      const showPage = i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1;
+                      if (!showPage) {
+                        if (i === 2 && currentPage > 3) {
+                           items.push(<span key="d1" className="px-1 text-slate-400">...</span>);
+                           i = currentPage - 2;
+                        } else if (i === currentPage + 2 && i < totalPages) {
+                           items.push(<span key="d2" className="px-1 text-slate-400">...</span>);
+                           i = totalPages - 1;
+                        }
+                        continue;
+                      }
+                      items.push(
+                        <button
+                          key={i}
+                          onClick={() => setPage(i - 1)}
+                          className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                            i === currentPage
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+                    return items;
+                  })()}
+                </div>
+
                 <button
                   onClick={() => setPage(p => Math.min(Math.ceil(events.length / 10) - 1, p + 1))}
                   disabled={page >= Math.ceil(events.length / 10) - 1}
-                  className="px-3 py-1 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  Sau
+                  Tiếp
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: Charts & Feeds (1/3 width) */}
         <div className="space-y-6">
-          
-          {/* Top Risky Provinces */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-orange-500" />
-              Điểm nóng rủi ro
+              <AlertTriangle className="w-4 h-4 text-orange-500" /> Điểm nóng rủi ro
             </h3>
-            <div className="space-y-3">
-              {riskiest?.slice(0, 10).map((p, idx) => (
-                <div key={p.province} className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold">
-                      {idx + 1}
-                    </span>
-                    <span className="font-medium text-slate-700">{p.province}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="font-bold text-slate-900 text-lg">{p.events}</span>
-                    <span className="text-xs text-slate-500 ml-1">vụ</span>
-                  </div>
-                </div>
-              ))}
-              {!riskiest || riskiest.length === 0 && (
-                <div className="text-center text-slate-400 text-xs py-4">Không có dữ liệu</div>
-              )}
+            <div className="space-y-1">
+              {riskiestHotspots?.slice(0, 15).map((p, idx) => {
+                const isActive = provQuery === p.province;
+                return (
+                  <button 
+                    key={p.province} 
+                    onClick={() => setProvQuery(isActive ? "" : p.province)}
+                    className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg transition-all ${
+                      isActive 
+                        ? "bg-blue-50 border border-blue-100 shadow-sm" 
+                        : "hover:bg-slate-50 border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${
+                        isActive ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>{idx + 1}</span>
+                      <span className={`text-sm font-medium ${isActive ? "text-blue-700" : "text-slate-700"}`}>{p.province}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className={`font-bold text-sm ${isActive ? "text-blue-900" : "text-slate-900"}`}>{p.events}</span>
+                      <span className={`text-[10px] ml-1 ${isActive ? "text-blue-500" : "text-slate-500"}`}>vụ</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Simple Type Distribution Chart */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h3 className="font-semibold text-slate-900 mb-4">Phân loại thiên tai</h3>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={chartData} 
-                  layout="vertical" 
-                  margin={{ left: 0, right: 30 }}
-                  barCategoryGap="15%" // Add space between bars
-                >
+                <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 30 }} barCategoryGap="15%">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                   <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={100} tickFormatter={fmtType} tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    cursor={{fill: '#f1f5f9'}}
-                    content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                            <div className="bg-white p-2 border border-slate-200 shadow-md rounded-lg text-xs">
-                            <span className="font-semibold">{fmtType(data.name)}</span>: {data.count}
-                            </div>
-                        );
-                        }
-                        return null;
-                    }}
-                  />
+                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
+                  <Tooltip cursor={{fill: '#f1f5f9'}} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={24}>
-                    {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                    {/* Label at the end of bar */}
+                    {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
                     <LabelList dataKey="count" position="right" fontSize={12} fontWeight={600} fill="#64748b" /> 
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-
         </div>
       </div>
     </div>

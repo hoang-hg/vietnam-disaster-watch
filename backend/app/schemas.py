@@ -43,6 +43,7 @@ class EventOut(BaseModel):
 
     confidence: float
     sources_count: int
+    articles_count: int = 0
     needs_verification: int = 0
     image_url: str | None = None
     source: str | None = None

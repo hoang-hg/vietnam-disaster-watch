@@ -11,17 +11,18 @@ export function fmtType(t) {
   const map = {
     // Decision 18/2021/QD-TTg Exact Names
     storm: "Bão, Áp thấp nhiệt đới",
-    flood_landslide: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
+    flood_landslide: "Mưa lớn, Lũ Lụt, Lũ quét, Sạt lở đất",
     heat_drought: "Nắng nóng, Hạn hán, Xâm nhập mặn",
     wind_fog: "Gió mạnh trên biển, Sương mù",
     storm_surge: "Nước dâng",
     extreme_other: "Lốc, Sét, Mưa đá, Rét hại, Sương muối",
     wildfire: "Cháy rừng tự nhiên",
     quake_tsunami: "Động đất, Sóng thần",
+    recovery: "Khắc phục",
     
     // Legacy / Fallback
     flood: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
-    landslide: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
+    landslide: "Mưa lớn, Lũ Lụt, Lũ quét, Sạt lở đất",
     heavy_rain: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
     earthquake: "Động đất, Sóng thần",
     tsunami: "Động đất, Sóng thần",

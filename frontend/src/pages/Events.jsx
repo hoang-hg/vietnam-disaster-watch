@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   getJson,
   fmtType,
@@ -7,19 +7,22 @@ import {
   fmtVndBillion,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle } from "lucide-react";
+import { THEME_COLORS } from "../theme.js";
+import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle, ArrowRight, Calendar } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
 
 // Updated tones for 8 groups
 const TYPE_TONES = {
-  storm: "blue", // Bão
-  flood_landslide: "cyan", // Mưa lũ
-  heat_drought: "orange", // Nắng nóng
-  wind_fog: "slate", // Gió
-  storm_surge: "purple", // Nước dâng
-  extreme_other: "red", // Cực đoan khác
-  wildfire: "amber", // Cháy rừng
-  quake_tsunami: "green", // Động đất
+  storm: "blue",
+  flood_landslide: "cyan",
+  heat_drought: "orange",
+  wind_fog: "slate",
+  storm_surge: "purple",
+  extreme_other: "yellow",
+  wildfire: "red",
+  quake_tsunami: "green",
+  recovery: "indigo",
+  relief_aid: "pink",
   unknown: "slate",
 };
 
@@ -28,10 +31,17 @@ const TYPE_TONES = {
 // Extract provinces for dropdown
 // Must match PROVINCE_MAPPING keys in backend/app/nlp.py
 const PROVINCES = [
-  "Hà Nội", "Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Thái Nguyên", "Phú Thọ", "Bắc Ninh", "Hưng Yên", "Hải Phòng", "Ninh Bình", "Quảng Trị", "Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Khánh Hòa", "Lâm Đồng", "TP Hồ Chí Minh", "Đồng Nai", "Long An", "An Giang", "Cần Thơ", "Tiền Giang", "Vĩnh Long", "Bạc Liêu", "Trà Vinh"
+  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
+  "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh",
+  "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình",
+  "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế",
+  "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa",
+  "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp",
+  "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
 ].sort();
 
 export default function Events() {
+  const dateInputRef = useRef(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -39,12 +49,12 @@ export default function Events() {
   const [q, setQ] = useState("");
   const [type, setType] = useState("");
   const [province, setProvince] = useState("");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState("");
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 24;
+  const itemsPerPage = 40;
   
   const [error, setError] = useState(null);
 
@@ -61,14 +71,16 @@ export default function Events() {
       if (!isBackground) setLoading(true);
       setError(null);
       
-      // Fetch base data first (filtered by Type and Date on server for efficiency)
+      // Fetch base data first (filtered by Category on server for efficiency)
       const params = new URLSearchParams();
-      params.append("limit", "200"); // Get enough data 
+      params.append("limit", "1200"); // 40 items * 20 pages
+      
       if (type) params.append("type", type);
-      if (startDate) params.append("start_date", startDate);
-      if (endDate) params.append("end_date", endDate);
-      // Note: We don't send 'q' and 'province' to server anymore to support smart local filtering
-
+      
+      // Use startDate as the 'Ceiling' to fill the list chronologically backwards
+      if (startDate) params.append("end_date", startDate);
+      if (endDate) params.append("start_date", endDate); // Inversed or dual range if needed
+      
       const evs = await getJson(`/api/events?${params.toString()}`);
       
       let filteredEvents = evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
@@ -89,6 +101,9 @@ export default function Events() {
             return target.includes(query) || query.includes(target);
           });
       }
+      
+      // Sort by newest first
+      filteredEvents.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
       
       setEvents(filteredEvents);
       // Only reset page on explicit filter change (user interaction), NOT on background refresh
@@ -119,19 +134,40 @@ export default function Events() {
   }, [q, type, province, startDate, endDate]);
 
   const clearFilters = () => {
-      setQ("");
-      setType("");
-      setProvince("");
-      setStartDate("");
-      setEndDate("");
-      setCurrentPage(1);
+    setQ("");
+    setType("");
+    setProvince("");
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setEndDate("");
+    setCurrentPage(1);
   };
 
   // Pagination logic
   const totalPages = Math.ceil(events.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEvents = events.slice(startIndex, endIndex);
+
+  // Group events by date for rendering
+  const groupedEvents = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentEvents = events.slice(startIndex, startIndex + itemsPerPage);
+    
+    const groups = {};
+    const todayStr = new Date().toLocaleDateString('vi-VN');
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toLocaleDateString('vi-VN');
+
+    currentEvents.forEach(e => {
+        const d = new Date(e.started_at);
+        const dateStr = d.toLocaleDateString('vi-VN');
+        let label = dateStr;
+        if (dateStr === todayStr) label = "Hôm nay";
+        else if (dateStr === yesterdayStr) label = "Hôm qua";
+        
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(e);
+    });
+    return Object.entries(groups);
+  }, [events, currentPage, itemsPerPage]);
 
   const hasFilters = q || type || province || startDate || endDate;
 
@@ -203,33 +239,36 @@ export default function Events() {
                     ))}
                 </select>
             </div>
-            {/* Date Range - Simplified to Start Date for now or range logic */}
-            <div>
-                 <input 
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
-                    placeholder="Từ ngày"
-                 />
-            </div>
-            <div className="flex gap-2">
-                 <input 
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
-                    placeholder="Đến ngày"
-                 />
-                 {hasFilters && (
-                     <button 
-                        onClick={clearFilters}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Xóa bộ lọc"
-                     >
-                        <X className="w-5 h-5" />
-                     </button>
-                 )}
+            {/* Date Pill (Dashboard Style) */}
+            <div className="flex items-center gap-2">
+                <div 
+                    onClick={() => dateInputRef.current?.showPicker()}
+                    className="flex-1 flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 hover:border-blue-400 hover:bg-white transition-all cursor-pointer shadow-sm group"
+                >
+                    <span className="text-sm font-bold text-slate-700">
+                        {startDate ? startDate.split('-').reverse().join('/') : "Tất cả thời gian"}
+                    </span>
+                    <Calendar className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+                    <input 
+                        ref={dateInputRef}
+                        type="date"
+                        value={startDate} 
+                        onChange={(e) => {
+                            setStartDate(e.target.value);
+                            setEndDate(""); 
+                        }}
+                        className="absolute opacity-0 pointer-events-none"
+                    />
+                </div>
+                {hasFilters && (
+                    <button 
+                         onClick={clearFilters}
+                         className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 shadow-sm"
+                         title="Xóa bộ lọc"
+                    >
+                         <X className="w-5 h-5" />
+                    </button>
+                )}
             </div>
         </div>
       </div>
@@ -238,198 +277,162 @@ export default function Events() {
 
       {/* Results count */}
       {!loading && events.length > 0 && (
-        <div className="mb-4 text-sm text-slate-600">
-          Hiển thị {startIndex + 1}-{Math.min(endIndex, events.length)} trong tổng số {events.length} sự kiện
-          {totalPages > 1 && ` (Trang ${currentPage}/${totalPages})`}
+        <div className="mb-6 flex items-center justify-between">
+           <div className="text-sm text-slate-600 font-medium">
+             Hiển thị <span className="text-slate-900">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, events.length)}</span> trong tổng số <span className="text-slate-900">{events.length}</span> sự kiện
+           </div>
+           {Math.ceil(events.length / itemsPerPage) > 1 && (
+             <div className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md font-bold">
+                TRANG {currentPage} / {Math.ceil(events.length / itemsPerPage)}
+             </div>
+           )}
         </div>
       )}
 
-      {/* Results Grid - Compact 4 cols */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {currentEvents.map((e) => (
-          <a
-            key={e.id}
-            href={`/events/${e.id}`}
-            className="block group bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-300 flex flex-col overflow-hidden relative"
-          >
-            {/* Top Border Indicator */}
-            <div className="h-1.5 w-full bg-blue-500"></div>
-            
-            {/* 0. Image Area */}
-            <div className="w-full h-40 overflow-hidden relative flex items-center justify-center bg-slate-50">
-                 {!isJunkImage(e.image_url) ? (
-                    <img 
-                      src={e.image_url} 
-                      alt={e.title} 
-                      className={
-                          e.image_url.endsWith('.svg')
-                            ? "w-20 h-20 object-contain opacity-50 transition-transform duration-500 group-hover:scale-110" 
-                            : "w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      }
-                    />
-                 ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white">
-                        <img 
-                            src={logoIge} 
-                            alt="Logo IGE" 
-                            className="w-24 h-24 object-contain opacity-95 group-hover:scale-110 transition-transform duration-500" 
-                            style={{ mixBlendMode: 'multiply' }}
-                        />
-                        <div className={`mt-2 h-1 w-12 rounded-full ${
-                             e.disaster_type === 'storm' ? 'bg-blue-500' :
-                             e.disaster_type === 'flood_landslide' ? 'bg-cyan-500' :
-                             e.disaster_type === 'heat_drought' ? 'bg-orange-500' :
-                             e.disaster_type === 'wildfire' ? 'bg-red-500' :
-                             e.disaster_type === 'quake_tsunami' ? 'bg-emerald-500' :
-                             e.disaster_type === 'wind_fog' ? 'bg-slate-400' :
-                             e.disaster_type === 'storm_surge' ? 'bg-purple-500' :
-                             'bg-slate-300'
-                        }`}></div>
-                    </div>
-                 )}
-                 {/* Badge Overlay */}
-                 <div className="absolute top-3 left-3 flex flex-col gap-2">
-                    <Badge tone={TYPE_TONES[e.disaster_type] || "slate"}>
-                       {fmtType(e.disaster_type)}
-                    </Badge>
-                    {e.needs_verification === 1 && (
-                       <Badge tone="red" className="animate-pulse">
-                          Cần kiểm chứng
-                       </Badge>
-                    )}
-                 </div>
-            </div>
-
-            {/* 1. Header: Title + Province */}
-            <div className="p-4 flex-1 flex flex-col">
-               <h2 className="text-sm font-bold text-slate-900 line-clamp-3 mb-2 group-hover:text-blue-600 transition-colors leading-snug">
-                  {e.title}
+      {/* Results Grid - Grouped by Date */}
+      <div className="space-y-12">
+        {groupedEvents.map(([label, items]) => (
+          <div key={label} className="space-y-6">
+            <div className="flex items-center gap-4">
+               <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight flex-shrink-0">
+                  {label}
                </h2>
-               
-               {/* Province + Time */}
-               <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                  {e.province && (
-                     <div className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        <span>{e.province}</span>
-                     </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                     <Clock className="w-3.5 h-3.5" />
-                     <span>{fmtTimeAgo(e.started_at)}</span>
-                  </div>
-                  {e.source && (
-                     <span className="font-semibold text-red-600 uppercase text-[10px]">
-                        {e.source}
-                     </span>
-                  )}
-               </div>
-
-
-               {/* 2. Impact Stats Grid (Dynamic & Prioritized) */}
-               <div className="flex flex-wrap gap-2 mb-4">
-                  {(() => {
-                    const prioritized = [];
-                    const details = e.details || {};
-
-                    // 1. Core Human Casualties (from columns)
-                    if (e.deaths > 0) prioritized.push({ type: 'deaths', label: `${e.deaths} chết`, priority: 100, color: 'red' , icon: Zap });
-                    if (e.missing > 0) prioritized.push({ type: 'missing', label: `${e.missing} mất tích`, priority: 90, color: 'orange', icon: Users });
-                    if (e.injured > 0) prioritized.push({ type: 'injured', label: `${e.injured} bị thương`, priority: 80, color: 'yellow', icon: Activity });
-
-                    // 2. Financial (from column)
-                    if (e.damage_billion_vnd > 0) prioritized.push({ type: 'damage', label: fmtVndBillion(e.damage_billion_vnd), priority: 70, color: 'blue', icon: DollarSign });
-
-                    // 3. Extended details (from JSON)
-                    // Check 'homes'
-                    if (details.homes && details.homes.length > 0) {
-                        // Take the largest number or first
-                        const best = details.homes.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.homes[0]);
-                        prioritized.push({ 
-                            type: 'homes', 
-                            label: `${best.num} ${best.unit || 'nhà'}`, // e.g. "50 nhà", "50 tốc mái"
-                            priority: 60, 
-                            color: 'indigo',
-                            icon: MapPin // Placeholder icon
-                        });
-                    }
-                    
-                    // Check 'disruption' (evacuation)
-                    if (details.disruption && details.disruption.length > 0) {
-                        const best = details.disruption.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.disruption[0]);
-                         prioritized.push({ 
-                            type: 'disruption', 
-                            label: `${best.num} ${best.unit || 'di dời'}`, 
-                            priority: 55, 
-                            color: 'slate',
-                            icon: Users
-                        });
-                    }
-
-                    // Check 'agriculture'
-                    if (details.agriculture && details.agriculture.length > 0) {
-                        const best = details.agriculture.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.agriculture[0]);
-                        prioritized.push({ 
-                            type: 'agriculture', 
-                            label: `${best.num} ${best.unit || 'ha'}`, 
-                            priority: 40, 
-                            color: 'green',
-                            icon: Filter
-                        });
-                    }
-
-                    // Check 'marine'
-                    if (details.marine && details.marine.length > 0) {
-                        const best = details.marine.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.marine[0]);
-                        prioritized.push({ 
-                            type: 'marine', 
-                            label: `${best.num} ${best.unit || 'tàu'}`, 
-                            priority: 30, 
-                            color: 'cyan',
-                            icon: Activity
-                        });
-                    }
-
-                    // Sort by priority desc
-                    prioritized.sort((a, b) => b.priority - a.priority);
-
-                    // Show top 4
-                    return prioritized.slice(0, 4).map((item) => {
-                        const Icon = item.icon;
-                        const colorClass = {
-                            red: "text-red-700 bg-red-50",
-                            orange: "text-orange-700 bg-orange-50",
-                            yellow: "text-yellow-700 bg-yellow-50",
-                            blue: "text-blue-700 bg-blue-50",
-                            indigo: "text-indigo-700 bg-indigo-50",
-                            slate: "text-slate-700 bg-slate-100",
-                            green: "text-green-700 bg-green-50",
-                            cyan: "text-cyan-700 bg-cyan-50"
-                        }[item.color] || "text-slate-700 bg-slate-50";
-
-                        return (
-                            <div key={item.type} className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg ${colorClass}`}>
-                                <Icon className="w-3.5 h-3.5" />
-                                <span>{item.label}</span>
-                            </div>
-                        );
-                    });
-                  })()}
-               </div>
-
-               {/* 3. Metadata Footer */}
-               <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-3">
-                     <div className="flex items-center gap-1 text-slate-500">
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>{e.sources_count || 1} nguồn</span>
-                     </div>
-
-                  </div>
-                  <span className="text-slate-400">{fmtDate(e.started_at)}</span>
-               </div>
+               <div className="h-px bg-slate-200 flex-1"></div>
             </div>
-          </a>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {items.map((e) => (
+                <a
+                  key={e.id}
+                  href={`/events/${e.id}`}
+                  className="block group bg-white rounded-2xl border-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm"
+                  style={{ borderColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}
+                >
+                  <div className="h-1 w-full" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
+                  <div className="w-full h-44 overflow-hidden relative flex items-center justify-center bg-slate-100/30">
+                       {!isJunkImage(e.image_url) ? (
+                          <img 
+                            src={e.image_url} 
+                            alt={e.title} 
+                            className={
+                                e.image_url.endsWith('.svg')
+                                  ? "w-24 h-24 object-contain opacity-50 transition-transform duration-500 group-hover:scale-110" 
+                                  : "w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                            }
+                          />
+                       ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white">
+                              <img 
+                                  src={logoIge} 
+                                  alt="Logo IGE" 
+                                  className="w-28 h-28 object-contain opacity-95 group-hover:scale-110 transition-transform duration-700" 
+                                  style={{ mixBlendMode: 'multiply' }}
+                              />
+                              <div className="mt-3 h-1.5 w-16 rounded-full" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
+                          </div>
+                       )}
+                       <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
+                          <Badge tone={TYPE_TONES[e.disaster_type] || "slate"} className="shadow-md">
+                             {fmtType(e.disaster_type)}
+                          </Badge>
+                          {e.needs_verification === 1 && (e.deaths > 0 || e.missing > 0 || e.damage_billion_vnd >= 1) && (
+                             <div className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg border border-red-400/30">
+                                Cần kiểm chứng
+                             </div>
+                          )}
+                       </div>
+                  </div>
+
+                  <div className="p-5 flex-1 flex flex-col">
+                     <h2 className="text-[15px] font-bold text-slate-900 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors leading-snug h-11">
+                        {e.title}
+                     </h2>
+                     <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-5">
+                        {e.province && (
+                           <div className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
+                              <MapPin className="w-3 h-3 text-slate-400" />
+                              <span className="font-medium">{e.province}</span>
+                           </div>
+                        )}
+                        <div className="flex items-center gap-1 font-medium">
+                           <Clock className="w-3 h-3 text-slate-400" />
+                           <span>{fmtTimeAgo(e.started_at)}</span>
+                        </div>
+                        {e.source && (
+                           <span className="font-bold text-red-500 uppercase ml-auto">{e.source}</span>
+                        )}
+                     </div>
+
+                     <div className="flex flex-wrap gap-2 mb-4 min-h-[32px]">
+                        {(() => {
+                          const prioritized = [];
+                          const details = e.details || {};
+                          
+                          // 1. Core Human Casualties
+                          if (e.deaths > 0) prioritized.push({ type: 'deaths', label: `${e.deaths} chết`, priority: 100, color: 'red', icon: Zap });
+                          if (e.missing > 0) prioritized.push({ type: 'missing', label: `${e.missing} mất tích`, priority: 90, color: 'orange', icon: Users });
+                          if (e.injured > 0) prioritized.push({ type: 'injured', label: `${e.injured} bị thương`, priority: 80, color: 'yellow', icon: Activity });
+
+                          // 2. Financial
+                          if (e.damage_billion_vnd > 0) prioritized.push({ type: 'damage', label: fmtVndBillion(e.damage_billion_vnd), priority: 70, color: 'blue', icon: DollarSign });
+                          
+                          // 3. Other Details
+                          if (details.homes && details.homes.length > 0) {
+                              const best = details.homes.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.homes[0]);
+                              prioritized.push({ type: 'homes', label: `${best.num} ${best.unit || 'nhà'}`, priority: 60, color: 'indigo', icon: MapPin });
+                          }
+                          if (details.disruption && details.disruption.length > 0) {
+                              const best = details.disruption.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.disruption[0]);
+                              prioritized.push({ type: 'disruption', label: `${best.num} ${best.unit || 'di dời'}`, priority: 55, color: 'slate', icon: Users });
+                          }
+                          if (details.agriculture && details.agriculture.length > 0) {
+                              const best = details.agriculture.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.agriculture[0]);
+                              prioritized.push({ type: 'agriculture', label: `${best.num} ${best.unit || 'ha'}`, priority: 50, color: 'green', icon: Filter });
+                          }
+                          if (details.marine && details.marine.length > 0) {
+                              const best = details.marine.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.marine[0]);
+                              prioritized.push({ type: 'marine', label: `${best.num} ${best.unit || 'tàu'}`, priority: 45, color: 'cyan', icon: Activity });
+                          }
+                          
+                          prioritized.sort((a, b) => b.priority - a.priority);
+                          
+                          // Show only the top 2 most important stats
+                          return prioritized.slice(0, 2).map((item) => {
+                              const Icon = item.icon;
+                              const colorClass = { 
+                                  red: "text-red-700 bg-red-50 border border-red-100",
+                                  orange: "text-orange-700 bg-orange-50 border border-orange-100",
+                                  yellow: "text-yellow-700 bg-yellow-50 border border-yellow-100",
+                                  blue: "text-blue-700 bg-blue-50 border border-blue-100", 
+                                  indigo: "text-indigo-700 bg-indigo-50 border border-indigo-100", 
+                                  slate: "text-slate-700 bg-slate-50 border border-slate-100",
+                                  green: "text-emerald-700 bg-emerald-50 border border-emerald-100",
+                                  cyan: "text-cyan-700 bg-cyan-50 border border-cyan-100"
+                              }[item.color] || "text-slate-700 bg-slate-50";
+                              
+                              return (
+                                  <div key={item.type} className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm ${colorClass}`}>
+                                      <Icon className="w-3.5 h-3.5" />
+                                      <span>{item.label}</span>
+                                  </div>
+                              );
+                          });
+                        })()}
+                     </div>
+
+                     <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-1 text-slate-500">
+                              <FileText className="w-3.5 h-3.5" />
+                              <span>{e.sources_count || 1} nguồn</span>
+                           </div>
+                        </div>
+                        <span className="text-slate-400 font-medium">{new Date(e.started_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+                     </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
 

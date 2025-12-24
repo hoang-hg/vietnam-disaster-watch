@@ -16,9 +16,11 @@ const TYPE_TONES = {
   heat_drought: "orange",
   wind_fog: "slate",
   storm_surge: "purple",
-  extreme_other: "amber",
+  extreme_other: "yellow",
   wildfire: "red",
-  quake_tsunami: "emerald",
+  quake_tsunami: "green",
+  recovery: "indigo",
+  relief_aid: "pink",
   unknown: "slate",
 };
 
@@ -110,7 +112,7 @@ export default function EventDetail() {
               {fmtType(ev.disaster_type)}
             </Badge>
             {ev.needs_verification === 1 && (
-              <Badge tone="red" className="animate-pulse">
+              <Badge tone="red">
                 Dữ liệu cần kiểm chứng
               </Badge>
             )}
@@ -122,26 +124,110 @@ export default function EventDetail() {
 
       <div className="mt-4 flex flex-wrap gap-3">
         {ev.deaths ? (
-          <div className="bg-red-50 text-red-800 px-3 py-1 rounded text-sm">
+          <div className="bg-red-50 text-red-700 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
             Tử vong: {ev.deaths}
           </div>
         ) : null}
         {ev.injured ? (
-          <div className="bg-yellow-50 text-yellow-800 px-3 py-1 rounded text-sm">
+          <div className="bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
             Bị thương: {ev.injured}
           </div>
         ) : null}
         {ev.missing ? (
-          <div className="bg-orange-50 text-orange-800 px-3 py-1 rounded text-sm">
+          <div className="bg-orange-50 text-orange-700 border border-orange-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
             Mất tích: {ev.missing}
           </div>
         ) : null}
         {ev.damage_billion_vnd ? (
-          <div className="bg-gray-50 text-gray-900 px-3 py-1 rounded text-sm">
+          <div className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
             Ước thiệt hại: {fmtVndBillion(ev.damage_billion_vnd)}
           </div>
         ) : null}
       </div>
+
+      {/* Detailed Impact Breakdown (homes, agriculture, etc.) */}
+      {ev.details && Object.keys(ev.details).length > 0 && (
+          <div className="mt-8 space-y-4">
+              <div className="flex items-center gap-2 text-slate-800 font-bold">
+                  <span className="w-1.5 h-5 bg-red-500 rounded-full"></span>
+                  Chi tiết thiệt hại trích xuất
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Housing Details */}
+                  {ev.details.homes?.length > 0 && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                          <div className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                               <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
+                               Nhà cửa & Công trình
+                          </div>
+                          <div className="space-y-2">
+                              {ev.details.homes.map((h, i) => (
+                                  <div key={i} className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 truncate mr-2">{h.status || 'Hư hại'}</span>
+                                      <span className="font-bold text-slate-900 whitespace-nowrap">{h.num} {h.unit || 'căn'}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Agriculture Details */}
+                  {ev.details.agriculture?.length > 0 && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                          <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                               <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                               Nông nghiệp & Chăn nuôi
+                          </div>
+                          <div className="space-y-2">
+                              {ev.details.agriculture.map((a, i) => (
+                                  <div key={i} className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 truncate mr-2">{a.crop || a.livestock || 'Diện tích'} {a.status ? `(${a.status})` : ''}</span>
+                                      <span className="font-bold text-slate-900 whitespace-nowrap">{a.num} {a.unit}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Marine Details */}
+                  {ev.details.marine?.length > 0 && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                          <div className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                               Tàu thuyền & Thủy sản
+                          </div>
+                          <div className="space-y-2">
+                              {ev.details.marine.map((m, i) => (
+                                  <div key={i} className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 truncate mr-2">{m.vessel || 'Phương tiện'}</span>
+                                      <span className="font-bold text-slate-900 whitespace-nowrap">{m.num} {m.unit}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Disruption Details */}
+                  {ev.details.disruption?.length > 0 && (
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+                          <div className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                               <div className="w-2 h-2 rounded-full bg-slate-500"></div>
+                               Giao thông & Đời sống
+                          </div>
+                          <div className="space-y-2">
+                              {ev.details.disruption.map((d, i) => (
+                                  <div key={i} className="flex justify-between items-center text-sm">
+                                      <span className="text-slate-600 truncate mr-2">{d.obj || 'Số lượng'}</span>
+                                      <span className="font-bold text-slate-900 whitespace-nowrap">{d.num || ''} {d.unit || 'lần'}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
 
       {ev.articles && ev.articles.length > 0
         ? (() => {
@@ -250,7 +336,7 @@ export default function EventDetail() {
                     </>
                   ) : null}
                    {a.needs_verification === 1 && (
-                     <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse">
+                     <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
                         SỐ LIỆU CẦN XÁC MINH
                      </span>
                   )}

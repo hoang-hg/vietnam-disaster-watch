@@ -11,7 +11,30 @@ from fastapi.responses import StreamingResponse
 import asyncio
 from pathlib import Path
 import json
+from .nlp import RECOVERY_KEYWORDS, PROVINCES
+from .sources import DISASTER_KEYWORDS
+from .risk_lookup import canon
 from . import broadcast
+
+# Unified filtering rules for Dashboard/Stats
+def filter_disaster_events(events):
+    filtered = []
+    for ev in events:
+        # Exclusion: Skip unknown/other
+        if ev.disaster_type in ["unknown", "other", None]:
+            continue
+            
+        # Decision 18 Logic: Skip purely administrative news if no impact and not a major hazard
+        is_impacting = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.injured or 0) > 0 or (ev.damage_billion_vnd or 0) > 0
+        major_hazards = ["storm", "flood_landslide", "wildfire", "quake_tsunami"]
+        
+        if not is_impacting and ev.disaster_type not in major_hazards:
+             d = ev.details or {}
+             if not (d.get("homes") or d.get("agriculture") or d.get("infrastructure") or d.get("marine")):
+                # Likely administrative/routine news
+                continue
+        filtered.append(ev)
+    return filtered
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -38,18 +61,27 @@ def latest_articles(
 
 @router.get("/events", response_model=list[EventOut])
 def events(
-    limit: int = Query(50, ge=1, le=1000),
+    limit: int = Query(50, ge=1, le=2000),
     hours: int | None = Query(None, ge=1, le=720),
     type: str | None = Query(None),
     province: str | None = Query(None),
     start_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
     end_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
     q: str | None = Query(None),
+    date: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     query = db.query(Event).order_by(desc(Event.started_at))
     
-    if hours:
+    if date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d")
+            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1)
+            query = query.filter(Event.started_at >= start, Event.started_at < end)
+        except ValueError:
+            pass
+    elif hours:
         since = datetime.utcnow() - timedelta(hours=hours)
         query = query.filter(Event.last_updated_at >= since)
 
@@ -73,19 +105,36 @@ def events(
     if q:
         query = query.filter(Event.title.ilike(f"%{q}%"))
         
-    q_events = query.limit(limit).all()
+    # Apply unified filter
+    raw_events = query.all()
+    filtered = filter_disaster_events(raw_events)
     
-    # Enrich with representative image and source from the first article
-    # This avoids a complex join if we just want "one" image.
-    # A cleaner SQL way would be a subquery, but iterating 50 items is fast enough.
-    results = []
-    for ev in q_events:
-        # Pydantic model will be created from ev, but we need to inject image_url/source
-        # We can't easily modify the ORM object if it's not loaded with those fields.
-        # So we fetch the first article.
-        first_article = db.query(Article).filter(Article.event_id == ev.id).order_by(desc(Article.published_at)).first()
-        
+    # Sort by impact priority before unique-province logic
+    # Priority: Casualties > Damage > Article Count > Confidence
+    filtered.sort(key=lambda x: (
+        (x.deaths or 0) + (x.missing or 0) + (x.injured or 0),
+        (x.damage_billion_vnd or 0.0),
+        (x.sources_count or 0),
+        (x.confidence or 0.0)
+    ), reverse=True)
+    
+    # Limit results
+    filtered = filtered[:limit]
+
+    events_out = []
+    for ev in filtered[:limit]:
         ev_data = EventOut.from_orm(ev)
+        # Articles count windowed
+        if hours:
+            h_start = datetime.utcnow() - timedelta(hours=hours)
+            ev_data.articles_count = db.query(Article).filter(
+                Article.event_id == ev.id,
+                Article.published_at >= h_start
+            ).count()
+        else:
+            ev_data.articles_count = db.query(Article).filter(Article.event_id == ev.id).count()
+
+        first_article = db.query(Article).filter(Article.event_id == ev.id).order_by(desc(Article.published_at)).first()
         if first_article:
             ev_data.image_url = first_article.image_url
             ev_data.source = first_article.source
@@ -107,11 +156,9 @@ def events(
                 
             ev_data.image_url = chosen_img
 
-        results.append(ev_data)
+        events_out.append(ev_data)
 
-    return results
-
-    return results
+    return events_out
 
 # Lightweight SVGs (stable CDN, pinned version)
 DEFAULT_IMAGES = {
@@ -159,37 +206,35 @@ def event_detail(event_id: int, db: Session = Depends(get_db)):
 
 @router.get("/stats/summary")
 def stats_summary(
-    hours: int = Query(24, ge=1, le=720),
-    date: str | None = Query(None),
+    hours: int = Query(24, ge=1, le=720), 
+    date: str | None = Query(None), 
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
-    if date:
-        # Filter for specific date (YYYY-MM-DD)
+    if start_date or end_date:
         try:
-            target_date = datetime.strptime(date, "%Y-%m-%d")
-            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
+            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
+        except ValueError:
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
+    elif date:
+        try:
+            target = datetime.strptime(date, "%Y-%m-%d")
+            start = target.replace(hour=0, minute=0, second=0)
             end = start + timedelta(days=1)
         except ValueError:
-            return {"error": "Invalid date format. Use YYYY-MM-DD"}
+             start = datetime.utcnow() - timedelta(hours=hours)
+             end = datetime.utcnow()
     else:
-        # Use hours filter
         start = datetime.utcnow() - timedelta(hours=hours)
         end = datetime.utcnow()
     
-    # Statistics Logic for Dashboard
-    # Statistics Logic for Dashboard (V4 - Ultra Strict)
-    STRICT_EXCLUSION = [
-        "nhật bản", "indonesia", "thái lan", "trung quốc", "mỹ", "hàn quốc", "nga", "philippines", 
-        "brazil", "châu âu", "thế giới", "vũ hán", "tokyo", "seoul", "bangkok", "manila",
-        "tổng kết", "nhìn lại", "kỷ niệm", "lịch sử",
-        "sau bão", "kể từ", "từ đầu năm", "con số thực", "địa cầu"
-    ]
-    
-    # 1. Total Activity: Recent articles updated (Exclude outliers from main count)
+    # 1. New articles count (total signals)
     total_articles = db.query(Article).filter(
         Article.published_at >= start, 
-        Article.published_at < end,
-        Article.needs_verification == 0
+        Article.published_at < end
     ).count()
 
     needs_verification_count = db.query(Article).filter(
@@ -197,69 +242,68 @@ def stats_summary(
         Article.published_at < end,
         Article.needs_verification == 1
     ).count()
+
+    # 2. Events Summary (Unique Provinces per User Request)
+    events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    filtered_events = filter_disaster_events(events)
     
-    # 2. Daily New Events: Only count events that BEGAN in this window
-    new_events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    provinces_seen = set()
+    for ev in filtered_events:
+        p = ev.province or "unknown"
+        if p in PROVINCES:
+            provinces_seen.add(p)
     
-    # Python-side aggregation with strict filters
-    grouped_impacts = {} 
+    events_count = len(filtered_events) 
+    provinces_count = len(provinces_seen)
+
+    # Calculate Impact Statistics (Aggregated by Province for Dashboard Consistency)
+    total_deaths = 0
+    total_missing = 0
+    total_injured = 0
     official_types = ["storm", "flood_landslide", "heat_drought", "wind_fog", "storm_surge", "extreme_other", "wildfire", "quake_tsunami"]
     type_counts = {t: 0 for t in official_types}
     type_counts["unknown"] = 0
-    provinces_seen = set()
-    filtered_events = []
+    
+    prov_impacts = {} # p -> {human: bool, prop: bool}
 
-    for ev in new_events:
-        title_lower = ev.title.lower() if ev.title else ""
-        
-        # SKIP Foreign News and Historical Summaries in Stats
-        if any(kw in title_lower for kw in STRICT_EXCLUSION):
-            continue
+    events_human_damage = 0
+    events_property_damage = 0
 
-        # SKIP Data needing verification from consolidated stats
-        if ev.needs_verification == 1:
-            continue
-            
-        filtered_events.append(ev)
-
+    for ev in filtered_events:
+        # 1. Type counts
         dtype = ev.disaster_type
         if dtype in type_counts:
             type_counts[dtype] += 1
         else:
             type_counts["unknown"] += 1
+
+        # 2. Cumulative Casualties
+        total_deaths += (ev.deaths or 0)
+        total_missing += (ev.missing or 0)
+        total_injured += (ev.injured or 0)
+
+        # 3. Individual Event Impact Flags
+        if (ev.deaths or 0) + (ev.missing or 0) + (ev.injured or 0) > 0:
+            events_human_damage += 1
             
-        if ev.province and ev.province != "unknown" and ev.province != "Toàn quốc":
-            provinces_seen.add(ev.province)
-
-        key = (ev.province, dtype)
-        if key not in grouped_impacts:
-            grouped_impacts[key] = {"deaths": 0, "missing": 0, "injured": 0}
-            
-        # Impact Clean-up Logic (MAX_REALISTIC_IMPACT = 100)
-        def clean_num(n):
-            val = n or 0
-            if 1900 <= val <= 2030 or val > 100: return 0
-            return val
-
-        d = clean_num(ev.deaths)
-        m = clean_num(ev.missing)
-        i = clean_num(ev.injured)
-
-        grouped_impacts[key]["deaths"] = max(grouped_impacts[key]["deaths"], d)
-        grouped_impacts[key]["missing"] = max(grouped_impacts[key]["missing"], m)
-        grouped_impacts[key]["injured"] = max(grouped_impacts[key]["injured"], i)
-        
-    total_deaths = sum(item["deaths"] for item in grouped_impacts.values())
-    total_missing = sum(item["missing"] for item in grouped_impacts.values())
-    total_injured = sum(item["injured"] for item in grouped_impacts.values())
+        has_prop = (ev.damage_billion_vnd or 0) > 0.0
+        d = ev.details or {}
+        if not has_prop:
+            # Check for specific impact categories in details
+            if d.get("homes") or d.get("agriculture") or d.get("infrastructure") or d.get("marine") or d.get("disruption") or d.get("damage"):
+                has_prop = True
+        if has_prop:
+            events_property_damage += 1
 
     return {
-        "window_hours": hours,
-        "window_label": f"Trong {hours}h qua",
+        "window_hours": hours if not date else 24,
+        "window_label": f"Ngày {date}" if date else f"Trong {hours}h qua",
         "articles_count": total_articles,
+        "events_with_human_damage": events_human_damage,
+        "events_with_property_damage": events_property_damage,
         "needs_verification_count": needs_verification_count,
-        "events_count": len(filtered_events),
-        "provinces_count": len(provinces_seen),
+        "events_count": events_count,
+        "provinces_count": provinces_count,
         "impacts": {
             "deaths": total_deaths,
             "missing": total_missing,
@@ -269,30 +313,69 @@ def stats_summary(
     }
 
 @router.get("/stats/timeline")
-def stats_timeline(hours: int = Query(24, ge=1, le=168), db: Session = Depends(get_db)):
-    """Timeline: số sự kiện theo giờ trong N giờ qua"""
-    since = datetime.utcnow() - timedelta(hours=hours)
+def stats_timeline(
+    hours: int = Query(24, ge=1, le=168), 
+    date: str | None = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Timeline: số sự kiện theo giờ."""
+    if start_date or end_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
+            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
+        except ValueError:
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
+    elif date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d")
+            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1)
+        except ValueError:
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
+    else:
+        start = datetime.utcnow() - timedelta(hours=hours)
+        end = datetime.utcnow()
     
     # Database agnostic hour grouping
     if engine.url.drivername.startswith("postgresql"):
-        # Postgres: date_trunc('hour', last_updated_at)
-        time_func = func.date_trunc('hour', Event.last_updated_at)
+        time_func = func.date_trunc('hour', Event.started_at)
     else:
-        # SQLite: strftime('%Y-%m-%d %H:00:00', last_updated_at)
-        time_func = func.strftime('%Y-%m-%d %H:00:00', Event.last_updated_at)
+        time_func = func.strftime('%Y-%m-%d %H:00:00', Event.started_at)
 
     query = db.query(
         time_func.label('hour'),
         func.count(Event.id).label('count')
-    ).filter(Event.last_updated_at >= since).group_by(
+    ).filter(Event.started_at >= start, Event.started_at < end).group_by(
         'hour'
     ).order_by('hour')
     
-    data = []
-    for hour, count in query.all():
-        data.append({"time": hour, "events": count})
+    results = {row[0]: row[1] for row in query.all()}
     
-    return {"hours": hours, "data": data}
+    # Fill gaps for 24h view if on a single date
+    data = []
+    if date:
+        for i in range(24):
+            h_str = (start + timedelta(hours=i)).strftime('%Y-%m-%d %H:00:00')
+            # For Postgres, the key might be a datetime object
+            found = False
+            for k, v in results.items():
+                k_str = k.strftime('%Y-%m-%d %H:00:00') if hasattr(k, 'strftime') else str(k)
+                if k_str == h_str:
+                    data.append({"time": h_str, "events": v})
+                    found = True
+                    break
+            if not found:
+                data.append({"time": h_str, "events": 0})
+    else:
+        for hour, count in query.all():
+            h_str = hour.strftime('%Y-%m-%d %H:00:00') if hasattr(hour, 'strftime') else str(hour)
+            data.append({"time": h_str, "events": count})
+    
+    return {"window": date or f"{hours}h", "data": data}
 
 
 @router.get('/stream/events')
@@ -419,21 +502,46 @@ def post_alert(payload: dict):
     return {'ok': True}
 
 @router.get("/stats/heatmap")
-def stats_heatmap(hours: int = Query(24, ge=1, le=168), db: Session = Depends(get_db)):
-    """Heatmap: số sự kiện theo tỉnh trong N giờ qua"""
-    since = datetime.utcnow() - timedelta(hours=hours)
+def stats_heatmap(
+    hours: int = Query(24, ge=1, le=168), 
+    date: str | None = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Heatmap: số sự kiện theo tỉnh"""
+    if start_date or end_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
+            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
+        except ValueError:
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
+    elif date:
+        try:
+            target_date = datetime.strptime(date, "%Y-%m-%d")
+            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            end = start + timedelta(days=1)
+        except ValueError:
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
+    else:
+        start = datetime.utcnow() - timedelta(hours=hours)
+        end = datetime.utcnow()
+
+    # Fetch and filter events using unified logic
+    events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    filtered_events = filter_disaster_events(events)
     
-    query = db.query(
-        Event.province,
-        func.count(Event.id).label('count')
-    ).filter(
-        Event.last_updated_at >= since,
-        Event.province != 'unknown'
-    ).group_by(Event.province).order_by(desc(func.count(Event.id)))
-    
-    data = []
-    for province, count in query.all():
-        data.append({"province": province, "events": count})
+    prov_counts = {}
+    for ev in filtered_events:
+        p = ev.province or "unknown"
+        if p in PROVINCES:
+            prov_counts[p] = prov_counts.get(p, 0) + 1
+            
+    # Sort and format
+    sorted_data = sorted(prov_counts.items(), key=lambda x: x[1], reverse=True)
+    data = [{"province": p, "events": c} for p, c in sorted_data]
     
     return {"hours": hours, "data": data}
 
@@ -441,16 +549,26 @@ def stats_heatmap(hours: int = Query(24, ge=1, le=168), db: Session = Depends(ge
 def top_risky_province(
     hours: int = Query(24, ge=1, le=168),
     date: str | None = Query(None),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
-    """Tỉnh nguy hiểm nhất: tỉnh có sự kiện gần đây nhất hoặc nhiều sự kiện nhất"""
-    if date:
+    """Tỉnh nguy hiểm nhất"""
+    if start_date or end_date:
+        try:
+            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
+            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
+        except ValueError:
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
+    elif date:
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d")
             start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
             end = start + timedelta(days=1)
         except ValueError:
-            return {"error": "Invalid date format. Use YYYY-MM-DD"}
+            start = datetime.utcnow() - timedelta(hours=hours)
+            end = datetime.utcnow()
     else:
         start = datetime.utcnow() - timedelta(hours=hours)
         end = datetime.utcnow()
@@ -460,8 +578,8 @@ def top_risky_province(
         func.count(Event.id).label('count'),
         func.max(Event.last_updated_at).label('latest')
     ).filter(
-        Event.last_updated_at >= start,
-        Event.last_updated_at < end,
+        Event.started_at >= start,
+        Event.started_at < end,
         Event.province != 'unknown'
     ).group_by(Event.province).order_by(desc(func.count(Event.id)), desc(func.max(Event.last_updated_at))).limit(1)
     

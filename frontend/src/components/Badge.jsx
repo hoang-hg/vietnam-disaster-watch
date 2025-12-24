@@ -1,4 +1,4 @@
-export default function Badge({ children, tone = "slate" }) {
+export default function Badge({ children, tone = "slate", className = "" }) {
   const tones = {
     slate: "bg-gray-100 text-gray-800 border-gray-300",
     blue: "bg-blue-100 text-blue-800 border-blue-300",
@@ -8,12 +8,12 @@ export default function Badge({ children, tone = "slate" }) {
     amber: "bg-amber-100 text-amber-800 border-amber-300",
     purple: "bg-purple-100 text-purple-800 border-purple-300",
     orange: "bg-orange-100 text-orange-800 border-orange-300",
+    yellow: "bg-yellow-50 text-yellow-800 border-yellow-200",
   };
   return (
     <span
       className={
-        "inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium " +
-        (tones[tone] || tones.slate)
+        `inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium ${tones[tone] || tones.slate} ${className}`
       }
     >
       {children}

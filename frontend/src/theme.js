@@ -11,27 +11,18 @@ export const THEME_COLORS = {
   surface: "#ffffff",
   border: "#e2e8f0", // Slate 200
 
-  // Disaster Types (High Contrast & Distinct)
-  // Disaster Types (High Contrast & Distinct)
-  storm: "#0284c7", // Bão và áp thấp nhiệt đới
-  flood_landslide: "#06b6d4", // Mưa lớn và lũ lụt
-  heat_drought: "#fb923c", // Nắng nóng, hạn hán, xâm nhập mặn
-  wind_fog: "#94a3b8", // Gió mạnh, sương mù
-  storm_surge: "#7e22ce", // Nước dâng
-  extreme_other: "#dc2626", // Các hiện tượng thời tiết cực đoan khác
-  wildfire: "#ea580c", // Cháy rừng tự nhiên
-  quake_tsunami: "#059669", // Động đất và sóng thần
+  // Disaster Types (Vibrant & Harmoneous)
+  storm: "#3B82F6", // Blue 500
+  flood_landslide: "#06B6D4", // Cyan 500
+  heat_drought: "#F97316", // Orange 500
+  wind_fog: "#64748B", // Slate 500
+  extreme_other: "#EAB308", // Yellow 500
+  wildfire: "#EF4444", // Red 500
+  quake_tsunami: "#10B981", // Emerald 500
+  recovery: "#6366F1", // Indigo 500
+  relief_aid: "#EC4899", // Pink 500
   
-  // Legacy Keys Support
-  flood: "#06b6d4", 
-  landslide: "#06b6d4",
-  heavy_rain: "#06b6d4",
-  earthquake: "#059669",
-  tsunami: "#059669",
-  wind_hail: "#dc2626",        
-  extreme_weather: "#fb923c",  
-  
-  unknown: "#64748b", // Khác
+  unknown: "#94A3B8", // Slate 400
 };
 
 export const CHART_COLORS = [
