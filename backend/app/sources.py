@@ -3,7 +3,7 @@ from typing import Literal, List
 import urllib.parse
 import json
 from pathlib import Path
-
+import re
 Method = Literal["rss", "gnews"]
 
 # 8 Standardized Disaster Groups (Decision 18/2021/QD-TTg & common usage)
@@ -278,8 +278,7 @@ DISASTER_GROUPS = {
         "vứt tàn thuốc", "tàn thuốc lá", "đốt vàng mã",
         "đốt nương", "đốt rẫy", "phát nương", "đốt dọn thực bì",
         "kiểm lâm", "lực lượng kiểm lâm", "cảnh sát phòng cháy chữa cháy",
-        "cảnh sát PCCC", "dân quân", "dân quân tự vệ", "bộ đội", "công an",
-        "huy động lực lượng", "huy động phương tiện",
+        "cảnh sát PCCC",
         "máy bơm", "vòi rồng", "xe chữa cháy", "xe bồn", "xe téc",
         "máy thổi gió", "dao phát", "vỉ dập lửa", "bình chữa cháy",
         "trực thăng", "máy bay", "thả nước", "thả nước từ trên cao",
@@ -385,6 +384,17 @@ SENSITIVE_LOCATIONS = [
     "Đèo Lò Xo", "Đèo Cù Mông", "Đèo Ngoạn Mục", "Đèo Sông Pha", "Đèo Phượng Hoàng",
     "Đèo Măng Đen", "Đèo Keo Nưa", "Đèo Đá Đẽo", "Đèo Tam Điệp"
 ]
+# Pre-compile for Case-Insensitive and Verbose matching
+# We replace literal spaces with \s+ to ensure re.VERBOSE doesn't ignore them.
+SENSITIVE_LOCATIONS_RE = [
+    re.compile(rf"(?<!\w){re.escape(loc).replace(r'\ ', r'\s+')}(?!\w)", re.IGNORECASE | re.VERBOSE) 
+    for loc in SENSITIVE_LOCATIONS
+]
+
+# Pre-compile unaccented version for Two-Channel matching
+# We use risk_lookup.strip_accents from nlp or similar logic. 
+# Since sources.py shouldn't depend on nlp, we can do it simply or wait for nlp to handle it.
+# However, SENSITIVE_LOCATIONS_RE is already useful for accented.
 
 # VIP Terms (Critical warnings/actions that bypass all filters)
 VIP_TERMS = [
@@ -420,6 +430,12 @@ VIP_TERMS = [
     # Aid / relief
     r"hỗ\s*trợ\s*khẩn\s*cấp\s*thiên\s*tai",
     r"viện\s*trợ.*thiên\s*tai",
+]
+# VIP Terms (Critical warnings/actions that bypass all filters)
+# We ensure patterns are verbose-safe by replacing spaces.
+VIP_TERMS_RE = [
+    re.compile(p.replace(" ", r"\s+"), re.IGNORECASE | re.VERBOSE) 
+    for p in VIP_TERMS
 ]
 
 
@@ -470,21 +486,23 @@ def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_
     if len(hazards) > 15:
         hazards = random.sample(hazards, 15)
 
-    # 2. Sample Context terms (Disaster Types) - target 15 terms
-    contexts = []
-    if context_terms:
-        contexts = _quote(context_terms)
-        if len(contexts) > 15:
-            contexts = random.sample(contexts, 15)
-
-    base = "https://news.google.com/rss/search?q="
-    
     # Build query: site:domain (Impacts) (Contexts)
     query_parts = [f"site:{domain}", "(" + " OR ".join(hazards) + ")"]
-    if contexts:
+    
+    # 2. Sample Context terms (Disaster Types) - target 15 terms
+    contexts = []
+    # If not provided, fallback to CONTEXT_KEYWORDS
+    context_source = context_terms if context_terms else CONTEXT_KEYWORDS
+    
+    if context_source:
+        contexts = _quote(context_source)
+        if len(contexts) > 20:
+            # Randomly pick 15
+            contexts = random.sample(contexts, 20)
         query_parts.append("(" + " OR ".join(contexts) + ")")
     
     query = " ".join(query_parts)
+    base = "https://news.google.com/rss/search?q="
         
     return base + urllib.parse.quote(query) + "&hl=vi&gl=VN&ceid=VN:vi"
 

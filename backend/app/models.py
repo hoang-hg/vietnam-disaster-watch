@@ -19,6 +19,7 @@ class Article(Base):
     # extracted
     disaster_type: Mapped[str] = mapped_column(String(32), index=True, default="unknown")
     province: Mapped[str] = mapped_column(String(64), index=True, default="unknown")
+    stage: Mapped[str] = mapped_column(String(32), index=True, default="INCIDENT")
     event_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     deaths: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -46,6 +47,7 @@ class Event(Base):
     title: Mapped[str] = mapped_column(Text, index=True)
     disaster_type: Mapped[str] = mapped_column(String(32), index=True)
     province: Mapped[str] = mapped_column(String(64), index=True)
+    stage: Mapped[str] = mapped_column(String(32), index=True, default="INCIDENT")
     started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     last_updated_at: Mapped[datetime] = mapped_column(DateTime, index=True)
 

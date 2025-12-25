@@ -382,23 +382,28 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     is_relevant = nlp.contains_disaster_keywords(summary_raw, title=title, trusted_source=src.trusted)
                     
                     if not is_relevant:
-                        try:
-                            diag = nlp.diagnose(text_for_nlp)
-                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                            logs_dir.mkdir(parents=True, exist_ok=True)
-                            skip_file = logs_dir / "skip_debug.jsonl"
-                            record = {
-                                "timestamp": datetime.utcnow().isoformat(),
-                                "action": "skip_nlp",
-                                "source": src.name,
-                                "title": title,
-                                "url": link,
-                                "score": diag["score"],
-                                "reason": diag["reason"],
-                                "diagnose": diag["signals"]
-                            }
-                            with skip_file.open("a", encoding="utf-8") as f:
-                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                            diag = nlp.diagnose(text_for_nlp, title=title)
+                            # If it's an ABSOLUTE VETO, we discard it completely to save space
+                            if diag["signals"].get("absolute_veto"):
+                                continue
+
+                            # If it has some disaster signal (Rule Match or Score > 5.0), we log to review file
+                            if diag["score"] >= 5.0 or diag["signals"].get("rule_matches"):
+                                logs_dir = Path(__file__).resolve().parents[1] / "logs"
+                                logs_dir.mkdir(parents=True, exist_ok=True)
+                                potential_file = logs_dir / "review_potential_disasters.jsonl"
+                                record = {
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    "action": "potential_disaster",
+                                    "source": src.name,
+                                    "title": title,
+                                    "url": link,
+                                    "score": diag["score"],
+                                    "reason": diag["reason"],
+                                    "diagnose": diag["signals"]
+                                }
+                                with potential_file.open("a", encoding="utf-8") as f:
+                                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
                         except Exception:
                             pass
                         continue
@@ -418,21 +423,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 if prob < 0.5:
                                     # log classifier skip
                                     try:
-                                        logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                                        logs_dir.mkdir(parents=True, exist_ok=True)
-                                        skip_file = logs_dir / "skip_debug.jsonl"
-                                        record = {
-                                            "timestamp": datetime.utcnow().isoformat(),
-                                            "action": "skip_classifier",
-                                            "source": src.name,
-                                            "domain": src.domain,
-                                            "title": title,
-                                            "url": link,
-                                            "id": get_article_hash(title, src.domain),
-                                            "classifier_prob": prob,
-                                        }
-                                        with skip_file.open("a", encoding="utf-8") as f:
-                                            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                                        # If classifier rejects it, it might still be a potential disaster 
+                                        # but usually classifier is more accurate at identifying noise.
+                                        # To save space, we don't log classifier skips for now unless requested.
+                                        pass
                                     except Exception:
                                         pass
                                     print(f"[SKIP_CLASSIFIER] {src.name} #{record['id']}: prob={prob:.2f}")
@@ -449,7 +443,15 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     
                     # Detect Event Stage (Warning vs Impact vs Recovery)
                     stage = nlp.determine_event_stage(text_for_nlp)
-                    summary = f"[{stage}] {summary_text}"
+                    
+                    # Mapping to Vietnamese for display
+                    stage_vn = {
+                        "FORECAST": "DỰ BÁO",
+                        "INCIDENT": "DIỄN BIẾN",
+                        "RECOVERY": "KHẮC PHỤC"
+                    }.get(stage, "TIN MỚI")
+                    
+                    summary = f"[{stage_vn}] {summary_text}"
 
 
                     # Check for duplicates before inserting
@@ -494,6 +496,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         published_at=published_at,
                         disaster_type=disaster_type,
                         province=province,
+                        stage=stage,
                         deaths=_get_impact_value(impacts["deaths"]),
                         missing=_get_impact_value(impacts["missing"]),
                         injured=_get_impact_value(impacts["injured"]),
@@ -517,25 +520,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         continue
 
                     # Log accepted/inserted candidate (for review)
-                    try:
-                        logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                        logs_dir.mkdir(parents=True, exist_ok=True)
-                        skip_file = logs_dir / "skip_debug.jsonl"
-                        article_hash = get_article_hash(title, src.domain, link)
-                        record = {
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "action": "accepted",
-                            "source": src.name,
-                            "domain": src.domain,
-                            "title": title,
-                            "url": link,
-                            "id": article_hash,
-                            "disaster_type": disaster_type,
-                            "province": province,
-                            "diagnose": nlp.diagnose(text_for_nlp),
-                        }
-                        with skip_file.open("a", encoding="utf-8") as f:
-                            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                        # Skip logging accepted entries to skip_debug.jsonl to save space.
+                        # We already have them in the Database!
+                        pass
                     except Exception:
                         pass
                     
@@ -662,7 +649,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             # - Pass trusted_source=src.trusted to allow lighter threshold for official sources
                             if not nlp.contains_disaster_keywords(summary_raw_scraper, title=title, trusted_source=src.trusted):
                                 article_hash = get_article_hash(title, src.domain)
-                                diag = nlp.diagnose(title)
+                                diag = nlp.diagnose(summary_raw_scraper, title=title)
                                 print(f"[SKIP] {src.name} #{article_hash}: nlp-rejected score={diag['score']:.1f} reason={diag['reason']}")
                                 continue
                             
