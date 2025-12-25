@@ -1,0 +1,22 @@
+STT  | QUYẾT ĐỊNH   | LOẠI            | VETO TRIGGER
+------------------------------------------------------------------------------------------------------------------------
+1    | VETO         | storm           | \b(?:hướng\s*dẫn\s*thủ\s*tục|cấp\s*đổi\s*giấy\s*ph -> Cổng Thông tin điện tử
+     Tiêu đề: LỰC LƯỢNG CÔNG AN NHÂN DÂN CHỦ ĐỘNG TRONG CÔNG TÁC PHÒNG, CHỐNG, KHẮC PHỤC HẬU QUẢ BÃO, LŨ - Cổng Thông tin điện tử tỉnh Tuyên Quang
+2    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Lực lượng Công an nhân dân chủ động trong công tác phòng, chống, khắc phục hậu quả bão, lũ - Công an tỉnh Lào Cai
+3    | CHẤP NHẬN    | flood_landslide | None
+     Tiêu đề: Nghiên cứu, xác định nguyên nhân trận lũ lịch sử vừa qua - Báo Lào Cai điện tử
+4    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Thủ tướng chủ trì họp Thường trực Chính phủ: Triển khai ngay nhiều giải pháp cấp bách khắc phục hậu quả bão lũ - laichau.gov.vn
+5    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Khẩn trương khắc phục hậu quả bão số 5, ứng phó mưa lũ sau bão - baoninhbinh.org.vn
+6    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: CẬP NHẬT: Công tác khắc phục hậu quả bão số 5 tại Nghệ An - baonghean.vn
+7    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Tập trung khắc phục hậu quả bão số 5 và mưa lũ - baoquangtri.vn
+8    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Tập trung khắc phục hậu quả bão số 5 và ứng phó mưa lũ sau bão - Báo và phát thanh, truyền hình Quảng Trị - baoquangtri.vn
+9    | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Tập trung khắc phục hậu quả mưa lũ, khẩn trương ứng phó bão số 15 - Báo Đà Nẵng
+10   | CHẤP NHẬN    | storm           | None
+     Tiêu đề: Ninh Hòa khẩn trương khắc phục hậu quả của bão số 12 và ứng phó với lũ lớn - Báo Khánh Hòa

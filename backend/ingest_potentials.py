@@ -23,8 +23,17 @@ def ingest_item(db: Session, data: dict):
     source_name = data.get("source")
     score = data.get("score", 0)
     
+    pub_at_str = data.get("published_at")
+    if pub_at_str:
+        try:
+            pub_at = datetime.fromisoformat(pub_at_str.replace("Z", "+00:00"))
+        except:
+            pub_at = datetime.now(timezone.utc)
+    else:
+        pub_at = datetime.now(timezone.utc)
+
     # Check if already exists in DB
-    if find_duplicate_article(db, title, data.get("domain", ""), url):
+    if find_duplicate_article(db, data.get("domain", ""), url, title, pub_at):
         return False
 
     # Extract details again to be sure
@@ -41,7 +50,7 @@ def ingest_item(db: Session, data: dict):
         domain=data.get("domain", "reprocessed"),
         title=title,
         url=url,
-        published_at=datetime.now(timezone.utc),  # Or parse from data if available
+        published_at=pub_at,
         disaster_type=disaster_info.get("primary_type", "unknown"),
         province=province,
         stage=stage,
@@ -87,7 +96,7 @@ def run_recovery():
                     has_prov = diag.get("province") is not None
                     has_hazard = len(diag.get("rule_matches", [])) > 0
                     
-                    if score >= 8.5 or (score >= 7.0 and has_prov and has_hazard):
+                    if score >= 9.5 or (score >= 8.5 and has_prov and has_hazard):
                         if ingest_item(db, data):
                             logger.info(f"[RECOVERED] {data['title']} (Score: {score})")
                         else:

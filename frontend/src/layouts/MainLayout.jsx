@@ -133,6 +133,7 @@ export default function MainLayout({ children }) {
                     <ul className="space-y-2 text-slate-600">
                         <li><Link to="/map" className="hover:text-[#2fa1b3] transition-colors">Bản đồ rủi ro</Link></li>
                         <li><Link to="/events" className="hover:text-[#2fa1b3] transition-colors">Dòng sự kiện</Link></li>
+                        <li><Link to="/admin/logs" className="hover:text-[#2fa1b3] transition-colors">Xác minh tin (Admin)</Link></li>
                         <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">RSS Feeds</a></li>
                     </ul>
                 </div>

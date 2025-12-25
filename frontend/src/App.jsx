@@ -5,6 +5,7 @@ import Events from "./pages/Events.jsx";
 import EventDetail from "./pages/EventDetail.jsx";
 import MapPage from "./pages/MapPage.jsx";
 import About from "./pages/About.jsx";
+import AdminSkipLogs from "./pages/AdminSkipLogs.jsx";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/events/:id" element={<EventDetail />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/about" element={<About />} />
+        <Route path="/admin/logs" element={<AdminSkipLogs />} />
       </Routes>
     </MainLayout>
   );

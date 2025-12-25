@@ -41,7 +41,18 @@ export function fmtVndBillion(x) {
 
 export function fmtDate(s) {
   const d = new Date(s);
-  return d.toLocaleString("vi-VN");
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
+/** Robust unescape for UI display */
+export function cleanText(text) {
+  if (!text) return "";
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  return doc.documentElement.textContent;
 }
 
 export function fmtTimeAgo(s) {

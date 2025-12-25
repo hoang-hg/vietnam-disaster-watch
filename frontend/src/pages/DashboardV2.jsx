@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { getJson, fmtType, fmtDate } from "../api.js";
+import { 
+  getJson, 
+  fmtType, 
+  fmtDate, 
+  fmtTimeAgo, 
+  cleanText 
+} from "../api.js";
 import { THEME_COLORS } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
 import Badge from "../components/Badge.jsx";
@@ -341,12 +347,12 @@ export default function Dashboard() {
                   </div>
                   <Link to={`/events/${event.id}`}>
                     <h4 className="font-bold text-slate-930 group-hover:text-blue-600 transition-colors line-clamp-2 mb-2 text-sm leading-tight">
-                      {event.title}
+                      {cleanText(event.title)}
                     </h4>
                   </Link>
                   <div className="flex items-center gap-4 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {event.province}</span>
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(event.started_at).toLocaleDateString()}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(event.started_at).toLocaleDateString('vi-VN')}</span>
                   </div>
                 </div>
               ))}

@@ -18,7 +18,7 @@ from app.html_scraper import fetch_article_full_text_async
 import httpx
 
 async def recover():
-    log_file = Path(__file__).resolve().parents[1] / "logs" / "skip_debug.jsonl"
+    log_file = Path(__file__).resolve().parents[1] / "logs" / "review_potential_disasters.jsonl"
     if not log_file.exists():
         print(f"Log file not found at {log_file}")
         return

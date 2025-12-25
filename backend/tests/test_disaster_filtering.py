@@ -107,7 +107,8 @@ def test_filtering():
     
     for text, should_accept, exp_cat, reason in test_cases:
         is_disaster = contains_disaster_keywords(text)
-        category = classify_disaster(text) if is_disaster else "N/A"
+        category_dict = classify_disaster(text) if is_disaster else None
+        category = category_dict["primary_type"] if category_dict else "N/A"
         
         status = 'MATCH' if is_disaster == should_accept else 'FAIL'
         

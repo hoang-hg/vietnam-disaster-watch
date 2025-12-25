@@ -129,20 +129,33 @@ def extract_max_mm(text: str) -> Optional[float]:
     return max(cand) if cand else None
 
 def extract_max_temp(text: str) -> Optional[float]:
-    _, t0 = canon(text)
-    TEMP_UNIT = r"(?:do\s*c|°\s*c|\bc\b)"
+    t, t0 = canon(text)
+    # Check both t and t0 to handle both °C and "do C"
+    # ° and other symbols are stripped in t0, so we use t for those
+    UNIT_T = r"(?:°\s*c)"
+    UNIT_T0 = r"(?:do\s*c|\bc\b)"
     vals = []
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0, re.IGNORECASE):
+    # Try with t for °C
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
          vals.append(float(m.group(2).replace(",", ".")))
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + TEMP_UNIT, t0, re.IGNORECASE):
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+         vals.append(float(m.group(1).replace(",", ".")))
+    # Try with t0 for "do C"
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
+         vals.append(float(m.group(2).replace(",", ".")))
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
          vals.append(float(m.group(1).replace(",", ".")))
     return max(vals) if vals else None
 
 def extract_max_salinity(text: str) -> Optional[float]:
-    _, t0 = canon(text)
-    UNIT = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin|‰|psu|ppt)"
+    t, t0 = canon(text)
+    # Symbols in t, text keywords in t0
+    UNIT_T = r"(?:‰|psu|ppt)"
+    UNIT_T0 = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin)"
     vals = []
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT, t0, re.IGNORECASE):
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+         vals.append(float(m.group(1).replace(",", ".")))
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
          vals.append(float(m.group(1).replace(",", ".")))
     return max(vals) if vals else None
 

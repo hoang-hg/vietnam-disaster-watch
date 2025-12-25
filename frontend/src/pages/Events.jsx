@@ -5,6 +5,7 @@ import {
   fmtDate,
   fmtTimeAgo,
   fmtVndBillion,
+  cleanText,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
 import { THEME_COLORS } from "../theme.js";
@@ -73,7 +74,7 @@ export default function Events() {
       
       // Fetch base data first (filtered by Category on server for efficiency)
       const params = new URLSearchParams();
-      params.append("limit", "1200"); // 40 items * 20 pages
+      params.append("limit", "800"); // 40 items * 20 pages
       
       if (type) params.append("type", type);
       
@@ -344,7 +345,7 @@ export default function Events() {
 
                   <div className="p-5 flex-1 flex flex-col">
                      <h2 className="text-[15px] font-bold text-slate-900 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors leading-snug h-11">
-                        {e.title}
+                        {cleanText(e.title)}
                      </h2>
                      <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-5">
                         {e.province && (

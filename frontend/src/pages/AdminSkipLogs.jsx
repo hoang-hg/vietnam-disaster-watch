@@ -81,8 +81,12 @@ export default function AdminSkipLogs() {
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-lg font-semibold mb-2">Admin — Skip Logs</h2>
+    <div className="p-4 max-w-5xl mx-auto">
+      <h2 className="text-2xl font-bold mb-4">Xác minh tin tức tiềm năng</h2>
+      <p className="text-sm text-gray-600 mb-6">
+        Đây là các tin tức bị NLP từ chối tự động nhưng có chứa từ khóa thiên tai. 
+        Bạn có thể duyệt thủ công để đưa vào hệ thống hoặc loại bỏ.
+      </p>
 
       <div className="mb-2">
         <label>Limit: </label>
@@ -104,9 +108,8 @@ export default function AdminSkipLogs() {
       {error && <div className="text-sm text-red-600">Error: {error}</div>}
 
       {!loading && items.length === 0 && !error && (
-        <div className="text-sm text-gray-500">
-          Không có bản ghi nào. Hãy chắc backend đang chạy và crawler đã ghi
-          logs/skip_debug.jsonl.
+        <div className="text-sm text-gray-500 bg-gray-50 p-8 border rounded-lg text-center">
+          Không có bản ghi nào cần xử lý. Hệ thống đang hoạt động tốt.
         </div>
       )}
 

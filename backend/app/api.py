@@ -402,7 +402,7 @@ async def stream_events(request: Request):
 @router.get('/admin/skip-logs')
 def get_skip_logs(limit: int = Query(200, ge=1, le=5000)):
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
-    log_file = logs_dir / 'skip_debug.jsonl'
+    log_file = logs_dir / 'review_potential_disasters.jsonl'
     out = []
     if not log_file.exists():
         return []

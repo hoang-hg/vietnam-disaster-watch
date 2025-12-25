@@ -114,3 +114,12 @@ viet-disaster-watch/
 
 ## ⚖️ Lưu ý pháp lý
 Ứng dụng này là một công cụ tổng hợp tin tức (News Aggregator). Toàn bộ nội dung bài viết gốc thuộc bản quyền của các tòa soạn và cơ quan phát hành. Hệ thống chỉ trích xuất siêu dữ liệu (metadata), tóm tắt và dẫn link trực tiếp về nguồn gốc để tôn trọng quyền tác giả.
+
+## 📊 Kiến trúc xử lý dữ liệu (Simplified)
+Hệ thống hoạt động theo luồng:
+1. **Crawl**: Thu thập từ RSS/GNews (15-60 phút).
+2. **NLP Filter**: Lọc tin rác, phân loại 8 nhóm thiên tai, trích xuất thiệt hại & địa điểm.
+3. **Event Matcher**: Gom nhóm các bài báo cùng sự kiện, cùng tỉnh thành.
+4. **Auto-Recovery**: Cứu các tin "nghi ngờ" có điểm cao sau mỗi 60 phút.
+5. **Log Rotation**: Tự động dọn dẹp nhật ký để bảo vệ bộ nhớ máy chủ.
+

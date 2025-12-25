@@ -366,11 +366,19 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 # Differentiated limit: Higher for direct RSS, lower for noisy GNews search
                 max_articles = 50 if feed_type == "gnews" else 200
                 for entry in feed.entries[:max_articles]:
-                    title = html.unescape(getattr(entry, "title", "")).strip()
+                    raw_title = getattr(entry, "title", "")
+                    # Double unescape to catch poorly encoded sources
+                    title = html.unescape(html.unescape(raw_title)).strip()
+                    title = re.sub(r"\s+", " ", title)
+                    
                     link = getattr(entry, "link", "").strip()
                     
                     published_at = _to_dt(entry)
-                    summary_raw = html.unescape(getattr(entry, "summary", "") or getattr(entry, "description", "") or "")
+                    raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+                    summary_raw = html.unescape(html.unescape(raw_summary)).strip()
+                    summary_raw = re.sub(r"<[^>]+>", "", summary_raw)
+                    summary_raw = re.sub(r"\s+", " ", summary_raw)
+                    
                     text_for_nlp = title + " " + summary_raw
                     # ---------------------------------------------------------
                     # 1. OPTIMIZATION: Advanced NLP Check (Title + Summary + Trust)
@@ -382,30 +390,37 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     is_relevant = nlp.contains_disaster_keywords(summary_raw, title=title, trusted_source=src.trusted)
                     
                     if not is_relevant:
+                        try:
                             diag = nlp.diagnose(text_for_nlp, title=title)
                             # If it's an ABSOLUTE VETO, we discard it completely to save space
                             if diag["signals"].get("absolute_veto"):
                                 continue
 
-                            # If it has some disaster signal (Rule Match or Score > 5.0), we log to review file
-                            if diag["score"] >= 5.0 or diag["signals"].get("rule_matches"):
-                                logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                                logs_dir.mkdir(parents=True, exist_ok=True)
-                                potential_file = logs_dir / "review_potential_disasters.jsonl"
-                                record = {
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                                    "action": "potential_disaster",
-                                    "source": src.name,
-                                    "title": title,
-                                    "url": link,
-                                    "score": diag["score"],
-                                    "reason": diag["reason"],
-                                    "diagnose": diag["signals"]
-                                }
-                                with potential_file.open("a", encoding="utf-8") as f:
-                                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                        except Exception:
-                            pass
+                            # NEW: Only log if score is at least 3.0 or has some disaster signals
+                            # to avoid filling logs with complete noise (0-2 score items)
+                            if diag["score"] < 3.0 and not diag["signals"].get("rule_matches"):
+                                continue
+
+                            # LOG REJECTS (that aren't vetoed and have some signal) to review file
+                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
+                            logs_dir.mkdir(parents=True, exist_ok=True)
+                            potential_file = logs_dir / "review_potential_disasters.jsonl"
+                            record = {
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                                "published_at": published_at.isoformat(),
+                                "action": "potential_disaster",
+                                "source": src.name,
+                                "domain": src.domain,
+                                "title": title,
+                                "url": link,
+                                "score": diag["score"],
+                                "reason": diag["reason"],
+                                "diagnose": diag["signals"]
+                            }
+                            with potential_file.open("a", encoding="utf-8") as f:
+                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                        except Exception as e:
+                            logger.error(f"Error logging potential: {e}")
                         continue
 
                     # Second-pass: optional classifier rejects low-probability items
@@ -469,23 +484,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         article_hash = get_article_hash(title, src.domain)
                         logger.info(f"Skipping duplicate article: {title[:50]}... (hash={article_hash})")
                         
-                        try:
-                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                            logs_dir.mkdir(parents=True, exist_ok=True)
-                            skip_file = logs_dir / "skip_debug.jsonl"
-                            record = {
-                                "timestamp": datetime.utcnow().isoformat(),
-                                "action": "skip_duplicate",
-                                "source": src.name,
-                                "title": title,
-                                "url": link,
-                                "matched_id": duplicate.id,
-                                "matched_title": duplicate.title
-                            }
-                            with skip_file.open("a", encoding="utf-8") as f:
-                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                        except Exception:
-                            pass
+                        # Duplicate logging removed to save space as per user request
                         continue
 
                     article = Article(
