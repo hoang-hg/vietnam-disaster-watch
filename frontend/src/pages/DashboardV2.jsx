@@ -36,15 +36,21 @@ import {
 
 const TYPE_TONES = {
   storm: "blue",
-  flood_landslide: "cyan",
-  heat_drought: "orange",
-  wind_fog: "slate",
+  flood: "cyan",
+  flash_flood: "cyan",
+  landslide: "orange",
+  subsidence: "slate",
+  drought: "orange",
+  salinity: "blue",
+  extreme_weather: "yellow",
+  heatwave: "red",
+  cold_surge: "indigo",
+  earthquake: "slate",
+  tsunami: "blue",
   storm_surge: "purple",
-  extreme_other: "yellow",
   wildfire: "red",
-  quake_tsunami: "green",
-  recovery: "indigo",
-  relief_aid: "pink",
+  warning_forecast: "yellow",
+  recovery: "emerald",
   unknown: "slate",
 };
 
@@ -168,8 +174,10 @@ export default function Dashboard() {
 
   const chartData = useMemo(() => {
     const agg = {
-      storm: 0, flood_landslide: 0, heat_drought: 0, wind_fog: 0,
-      storm_surge: 0, extreme_other: 0, wildfire: 0, quake_tsunami: 0,
+      storm: 0, flood: 0, flash_flood: 0, landslide: 0, subsidence: 0, 
+      drought: 0, salinity: 0, extreme_weather: 0, heatwave: 0, cold_surge: 0,
+      earthquake: 0, tsunami: 0, storm_surge: 0, wildfire: 0,
+      warning_forecast: 0, recovery: 0
     };
     events.forEach((e) => {
         if (agg[e.disaster_type] !== undefined) agg[e.disaster_type]++;
@@ -241,15 +249,23 @@ export default function Dashboard() {
                   onChange={(e) => setHazardType(e.target.value)}
                   className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
               >
-                  <option value="all">Tất cả thiên tai</option>
+                  <option value="all">Tất cả thông tin</option>
                   <option value="storm">Bão, ATNĐ</option>
-                  <option value="flood_landslide">Lũ, Ngập, Sạt lở</option>
-                  <option value="heat_drought">Hạn hán, Mặn</option>
-                  <option value="wind_fog">Gió, Sương mù</option>
+                  <option value="flood">Lũ lụt</option>
+                  <option value="flash_flood">Lũ quét</option>
+                  <option value="landslide">Sạt lở đất</option>
+                  <option value="subsidence">Sụt lún</option>
+                  <option value="drought">Hạn hán</option>
+                  <option value="salinity">Xâm nhập mặn</option>
+                  <option value="extreme_weather">Mưa lớn, Lốc, Đá</option>
+                  <option value="heatwave">Nắng nóng</option>
+                  <option value="cold_surge">Rét hại, Băng giá</option>
+                  <option value="earthquake">Động đất</option>
+                  <option value="tsunami">Sóng thần</option>
                   <option value="storm_surge">Nước dâng</option>
-                  <option value="extreme_other">Cực đoan khác</option>
                   <option value="wildfire">Cháy rừng</option>
-                  <option value="quake_tsunami">Động đất</option>
+                  <option value="warning_forecast">Tin dự báo</option>
+                  <option value="recovery">Khắc phục</option>
               </select>
               <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
            </div>

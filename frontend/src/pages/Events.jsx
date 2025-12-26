@@ -16,15 +16,21 @@ import logoIge from "../assets/logo_ige.png";
 // Updated tones for 8 groups
 const TYPE_TONES = {
   storm: "blue",
-  flood_landslide: "cyan",
-  heat_drought: "orange",
-  wind_fog: "slate",
+  flood: "cyan",
+  flash_flood: "cyan",
+  landslide: "orange",
+  subsidence: "slate",
+  drought: "orange",
+  salinity: "blue",
+  extreme_weather: "yellow",
+  heatwave: "red",
+  cold_surge: "indigo",
+  earthquake: "slate",
+  tsunami: "blue",
   storm_surge: "purple",
-  extreme_other: "yellow",
   wildfire: "red",
-  quake_tsunami: "green",
-  recovery: "indigo",
-  relief_aid: "pink",
+  warning_forecast: "yellow",
+  recovery: "emerald",
   unknown: "slate",
 };
 
@@ -235,13 +241,21 @@ export default function Events() {
                 >
                     <option value="">Tất cả loại hình</option>
                     <option value="storm">Bão, ATNĐ</option>
-                    <option value="flood_landslide">Mưa lớn, Lũ, Lũ quét, Sạt lở</option>
-                    <option value="heat_drought">Nắng nóng, Hạn hán, Xâm nhập mặn</option>
-                    <option value="wind_fog">Gió mạnh trên biển, Sương mù</option>
+                    <option value="flood">Lũ lụt</option>
+                    <option value="flash_flood">Lũ quét</option>
+                    <option value="landslide">Sạt lở đất</option>
+                    <option value="subsidence">Sụt lún</option>
+                    <option value="drought">Hạn hán</option>
+                    <option value="salinity">Xâm nhập mặn</option>
+                    <option value="extreme_weather">Mưa lớn, Lốc, Đá</option>
+                    <option value="heatwave">Nắng nóng</option>
+                    <option value="cold_surge">Rét hại, Băng giá</option>
+                    <option value="earthquake">Động đất</option>
+                    <option value="tsunami">Sóng thần</option>
                     <option value="storm_surge">Nước dâng</option>
-                    <option value="extreme_other">Lốc, Sét, Mưa đá, Rét hại, Sương muối</option>
                     <option value="wildfire">Cháy rừng</option>
-                    <option value="quake_tsunami">Động đất, Sóng thần</option>
+                    <option value="warning_forecast">Tin dự báo</option>
+                    <option value="recovery">Khắc phục</option>
                 </select>
             </div>
             {/* Province */}

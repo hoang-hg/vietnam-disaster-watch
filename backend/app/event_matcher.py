@@ -102,6 +102,11 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             lat=coords[0],
             lon=coords[1],
             needs_verification=article.needs_verification,
+            commune=article.commune,
+            village=article.village,
+            route=article.route,
+            cause=article.cause,
+            characteristics=article.characteristics,
             details={"impact_bucket": impact_bucket}
         )
         db.add(ev)
@@ -172,6 +177,13 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
 
     if article.needs_verification:
         ev.needs_verification = 1
+
+    # Update location details in Event if article has more specific info
+    if article.commune and not ev.commune: ev.commune = article.commune
+    if article.village and not ev.village: ev.village = article.village
+    if article.route and not ev.route: ev.route = article.route
+    if article.cause and not ev.cause: ev.cause = article.cause
+    if article.characteristics and not ev.characteristics: ev.characteristics = article.characteristics
 
     # Aggregating impact_details into ev.details
     if article.impact_details:

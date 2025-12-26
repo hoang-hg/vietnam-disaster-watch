@@ -64,26 +64,26 @@ export async function register(email, password, fullName) {
 
 export function fmtType(t) {
   const map = {
-    // Decision 18/2021/QD-TTg Exact Names
-    storm: "Bão, Áp thấp nhiệt đới",
-    flood_landslide: "Mưa lớn, Lũ Lụt, Lũ quét, Sạt lở đất",
-    heat_drought: "Nắng nóng, Hạn hán, Xâm nhập mặn",
-    wind_fog: "Gió mạnh trên biển, Sương mù",
+    // 14 Official Disaster Types
+    storm: "Bão, ATNĐ",
+    flood: "Lũ lụt",
+    flash_flood: "Lũ quét, Lũ ống",
+    landslide: "Sạt lở đất, đá",
+    subsidence: "Sụt lún đất",
+    drought: "Hạn hán",
+    salinity: "Xâm nhập mặn",
+    extreme_weather: "Mưa lớn, Lốc, Sét, Đá",
+    heatwave: "Nắng nóng",
+    cold_surge: "Rét hại, Sương muối",
+    earthquake: "Động đất",
+    tsunami: "Sóng thần",
     storm_surge: "Nước dâng",
-    extreme_other: "Lốc, Sét, Mưa đá, Rét hại, Sương muối",
-    wildfire: "Cháy rừng tự nhiên",
-    quake_tsunami: "Động đất, Sóng thần",
-    recovery: "Khắc phục",
-    
-    // Legacy / Fallback
-    flood: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
-    landslide: "Mưa lớn, Lũ Lụt, Lũ quét, Sạt lở đất",
-    heavy_rain: "Mưa lớn, Lũ, Lũ quét, Sạt lở đất",
-    earthquake: "Động đất, Sóng thần",
-    tsunami: "Động đất, Sóng thần",
-    wind_hail: "Lốc, Sét, Mưa đá, Rét hại, Sương muối", 
-    extreme_weather: "Nắng nóng, Hạn hán, Xâm nhập mặn",
-    
+    wildfire: "Cháy rừng",
+
+    // 2 Special Groups
+    warning_forecast: "Tin cảnh báo, dự báo",
+    recovery: "Tin khắc phục hậu quả",
+
     unknown: "Chưa phân loại",
   };
   return map[t] || t;

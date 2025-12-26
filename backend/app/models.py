@@ -16,9 +16,15 @@ class Article(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # extracted
+    # extracted details matching the user's report format
     disaster_type: Mapped[str] = mapped_column(String(32), index=True, default="unknown")
     province: Mapped[str] = mapped_column(String(64), index=True, default="unknown")
+    commune: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    village: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    route: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    cause: Mapped[str | None] = mapped_column(Text, nullable=True)
+    characteristics: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     stage: Mapped[str] = mapped_column(String(32), index=True, default="INCIDENT")
     event_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -59,6 +65,11 @@ class Event(Base):
     title: Mapped[str] = mapped_column(Text, index=True)
     disaster_type: Mapped[str] = mapped_column(String(32), index=True)
     province: Mapped[str] = mapped_column(String(64), index=True)
+    commune: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    village: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    route: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    cause: Mapped[str | None] = mapped_column(Text, nullable=True)
+    characteristics: Mapped[str | None] = mapped_column(Text, nullable=True)
     stage: Mapped[str] = mapped_column(String(32), index=True, default="INCIDENT")
     started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     last_updated_at: Mapped[datetime] = mapped_column(DateTime, index=True)

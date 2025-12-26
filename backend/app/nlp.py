@@ -679,425 +679,113 @@ DISASTER_RULES = [
     r"(?<!\w)(?<!đi\s)(?<!dự\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\w)",
     r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
     r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"ATND", r"xoáy\s*thuận\s*nhiệt\s*đới",
-    r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"bán\s*kính\s*gió\s*mạnh",
-    r"vùng\s*nguy\s*hiểm", r"tọa\s*độ\s*tâm\s*bão", r"vĩ\s*độ\s*tâm\s*bão", r"kinh\s*độ\s*tâm\s*bão",
-    r"cường\s*độ\s*gió", r"bão\s*(?:suy\s*yếu|mạnh\s*lên)", r"áp\s*thấp\s*mạnh\s*lên", r"tan\s*dần",
-    r"đổ\s*bộ", r"đặc\s*biệt\s*nguy\s*hiểm\s*trên\s*biển", r"hành\s*lang\s*bão",
-    r"sức\s*gió\s*mạnh\s*nhất\s*vùng\s*gần\s*tâm\s*bão", r"di\s*chuyển\s*theo\s*hướng\s*tây",
-    r"gió\s*bão", r"mưa\s*hoàn\s*lưu", r"bão\s*khẩn\s*cấp", r"tin\s*bão\s*cuối\s*cùng",
-    r"đi\s*vào\s*biển\s*đông", r"tiến\s*vào\s*biển\s*đông", r"gió\s*giật\s*mạnh",
-    r"áp\s*thấp\s*(?:mạnh\s*lên|suy\s*yếu)", r"cơn\s*bão\s*mạnh", r"tin\s*về\s*bão",
-    r"xoáy\s*thuận", r"vùng\s*xoáy", r"áp\s*cao\s*cận\s*nhiệt", r"rãnh\s*thấp", r"tổ\s*hợp\s*thời\s*tiết\s*xấu",
-    r"bao\s*so\s*3", r"ap\s*thap\s*nhiet\s*doi", r"bản\s*tin\s*dự\s*báo\s*bão", r"cập\s*nhật\s*bão",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*:?\s*cấp\s*(?:1|2|3|4|5)",
-    r"rủi\s*ro\s*thiên\s*tai\s*(?:cấp\s*độ\s*)?(?:1|2|3|4|5)",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
-    r"bảng\s*2:\s*cấp\s*độ\s*rủi\s*ro.*áp\s*thấp\s*nhiệt\s*đới.*bão",
-    r"bão\s*mạnh\s*cấp\s*(?:10|11)",
-    r"bão\s*rất\s*mạnh\s*cấp\s*(?:12|13|14|15)",
-    r"siêu\s*bão|bão\s*siêu\s*mạnh",
-    r"áp\s*thấp\s*nhiệt\s*đới.*cấp\s*(?:6|7)",
-    r"bão.*cấp\s*(?:8|9|10|11|12|13|14|15|16|17)",
-    r"tin\s*áp\s*thấp\s*nhiệt\s*đới\s*gần\s*biển\s*đông",
-    r"tin\s*áp\s*thấp\s*nhiệt\s*đới\s*trên\s*biển\s*đông",
-    r"tin\s*áp\s*thấp\s*nhiệt\s*đới\s*khẩn\s*cấp",
-    r"tin\s*áp\s*thấp\s*nhiệt\s*đới\s*trên\s*đất\s*liền",
-    r"tin\s*cuối\s*cùng\s*về\s*áp\s*thấp\s*nhiệt\s*đới",
-    r"tin\s*nhanh\s*về\s*áp\s*thấp\s*nhiệt\s*đới",
-    r"tin\s*bão\s*gần\s*biển\s*đông",
-    r"tin\s*bão\s*trên\s*biển\s*đông",
-    r"tin\s*bão\s*khẩn\s*cấp",
-    r"tin\s*bão\s*trên\s*đất\s*liền",
-    r"tin\s*cuối\s*cùng\s*về\s*bão",
-    r"tốc\s*độ\s*di\s*chuyển\s*:?\s*\d{1,3}\s*(?:km/?h|km/giờ)",
-    r"di\s*chuyển\s*theo\s*hướng\s*(?:bắc|nam|đông|tây)(?:\s*(?:đông|tây))?",
-    r"di\s*chuyển\s*theo\s*hướng\s*(?:bắc\s*đông\s*bắc|đông\s*bắc|đông\s*đông\s*bắc|đông\s*đông\s*nam|đông\s*nam|nam\s*đông\s*nam|nam\s*tây\s*nam|tây\s*nam|tây\s*tây\s*nam|tây\s*tây\s*bắc|tây\s*bắc|bắc\s*tây\s*bắc)",
-    r"vĩ\s*(?:bắc|độ\s*vĩ\s*bắc)\s*\d{1,2}(?:[.,]\d+)?",
-    r"kinh\s*(?:đông|độ\s*kinh\s*đông)\s*\d{1,3}(?:[.,]\d+)?",
-    r"\d{1,2}(?:[.,]\d+)?\s*độ\s*vĩ\s*bắc",
-    r"\d{1,3}(?:[.,]\d+)?\s*độ\s*kinh\s*đông",
-    r"bán\s*kính\s*gió\s*mạnh",
-    r"vùng\s*nguy\s*hiểm\s*(?:trong\s*)?(?:24|48|72)\s*giờ",
-    r"vòng\s*tròn\s*xác\s*suất\s*70%\s*(?:tâm\s*)?(?:áp\s*thấp\s*nhiệt\s*đới|bão)?",
-    r"bô[\s-]*pho|bo[\s-]*pho|beaufort",
-    r"cấp\s*\d{1,2}\s*[-–]\s*\d{1,2}\s*,?\s*giật\s*cấp\s*\d{1,2}\s*[-–]\s*\d{1,2}",
-    r"gió\s*(?:mạnh\s*)?cấp\s*\d{1,2}(?:\s*[-–]\s*\d{1,2})?",
-    r"giật\s*cấp\s*\d{1,2}(?:\s*[-–]\s*\d{1,2})?",
-    r"sức\s*gió\s*(?:mạnh\s*nhất\s*)?(?:vùng\s*gần\s*tâm\s*)?(?:cấp\s*)?\d{1,2}",
-    r"tin\s*sóng\s*lớn\s*,?\s*nước\s*dâng\s*do\s*bão",
-    r"nước\s*dâng\s*do\s*bão",
-    r"sóng\s*(?:biển\s*)?cao\s*\d+(?:[.,]\d+)?\s*(?:m|mét)",
-    r"biển\s*động\s*mạnh|biển\s*động",
-    r"bão\s*[A-Za-z][A-Za-z0-9-]{2,}",
-    r"cơn\s*bão\s*[A-Za-z][A-Za-z0-9-]{2,}",
-    r"gió\s*(?:mạnh\s*)?cấp\s*\d+(?:\s*[–-]\s*\d+)?",
-    r"gió\s*giật\s*(?:mạnh\s*)?cấp\s*\d+(?:\s*[–-]\s*\d+)?",
-    r"bão\s*số\s*\d+"
+    r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"gió\s*bão", r"bão\s*khẩn\s*cấp",
+    r"đổ\s*bộ", r"tiến\s*vào\s*biển\s*đông", r"tin\s*bão", r"bão\s*[A-Za-z][A-Za-z0-9-]{2,}",
+    r"vùng\s*tâm\s*bão", r"áp\s*sát\s*ven\s*biển", r"hoàn\s*lưu\s*sau\s*bão", r"gió\s*xoáy", r"phong\s*ba"
   ]),
 
-
-  # 2) Nước dâng, Triều cường (Storm Surge / Tidal Flood - Decision 18 Art 3.5)
-  ("storm_surge", [
-    r"triều\s*cường", r"nước\s*dâng", r"nước\s*dâng\s*do\s*(?:bão|áp\s*thấp\s*nhiệt\s*đới|gió\s*mạnh)", 
-    r"nước\s*biển\s*dâng", r"đỉnh\s*triều", r"ngập\s*do\s*triều", r"sóng\s*lớn\s*đánh\s*tràn",
-    r"dâng\s*cao\s*bất\s*thường", r"ngập\s*ven\s*biển", r"tràn\s*qua\s*kè", r"sóng\s*tràn",
-    r"kỳ\s*triều\s*cường", r"triều\s*cao", r"đỉnh\s*triều\s*kỷ\s*lục", r"vượt\s*báo\s*động\s*triều",
-    r"độ\s*cao\s*nước\s*dâng",
-    r"đỉnh\s*nước\s*dâng",
-    r"nước\s*dâng\s*kết\s*hợp\s*(?:với\s*)?thủy\s*triều",
-    r"mực\s*nước\s*tổng\s*cộng",
-    r"tin\s*(?:dự\s*báo|cảnh\s*báo)\s*(?:sóng\s*lớn\s*,?\s*)?nước\s*dâng",
-    r"bản\s*tin\s*(?:dự\s*báo|cảnh\s*báo)\s*nước\s*dâng\s*do\s*bão",
-    r"nước\s*dâng\s*do\s*gió\s*mạnh\s*trên\s*biển",
-    r"tin\s*(?:dự\s*báo|cảnh\s*báo)\s*gió\s*mạnh\s*trên\s*biển\s*,?\s*sóng\s*lớn\s*,?\s*nước\s*dâng",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*nước\s*dâng\s*:?\s*cấp\s*(?:1|2|3|4|5)",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*nước\s*dâng",
-    r"mực\s*nước\s*tổng\s*cộng\s*(?:cao|lớn)\s*(?:từ|trên)\s*\d+(?:[.,]\d+)?\s*m",
-    r"độ\s*cao\s*nước\s*dâng\s*(?:từ|trên)\s*\d+(?:[.,]\d+)?\s*m",
-    r"tin\s*triều\s*cường",
-    r"đợt\s*triều\s*cường",
-    r"triều\s*cường\s*(?:cao|lớn)\s*(?:nhất|bất\s*thường)?",
-    r"thủy\s*triều\s*dâng|thuỷ\s*triều\s*dâng",
-    r"mực\s*nước\s*triều|mực\s*nước\s*thủy\s*triều|mực\s*nước\s*thuỷ\s*triều",
-    r"mực\s*nước\s*đỉnh\s*triều|đỉnh\s*triều\s*(?:cao\s*nhất|lớn\s*nhất|kỷ\s*lục)?",
-    r"(?:vượt|trên)\s*(?:mức\s*)?báo\s*động\s*(?:I|II|III|1|2|3)",
-    r"\bBĐ\s*[1-3]\b",
-    r"ngập\s*(?:lụt|úng)?\s*do\s*triều|ngập\s*do\s*triều\s*cường",
-    r"ngập\s*ven\s*sông\s*do\s*triều|ngập\s*ven\s*biển\s*do\s*triều",
-    r"storm\s*surge|tidal\s*surge|high\s*tide",
-    r"trieu\s*cuong|nuoc\s*dang|nuoc\s*bien\s*dang",
-    r"mực\s*nước(?:\s*triều)?\s*(?:đạt|lên|tới|trên|vượt)?\s*\d+(?:[.,]\d+)?\s*m",
-    r"vượt\s*(?:mức\s*)?báo\s*động\s*(?:1|2|3|I|II|III)"
+  # 2) Lũ lụt (Flood)
+  ("flood", [
+    r"lũ\s*lụt", r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu", r"ngập\s*(?:nhà|đường|phố)",
+    r"vỡ\s*đê", r"tràn\s*đê", r"xả\s+lũ", r"hồ\s+chứa\s+thủy\s+điện",
+    r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lưu\s*lượng\s*về\s*hồ",
+    r"lũ\s*trên\s*các\s*sông", r"vỡ\s*đập", r"xả\s*tràn", r"tin\s*lũ", r"báo\s*động\s*(?:1|2|3|I|II|III)",
+    r"mực\s*nước\s*trên\s*báo\s*động", r"lũ\s*báo\s*động\s*3", r"lũ\s*lịch\s*sử", r"ngập\s*lụt\s*cục\s*bộ", r"vùng\s*trũng\s*thấp"
   ]),
 
-  # 3) Lũ, Ngập lụt, Sạt lở, Mưa lớn (Decision 18 Art 3.2: Mưa lớn is now here)
-  ("flood_landslide", [
-    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn\s*đá", r"lũ\s*lịch\s*sử", r"lũ\s*đầu\s*nguồn",
-    r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu", r"ngập\s*cục\s*bộ", r"biển\s*nước", r"ngập\s*(?:nhà|đường|phố)",
-    r"sạt\s*lở\s*đất", r"trượt\s*lở\s*đất", r"sụt\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hàm\s*ếch", r"lở\s*núi", r"sập\s*cầu",
-    r"vỡ\s*đê", r"tràn\s*đê", r"sự\s*cố\s+đập", r"xả\s+lũ", r"hồ\s+chứa\s+thủy\s+điện", r"thủy\s*lợi",
-    r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lũ\s*dâng\s*cao", r"báo\s*động\s*(?:1|2|3|I|II|III)",
-    r"chia\s*cắt", r"cô\s*lập", r"cuốn\s*trôi", r"vùi\s*lấp", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
-    r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"sụt\s*lún\s*đất", r"nứt\s*đất", r"trượt\s*mái\s*đê", r"mưa\s*lũ",
-    r"taluy\s*(?:âm|dương)", r"trượt\s*mái\s*sườn", r"sạt\s*trượt\s*ven\s*sông", r"điều\s*tiết\s*xả\s*lũ",
-    r"lưu\s*lượng\s*về\s*hồ", r"ngập\s*lụt\s*trên\s*diện\s*rộng",
-    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"tổng\s*lượng\s*mưa",
-    r"mưa\s*diện\s*rộng", r"mưa\s*kéo\s*dài", r"mưa\s*trên\s*\d+\s*mm", r"mưa\s*vượt\s*\d+\s*mm",
-    r"mưa\s*kỷ\s*lục", r"mưa\s*như\s*trút", r"mưa\s*xối\s*xả", r"mưa\s*tầm\s*tã",
-    r"lũ\s*trên\s*các\s*sông", r"lũ\s*hạ\s*lưu", r"lũ\s*thượng\s*nguồn", r"lũ\s*lên\s*nhanh",
-    r"vỡ\s*đập", r"sự\s*cố\s*hồ\s*đập", r"xả\s*tràn", r"xả\s*khẩn\s*cấp",
-    r"sạt\s*lở\s*kè", r"hố\s*sụt", r"nứt\s*nhà",
-    r"tin\s*cảnh\s*báo\s*mưa\s*lớn",
-    r"tin\s*dự\s*báo\s*mưa\s*lớn",
-    r"tin\s*cảnh\s*báo\s*lũ(?!\s*quét)",          # tránh đè lên “lũ quét”
-    r"tin\s*lũ(?:\s*khẩn\s*cấp)?",               # “Tin lũ”, “Tin lũ khẩn cấp”
-    r"tin\s*cảnh\s*báo\s*ngập\s*lụt",
-    r"tin\s*cảnh\s*báo\s*lũ\s*quét\s*,?\s*sạt\s*lở\s*đất(?:\s*,?\s*sụt\s*lún\s*đất)?",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*(?:mưa\s*lớn|lũ|ngập\s*lụt|lũ\s*quét|sạt\s*lở\s*đất|sụt\s*lún\s*đất)",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*(?:mưa\s*lớn|lũ|ngập\s*lụt|lũ\s*quét|sạt\s*lở\s*đất|sụt\s*lún\s*đất)",               # bắt “Cấp 2-3”, “Cấp 1”, ... (thường đi kèm dòng trên)
-    r"mưa\s*(?:vừa|to|rất\s*to)(?:\s*đến\s*rất\s*to)?",
-    r"mưa\s*đặc\s*biệt\s*lớn",
-    r"mưa\s*lớn\s*diện\s*rộng",
-    r"mưa\s*có\s*cường\s*độ\s*lớn",
-    r"lượng\s*mưa\s*(?:tích\s*lũy|lũy\s*tích|phổ\s*biến)",
-    r"tổng\s*lượng\s*mưa\s*(?:tích\s*lũy|lũy\s*tích)?",
-    r"trong\s*(?:0?\d+)\s*-\s*(?:0?\d+)\s*giờ\s*tới",   # “03-06 giờ tới”
-    r"trong\s*\d+\s*giờ\s*(?:qua|tới)",
-    r"\b\d+(?:[.,]\d+)?\s*mm\s*/\s*\d+\s*h\b",          # “200mm/3h”, “60mm/3h”
-    r">\s*\d+(?:[.,]\d+)?\s*mm\s*/\s*\d+\s*h",          # “(>200mm/3h)”
-    r"đỉnh\s*lũ(?:\s*dự\s*kiến)?",
-    r"lệnh\s*báo\s*động\s*lũ",
-    r"(?:báo\s*động|BĐ)\s*(?:1|2|3|I|II|III)",
-    r"(?:trên|dưới)\s*(?:báo\s*động|BĐ)\s*(?:1|2|3|I|II|III)",
-    r"vượt\s*(?:báo\s*động|BĐ)\s*(?:1|2|3|I|II|III)",
-    r"lũ\s*(?:lớn|rất\s*lớn|đặc\s*biệt\s*lớn|bất\s*thường)",
-    r"lũ\s*(?:đang\s*)?(?:lên|rút|dao\s*động|biến\s*đổi\s*chậm)",
-    r"lũ\s*khẩn\s*cấp", r"dòng\s*chảy", r"ngập\s*úng", r"úng\s*ngập", r"ngập\s*nước",
-    r"vùng\s*trũng\s*,?\s*thấp", r"khu\s*đô\s*thị", r"khu\s*công\s*nghiệp",
-    r"khu\s*tập\s*trung\s*dân\s*cư", r"độ\s*sâu\s*ngập", r"ngập\s*diện\s*rộng",
-    r"nguy\s*cơ\s*(?:cao\s*)?(?:xảy\s*ra\s*)?lũ\s*quét", r"(?:sông|suối)\s*nhỏ",
-    r"sườn\s*dốc", r"độ\s*ẩm\s*đất", r"bão\s*hòa", r"điểm\s*nghẽn\s*dòng", r"sạt\s*lở\s*đất\s*đá", r"lở\s*đất\s*đá", r"đá\s*lăn",
-    r"sụt\s*lún\s*đất", r"lượng\s*mưa(?:\s*trong\s*\d+\s*(?:giờ|h|tiếng)|\s*24\s*giờ)?\s*(?:đạt|tới|trên|vượt)?\s*\d+\s*mm",
-    r"\b\d+\s*mm(?:\/\s*24h|\/\s*24\s*giờ)?\b"
+  # 3) Lũ quét/Lũ ống (Flash Flood)
+  ("flash_flood", [
+    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn\s*đá", r"lũ\s*nhanh",
+    r"tin\s*cảnh\s*báo\s*lũ\s*quét", r"nguy\s*cơ\s*lũ\s*quét", r"lũ\s*dữ",
+    r"lũ\s*cuồn\s*cuộn", r"dòng\s*lũ\s*chảy\s*xiết", r"đất\s*đá\s*đổ\s*về", r"trôi\s*cầu"
   ]),
 
-  # 4) Nắng nóng, Hạn hán, Xâm nhập mặn (Heat, Drought & Salinity - Decision 18 Art 3.3)
-  ("heat_drought", [
-    r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
-    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước\s*ngọt", r"nứt\s*nẻ", r"khát\s*nước",
+  # 4) Sạt lở (Landslide)
+  ("landslide", [
+    r"sạt\s*lở\s*đất", r"trượt\s*lở\s*đất", r"lở\s*núi", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
+    r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"trượt\s*mái\s*đê", r"sạt\s*lở\s*kè", r"đá\s*lăn", r"vùi\s*lấp",
+    r"đứt\s*gãy", r"trượt\s*sạt", r"vết\s*nứt\s*núi", r"sụp\s*đổ\s*địa\s*chất", r"sạt\s*taluy\s*dương", r"sạt\s*taluy\s*âm"
+  ]),
+
+  # 5) Sụt lún đất (Land Subsidence)
+  ("subsidence", [
+    r"sụt\s*lún(?:\s*đất)?", r"sụp\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hàm\s*ếch", r"nứt\s*đất", r"hố\s*sụt",
+    r"sụt\s*lún\s*hạ\s*tầng", r"biến\s*dạng\s*mặt\s*đường", r"lún\s*xụt"
+  ]),
+
+  # 6) Hạn hán (Drought)
+  ("drought", [
+    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước\s*ngọt", r"nứt\s*nẻ", r"khô\s*cằn", r"cạn\s*hồ",
+    r"thiếu\s*hụt\s*nguồn\s*nước", r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn", r"hạn\s*mặn",
+    r"vùng\s*hạn", r"chống\s*hạn", r"thiếu\s*hụt\s*mưa", r"mực\s*nước\s*chết", r"nứt\s*nẻ\s*ruộng\s*đồng"
+  ]),
+
+  # 7) Xâm nhập mặn (Salinity Intrusion)
+  ("salinity", [
     r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn", r"ranh\s*mặn", r"mặn\s*xâm\s*nhập\s*sâu",
-    r"thiếu\s*nước\s*sinh\s*hoạt", r"xe\s*chở\s*nước\s*ngọt", r"mất\s*mùa\s*do\s*hạn\s*mặn",
-    r"độ\s*mặn\s*phần\s*nghìn", r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn",
-    r"đất\s*khô\s*cằn", r"cạn\s*hồ", r"hạn\s*hán\s*kéo\s*dài",
-    r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"ranh\s*mặn\s*4g/l", r"thiếu\s*hụt\s*nguồn\s*nước",
-    r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn", r"kiệt\s*nước", r"mực\s*nước\s*xuống\s*thấp",
-    r"lấy\s*nước\s*ngọt", r"vận\s*hành\s*cống\s*ngăn\s*mặn",
-    r"tin\s*cảnh\s*báo\s*nắng\s*nóng", r"tin\s*dự\s*báo\s*nắng\s*nóng",
-    r"tin\s*(?:dự\s*báo|cảnh\s*báo)\s*hạn\s*hán",
-    r"tin\s*cảnh\s*báo\s*xâm\s*nhập\s*mặn", r"tin\s*dự\s*báo\s*xâm\s*nhập\s*mặn",
-    r"tin\s*(?:dự\s*báo|cảnh\s*báo)\s*hạn\s*hán\s*và\s*sạt\s*lở\s*đất\s*,?\s*sụt\s*lún\s*đất",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*nắng\s*nóng",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*hạn\s*hán",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*xâm\s*nhập\s*mặn",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
-    r"nhiệt\s*độ\s*cao\s*nhất", r"độ\s*ẩm\s*tương\s*đối\s*thấp\s*nhất",
-    r"thời\s*gian\s*nắng\s*nóng\s*trong\s*ngày",
-    r"tiếp\s*diễn\s*nắng\s*nóng", r"kết\s*thúc\s*nắng\s*nóng",
-    r"nắng\s*nóng\s*diện\s*rộng", r"đợt\s*nắng\s*nóng",
-    r"nhiệt\s*độ\s*cảm\s*nhận", r"chỉ\s*số\s*nhiệt", r"heat\s*index",
-    r"(?:nhiệt\s*độ\s*cao\s*nhất|nắng\s*nóng)[^.\n]{0,40}\b\d{2}\s*°?\s*[cC]\b",
-    r"(?:nhiệt\s*độ\s*cao\s*nhất|nắng\s*nóng)[^.\n]{0,40}\b\d{2}\s*(?:độ|do)\b",
-    r"tổng\s*lượng\s*nước\s*mặt",
-    r"thiếu\s*hụt\s*tổng\s*lượng\s*mưa", r"thiếu\s*hụt\s*tổng\s*lượng\s*nước\s*mặt",
-    r"tỷ\s*lệ\s*phần\s*trăm\s*\(\s*%\s*\)\s*thiếu\s*hụt", r"thiếu\s*hụt\s*\d+\s*%",
-    r"giá\s*trị\s*trung\s*bình\s*nhiều\s*năm", r"trung\s*bình\s*nhiều\s*năm", r"TBNN",
-    r"cùng\s*thời\s*kỳ", r"năm\s*trước(?:\s*đó)?",
-    r"cạn\s*kiệt\s*nguồn\s*nước", r"không\s*có\s*mưa", r"thiếu\s*nước\s*nghiêm\s*trọng",
-    r"lưu\s*vực\s*sông", r"cửa\s*sông", r"nội\s*đồng", r"thủy\s*triều",
-    r"ranh\s*giới\s*độ\s*mặn", r"ranh\s*mặn",
-    r"(?:1|4)\s*‰", r"(?:1|4)\s*phần\s*nghìn", r"(?:1|4)\s*ppt",
-    r"độ\s*mặn\s*(?:cao\s*nhất|max)", r"độ\s*mặn\s*1\s*‰", r"độ\s*mặn\s*4\s*‰",
-    r"khoảng\s*cách\s*(?:chịu\s*ảnh\s*hưởng|xâm\s*nhập)",
-    r"xâm\s*nhập\s*mặn\s*sâu", r"đỉnh\s*mặn", r"đợt\s*xâm\s*nhập\s*mặn",
-    r"nang\s*nong", r"han\s*han", r"xam\s*nhap\s*man", r"do\s*man", r"ranh\s*man",
-    r"han\s*man", r"dot\s*han\s*man", r"han\s*man\s*lich\s*su", 
-    r"\b\d{2}(?:[–-]\d{2})?\s*(?:°c|độ\s*c|độ)\b", r"\b\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b"
+    r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn", r"\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b",
+    r"nước\s*lợ", r"độ\s*mặn\s*vượt\s*ngưỡng", r"mặn\s*bủa\s*vây", r"ranh\s*mặn\s*4\s*g\/l", r"nhiễm\s*mặn\s*sâu"
   ]),
 
-  # 5) Gió mạnh trên biển, Sương mù (Wind & Fog - Decision 18 Art 3.4)
-  ("wind_fog", [
-    r"gió\s*mạnh\s*trên\s*biển", r"gió\s*giật\s*mạnh", r"sóng\s*cao\s*\d+\s*mét",
-    r"biển\s*động\s*mạnh", r"cấm\s*biển", r"cấm\s*tàu\s*thuyền", r"sóng\s*to\s*vây\s*quanh",
-    r"sương\s*mù\s*dày\s*đặc", r"mù\s*quang", r"tầm\s*nhìn\s*xa\s*dưới\s*1km",
-    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc",
-    r"gió\s*cấp\s*Beaufort", r"gió\s*giật\s*cấp\s*\d+",
-    r"tầm\s*nhìn\s*xa\s*hạn\s*chế", r"biển\s*động\s*rất\s*mạnh",
-    r"biển\s*động", r"biển\s*động\s*mạnh", r"biển\s*động\s*rất\s*mạnh",
-    r"tin\s*cảnh\s*báo\s*gió\s*mạnh\s*trên\s*biển",
-    r"tin\s*dự\s*báo\s*gió\s*mạnh\s*trên\s*biển",
-    r"tin\s*(?:dự\s*báo|cảnh\s*báo)\s*gió\s*mạnh\s*trên\s*biển\s*,?\s*sóng\s*lớn\s*,?\s*nước\s*dâng",
-    r"tin\s*cảnh\s*báo\s*sương\s*mù",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*gió\s*mạnh\s*trên\s*biển",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*sương\s*mù",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
-    r"gió\s*mạnh\s*trên\s*biển\s*là\s*gió\s*(?:với\s*tốc\s*độ\s*)?từ\s*cấp\s*6\s*trở\s*lên",
-    r"gió\s*(?:mạnh\s*)?(?:từ\s*)?cấp\s*6\s*trở\s*lên",
-    r"gió\s*(?:mạnh\s*)?cấp\s*\d+\s*(?:đến|[-–])\s*cấp\s*\d+",
-    r"gió\s*(?:mạnh\s*)?cấp\s*\d+",
-    r"giật\s*cấp\s*\d+\s*(?:đến|[-–])\s*cấp\s*\d+",
-    r"gió\s*giật\s*cấp\s*\d+",
-    r"cấp\s*gió\s*bô[-\s]*pho", r"cấp\s*gió\s*Beaufort", r"thang\s*bô[-\s]*pho",
-    r"sóng\s*lớn", r"độ\s*cao\s*sóng", r"độ\s*cao\s*nước\s*dâng",
-    r"sóng\s*(?:cao|lớn)\s*(?:từ\s*)?2\s*m\s*trở\s*lên",
-    r"sóng\s*cao\s*\d+(?:[.,]\d+)?\s*m",
-    r"sóng\s*cao\s*\d+(?:[.,]\d+)?\s*(?:đến|[-–])\s*\d+(?:[.,]\d+)?\s*m",
-    r"nước\s*dâng\s*do\s*gió\s*mạnh\s*trên\s*biển",
-    r"nước\s*biển\s*dâng\s*do\s*gió\s*mạnh",
-    r"tình\s*trạng\s*biển", r"biển\s*động\s*(?:mạnh|rất\s*mạnh)?",
-    r"vùng\s*biển", r"vùng\s*biển\s*ven\s*bờ", r"ngoài\s*khơi", r"vùng\s*biển\s*xa",
-    r"bắc\s*biển\s*đông", r"giữa\s*biển\s*đông", r"nam\s*biển\s*đông",
-    r"vịnh\s*bắc\s*bộ", r"hoàng\s*sa", r"trường\s*sa",
-    r"không\s*khí\s*lạnh\s*(?:tăng\s*cường|tràn\s*về)?",
-    r"gió\s*mùa\s*đông\s*bắc\s*(?:mạnh|tăng\s*cường)?",
-    r"gió\s*đông\s*bắc\s*(?:mạnh|tăng\s*cường)?",
-    r"gió\s*tây\s*nam\s*(?:mạnh|tăng\s*cường)?",
-    r"sương\s*mù", r"sương\s*mù\s*dày\s*đặc", r"sương\s*mù\s*dày",
-    r"tầm\s*nhìn\s*ngang", r"tầm\s*nhìn\s*ngang\s*dưới\s*1\s*km",
-    r"tầm\s*nhìn\s*(?:xa|ngang)\s*(?:giảm|hạn\s*chế|còn|dưới)\s*\d+(?:[.,]\d+)?\s*(?:m|km)",
-    r"tầm\s*nhìn\s*xa\s*(?:từ\s*)?50\s*m\s*trở\s*lên",
-    r"tầm\s*nhìn\s*xa\s*dưới\s*50\s*m",
-    r"gây\s*nguy\s*hiểm\s*cho\s*các\s*phương\s*tiện\s*giao\s*thông",
-    r"đường\s*cao\s*tốc", r"khu\s*vực\s*sân\s*bay",
-    r"trên\s*biển", r"trên\s*sông", r"đường\s*đèo\s*núi",
-    r"gio\s*manh\s*tren\s*bien", r"suong\s*mu", r"tam\s*nhin\s*(?:xa|ngang)",
-    r"bien\s*dong", r"song\s*lon", r"nuoc\s*dang",
-    r"tầm\s*nhìn(?:\s*xa)?\s*(?:dưới|giảm\s*còn|chỉ\s*còn)?\s*\d+(?:\s*[–-]\s*\d+)?\s*(?:m|km)",
-    r"sóng\s*cao\s*(?:từ)?\s*\d+(?:[.,]\d+)?\s*(?:đến|[-–])\s*\d+(?:[.,]\d+)?\s*m"
+  # 8) Mưa lớn/Mưa đá/Lốc/Sét (Extreme Weather)
+  ("extreme_weather", [
+    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"mưa\s*kỷ\s*lục",
+    r"mưa\s*đá", r"dông\s*lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc", r"sét\s*đánh", r"giông\s*sét",
+    r"mưa\s*đá\s*trắng\s*trời", r"hạt\s*mưa\s*đá", r"tia\s*sét",
+    r"mưa\s*xối\s*xả", r"giông\s*cực\s*mạnh", r"gió\s*rít", r"trắng\s*trời"
   ]),
-  # 6) Thời tiết cực đoan (Lốc, Sét, Mưa đá, Rét hại - Decision 18 Art 3.6)
-  ("extreme_other", [
-    r"dông\s*lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc", r"mưa\s*đá", r"mưa\s*đá\s*trắng\s*trời",
-    r"sét\s*đánh", r"giông\s*sét", r"mưa\s*to\s*kèm\s*theo\s*dông\s*lốc",
+
+  # 9) Nắng nóng (Heatwave)
+  ("heatwave", [
+    r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
+    r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"đợt\s*nắng\s*nóng", r"nhiệt\s*độ\s*cao\s*nhất",
+    r"nắng\s*cháy\s*da", r"nóng\s*rát", r"nắng\s*hạn", r"nóng\s*như\s*thiêu\s*như\s*đốt"
+  ]),
+
+  # 10) Rét hại/Sương muối (Cold/Frost)
+  ("cold_surge", [
     r"rét\s*đậm\s*rét\s*hại", r"rét\s*hại", r"băng\s*giá", r"sương\s*muối", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
-    r"rét\s*buốt", r"băng\s*giá\s*phủ\s*trắng", r"không\s*khí\s*lạnh",
-    r"mưa\s*tuyết", r"tuyết\s*rơi",
-    r"tin\s*cảnh\s*báo\s*(?:dông\s*|giông\s*)?(?:lốc|sét|mưa\s*đá)",
-    r"tin\s*dự\s*báo(?:,\s*)?\s*cảnh\s*báo\s*(?:rét\s*hại|sương\s*muối)",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*(?:lốc|sét|mưa\s*đá|rét\s*hại|sương\s*muối)",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)\s*\d+",
-    r"gió\s*lốc",
-    r"giông\s*lốc|dông\s*lốc",
-    r"lốc\s*xoáy\s*(?:cục\s*bộ|mạnh|dữ\s*dội)?",
-    r"lốc\s*cuốn\s*(?:bay|tốc\s*mái|sập|đổ)",
-    r"lốc\s*(?:tàn\s*phá|quật\s*đổ|thổi\s*bay)",
-    r"vòi\s*rồng\s*(?:trên\s*biển|trên\s*sông|xuất\s*hiện)?",  # bạn đã có, thêm biến thể
-    r"(?:tia\s*)?sét\s*(?:đánh|giáng|đánh\s*trúng|đánh\s*trúng\s*liên\s*tiếp)",
-    r"bị\s*sét\s*đánh",
-    r"sét\s*đánh\s*chết|tử\s*vong\s*do\s*sét",
-    r"giông\s*sét|dông\s*sét",
-    r"phóng\s*điện\s*(?:trong\s*đám\s*mây|giữa\s*các\s*đám\s*mây|mây\s*-\s*đất)",
-    r"hạt\s*mưa\s*đá|cục\s*mưa\s*đá",
-    r"mưa\s*đá\s*(?:kèm|cùng)\s*(?:mưa\s*rào|gió\s*mạnh|gió\s*giật)",
-    r"mưa\s*đá\s*(?:to|rất\s*to|dày\s*đặc|trắng\s*trời)",
-    r"mưa\s*đá\s*(?:đường\s*kính|kích\s*thước)\s*\d+(?:[.,]\d+)?\s*(?:cm|mm)",
-    r"thiệt\s*hại\s*do\s*mưa\s*đá|mái\s*tôn\s*bị\s*thủng|vỡ\s*kính\s*do\s*mưa\s*đá",
-    r"rét\s*hại\s*(?:diện\s*rộng|kéo\s*dài|tăng\s*cường|cường\s*độ\s*mạnh)?",
-    r"đợt\s*rét\s*hại",
-    r"sương\s*muối\s*(?:xuất\s*hiện|bao\s*phủ|phủ\s*trắng)?",
-    r"băng\s*giá|đóng\s*băng|băng\s*phủ",      # hay đi kèm rét hại/sương muối trong tin tức
-    r"nhiệt\s*độ\s*(?:giảm|xuống|hạ)\s*(?:dưới|còn)\s*\d+(?:[.,]\d+)?\s*°?\s*c",
-    r"rét\s*đậm\s*(?:rét\s*hại)?",
-    r"\bloc\b|\bset\b|\bmua\s*da\b|\bret\s*hai\b|\bsuong\s*muoi\b",
+    r"rét\s*buốt", r"mưa\s*tuyết", r"tuyết\s*rơi",
+    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc", r"rét\s*tê\s*tái", r"trắng\s*xóa\s*băng", r"đợt\s*rét\s*mạnh"
   ]),
-  # 7) Cháy rừng (Wildfire - Decision 18 Art 3.7)
+
+  # 11) Động đất (Earthquake)
+  ("earthquake", [
+    r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"richter", r"tâm\s*chấn", r"chấn\s*tiêu",
+    r"magnitude", r"rung\s*lắc\s*mạnh", r"\d+(?:[.,]\d+)?\s*độ\s*richter", r"viện\s*vật\s*lý\s*địa\s*cầu",
+    r"sóng\s*địa\s*chấn", r"cấp\s*độ\s*Richter", r"rung\s*chấn\s*mạnh", r"chấn\s*phát"
+  ]),
+
+  # 12) Sóng thần (Tsunami)
+  ("tsunami", [
+    r"sóng\s*thần", r"tsunami", r"cấp\s*báo\s*động\s*sóng\s*thần", r"tin\s*cảnh\s*báo\s*sóng\s*thần",
+    r"sóng\s*cao\s*hàng\s*chục\s*mét", r"thảm\s*họa\s*sóng\s*thần", r"sóng\s*thần\s*tàn\s*phá"
+  ]),
+
+  # 13) Nước dâng (Storm Surge)
+  ("storm_surge", [
+    r"nước\s*dâng", r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng", r"nước\s*dâng\s*do\s*gió\s*mạnh", r"sóng\s*tràn",
+    r"triều\s*cường\s*vượt\s*mức", r"ngập\s*lụt\s*do\s*triều", r"sóng\s*biển\s*cao", r"sóng\s*đánh\s*vào\s*bờ"
+  ]),
+
+  # 14) Cháy rừng (Wildfire)
   ("wildfire", [
     r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
     r"PCCCR", r"cháy\s*thực\s*bì", r"lửa\s*rừng", r"cháy\s*lan\s*rộng",
-    r"quy\s*chế\s*phòng\s*cháy\s*chữa\s*cháy\s*rừng", r"trực\s*cháy\s*rừng",
-    r"cấp\s*cháy\s*rừng\s*cấp\s*(?:IV|V|4|5)", r"nguy\s*cơ\s*cháy\s*rừng\s*rất\s*cao",
-    r"cháy\s*rừng\s*(?:phòng\s*hộ|đặc\s*dụng|sản\s*xuất)", r"đốt\s*thực\s*bì", r"đốt\s*nương",
-    r"đám\s*cháy\s*rừng", r"điểm\s*cháy\s*rừng", r"lửa\s*rừng",
-    r"tin\s*(?:dự\s*báo|cảnh\s*báo)\s*cháy\s*rừng(?:\s*do\s*tự\s*nhiên)?",
-    r"cảnh\s*báo\s*cháy\s*rừng(?:\s*do\s*tự\s*nhiên)?",
-    r"cấp\s*cảnh\s*báo\s*cháy\s*rừng\s*(?:đạt\s*)?(?:cấp\s*)?(?:4|5|IV|V)",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*cháy\s*rừng(?:\s*do\s*tự\s*nhiên)?",
-    r"cấp\s*dự\s*báo\s*cháy\s*rừng\s*(?:cấp\s*)?(?:I|II|III|IV|V|1|2|3|4|5)",
-    r"cấp\s*cháy\s*rừng\s*(?:cấp\s*)?(?:I|II|III|IV|V|1|2|3|4|5)",
-    r"bảng\s*tra\s*cấp\s*(?:dự\s*báo\s*)?cháy\s*rừng",
-    r"phòng\s*cháy\s*(?:,?\s*chữa\s*cháy)?\s*rừng",
-    r"chữa\s*cháy\s*rừng", r"PCCCR", r"PCCC\s*rừng", r"Ban\s*Chỉ\s*huy\s*PCCCR",
-    r"kiểm\s*lâm", r"hạt\s*kiểm\s*lâm", r"chi\s*cục\s*kiểm\s*lâm",
-    r"huy\s*động\s*lực\s*lượng\s*chữa\s*cháy\s*rừng",
-    r"trực\s*phòng\s*cháy\s*(?:và\s*)?chữa\s*cháy\s*rừng",
-    r"canh\s*phòng\s*(?:cháy\s*rừng|lửa\s*rừng)",
-    r"biển\s*báo\s*hiệu\s*cấp\s*dự\s*báo\s*cháy\s*rừng",
-    r"biển\s*cấm\s*lửa",
-    r"đường\s*băng\s*cản\s*lửa|đường\s*ranh\s*cản\s*lửa",
-    r"chòi\s*quan\s*sát\s*phát\s*hiện\s*cháy\s*rừng|chòi\s*canh\s*lửa",
-    r"tháp\s*quan\s*trắc\s*lửa\s*rừng",
-    r"hệ\s*thống\s*(?:dự\s*báo|cảnh\s*báo)\s*cháy\s*rừng",
-    r"sử\s*dụng\s*lửa\s*trong\s*(?:sản\s*xuất|sinh\s*hoạt|canh\s*tác)",
-    r"đốt\s*(?:xử\s*lý\s*)?thực\s*bì",
-    r"đốt\s*nương|đốt\s*rẫy",
-    r"cấm\s*lửa|cấm\s*đốt",
-    r"bùng\s*phát\s*cháy\s*rừng",
-    r"lan\s*rộng|lan\s*nhanh",
-    r"khoanh\s*vùng|khống\s*chế|dập\s*tắt",
-    r"diện\s*tích\s*cháy|thiệt\s*hại\s*rừng",
-    r"chay\s*rung",
-    r"pcccr|pccc\s*rung",
-    r"cap\s*(?:du\s*bao|canh\s*bao)\s*chay\s*rung",
+    r"giặc\s*lửa", r"điểm\s*cháy", r"khói\s*mù", r"thiêu\s*rụi"
   ]),
-  # 8) Động đất, Sóng thần (Quake & Tsunami - Decision 18 Art 3.8-10)
-  ("quake_tsunami", [
-    r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"sóng\s*thần", r"richter",
-    r"tâm\s*chấn", r"chấn\s*tiêu", r"đất\s*rung\s*lắc", r"viện\s*vật\s*lý\s*địa\s*cầu",
-    r"magnitude", r"rung\s*lắc\s*mạnh", r"thang\s*richter", r"cấp\s*báo\s*động\s*sóng\s*thần",
-    r"\b(?:m|mw|ml)\s*[=:]?\s*\d+(?:[.,]\d+)?", r"độ\s*lớn\s*\d+(?:[.,]\d+)?", r"\d+(?:[.,]\d+)?\s*độ\s*richter",
-    r"bản\s*tin\s*động\s*đất",
-    r"tin\s*động\s*đất",
-    r"báo\s*tin\s*động\s*đất",
-    r"bản\s*tin\s*cảnh\s*báo\s*sóng\s*thần",
-    r"tin\s*cảnh\s*báo\s*sóng\s*thần",
-    r"tin\s*hủy\s*cảnh\s*báo\s*sóng\s*thần|tin\s*huỷ\s*cảnh\s*báo\s*sóng\s*thần",
-    r"tin\s*cuối\s*cùng\s*về\s*sóng\s*thần",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*động\s*đất",
-    r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*do\s*sóng\s*thần",
-    r"cảnh\s*báo\s*cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
-    r"giờ\s*GMT",
-    r"giờ\s*Hà\s*Nội|giờ\s*Việt\s*Nam",
-    r"địa\s*điểm\s*xảy\s*ra\s*động\s*đất",
-    r"tọa\s*độ\s*chấn\s*tâm|toạ\s*độ\s*chấn\s*tâm",
-    r"chấn\s*tâm|tâm\s*chấn",
-    r"độ\s*sâu\s*chấn\s*tiêu|chấn\s*tiêu",
-    r"cường\s*độ\s*chấn\s*động",
-    r"thang\s*MSK[-\s]*64|\bMSK[-\s]*64\b",
-    r"hậu\s*quả\s*có\s*thể\s*xảy\s*ra\s*do\s*động\s*đất",
-    r"độ\s*lớn\s*động\s*đất\s*\(M\)|độ\s*lớn\s*\(M\)",
-    r"thang\s*độ\s*mô\s*men|độ\s*mô\s*men",
-    r"(?:động\s*đất|magnitude|độ\s*lớn)[^.\n]{0,40}\b\d+(?:[.,]\d+)?\b",
-    r"(?:động\s*đất|magnitude|độ\s*lớn)[^.\n]{0,40}\bM\s*[=:]?\s*\d+(?:[.,]\d+)?\b",
-    r"tin\s*cảnh\s*báo\s*sóng\s*thần\s*mức\s*1",
-    r"tin\s*cảnh\s*báo\s*sóng\s*thần\s*mức\s*2",
-    r"tin\s*cảnh\s*báo\s*sóng\s*thần\s*mức\s*3",
-    r"khả\s*năng\s*xảy\s*ra\s*sóng\s*thần",
-    r"mức\s*độ\s*nguy\s*hiểm",
-    r"khu\s*vực\s*có\s*thể\s*bị\s*ảnh\s*hưởng\s*trực\s*tiếp",
-    r"độ\s*cao\s*sóng\s*thần|chiều\s*cao\s*sóng\s*thần",
-    r"thời\s*gian\s*sẽ\s*ảnh\s*hưởng|thời\s*gian\s*ảnh\s*hưởng|thời\s*gian\s*đến",
-    r"khuyến\s*cáo\s*sẵn\s*sàng\s*sơ\s*tán",
-    r"sơ\s*tán\s*ngay\s*lập\s*tức",
-    r"(?:vĩ\s*độ|lat(?:itude)?)\s*[=:]?\s*[-+]?\d+(?:[.,]\d+)?",
-    r"(?:kinh\s*độ|lon(?:gitude)?)\s*[=:]?\s*[-+]?\d+(?:[.,]\d+)?",
-    r"(?:độ\s*sâu|depth)[^.\n]{0,20}\b\d+(?:[.,]\d+)?\s*km\b",
-    r"viện\s*vật\s*lý\s*địa\s*cầu",
-    r"trung\s*tâm\s*báo\s*tin\s*động\s*đất\s*và\s*cảnh\s*báo\s*sóng\s*thần",
-    r"dong\s*dat|rung\s*chan|du\s*chan|chan\s*tam|chan\s*tieu",
-    r"song\s*than|tsunami|earthquake",
-    
-    # COMPLEX EXTRACTION PATTERNS (VERBOSE MODE)
-    r"""
-        \b (?: độ\s*lớn | magnitude ) \s*                        # Nhãn 'độ lớn'
-        (?: \(? \s* (?: Mw | MW | ML | Ms | mb | Md | M ) \s* \)? )? \s* # Loại thang đo (tùy chọn)
-        [=:]? \s*                                               # Ký tự phân cách
-        (?P<num> \d+ (?: [.,]\d+ )? )                            # Con số (vắt cả 5.4 hoặc 5,4)
-        \b
-    """,
-    r"""
-        (?-i:                                                   # Tắt ignore-case cho cụm này
-            \b M (?: w | W | L | l | s | b | d )? \s*            # Chữ M viết hoa đặc thù
-            [=:]? \s* 
-            (?P<num> \d+ (?: [.,]\d+ )? ) 
-        ) \b
-    """,
-    r"\b(?P<num>\d+(?:[.,]\d+)?)\s*(?:độ\s*)?richter\b",
-    r"\bthang\s*richter\s*[=:]?\s*(?P<num>\d+(?:[.,]\d+)?)\b",
-    r"""
-        \b (?: độ\s*sâu | sâu | độ\s*sâu\s*chấn\s*tiêu | chấn\s*tiêu | hypocenter\s*depth | depth ) \s* 
-        (?: khoảng | tầm | ước\s*tính | xấp\s*xỉ | ~ )? \s*    # Ước lượng
-        (?P<depth> \d+ (?: [.,]\d+ )? ) \s*                     # Độ sâu
-        (?: km | ki\s*lô\s*mét ) \b
-    """,
-    r"""
-        \b (?: tâm\s*chấn | tâm\s*động\s*đất | epicenter )      # Nhãn vị trí
-        (?: [^.\n]{0,60} )? \b                                  # Ngữ cảnh ở giữa
-        (?: cách | ở\s*cách ) \s*
-        (?P<dist> \d+ (?: [.,]\d+ )? ) \s* km \b                # Khoảng cách
-    """,
-    r"""
-        \b (?P<lat> \d+ (?: [.,]\d+ )? ) \s* °? \s* (?: N | B ) \s* # Vĩ độ (N hoặc B)
-        (?P<lon> \d+ (?: [.,]\d+ )? ) \s* °? \s* (?: E | Đ ) \b     # Kinh độ (E hoặc Đ)
-    """,
-    r"""
-        \b (?: tọa\s*độ | toạ\s*độ | tâm\s*chấn | epicenter ) 
-        (?: [^0-9]{0,30} )?                                     # Ngữ cảnh
-        (?P<lat> \d+ (?: [.,]\d+ )? ) \s* [,;/] \s*             # Lat
-        (?P<lon> \d+ (?: [.,]\d+ )? ) \b                        # Lon
-    """,
-    r"\b(?:Mercalli|MMI|MSK)\s*(?:cấp|độ)?\s*(?P<intensity>[IVX]{1,8}|\d{1,2})\b",
-    r"""
-        \b (?: cường\s*độ | mức\s*độ ) \s*                      # Cường độ
-        (?: rung\s*lắc | động\s*đất )? (?: [^.\n]{0,30} )? \b
-        (?: theo\s* )? (?: thang\s* )? (?: Mercalli | MMI | MSK ) \b # Thang đo
-        (?: [^A-Za-z0-9]{0,10} )? 
-        (?P<intensity> [IVX]{1,8} | \d{1,2} ) \b               # Chỉ số
-    """,
-    r"\b(?:tiền\s*chấn|dư\s*chấn|aftershock|foreshock|mainshock)\b",
-    r"""
-        \b (?: sóng\s*thần | tsunami ) (?: [^0-9]{0,50} )?      # Sóng thần
-        (?P<wave> 
-            \d+ (?: [.,]\d+ )? 
-            (?: \s* [–-] \s* \d+ (?: [.,]\d+ )? )?              # Khoảng chiều cao
-        ) \s* (?: m | cm ) \b
-    """,
-    r"""
-        \b (?: sóng\s*thần | tsunami ) (?: [^.\n]{0,100} )? \b
-        (?: mực\s*nước\s*biển | mực\s*nước ) (?: [^0-9]{0,30} )?
-        (?: dâng | tăng | giảm | biến\s*động ) (?: [^0-9]{0,10} )?
-        (?P<delta> \d+ (?: [.,]\d+ )? ) \s* (?: m | cm ) \b
-    """,
-    r"\b(?:phát\s*(?:đi|tin)|ban\s*hành|ra)\s*(?:bản\s*tin|thông\s*báo)\s*(?:cảnh\s*báo\s*)?(?:sóng\s*thần|tsunami)\b",
-  ])
+
+  # 15) Tin cảnh báo, dự báo (Warning/Forecast)
+  ("warning_forecast", [
+    r"bản\s*tin\s*dự\s*báo", r"tin\s*cảnh\s*báo", r"dự\s*báo\s*thời\s*tiết", r"cảnh\s*báo\s*thiên\s*tai",
+    r"bản\s*tin\s*khẩn\s*cấp", r"thông\s*báo\s*khẩn", r"đài\s*khí\s*tượng", r"cảnh\s*báo\s*cực\s*đoan"
+  ]),
+
+  # 16) Khắc phục hậu quả (Recovery)
+  ("recovery", [
+    r"khắc\s*phục\s*hậu\s*quả", r"khắc\s*phục\s*sự\s*cố", r"khôi\s*phục\s*giao\s*thông", r"thống\s*kê\s*thiệt\s*hại",
+    r"ủng\s*hộ\s*đồng\s*bào", r"cứu\s*trợ", r"tiếp\s*tế", r"viện\s*trợ", r"khôi\s*phục\s*sản\s*xuất", r"quỹ\s*phòng\s*chống"
+  ]),
 ]
 
 # High-priority keywords that indicate severe events
@@ -2899,45 +2587,70 @@ def title_contains_disaster_keyword(title: str) -> bool:
 
 def extract_impacts(text: str) -> dict:
     """
-    Wrapper for extract_impact_details to maintain compatibility.
-    Maps detailed extraction to flat structure used by crawler.
+    Enhanced extraction to match user's professional report format.
+    Fields: commune, village, route, cause, characteristics, along with casualties.
     """
     details = extract_impact_details(text)
+    t_lower = text.lower()
+    
     res = {
         "deaths": None,
         "missing": None,
         "injured": None,
         "damage_billion_vnd": 0.0,
-        "agency": None
+        "agency": None,
+        "commune": None,
+        "village": None,
+        "route": None,
+        "cause": None,
+        "characteristics": None
     }
     
-    # 1. Human casualties (List of ints)
+    # 1. Human casualties
     for k in ["deaths", "missing", "injured"]:
         if k in details:
-            # crawler._get_impact_value handles lists (takes max or sum? Usually finding max single report is safer for dups, but let's pass list)
             res[k] = details[k]
 
-    # 2. Financial Damage (Convert to Billion VND)
+    # 2. Financial Damage
     if "damage" in details:
         total_billion = 0.0
         for item in details["damage"]:
             val = item.get("num", 0)
             u = item.get("unit", "").lower()
-            # "tỷ" -> billion
-            if "tỷ" in u or "ty" in u:
-                total_billion += val
-            # "triệu" -> million -> 0.001 billion
-            elif "triệu" in u or "trieu" in u:
-                total_billion += val / 1000.0
-        
+            if "tỷ" in u or "ty" in u: total_billion += val
+            elif "triệu" in u or "trieu" in u: total_billion += val / 1000.0
         if total_billion > 0:
             res["damage_billion_vnd"] = total_billion
             
-    # 3. Agency (Not in details, extracting separately)
-    m = RE_AGENCY.search(text)
-    if m:
-        res["agency"] = m.group(1)
-        
+    # 3. Agency
+    m_agency = RE_AGENCY.search(text)
+    if m_agency: res["agency"] = m_agency.group(1)
+
+    # 4. Location Details (Commune, Village, Route)
+    # Commune (Xã/Phường)
+    # Matches words starting with uppercase letters after keywords
+    m_commune = re.search(r"(?:xã|phường|thị\s*trấn|thị\s*tứ)\s+([A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)", text)
+    if m_commune: res["commune"] = m_commune.group(1).strip()
+
+    # Village (Thôn/Bản/Ngõ/Hẻm)
+    # Added Ngõ, Hẻm, Ngách as per user request
+    m_village = re.search(r"(?:thôn|bản|ấp|xóm|khối|tổ|khu\s*phố|ngõ|ngách|hẻm|số\s*nhà)\s+([A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*(?:\s+[A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*)*)", text)
+    if m_village: res["village"] = m_village.group(1).strip()
+
+    # Route (Tuyến đường/Quốc lộ)
+    # Handles alphanumeric routes like QL1A, ĐT602
+    m_route = re.search(r"(?:tuyến|quốc\s*lộ|tỉnh\s*lộ|đường|cao\s*tốc)\s+([A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*(\s+[A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*)*)", text)
+    if m_route: res["route"] = m_route.group(1).strip()
+
+    # 5. Cause (Nguyên nhân)
+    if "mưa" in t_lower: res["cause"] = "Mưa lớn"
+    elif any(kw in t_lower for kw in ["nhân sinh", "xây dựng", "đào đắp", "xẻ núi"]): res["cause"] = "Hoạt động nhân sinh"
+    
+    # 6. Characteristics (Mô tả đặc điểm)
+    # Extract sentences containing time duration or scale
+    m_char = re.search(r"([^.?!]*(?:kéo dài|diễn ra|khối lượng|diện tích)[^.?!]*[.?!])", text, re.IGNORECASE)
+    if m_char: res["characteristics"] = m_char.group(1).strip()
+
     return res
 
 def extract_event_time(published_at: datetime, text: str) -> datetime | None:
@@ -3021,108 +2734,80 @@ def extract_event_time(published_at: datetime, text: str) -> datetime | None:
 
 def classify_disaster(text: str, title: str = "") -> dict:
     """
-    Classify disaster type based on rule matches.
-    Simplified version: No complex risk level assessment (User Request).
+    Classify disaster type based on 14 specific types and 2 special groups:
+    1. storm, 2. flood, 3. flash_flood, 4. landslide, 5. subsidence, 6. drought, 7. salinity,
+    8. extreme_weather, 9. heatwave, 10. cold_surge, 11. earthquake, 12. tsunami, 13. storm_surge, 14. wildfire
+    + warning_forecast, recovery
     """
-    # Combine text for better signal detection
     full_text = f"{title}\n{text}" if title else text
-    # Weighted matching: Title matches count for 2, Body for 1
     t_title, _ = risk_lookup.canon(title or "")
     t_body, _ = risk_lookup.canon(text or "")
     
     hazard_weights = {}
     for label, compiled_acc, _ in DISASTER_RULES_RE:
         weight = 0
-        # Title matches (Priority 2)
+        # Title matches (Priority 3)
         for pat in compiled_acc:
             if pat.search(t_title):
-                weight += 2
-        
+                weight += 3
         # Body matches (Priority 1)
-        # To avoid overcounting, we only count the body if not already perfectly matched in title or just sum them up
-        # Summing is safer to detect "dominant" topics
         for pat in compiled_acc:
             if pat.search(t_body):
                 weight += 1
-        
         if weight > 0:
             hazard_weights[label] = weight
 
-    # ROOT CAUSE BOOSTING & TIE-BREAKING (Decision 18/2021 Implementation):
-    
-    # 1. Storm Boosting vs Wind/Fog: If any storm-core (bão, ATNĐ) exists, prioritize storm.
+    # ROOT CAUSE BOOSTING & TIE-BREAKING
     if "storm" in hazard_weights:
-        # Boost named storms
         if re.search(r"(?:bão|áp thấp|ATNĐ|ATND).*?(?:số\s*\d+|[A-ZĐ][a-zà-ỹ]+)", t_title, re.IGNORECASE):
             hazard_weights["storm"] += 10
-        # Tie-break: Reduce wind_fog if storm is present
-        if "wind_fog" in hazard_weights:
-            hazard_weights["wind_fog"] -= 5
 
-    # 2. Surge vs Saltwater Tie-break: Decision 18 Clause 3.3 and 3.5.
-    # Salinity (heat_drought) vs Coastal surge (storm_surge).
-    salinity_markers = ["mặn", "độ mặn", "xâm nhập mặn", "ranh mặn"]
-    if "storm_surge" in hazard_weights and "heat_drought" in hazard_weights:
-        if any(sm in full_text.lower() for sm in salinity_markers):
-             hazard_weights["heat_drought"] += 5  # Favor Salinity
-             hazard_weights["storm_surge"] -= 2
-        else:
-             hazard_weights["storm_surge"] += 3   # Favor Surge/Tide
+    if "flash_flood" in hazard_weights and "flood" in hazard_weights:
+        hazard_weights["flash_flood"] += 2
 
-    # 3. Wildfire Context Filter: Must have forest indicators to avoid general fire news.
     if "wildfire" in hazard_weights:
-        forest_indicators = [
-            "rừng", "thực bì", "khoảnh", "tiểu khu", "lâm phần", "lâm nghiệp", "diện tích", "thảm thực vật"
-        ]
+        forest_indicators = ["rừng", "thực bì", "khoảnh", "tiểu khu", "lâm phần", "lâm nghiệp", "diện tích", "thảm thực vật"]
         if not any(fi in full_text.lower() for fi in forest_indicators):
-            # Penalty if it's just "PCCCR" without forest context
             hazard_weights["wildfire"] -= 10
 
-    # 4. Quake Boosting: "Động đất" + magnitude/scale
-    if "quake_tsunami" in hazard_weights:
-        if re.search(r"(?:động đất|rung chấn|dư chấn|độ lớn).*?(?:độ|richter|magnitude|M|MW|ML)\s*\d", t_title, re.IGNORECASE):
-            hazard_weights["quake_tsunami"] += 10
-
     PRIO = [
-        "quake_tsunami",
-        "storm_surge",
-        "storm",
-        "flood_landslide", 
-        "wildfire", 
-        "heat_drought", 
-        "wind_fog", 
-        "extreme_other"
+        "tsunami", "earthquake", "storm", "flash_flood", "landslide", 
+        "flood", "subsidence", "storm_surge", "wildfire", "salinity",
+        "drought", "heatwave", "cold_surge", "extreme_weather"
     ]
 
-    if not hazard_weights:
-        # Check for Recovery/Relief keywords as fallback
-        rel_text = f"{title}\n{text}".lower()
-        primary = "unknown"
-        if any(re.search(kw, rel_text) for kw in RECOVERY_KEYWORDS):
+    primary = "unknown"
+    if hazard_weights:
+        # Sort by weight, then by priority index
+        sorted_hazards = sorted(
+            hazard_weights.items(),
+            key=lambda item: (-item[1], PRIO.index(item[0]) if item[0] in PRIO else 99)
+        )
+        if sorted_hazards[0][1] > 0:
+            primary = sorted_hazards[0][0]
+
+    # Special Classification: Warning/Forecast & Recovery Groups
+    # If the title is specifically about forecast or recovery, classify as such
+    warning_title_sigs = [r"bản\s*tin(?:\s*dự\s*báo|\s*cảnh\s*báo)", r"dự\s*báo\s*thiên\s*tai", r"tin\s*cảnh\s*báo", r"cảnh\s*báo\s*thiên\s*tai"]
+    recovery_title_sigs = [r"khắc\s*phục\s*hậu\s*quả", r"sau\s*thiên\s*tai", r"thống\s*kê\s*thiệt\s*hại", r"rà\s*soát\s*thiệt\s*hại"]
+    
+    if any(re.search(pat, t_title, re.IGNORECASE) for pat in warning_title_sigs):
+        primary = "warning_forecast"
+    elif any(re.search(pat, t_title, re.IGNORECASE) for pat in recovery_title_sigs):
+        primary = "recovery"
+    elif primary == "unknown":
+        # Fallback to content-based detection for these groups
+        if any(re.search(sig, full_text, re.IGNORECASE) for sig in FORECAST_SIGS):
+            primary = "warning_forecast"
+        elif any(re.search(kw, full_text, re.IGNORECASE) for kw in RECOVERY_KEYWORDS):
             primary = "recovery"
-        elif any(vip_re.search(rel_text) for vip_re in sources.VIP_TERMS_RE):
-             primary = "relief_aid"
-             
-        return {
-            "primary_type": primary,
-            "hazard_weights": {},
-            "is_disaster": False
-        }
-    
-    # Select Primary: Highest weighted score first, then PRIO position
-    sorted_hazards = sorted(
-        hazard_weights.items(),
-        key=lambda item: (-item[1], PRIO.index(item[0]) if item[0] in PRIO else 99)
-    )
-    
-    primary = sorted_hazards[0][0]
-    if hazard_weights.get(primary, 0) <= 0:
-        primary = "unknown"
+        elif any(vip_re.search(full_text.lower()) for vip_re in sources.VIP_TERMS_RE):
+             primary = "recovery"
 
     return {
         "primary_type": primary,
         "hazard_weights": hazard_weights,
-        "is_disaster": primary not in ["unknown", "recovery", "relief_aid"]
+        "is_disaster": primary not in ["unknown", "recovery", "warning_forecast"]
     }
 
 

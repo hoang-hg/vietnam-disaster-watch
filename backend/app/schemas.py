@@ -10,6 +10,11 @@ class ArticleOut(BaseModel):
     published_at: datetime
     disaster_type: str
     province: str
+    commune: str | None = None
+    village: str | None = None
+    route: str | None = None
+    cause: str | None = None
+    characteristics: str | None = None
     deaths: int | None
     missing: int | None
     injured: int | None
@@ -33,6 +38,11 @@ class EventOut(BaseModel):
     title: str
     disaster_type: str
     province: str
+    commune: str | None = None
+    village: str | None = None
+    route: str | None = None
+    cause: str | None = None
+    characteristics: str | None = None
     started_at: datetime
     last_updated_at: datetime
     deaths: int | None

@@ -28,7 +28,12 @@ def filter_disaster_events(events):
             
         # Decision 18 Logic: Skip purely administrative news if no impact and not a major hazard
         is_impacting = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.injured or 0) > 0 or (ev.damage_billion_vnd or 0) > 0
-        major_hazards = ["storm", "flood_landslide", "wildfire", "quake_tsunami"]
+        major_hazards = [
+            "storm", "flood", "flash_flood", "landslide", "subsidence", 
+            "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
+            "earthquake", "tsunami", "storm_surge", "wildfire",
+            "warning_forecast", "recovery"
+        ]
         
         if not is_impacting and ev.disaster_type not in major_hazards:
              d = ev.details or {}
@@ -161,11 +166,7 @@ def events(
             # Smart sub-variant selection based on Title keywords
             chosen_img = DEFAULT_IMAGES.get(dtype, DEFAULT_IMAGES["unknown"])
             
-            if dtype == "flood_landslide" and ("sạt" in title_lower or "lở" in title_lower):
-                chosen_img = SUB_IMAGES["landslide"]
-            elif dtype == "quake_tsunami" and "sóng thần" in title_lower:
-                chosen_img = SUB_IMAGES["tsunami"]
-            elif dtype == "extreme_other" and "mưa đá" in title_lower:
+            if dtype == "extreme_weather" and "mưa đá" in title_lower:
                 chosen_img = SUB_IMAGES["hail"]
                 
             ev_data.image_url = chosen_img
@@ -177,13 +178,21 @@ def events(
 # Lightweight SVGs (stable CDN, pinned version)
 DEFAULT_IMAGES = {
     "storm": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/cloud-storm.svg",
-    "flood_landslide": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/droplet.svg",
-    "heat_drought": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/sun.svg",
-    "wind_fog": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/wind.svg",
-    "storm_surge": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/droplet.svg",
-    "extreme_other": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/cloud-snow.svg",
+    "flood": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/droplet.svg",
+    "flash_flood": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/droplet.svg",
+    "landslide": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/triangle.svg",
+    "subsidence": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/arrow-down-circle.svg",
+    "drought": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/sun-off.svg",
+    "salinity": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/ripple.svg",
+    "extreme_weather": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/cloud-lightning.svg",
+    "heatwave": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/sun.svg",
+    "cold_surge": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/snowflake.svg",
+    "earthquake": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/activity.svg",
+    "tsunami": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/droplet.svg",
+    "storm_surge": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/ripple.svg",
     "wildfire": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/flame.svg",
-    "quake_tsunami": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/activity.svg",
+    "warning_forecast": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/alert-circle.svg",
+    "recovery": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/tool.svg",
     "unknown": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/urgent.svg",
 }
 
@@ -334,7 +343,12 @@ def stats_summary(
     total_deaths = 0
     total_missing = 0
     total_injured = 0
-    official_types = ["storm", "flood_landslide", "heat_drought", "wind_fog", "storm_surge", "extreme_other", "wildfire", "quake_tsunami"]
+    official_types = [
+        "storm", "flood", "flash_flood", "landslide", "subsidence", 
+        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge",
+        "earthquake", "tsunami", "storm_surge", "wildfire",
+        "warning_forecast", "recovery"
+    ]
     type_counts = {t: 0 for t in official_types}
     type_counts["unknown"] = 0
     
