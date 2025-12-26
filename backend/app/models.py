@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Float, UniqueConstraint, JSON
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Float, UniqueConstraint, JSON, Index, Boolean
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
@@ -45,9 +45,6 @@ class Article(Base):
     needs_verification: Mapped[bool] = mapped_column(Integer, default=0) # 0=no, 1=yes
     
     # 3-Tier filtering status
-    # 'approved': automatically accepted or admin approved
-    # 'pending': waiting for admin review (score in grey area)
-    # 'rejected': admin explicitly rejected
     status: Mapped[str] = mapped_column(String(20), default="approved", index=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     
@@ -56,6 +53,9 @@ class Article(Base):
 
     __table_args__ = (
         UniqueConstraint("domain", "url", name="uq_article_url"),
+        Index("ix_article_status_published", status, published_at),
+        Index("ix_article_status_province_date", status, province, published_at),
+        Index("ix_article_event_status", event_id, status),
     )
 
 class Event(Base):
@@ -90,6 +90,11 @@ class Event(Base):
 
     articles = relationship("Article", back_populates="event")
 
+    __table_args__ = (
+        Index("ix_event_type_date", disaster_type, started_at),
+        Index("ix_event_province_date", province, started_at),
+    )
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -97,6 +102,8 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user", index=True) # "user", "admin"
+    favorite_province: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 class Blacklist(Base):

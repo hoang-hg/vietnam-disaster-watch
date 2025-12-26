@@ -4,8 +4,16 @@ from .models import Article, Event
 from . import broadcast
 import re
 
+# Vietnamese stop words to improve similarity accuracy
+STOPWORDS = {
+    "về", "của", "tại", "và", "những", "các", "là", "bị", "cho", "đến", "trong", "do",
+    "đã", "đang", "sẽ", "có", "một", "với", "này", "qua", "trên", "dưới", "tờ", "báo"
+}
+
 def _get_tokens(text):
-    return set(re.findall(r"\w+", text.lower()))
+    tokens = re.findall(r"\w+", text.lower())
+    # Filter out stopwords and numeric-only tokens (like years or IDs)
+    return set(t for t in tokens if t not in STOPWORDS and not t.isdigit() and len(t) > 1)
 
 def _get_impact_bucket(article: Article) -> str:
     """Creates a discrete string bucket based on impact severity."""
@@ -52,21 +60,30 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     new_tokens = _get_tokens(article.title)
     
     for cand in candidates:
-        # Strict Match if they share the same Impact Bucket and moderate Title match
-        # OR High Title similarity (80%+) even if buckets slightly differ (as numbers evolve)
+        # STRICT GROUPING: Covered by Event.disaster_type == article.disaster_type in query filter.
+        # This keeps (1) Incident, (2) Warning, (3) Recovery as separate events.
+
         cand_tokens = _get_tokens(cand.title)
         intersection = len(new_tokens & cand_tokens)
         union = len(new_tokens | cand_tokens)
         title_sim = intersection / union if union > 0 else 0.0
         
-        # Heuristic: Bucket match gives a strong boost
-        cand_impact_bucket = cand.details.get("impact_bucket") if cand.details else None
-        bucket_match = (impact_bucket == cand_impact_bucket)
-        
+        # USER REQUIREMENT: Title similarity MUST be >= 80% regardless of location
+        if title_sim < 0.8:
+            continue
+
         score = title_sim
-        if bucket_match: score += 0.3 # Strong priority for similar severity
         
-        if score > best_score and score > 0.6:
+        # LOCATION BOOST: If same group & high title sim, use location to confirm the matches
+        if article.commune and cand.commune and article.commune.lower() == cand.commune.lower():
+            score += 0.4
+        if article.village and cand.village and article.village.lower() == cand.village.lower():
+            score += 0.5
+        if article.route and cand.route and article.route.lower() == cand.route.lower():
+            score += 0.4
+            
+        # The threshold for a definitive match remains high to ensure quality
+        if score > best_score:
             best_score = score
             matched_event = cand
 
@@ -134,6 +151,15 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
                 broadcast._append_to_buffer(msg)
         except Exception:
             pass
+
+        # Email Notifications
+        try:
+            from .notifications import notify_users_of_event
+            notify_users_of_event(db, ev)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Notification error: {e}")
+
         return ev
     
     # If match found, update event metrics

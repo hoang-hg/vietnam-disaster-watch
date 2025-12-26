@@ -11,12 +11,16 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str | None = None
+    favorite_province: str | None = None
+    email_notifications: bool = True
 
 class UserOut(BaseModel):
     id: int
     email: str
     full_name: str | None
     role: str
+    favorite_province: str | None
+    email_notifications: bool
 
     class Config:
         from_attributes = True
@@ -50,7 +54,9 @@ def register(user_in: UserCreate, db: Session = Depends(auth.get_db)):
         email=user_in.email,
         hashed_password=hashed_pw,
         full_name=user_in.full_name,
-        role=role
+        role=role,
+        favorite_province=user_in.favorite_province,
+        email_notifications=user_in.email_notifications
     )
     db.add(new_user)
     db.commit()
@@ -79,4 +85,23 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @router.get("/me", response_model=UserOut)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+    return current_user
+
+class UserUpdate(BaseModel):
+    favorite_province: str | None = None
+    email_notifications: bool | None = None
+
+@router.put("/me/preferences", response_model=UserOut)
+async def update_user_preferences(
+    update_in: UserUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(auth.get_db)
+):
+    """Allows user to update their monitoring preferences."""
+    if update_in.favorite_province is not None:
+        current_user.favorite_province = update_in.favorite_province
+    if update_in.email_notifications is not None:
+        current_user.email_notifications = update_in.email_notifications
+    db.commit()
+    db.refresh(current_user)
     return current_user

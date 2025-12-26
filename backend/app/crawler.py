@@ -145,10 +145,35 @@ def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
         twitter_image = soup.find("meta", name="twitter:image")
         if twitter_image and twitter_image.get("content"):
             return twitter_image["content"]
+            
+        # 3. Fallback: Find the first significant image in the body
+        # Ignore common logos, icons, and small social buttons
+        from urllib.parse import urljoin
+        junk_patterns = ["logo", "icon", "avatar", "social", "banner", "btn", "loading", "placeholder"]
         
-        # fallback: find first large image inside article body? 
-        # Risky without complex logic, stick to meta tags for now.
-    
+        images = soup.find_all("img")
+        for img in images:
+            src = img.get("src") or img.get("data-src") or img.get("data-original")
+            if not src: continue
+            
+            # Resolve relative URLs
+            if base_url: src = urljoin(base_url, src)
+            
+            # Filter by junk keywords in URL
+            if any(p in src.lower() for p in junk_patterns):
+                continue
+            
+            # Try to check attributes that suggest size
+            width = img.get("width")
+            height = img.get("height")
+            try:
+                if width and int(width) < 100: continue
+                if height and int(height) < 100: continue
+            except ValueError:
+                pass
+                
+            return src
+
     return None
 
 # Feed state file to persist ETag / Last-Modified per feed URL
@@ -391,23 +416,42 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     if blacklisted:
                         continue
                         
-                    # Check existing by hash
-                    existing = db.query(Article).filter(Article.news_hash == news_hash).first()
-                    if existing:
-                        continue
+                    existing = find_duplicate_article(db, src.domain, link, title, published_at)
 
                     # ---------------------------------------------------------
                     # 1. TIERED FILTERING: 3-Tier Scoring System (User Adjusted)
                     # ---------------------------------------------------------
-                    # T1 (Approved): Score > 13.0 -> Auto-ingest + Event Update
-                    # T2 (Pending): 7.0 <= Score <= 13.0 -> Log for Admin Review
-                    # T3 (Reject/Log): Score < 7.0 -> Auto Blacklist + Log
-                    
                     diag = nlp.diagnose(text_for_nlp, title=title)
                     score = diag["score"]
-                    
+
+                    # Logic for upgrading Pending -> Approved
+                    if existing:
+                        if existing.status == "approved":
+                            # We already have this and it's approved
+                            print(f"[DEDUP] {src.name}: {title[:100]}... (already approved)")
+                            continue
+                        
+                        # If it was pending but now is approved, we upgrade it
+                        if existing.status == "pending" and score > 13.0:
+                            print(f"[INFO] Upgrading article to Approved: {title} (Score: {score})")
+                            existing.status = "approved"
+                            existing.score = score
+                            # Update impacts with new info if available
+                            impacts = nlp.extract_impacts(text_for_nlp)
+                            existing.deaths = _get_impact_value(impacts["deaths"])
+                            existing.missing = _get_impact_value(impacts["missing"])
+                            existing.injured = _get_impact_value(impacts["injured"])
+                            existing.damage_billion_vnd = _get_impact_value(impacts["damage_billion_vnd"])
+                            existing.summary = summary_raw[:1000] # Update summary if it's longer/better
+                            
+                            # Link to an event now that it's approved
+                            upsert_event_for_article(db, existing)
+                            db.commit()
+                            new_count += 1
+                        continue # Skip to next article in feed
+
                     status = None
-                    if score > 13.0:
+                    if score > 14.5:
                         status = "approved"
                     elif score >= 7.0:
                         status = "pending"
@@ -583,7 +627,13 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         
                                     # Update URL if it was a redirect (important for Google News/Shorteners)
                                     if final_url and final_url != link:
-                                        article.url = final_url
+                                        # Check if another article with same domain and final_url already exists
+                                        # to avoid UniqueViolation on (domain, url)
+                                        collision = db.query(Article).filter(Article.domain == article.domain, Article.url == final_url).first()
+                                        if not collision:
+                                            article.url = final_url
+                                        else:
+                                            logger.debug(f"URL resolution collision for {final_url}, skipping update")
                                     
                                     # Update Image if missing or if we found a better one
                                     if not article.image_url and images:
@@ -608,6 +658,18 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         raw_agency = full_impacts.get("agency")
                                         article.agency = raw_agency[:255] if raw_agency else None
                                         
+                                    # Update extended location and cause from full text if currently missing
+                                    if full_impacts.get("commune") and not article.commune:
+                                        article.commune = full_impacts.get("commune")
+                                    if full_impacts.get("village") and not article.village:
+                                        article.village = full_impacts.get("village")
+                                    if full_impacts.get("route") and not article.route:
+                                        article.route = full_impacts.get("route")
+                                    if full_impacts.get("cause") and not article.cause:
+                                        article.cause = full_impacts.get("cause")
+                                    if full_impacts.get("characteristics") and not article.characteristics:
+                                        article.characteristics = full_impacts.get("characteristics")
+
                                     if article.province in (None, "unknown"):
                                         prov = nlp.extract_province(full_text)
                                         if prov and prov != "unknown":
@@ -629,7 +691,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         db.rollback()
                         logger.error(f"Error processing article {link}: {e}")
 
-                    upsert_event_for_article(db, article)
+                    try:
+                        upsert_event_for_article(db, article)
+                    except Exception as e:
+                        logger.error(f"Failed to upsert event for {article.title}: {e}")
+                        db.rollback()
                 
                 break  # Don't try other feeds for this source, we got articles
             
@@ -707,6 +773,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 published_at=published_at,
                                 disaster_type=disaster_type,
                                 province=province,
+                                commune=impacts.get("commune"),
+                                village=impacts.get("village"),
+                                route=impacts.get("route"),
+                                cause=impacts.get("cause"),
+                                characteristics=impacts.get("characteristics"),
                                 deaths=impacts["deaths"],
                                 missing=impacts["missing"],
                                 injured=impacts["injured"],
@@ -723,71 +794,61 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 new_count += 1
                                 src_info["articles_added"] += 1
                                 print(f"   [ADDED_SCRAPE] {src.name}: {title[:70]}...")
-                                upsert_event_for_article(db, article)
-                            except Exception as e:
-                                db.rollback()
-                                print(f"   [ERROR_DB_SCRAPE] {src.name}: {e}")
-                                continue
-                            
-                            # Try to fetch full page for better impact extraction
-                            try:
-                                async with httpx.AsyncClient(timeout=settings.request_timeout_seconds, follow_redirects=True) as aclient:
-                                    resp = await aclient.get(url)
-                                    resp.raise_for_status()
-                                    resp.raise_for_status()
-                                    page_html = resp.text
-                                    
-                                    if _HAS_BS4 and BeautifulSoup is not None:
-                                        soup = BeautifulSoup(page_html, "html.parser")
-                                        paras = [p.get_text(separator=" ", strip=True) for p in soup.find_all("p")]
-                                        cleaned = [re.sub(r"\s+", " ", p).strip() for p in paras if p and p.strip()]
-                                        full_text = "\n\n".join(cleaned[:10]) if cleaned else soup.get_text(separator=" ", strip=True)
-                                    else:
-                                        paras = re.findall(r"<p[^>]*>(.*?)</p>", page_html, flags=re.I | re.S)
-                                        cleaned = []
-                                        for p in paras:
-                                            t = re.sub(r"<[^>]+>", "", p)
-                                            t = re.sub(r"\s+", " ", t).strip()
-                                            if t:
-                                                cleaned.append(t)
-                                        full_text = "\n\n".join(cleaned[:10]) if cleaned else re.sub(r"<[^>]+>", " ", page_html)
-                                    
+                                try:
+                                    upsert_event_for_article(db, article)
+                                except Exception as e:
+                                    logger.error(f"Failed to upsert event for {article.title} (Scrape): {e}")
+                                    db.rollback()
+                                
+                                # Fetch full text using the robust scraper
+                                from .html_scraper import fetch_article_full_text_async
+                                full_info = await fetch_article_full_text_async(url)
+
+                                if full_info and full_info.get("text"):
+                                    full_text = full_info["text"]
                                     full_impacts = nlp.extract_impacts(full_text)
-                                    if full_impacts.get("deaths") is not None and article.deaths is None:
+                                    
+                                    # Save full text and image
+                                    article.full_text = full_text[:100000]
+                                    if full_info.get("images") and not article.image_url:
+                                        article.image_url = full_info["images"][0]
+                                    
+                                    # Update stats if currently missing or zero
+                                    if full_impacts.get("deaths") is not None and (article.deaths or 0) == 0:
                                         article.deaths = _get_impact_value(full_impacts.get("deaths"))
-                                    if full_impacts.get("missing") is not None and article.missing is None:
+                                    if full_impacts.get("missing") is not None and (article.missing or 0) == 0:
                                         article.missing = _get_impact_value(full_impacts.get("missing"))
-                                    if full_impacts.get("injured") is not None and article.injured is None:
+                                    if full_impacts.get("injured") is not None and (article.injured or 0) == 0:
                                         article.injured = _get_impact_value(full_impacts.get("injured"))
-                                    if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
+                                    if full_impacts.get("damage_billion_vnd") is not None and (article.damage_billion_vnd or 0) == 0:
                                         article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
-                                    if full_impacts.get("agency") is not None and article.agency is None:
-                                        raw_agency = full_impacts.get("agency")
-                                        article.agency = raw_agency[:255] if raw_agency else None
+                                    
+                                    # Update extended location and cause
+                                    if full_impacts.get("commune") and not article.commune:
+                                        article.commune = full_impacts.get("commune")
+                                    if full_impacts.get("village") and not article.village:
+                                        article.village = full_impacts.get("village")
+                                    if full_impacts.get("route") and not article.route:
+                                        article.route = full_impacts.get("route")
+                                    if full_impacts.get("cause") and not article.cause:
+                                        article.cause = full_impacts.get("cause")
+                                    if full_impacts.get("characteristics") and not article.characteristics:
+                                        article.characteristics = full_impacts.get("characteristics")
+                                        
                                     if article.province in (None, "unknown"):
                                         prov = nlp.extract_province(full_text)
                                         if prov and prov != "unknown":
                                             article.province = prov
-                                    
-                                    # Re-validate after full text fetch
+                                            
                                     if nlp.validate_impacts(full_impacts):
                                         article.needs_verification = 1
                                     
-                                    # Attempt to extract image from soup if missing
-                                    if not article.image_url and _HAS_BS4 and BeautifulSoup is not None and 'soup' in locals():
-                                        img = _extract_image_url(None, soup=soup)
-                                        if img:
-                                            article.image_url = img
-                                    
-                                    try:
-                                        db.commit()
-                                    except Exception as e:
-                                        db.rollback()
-                                        print(f"[WARN] DB Commit failed (possible duplicate): {e}")
+                                db.commit()
 
                             except Exception as e:
                                 db.rollback()
-                                print(f"[WARN] Full text update failed: {e}")
+                                print(f"   [ERROR_DB_SCRAPE] {src.name}: {e}")
+                                continue
                         
                         feed_worked = True
                     else:
@@ -832,6 +893,33 @@ def process_once(force: bool = False, only_sources: list[str] = None) -> dict:
     """Synchronous wrapper used by the scheduler/background jobs."""
     return asyncio.run(_process_once_async(force_update=force, only_sources=only_sources))
 
+
+def cleanup_old_pending_articles():
+    """
+    Automatic cleanup: Delete articles with status='pending' that are older than 30 days.
+    This helps keep the database clean from noise that was never approved.
+    """
+    from .database import SessionLocal
+    from .models import Article
+    from datetime import datetime, timedelta
+    
+    db = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        deleted = db.query(Article).filter(
+            Article.status == "pending",
+            Article.published_at < cutoff
+        ).delete(synchronize_session=False)
+        db.commit()
+        if deleted > 0:
+            print(f"[INFO] Cleaned up {deleted} old pending articles (older than 30 days).")
+        else:
+            print("[INFO] No old pending articles to clean up.")
+    except Exception as e:
+        db.rollback()
+        print(f"[ERROR] Failed to cleanup old pending articles: {e}")
+    finally:
+        db.close()
 
 def main():
     parser = argparse.ArgumentParser()

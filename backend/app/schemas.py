@@ -65,3 +65,18 @@ class EventOut(BaseModel):
 
 class EventDetailOut(EventOut):
     articles: list[ArticleOut]
+
+class EventUpdate(BaseModel):
+    title: str | None = None
+    disaster_type: str | None = None
+    province: str | None = None
+    commune: str | None = None
+    village: str | None = None
+    route: str | None = None
+    cause: str | None = None
+    characteristics: str | None = None
+    deaths: int | None = None
+    missing: int | None = None
+    injured: int | None = None
+    damage_billion_vnd: float | None = None
+    needs_verification: int | None = None

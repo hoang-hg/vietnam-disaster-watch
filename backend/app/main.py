@@ -128,6 +128,17 @@ async def on_startup():
         misfire_grace_time=600
     )
 
+    # Job 7: Database Maintenance - Frequency: 24 HOURS
+    # Automatically deletes pending articles older than 30 days.
+    from .crawler import cleanup_old_pending_articles
+    scheduler.add_job(
+        cleanup_old_pending_articles,
+        trigger=IntervalTrigger(hours=24, jitter=120),
+        id="db_cleanup_pending",
+        replace_existing=True,
+        misfire_grace_time=3600
+    )
+
     scheduler.start()
 
 @app.on_event("shutdown")

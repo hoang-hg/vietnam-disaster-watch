@@ -8,9 +8,22 @@ import {
   Grid,
   Bell,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  MapPin,
+  Mail
 } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
+import { putJson } from "../api.js";
+
+const PROVINCES = [
+    "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
+  "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh",
+  "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình",
+  "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế",
+  "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa",
+  "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp",
+  "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
+].sort();
 
 export default function MainLayout({ children }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -22,26 +35,69 @@ export default function MainLayout({ children }) {
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed && typeof parsed === 'object') {
+            setUser(parsed);
+        }
+      } catch (e) {
+        console.error("Session corruption:", e);
+        localStorage.removeItem("user");
+      }
     }
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("access_token");
     setUser(null);
     navigate("/login");
   };
 
-  const navigation = [
+  const handleProvinceChange = async (prov) => {
+    let updated;
+    if (user && user.role !== 'guest') {
+        try {
+            updated = await putJson("/api/auth/me/preferences", { favorite_province: prov });
+        } catch (err) {
+            console.error("Failed to update province", err);
+            updated = { ...user, favorite_province: prov };
+        }
+    } else {
+        // Guest mode
+        updated = { ...(user || {}), favorite_province: prov, role: 'guest' };
+    }
+    
+    setUser(updated);
+    localStorage.setItem("user", JSON.stringify(updated));
+    window.dispatchEvent(new Event("storage"));
+  };
+
+  const toggleEmailNotifications = async () => {
+    if (!user || user.role === 'guest') {
+        alert("Vui lòng đăng nhập để sử dụng tính năng nhận tin qua Email.");
+        return;
+    }
+    try {
+        const newVal = !user.email_notifications;
+        const updatedUser = await putJson("/api/auth/me/preferences", { email_notifications: newVal });
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        window.dispatchEvent(new Event("storage"));
+    } catch (err) {
+        console.error("Failed to update email preferences", err);
+    }
+  };
+
+  const userNavigation = [
     { name: "TỔNG QUAN", href: "/", current: location.pathname === "/" },
     { name: "SỰ KIỆN", href: "/events", current: location.pathname.startsWith("/events") },
     { name: "BẢN ĐỒ", href: "/map", current: location.pathname === "/map" },
   ];
 
-  // Admin exclusive navigation
-  if (user?.role === "admin") {
-    navigation.push({ name: "DUYỆT TIN TỨC", href: "/admin/logs", current: location.pathname.startsWith("/admin/logs") });
-  }
+  const adminNavigation = user?.role === "admin" ? [
+    { name: "QUẢN TRỊ & DUYỆT TIN", href: "/admin/logs", current: location.pathname.startsWith("/admin/logs") },
+  ] : [];
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 font-sans">
@@ -62,7 +118,12 @@ export default function MainLayout({ children }) {
                         </div>
                         {/* Text Logo */}
                         <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
-                            BÁO TỔNG HỢP RỦI RO THIÊN TAI
+                            BÁO TỔNG HỢP RỦI RO THIÊN TAI 
+                            {user?.role === 'admin' && (
+                                <span className="ml-2 bg-slate-900 text-yellow-400 text-[10px] px-2 py-0.5 rounded-full border border-yellow-400/50 align-middle tracking-widest font-black shadow-lg shadow-yellow-400/10 animate-pulse">
+                                    ADMIN
+                                </span>
+                            )}
                         </span>
                 </Link>
             </div>
@@ -85,24 +146,75 @@ export default function MainLayout({ children }) {
             <div className="flex items-center h-12 justify-between">
                 {/* Desktop/Tablet Nav */}
                 <div className="flex h-full border-l border-white/20">
-                    {navigation.map((item) => (
+                    {userNavigation.map((item) => (
                         <Link
                             key={item.name}
                             to={item.href}
-                            className={`flex items-center justify-center px-6 text-sm font-bold uppercase tracking-wide border-r border-white/20 transition-colors ${
+                            className={`flex items-center px-4 h-full text-xs font-black tracking-widest uppercase transition-all border-r border-white/20 ${
                                 item.current
-                                    ? "bg-[#258a9b] text-white"
-                                    : "text-white hover:bg-[#258a9b]"
+                                    ? "bg-[#258a9b] text-white shadow-inner"
+                                    : "text-white/80 hover:bg-[#258a9b] hover:text-white"
                             }`}
                         >
                             {item.name}
                         </Link>
                     ))}
+
+                    {/* Province Selector (Area of Interest) - Moved next to Nav items */}
+                    <div className="flex items-center gap-2 px-4 border-r border-white/20 h-full bg-black/10">
+                        <MapPin className="w-3.5 h-3.5 text-white/70" />
+                        <select 
+                            value={user?.favorite_province || ""}
+                            onChange={(e) => handleProvinceChange(e.target.value)}
+                            className="bg-transparent text-white text-[11px] font-black uppercase outline-none cursor-pointer hover:text-yellow-300 transition-colors"
+                        >
+                            <option value="" className="text-slate-900">Toàn quốc</option>
+                            {PROVINCES.map(p => (
+                                <option key={p} value={p} className="text-slate-900">{p}</option>
+                            ))}
+                        </select>
+                    </div>
+                    
+                    {adminNavigation.length > 0 && adminNavigation.map((item) => (
+                        <Link
+                            key={item.name}
+                            to={item.href}
+                            className={`flex items-center px-4 h-full text-xs font-black tracking-widest uppercase transition-all border-r border-white/20 border-l-[3px] border-l-yellow-400 ${
+                                item.current
+                                    ? "bg-slate-800 text-yellow-300 shadow-inner"
+                                    : "bg-slate-900/40 text-yellow-400/80 hover:bg-slate-800 hover:text-yellow-300"
+                            }`}
+                        >
+                            <ShieldCheck className="w-3.5 h-3.5 mr-2" />
+                            {item.name}
+                        </Link>
+                    ))}
                 </div>
+
+
+                {/* Email Notification Toggle */}
+                {user && user.role !== 'guest' && (
+                    <div className="flex items-center h-full border-l border-white/20">
+                        <button 
+                            onClick={toggleEmailNotifications}
+                            title={user.email_notifications ? "Đang bật nhận tin qua Email" : "Đã tắt nhận tin qua Email"}
+                            className={`flex items-center gap-1.5 px-4 h-full transition-all group ${user.email_notifications ? "text-yellow-300" : "text-white/40 hover:text-white"}`}
+                        >
+                            {user.email_notifications ? (
+                                <Mail className="w-4 h-4 animate-pulse" />
+                            ) : (
+                                <Mail className="w-4 h-4 opacity-40" />
+                            )}
+                            <span className="text-[10px] font-black uppercase">
+                                {user.email_notifications ? "Bật" : "Tắt"}
+                            </span>
+                        </button>
+                    </div>
+                )}
 
                 {/* Account Actions (Desktop) */}
                 <div className="hidden md:flex items-center gap-2 h-full">
-                    {user ? (
+                    {user && user.role !== 'guest' ? (
                         <div className="flex items-center h-full">
                             <span className="flex items-center gap-2 px-4 h-full text-white text-xs font-bold border-l border-white/20">
                                 {user.role === 'admin' ? <ShieldCheck className="w-4 h-4 text-yellow-300" /> : <User className="w-4 h-4" />}
@@ -141,7 +253,7 @@ export default function MainLayout({ children }) {
         {isMobileMenuOpen && (
             <div className="md:hidden bg-[#2fa1b3] border-t border-[#258a9b]">
                 <div className="px-2 pt-2 pb-3 space-y-1">
-                    {navigation.map((item) => (
+                    {userNavigation.map((item) => (
                         <Link
                             key={item.name}
                             to={item.href}
@@ -152,6 +264,21 @@ export default function MainLayout({ children }) {
                                     : "text-white hover:bg-[#258a9b]"
                             }`}
                         >
+                            {item.name}
+                        </Link>
+                    ))}
+                    {adminNavigation.map((item) => (
+                        <Link
+                            key={item.name}
+                            to={item.href}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-bold mt-2 ${
+                                item.current
+                                    ? "bg-slate-800 text-yellow-300"
+                                    : "bg-slate-900/20 text-yellow-400 hover:bg-slate-800 hover:text-yellow-300"
+                            }`}
+                        >
+                            <ShieldCheck className="w-4 h-4" />
                             {item.name}
                         </Link>
                     ))}

@@ -10,7 +10,7 @@ import {
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
 import { THEME_COLORS } from "../theme.js";
-import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle, ArrowRight, Calendar, Trash2 } from "lucide-react";
+import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle, ArrowRight, Calendar, Trash2, Printer, Download } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
 
 // Updated tones for 8 groups
@@ -48,6 +48,7 @@ const PROVINCES = [
 
 export default function Events() {
   const dateInputRef = useRef(null);
+  const [showExportView, setShowExportView] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -63,7 +64,29 @@ export default function Events() {
   const itemsPerPage = 40;
   
   const [error, setError] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(!!localStorage.getItem("access_token"));
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const checkRole = () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const u = JSON.parse(storedUser);
+          setUser(u);
+          setIsAdmin(u?.role === 'admin');
+        } catch (e) {
+          console.error("Role check error:", e);
+        }
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+      }
+    };
+    checkRole();
+    window.addEventListener("storage", checkRole);
+    return () => window.removeEventListener("storage", checkRole);
+  }, []);
 
   const handleDelete = async (e, eventId) => {
     e.preventDefault(); // Prevent navigation
@@ -76,6 +99,37 @@ export default function Events() {
     } catch (err) {
       alert("Xóa thất bại: " + err.message);
     }
+  };
+
+  const handleExportCSV = () => {
+    // Basic CSV Export
+    const headers = ["Ngày", "ID", "Loại hình", "Tỉnh", "Xã", "Thôn", "Tuyến đường", "Nguyên nhân", "Đặc điểm", "Thiệt hại người", "Thiệt hại tiền (tỷ)"];
+    const rows = events.map(e => [
+        new Date(e.started_at).toLocaleDateString('vi-VN'),
+        e.key,
+        fmtType(e.disaster_type),
+        e.province,
+        e.commune || "",
+        e.village || "",
+        e.route || "",
+        e.cause || "",
+        e.characteristics || "",
+        `${e.deaths || 0} chết, ${e.missing || 0} mất tích`,
+        e.damage_billion_vnd || 0
+    ]);
+    
+    let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
+    csvContent += headers.join(",") + "\n";
+    rows.forEach(row => {
+        csvContent += row.map(cell => `"${cell}"`).join(",") + "\n";
+    });
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Bao_cao_ngay_${startDate || 'tong_hop'}.csv`);
+    link.click();
   };
 
   /* Helper to normalize string for search (remove tones and spaces) */
@@ -215,10 +269,60 @@ export default function Events() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             Danh sách sự kiện
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Tổng hợp sự kiện thiên tai từ 38 nguồn tin tức chính thống.
+          <p className="text-slate-500 text-sm mt-1 flex items-center gap-2">
+            Tổng hợp từ 38 nguồn tin chính thống.
+            <span className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black border border-emerald-100/50">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+              </span>
+              HỆ THỐNG TRỰC TUYẾN
+            </span>
           </p>
       </div>
+
+      {/* Admin Actions Bar */}
+      {isAdmin && (
+          <div className="mb-6 flex gap-3 no-print">
+              <button 
+                  onClick={() => setShowExportView(!showExportView)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm ${showExportView ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-white text-slate-700 border border-slate-200 hover:border-blue-400'}`}
+              >
+                  <Printer className="w-4 h-4" />
+                  <span>{showExportView ? "Quay lại lưới" : "Chế độ Báo cáo Bảng"}</span>
+              </button>
+              {showExportView && (
+                  <>
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-black transition-all shadow-md"
+                    >
+                        <Printer className="w-4 h-4" />
+                        <span>In / Xuất PDF</span>
+                    </button>
+                    <button 
+                        onClick={handleExportCSV}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md"
+                    >
+                        <Download className="w-4 h-4" />
+                        <span>Xuất Excel (CSV)</span>
+                    </button>
+                  </>
+              )}
+          </div>
+      )}
+
+      {/* Styles for Report View */}
+      <style>{`
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            .report-table { width: 100% !important; border-collapse: collapse !important; font-size: 10pt !important; }
+            .report-table th, .report-table td { border: 1px solid #000 !important; padding: 4px 8px !important; }
+            .report-table th { background: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+            .report-container { padding: 0 !important; max-width: 100% !important; }
+        }
+      `}</style>
 
       {/* Filter Controls */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-8 shadow-sm">
@@ -325,12 +429,62 @@ export default function Events() {
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-blue-600"></div>
         </div>
-      ) : events.length === 0 ? (
-        <div className="text-center py-20 text-slate-500">
-          Không tìm thấy sự kiện nào phù hợp.
+      ) : showExportView ? (
+        /* DAILY REPORT TABLE VIEW */
+        <div className="bg-white rounded-xl border border-slate-300 overflow-hidden shadow-xl report-container">
+            <div className="p-6 bg-slate-50 border-b border-slate-200 text-center hidden print:block">
+                <div className="text-xl font-black uppercase text-slate-900 leading-tight">Báo cáo Tổng hợp Thiên tai Ngày {startDate?.split('-').reverse().join('/')}</div>
+                <div className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Hệ thống Vietnam Disaster Watch</div>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="min-w-full report-table">
+                    <thead className="bg-slate-800 text-white">
+                        <tr>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Ngày</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Loại hình</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Tỉnh Thành</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Xã/Thôn/Tuyến</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Nguyên nhân</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Đặc điểm</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Thiệt hại</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                        {events.map((e) => (
+                            <tr key={e.id} className="hover:bg-blue-50/30 transition-colors">
+                                <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(e.started_at).toLocaleDateString('vi-VN')}</td>
+                                <td className="px-4 py-3 text-xs font-bold text-blue-700">{fmtType(e.disaster_type)}</td>
+                                <td className="px-4 py-3 text-xs font-bold">{e.province}</td>
+                                <td className="px-4 py-3 text-[11px] leading-tight">
+                                    {e.commune && <div className="font-bold">Xã: {e.commune}</div>}
+                                    {e.village && <div>Thôn: {e.village}</div>}
+                                    {e.route && <div className="font-mono text-[9px] text-slate-500">{e.route}</div>}
+                                </td>
+                                <td className="px-4 py-3">
+                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${e.cause?.includes('Mưa') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                       {e.cause || "Chưa rõ"}
+                                   </span>
+                                </td>
+                                <td className="px-4 py-3 text-[11px] italic text-slate-600 line-clamp-3">
+                                    {e.characteristics || "N/A"}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex flex-wrap gap-1">
+                                        {(e.deaths > 0 || e.missing > 0) && <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{e.deaths}C - {e.missing}M</span>}
+                                        {e.damage_billion_vnd > 0 && <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{e.damage_billion_vnd}T</span>}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-200 text-[10px] italic text-slate-500 text-right print:block hidden">
+                Hệ thống tự động trích xuất lúc: {new Date().toLocaleString('vi-VN')}
+            </div>
         </div>
       ) : (
-        <div className="space-y-12">
+        <div className="space-y-12 no-print">
             {groupedEvents.map(([label, items]) => (
             <div key={label} className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -344,7 +498,7 @@ export default function Events() {
                     <a
                     key={e.id}
                     href={`/events/${e.id}`}
-                    className="block group bg-white rounded-2xl border-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm"
+                    className={`block group bg-white rounded-2xl border-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm ${e.disaster_type === 'warning_forecast' ? 'border-dashed' : 'border-solid'}`}
                     style={{ borderColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}
                     >
                     <div className="h-1 w-full" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
@@ -381,13 +535,18 @@ export default function Events() {
                             )}
                         </div>
                         {isAdmin && (
-                            <button 
-                                onClick={(evt) => handleDelete(evt, e.id)}
-                                className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-sm hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg shadow-sm transition-colors z-20 border border-slate-100"
-                                title="Xóa sự kiện (Admin)"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-30 translate-x-2 group-hover:translate-x-0">
+                                <button 
+                                    onClick={(evt) => handleDelete(evt, e.id)}
+                                    className="p-1.5 bg-white/95 backdrop-blur-sm hover:bg-red-50 text-red-500 rounded-lg shadow-lg border border-red-100 transition-colors"
+                                    title="Xóa nhanh"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                                <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-lg border border-emerald-400 cursor-default" title="Đã duyệt">
+                                    <Zap className="w-4 h-4" />
+                                </div>
+                            </div>
                         )}
                         </div>
 
@@ -487,7 +646,7 @@ export default function Events() {
       )}
 
       {/* Pagination Controls */}
-      {!loading && events.length > 0 && totalPages > 1 && (
+      {!loading && events.length > 0 && totalPages > 1 && !showExportView && (
         <div className="mt-8 flex justify-center items-center gap-2">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}

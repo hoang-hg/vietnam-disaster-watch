@@ -1,5 +1,5 @@
 export const API_BASE =
-  import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+  import.meta.env.VITE_API_BASE || "http://127.0.0.1:8001";
 
 export async function getJson(path) {
   const token = localStorage.getItem("access_token");
@@ -33,6 +33,28 @@ export async function deleteJson(path) {
     throw new Error(errorDetail || `API error ${res.status}`);
   }
   return true;
+}
+
+export async function putJson(path, payload) {
+  const token = localStorage.getItem("access_token");
+  const headers = { 
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+  const res = await fetch(API_BASE + path, { 
+    method: "PUT", 
+    headers, 
+    body: JSON.stringify(payload) 
+  });
+  if (!res.ok) {
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+    }
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `API error ${res.status}`);
+  }
+  return res.json();
 }
 
 export async function login(username, password) {
@@ -72,7 +94,7 @@ export function fmtType(t) {
     subsidence: "Sụt lún đất",
     drought: "Hạn hán",
     salinity: "Xâm nhập mặn",
-    extreme_weather: "Mưa lớn, Lốc, Sét, Đá",
+    extreme_weather: "Mưa lớn, Lốc, Sét, Mưa Đá",
     heatwave: "Nắng nóng",
     cold_surge: "Rét hại, Sương muối",
     earthquake: "Động đất",
@@ -81,8 +103,8 @@ export function fmtType(t) {
     wildfire: "Cháy rừng",
 
     // 2 Special Groups
-    warning_forecast: "Tin cảnh báo, dự báo",
-    recovery: "Tin khắc phục hậu quả",
+    warning_forecast: "Cảnh báo, dự báo",
+    recovery: "Khắc phục hậu quả",
 
     unknown: "Chưa phân loại",
   };

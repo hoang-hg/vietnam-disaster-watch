@@ -3,13 +3,14 @@ import { useParams, Link } from "react-router-dom";
 import {
   getJson,
   deleteJson,
+  putJson,
   fmtType,
   fmtDate,
   fmtTimeAgo,
   fmtVndBillion,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X } from "lucide-react";
 
 const TYPE_TONES = {
   storm: "blue",
@@ -31,6 +32,29 @@ const TYPE_TONES = {
   unknown: "slate",
 };
 
+const PROVINCES = [
+  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
+].sort();
+
+const HAZARD_TYPES = [
+  { id: "storm", label: "Bão, ATNĐ" },
+  { id: "flood", label: "Lũ lụt" },
+  { id: "flash_flood", label: "Lũ quét, Lũ ống" },
+  { id: "landslide", label: "Sạt lở đất, đá" },
+  { id: "subsidence", label: "Sụt lún đất" },
+  { id: "drought", label: "Hạn hán" },
+  { id: "salinity", label: "Xâm nhập mặn" },
+  { id: "extreme_weather", label: "Mưa lớn, Lốc, Sét, Đá" },
+  { id: "heatwave", label: "Nắng nóng" },
+  { id: "cold_surge", label: "Rét hại, Sương muối" },
+  { id: "earthquake", label: "Động đất" },
+  { id: "tsunami", label: "Sóng thần" },
+  { id: "storm_surge", label: "Nước dâng" },
+  { id: "wildfire", label: "Cháy rừng" },
+  { id: "warning_forecast", label: "Tin cảnh báo, dự báo" },
+  { id: "recovery", label: "Tin khắc phục hậu quả" }
+];
+
 const isJunkImage = (url) => {
   if (!url) return true;
   const junkPatterns = [
@@ -51,7 +75,31 @@ export default function EventDetail() {
   const [ev, setEv] = useState(null);
   const [error, setError] = useState(null);
   const [expandedSummary, setExpandedSummary] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(!!localStorage.getItem("access_token"));
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const checkRole = () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const u = JSON.parse(storedUser);
+          setUser(u);
+          setIsAdmin(u?.role === 'admin');
+        } catch (e) {
+          console.error("Role check error:", e);
+        }
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+      }
+    };
+    checkRole();
+    window.addEventListener("storage", checkRole);
+    return () => window.removeEventListener("storage", checkRole);
+  }, []);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({});
 
   const handleDeleteArticle = async (e, articleId) => {
     e.preventDefault();
@@ -67,6 +115,22 @@ export default function EventDetail() {
         }));
     } catch (err) {
         alert("Xóa thất bại: " + err.message);
+    }
+  };
+
+  const handleStartEdit = () => {
+    setEditForm({ ...ev });
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+        const updated = await putJson(`/api/events/${ev.id}`, editForm);
+        setEv({ ...ev, ...updated });
+        setIsEditing(false);
+        alert("Cập nhật thành công!");
+    } catch (err) {
+        alert("Lỗi cập nhật: " + err.message);
     }
   };
 
@@ -111,20 +175,109 @@ export default function EventDetail() {
     );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      {/* Back Button */}
-      <Link to="/events" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-600 mb-6 transition-colors group">
-        <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
-        Quay lại danh sách sự kiện
-      </Link>
+    <div className="mx-auto max-w-4xl px-4 py-8 report-container">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .report-container { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+          body { background: white !important; }
+          .shadow-sm { shadow: none !important; border: 1px solid #eee !important; }
+          .bg-white { background: white !important; }
+          .summary-content { font-size: 14pt !important; line-height: 1.6 !important; }
+          .article-item { page-break-inside: avoid; }
+        }
+      `}</style>
+      {/* Header Actions */}
+      <div className="flex justify-between items-center no-print mb-6">
+        <Link to="/events" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors group">
+          <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+          Quay lại danh sách sự kiện
+        </Link>
+        
+        {isAdmin && (
+          <div className="flex gap-2">
+            {!isEditing ? (
+              <button 
+                onClick={handleStartEdit}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span>Chỉnh sửa</span>
+              </button>
+            ) : (
+                <>
+                <button 
+                  onClick={handleSaveEdit}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Lưu</span>
+                </button>
+                <button 
+                  onClick={() => setIsEditing(false)}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition-all shadow-md group"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Hủy</span>
+                </button>
+              </>
+            )}
+            <button 
+                onClick={() => window.print()}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
+            >
+                <Printer className="w-4 h-4" />
+                <span>In (PDF)</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Professional Report Header */}
+      <div className="mb-6 flex items-center justify-between border-b-4 border-red-600 pb-4">
+        <div className="flex items-center gap-4">
+          <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-xl tracking-tighter">
+            VDW
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
+              <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+              ID: {ev.id.toString().padStart(6, '0')} • Hệ thống giám sát rủi ro thiên tai
+            </div>
+          </div>
+        </div>
+        
+        {/* Print-only QR Code Placeholder */}
+        <div className="hidden print:block text-right">
+           <div className="w-16 h-16 border-2 border-slate-900 ml-auto flex items-center justify-center text-[8px] font-bold text-center leading-none">
+              MÃ QR<br/>TRUY XUẤT
+           </div>
+           <div className="text-[10px] font-bold mt-1 uppercase">viet-disaster.gov.vn</div>
+        </div>
+      </div>
 
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-2xl font-semibold leading-snug text-gray-900">
-            {ev.title}
+            {isEditing ? (
+              <input 
+                value={editForm.title}
+                onChange={e => setEditForm({...editForm, title: e.target.value})}
+                className="w-full border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1"
+              />
+            ) : ev.title}
           </div>
-          <div className="mt-2 text-sm text-gray-600 flex flex-wrap gap-2">
-            <span>{ev.province}</span>
+          <div className="mt-2 text-sm text-gray-600 flex flex-wrap gap-2 items-center">
+            {isEditing ? (
+              <select 
+                value={editForm.province}
+                onChange={e => setEditForm({...editForm, province: e.target.value})}
+                className="border rounded px-1 py-0.5 bg-white"
+              >
+                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : <span>{ev.province}</span>}
             <span>•</span>
             <span>Bắt đầu: {fmtDate(ev.started_at)}</span>
             <span>•</span>
@@ -135,11 +288,30 @@ export default function EventDetail() {
           </div>
         </div>
           <div className="flex flex-col items-end gap-2">
-
-            <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"}>
-              {fmtType(ev.disaster_type)}
-            </Badge>
-            {ev.needs_verification === 1 && (
+            {isEditing ? (
+              <select 
+                value={editForm.disaster_type}
+                onChange={e => setEditForm({...editForm, disaster_type: e.target.value})}
+                className="border rounded px-2 py-1 bg-white text-sm font-bold"
+              >
+                {HAZARD_TYPES.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
+              </select>
+            ) : (
+              <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"}>
+                {fmtType(ev.disaster_type)}
+              </Badge>
+            )}
+            
+            {isEditing ? (
+               <label className="flex items-center gap-2 text-xs font-bold text-red-600">
+                 <input 
+                   type="checkbox" 
+                   checked={editForm.needs_verification === 1}
+                   onChange={e => setEditForm({...editForm, needs_verification: e.target.checked ? 1 : 0})}
+                 />
+                 Cần kiểm chứng
+               </label>
+            ) : ev.needs_verification === 1 && (
               <Badge tone="red">
                 Dữ liệu cần kiểm chứng
               </Badge>
@@ -151,30 +323,55 @@ export default function EventDetail() {
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
-        {ev.deaths ? (
-          <div className="bg-red-50 text-red-700 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
-            Tử vong: {ev.deaths}
-          </div>
-        ) : null}
-        {ev.injured ? (
-          <div className="bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
-            Bị thương: {ev.injured}
-          </div>
-        ) : null}
-        {ev.missing ? (
-          <div className="bg-orange-50 text-orange-700 border border-orange-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
-            Mất tích: {ev.missing}
-          </div>
-        ) : null}
-        {ev.damage_billion_vnd ? (
-          <div className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
-            Ước thiệt hại: {fmtVndBillion(ev.damage_billion_vnd)}
-          </div>
-        ) : null}
+        {isEditing ? (
+           <>
+            <div className="flex flex-wrap gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-200 w-full">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Tử vong</span>
+                <input type="number" value={editForm.deaths || 0} onChange={e => setEditForm({...editForm, deaths: parseInt(e.target.value)})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-red-700" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Mất tích</span>
+                <input type="number" value={editForm.missing || 0} onChange={e => setEditForm({...editForm, missing: parseInt(e.target.value)})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-orange-700" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Bị thương</span>
+                <input type="number" value={editForm.injured || 0} onChange={e => setEditForm({...editForm, injured: parseInt(e.target.value)})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-yellow-700" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Thiệt hại (Tỷ)</span>
+                <input type="number" step="0.1" value={editForm.damage_billion_vnd || 0} onChange={e => setEditForm({...editForm, damage_billion_vnd: parseFloat(e.target.value)})} className="w-24 border rounded px-2 py-1 text-sm font-bold text-blue-700" />
+              </div>
+            </div>
+           </>
+        ) : (
+          <>
+            {ev.deaths ? (
+              <div className="bg-red-50 text-red-700 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+                Tử vong: {ev.deaths}
+              </div>
+            ) : null}
+            {ev.injured ? (
+              <div className="bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+                Bị thương: {ev.injured}
+              </div>
+            ) : null}
+            {ev.missing ? (
+              <div className="bg-orange-50 text-orange-700 border border-orange-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+                Mất tích: {ev.missing}
+              </div>
+            ) : null}
+            {ev.damage_billion_vnd ? (
+              <div className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+                Ước thiệt hại: {fmtVndBillion(ev.damage_billion_vnd)}
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
       
       {/* Field Information Table - Matches the professional report format */}
-      {(ev.commune || ev.village || ev.route || ev.cause || ev.characteristics) && (
+      {(isEditing || ev.commune || ev.village || ev.route || ev.cause || ev.characteristics) && (
         <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
              <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
@@ -182,38 +379,58 @@ export default function EventDetail() {
           </div>
           <table className="min-w-full divide-y divide-slate-100">
              <tbody className="divide-y divide-slate-50 text-sm">
-                {ev.commune && (
+                {(isEditing || ev.commune) && (
                   <tr>
                     <td className="px-4 py-3 font-medium text-slate-500 w-1/3 bg-slate-50/50 text-xs uppercase tracking-wider">Xã/Phường</td>
-                    <td className="px-4 py-3 text-slate-900 font-semibold">{ev.commune}</td>
-                  </tr>
-                )}
-                {ev.village && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Thôn/Bản/Xóm</td>
-                    <td className="px-4 py-3 text-slate-900">{ev.village}</td>
-                  </tr>
-                )}
-                {ev.route && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Tuyến đường</td>
-                    <td className="px-4 py-3 text-slate-900 font-mono text-xs">{ev.route}</td>
-                  </tr>
-                )}
-                {ev.cause && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Nguyên nhân</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${ev.cause.includes('Mưa') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                        {ev.cause}
-                      </span>
+                    <td className="px-4 py-3 text-slate-900 font-semibold">
+                      {isEditing ? (
+                        <input value={editForm.commune || ""} onChange={e => setEditForm({...editForm, commune: e.target.value})} className="w-full border rounded px-2 py-1" />
+                      ) : ev.commune}
                     </td>
                   </tr>
                 )}
-                {ev.characteristics && (
+                {(isEditing || ev.village) && (
+                  <tr>
+                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Thôn/Bản/Xóm</td>
+                    <td className="px-4 py-3 text-slate-900">
+                      {isEditing ? (
+                        <input value={editForm.village || ""} onChange={e => setEditForm({...editForm, village: e.target.value})} className="w-full border rounded px-2 py-1" />
+                      ) : ev.village}
+                    </td>
+                  </tr>
+                )}
+                {(isEditing || ev.route) && (
+                  <tr>
+                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Tuyến đường</td>
+                    <td className="px-4 py-3 text-slate-900 font-mono text-xs">
+                      {isEditing ? (
+                        <input value={editForm.route || ""} onChange={e => setEditForm({...editForm, route: e.target.value})} className="w-full border rounded px-2 py-1" />
+                      ) : ev.route}
+                    </td>
+                  </tr>
+                )}
+                {(isEditing || ev.cause) && (
+                  <tr>
+                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Nguyên nhân</td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input value={editForm.cause || ""} onChange={e => setEditForm({...editForm, cause: e.target.value})} className="w-full border rounded px-2 py-1" />
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${ev.cause.includes('Mưa') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {ev.cause}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                {(isEditing || ev.characteristics) && (
                   <tr>
                     <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Đặc điểm / Quy mô</td>
-                    <td className="px-4 py-3 text-slate-800 leading-relaxed italic">"{ev.characteristics}"</td>
+                    <td className="px-4 py-3 text-slate-800 leading-relaxed italic">
+                      {isEditing ? (
+                        <textarea value={editForm.characteristics || ""} onChange={e => setEditForm({...editForm, characteristics: e.target.value})} className="w-full border rounded px-2 py-1" rows={3} />
+                      ) : `"${ev.characteristics}"`}
+                    </td>
                   </tr>
                 )}
              </tbody>
@@ -349,6 +566,29 @@ export default function EventDetail() {
                   className="text-sm text-gray-700 leading-relaxed summary-content"
                   dangerouslySetInnerHTML={{ __html: short }}
                 />
+                {/* Professional Report Header */}
+                <div className="mb-6 flex items-center justify-between border-b-4 border-slate-900 pb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-xl tracking-tighter">
+                      VDW
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        ID: {ev.id.toString().padStart(6, '0')} • Hệ thống giám sát thời gian thực
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Print-only QR Code Placeholder */}
+                  <div className="hidden print:block text-right">
+                    <div className="w-16 h-16 border-2 border-slate-900 ml-auto flex items-center justify-center text-[8px] font-bold text-center leading-none">
+                        MÃ QR<br/>TRUY XUẤT
+                    </div>
+                    <div className="text-[10px] font-bold mt-1 uppercase">viet-disaster.gov.vn</div>
+                  </div>
+                </div>
                 {combined.length > limit ? (
                   <button
                     className="mt-2 text-sm text-blue-600 hover:underline font-medium"
@@ -394,7 +634,7 @@ export default function EventDetail() {
                   {isAdmin && (
                       <button
                           onClick={(e) => handleDeleteArticle(e, a.id)}
-                          className="p-2 ml-2 flex-shrink-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          className="p-2 ml-2 flex-shrink-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors no-print"
                           title="Xóa bài báo (Admin)"
                       >
                           <Trash2 className="w-4 h-4" />

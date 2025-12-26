@@ -49,36 +49,48 @@ def contains_disaster_keywords(text: str) -> bool:
 
 class HTMLScraper:
     """Scrapes news articles from websites without RSS feeds."""
+    
+    _shared_client: Optional[httpx.AsyncClient] = None
 
-    def __init__(self, timeout: int = 10):
+    def __init__(self, timeout: int = 15):
         if not _HAS_BS4:
             logger.warning("BeautifulSoup4 not available - HTML scraping disabled")
         
         self.timeout = timeout
-        # Default fallback if settings fail
-        self.default_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        self.default_ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+    async def get_client(self) -> httpx.AsyncClient:
+        """Get or create singleton httpx client for connection pooling."""
+        if HTMLScraper._shared_client is None or HTMLScraper._shared_client.is_closed:
+            limits = httpx.Limits(max_connections=100, max_keepalive_connections=20)
+            HTMLScraper._shared_client = httpx.AsyncClient(
+                timeout=self.timeout,
+                follow_redirects=True,
+                limits=limits,
+                headers={"User-Agent": self.default_ua}
+            )
+        return HTMLScraper._shared_client
 
     async def _get_with_retry(self, url: str) -> Optional[httpx.Response]:
         """Fetch URL with retries, random User-Agent, and exponential backoff."""
-        transport = httpx.AsyncHTTPTransport(retries=3)
-        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True, transport=transport) as client:
-            for attempt in range(3):
-                try:
-                    # Select random UA
-                    ua = random.choice(settings.user_agents) if hasattr(settings, 'user_agents') and settings.user_agents else self.default_ua
-                    headers = {"User-Agent": ua}
-                    
-                    response = await client.get(url, headers=headers)
-                    response.raise_for_status()
-                    return response
-                except httpx.HTTPError as e:
-                    if attempt == 2:
-                        logger.debug(f"Failed to fetch {url} after 3 attempts: {e}")
-                        return None
-                    await asyncio.sleep(1 * (attempt + 1))
-                except Exception as e:
-                    logger.debug(f"Unexpected error fetching {url}: {e}")
+        client = await self.get_client()
+        for attempt in range(3):
+            try:
+                # Select random UA if available
+                ua = random.choice(settings.user_agents) if hasattr(settings, 'user_agents') and settings.user_agents else self.default_ua
+                headers = {"User-Agent": ua}
+                
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                return response
+            except httpx.HTTPError as e:
+                if attempt == 2:
+                    logger.debug(f"Failed to fetch {url} after 3 attempts: {e}")
                     return None
+                await asyncio.sleep(0.5 * (attempt + 1)) # Reduced backoff for performance
+            except Exception as e:
+                logger.debug(f"Unexpected error fetching {url}: {e}")
+                return None
         return None
 
     async def scrape_tuoitre(self) -> List[dict]:
@@ -592,122 +604,72 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
     is_gnews = (decoded_url == url and "news.google.com" in url)
     url = decoded_url
     
+    # Use a very browser-like header set
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+    
     try:
-        # Use a very browser-like header set
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Cache-Control": "no-cache",
-            "Pragma": "no-cache",
-            "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            "Sec-Ch-Ua-Mobile": "?0",
-            "Sec-Ch-Ua-Platform": '"Windows"',
-        }
+        scraper = HTMLScraper(timeout=timeout)
+        client = await scraper.get_client()
         
-        # Google News often fails with IPv6 in some environments, or blocks based on client quirks.
-        # We'll use follow_redirects and a longer timeout for GNews.
-        current_timeout = timeout + (10 if is_gnews else 0)
+        resp = await client.get(url, follow_redirects=True, headers=headers)
+        resp.raise_for_status()
+            
+        final_url = str(resp.url)
         
-        async with httpx.AsyncClient(
-            timeout=current_timeout, 
-            follow_redirects=True,
-            headers=headers,
-            # Force IPv4 if GNews is problematic
-            transport=httpx.AsyncHTTPTransport(local_address="0.0.0.0") if is_gnews else None
-        ) as client:
-            try:
-                resp = await client.get(url)
-                resp.raise_for_status()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code in [404, 410]:
-                    return {"text": None, "images": [], "final_url": url, "is_broken": True}
-                raise e
-            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
-                # Last resort fallback: try using system curl if available (often bypasses library-level blocks)
-                if is_gnews:
-                    try:
-                        import subprocess
-                        print(f"[INFO] GNews connection failed, trying system curl fallback for {url}")
-                        result = subprocess.run(
-                            ['curl', '-L', '-s', '-o', 'NUL', '-w', '%{url_effective}', '-A', headers["User-Agent"], url],
-                            capture_output=True, text=True, timeout=10
-                        )
-                        if result.returncode == 0 and result.stdout.strip():
-                            new_url = result.stdout.strip()
-                            if new_url != url:
-                                # Recursively try with the resolved URL
-                                return await fetch_article_full_text_async(new_url, timeout=timeout)
-                    except:
-                        pass
-                raise e
-            
-            final_url = str(resp.url)
-            html_content = resp.text
-            
-            soup = BeautifulSoup(html_content, "html.parser")
-            
-            # 1. Image Extraction
-            images = []
-            og_img = soup.find("meta", property="og:image")
-            if og_img and og_img.get("content"):
-                images.append(og_img["content"])
-            
-            for img in soup.find_all("img", src=True):
-                src = img["src"]
-                if any(x in src.lower() for x in ["logo", "icon", "avatar", "ads", "advertising"]):
-                    continue
-                if src.startswith("http") and any(src.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
-                    if src not in images:
-                        images.append(src)
-                if len(images) > 5: break
-
-            # 2. Text Extraction
-            for s in soup(["script", "style", "nav", "footer", "header", "aside", "iframe", "noscript"]):
-                s.decompose()
-            
-            selectors = [
-                "article", ".article-content", ".post-content", ".content-detail", 
-                ".detail-content", ".cms-body", ".fck_detail", ".content_detail",
-                "#main-content-body", ".main-content", ".entry-content"
-            ]
-            
-            content_tag = None
-            for selector in selectors:
-                found = soup.select_one(selector)
-                if found and len(found.get_text()) > 500:
-                    content_tag = found
+        # Smart encoding detection
+        if resp.encoding == 'ISO-8859-1' or not resp.encoding:
+            resp.encoding = resp.apparent_encoding
+        
+        html_content = resp.text
+        soup = BeautifulSoup(html_content, "html.parser")
+        
+        # 1. Image Extraction
+        images = []
+        og_img = soup.find("meta", property="og:image")
+        if og_img and og_img.get("content"):
+            images.append(og_img["content"])
+        
+        for img in soup.find_all("img", src=True):
+            src = img["src"]
+            if any(x in src.lower() for x in ["logo", "icon", "avatar", "ads", "placeholder"]):
+                continue
+            if src.startswith("http") and any(src.lower().endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".webp"]):
+                images.append(src)
+                if len(images) > 3: break
+                
+        # 2. Text Extraction
+        content_text = ""
+        potential_containers = [
+            "article", ".fck_detail", ".detail-content", ".cms-body", ".post-content", 
+            ".content-detail", ".article-body", ".content_detail", "#content_detail"
+        ]
+        
+        for selector in potential_containers:
+            container = soup.select_one(selector)
+            if container:
+                for unwanted in container.select("script, style, .sidebar, .ads, .comment"):
+                    unwanted.decompose()
+                content_text = container.get_text(separator="\n", strip=True)
+                if len(content_text) > 200:
                     break
+                    
+        if len(content_text) < 200:
+            paragraphs = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 40]
+            content_text = "\n".join(paragraphs)
             
-            if not content_tag:
-                divs = soup.find_all("div")
-                if divs:
-                    content_tag = max(divs, key=lambda d: len(d.find_all("p")))
-
-            text = ""
-            if content_tag:
-                paras = content_tag.find_all("p")
-                if paras:
-                    text = "\n\n".join([p.get_text(strip=True) for p in paras if len(p.get_text(strip=True)) > 20])
-                else:
-                    text = content_tag.get_text(separator="\n\n", strip=True)
-            else:
-                text = soup.get_text(separator="\n\n", strip=True)
-
-            text = re.sub(r"\n{3,}", "\n\n", text).strip()
-            
-            return {
-                "text": text,
-                "images": images,
-                "final_url": final_url,
-                "is_broken": False
-            }
-            
+        return {
+            "text": content_text if len(content_text) > 100 else None,
+            "images": list(dict.fromkeys(images)),
+            "final_url": final_url,
+            "is_broken": False
+        }
+                
     except Exception as e:
-        if "news.google.com" in str(url):
-             logger.debug(f"GNews full-text fetch skipped/failed for {url}: {e}")
-        else:
-             logger.error(f"Error fetching full text async from {url}: {e}")
+        logger.debug(f"Error fetching full text from {url}: {e}")
         return None
 
 def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:

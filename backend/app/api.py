@@ -4,8 +4,8 @@ from sqlalchemy import desc, func
 from sqlalchemy.sql import text
 from .database import get_db, engine
 from . import models
-from .models import Article, Event
-from .schemas import ArticleOut, EventOut, EventDetailOut
+from .models import Article, Event, Blacklist
+from .schemas import ArticleOut, EventOut, EventDetailOut, EventUpdate
 from datetime import datetime, timedelta
 from fastapi import Response, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -236,6 +236,43 @@ def event_detail(event_id: int, db: Session = Depends(get_db)):
         
     return ev
 
+@router.put("/events/{event_id}", response_model=EventOut)
+def update_event(
+    event_id: int, 
+    payload: EventUpdate, 
+    db: Session = Depends(get_db)
+):
+    """Update event details (admin only logic in production)."""
+    ev = db.query(Event).filter(Event.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    update_data = payload.model_dump(exclude_unset=True)
+    
+    # Audit logging for manual correction
+    try:
+        logs_dir = Path(__file__).resolve().parents[1] / 'logs'
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        audit_file = logs_dir / 'audit_log.jsonl'
+        record = {
+            'timestamp': datetime.utcnow().isoformat(),
+            'event_id': event_id,
+            'changes': update_data,
+            'action': 'manual_correction'
+        }
+        with audit_file.open('a', encoding='utf-8') as f:
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+    except: pass
+
+    # Apply changes
+    for field, value in update_data.items():
+        setattr(ev, field, value)
+    
+    ev.last_updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(ev)
+    return ev
+
 @router.delete("/events/{event_id}", status_code=204)
 def delete_event(
     event_id: int, 
@@ -249,9 +286,19 @@ def delete_event(
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
         
+    # Add all associated article hashes to Blacklist before unlinking
+    articles = db.query(Article).filter(Article.event_id == event_id).all()
+    for art in articles:
+        if art.news_hash:
+            existing_bl = db.query(Blacklist).filter(Blacklist.news_hash == art.news_hash).first()
+            if not existing_bl:
+                db.add(Blacklist(
+                    news_hash=art.news_hash,
+                    title=art.title,
+                    reason=f"Admin deleted parent event: {ev.title}"
+                ))
+
     # Mark all associated articles as Rejected/Hidden
-    # We set status to 'rejected' so they are not re-clustered.
-    # We also unlink them from the event (event_id = NULL) to ensure data integrity before deleting the event row.
     db.query(Article).filter(Article.event_id == event_id).update(
         {"status": "rejected", "event_id": None}, 
         synchronize_session=False
@@ -279,6 +326,17 @@ def delete_article(
     # Mark as Rejected and Unlink
     art.status = "rejected"
     art.event_id = None
+    
+    # Also add to persistent Blacklist table
+    if art.news_hash:
+        existing_bl = db.query(Blacklist).filter(Blacklist.news_hash == art.news_hash).first()
+        if not existing_bl:
+            db.add(Blacklist(
+                news_hash=art.news_hash,
+                title=art.title,
+                reason="Admin explicitly deleted article"
+            ))
+            
     db.commit()
     
     return

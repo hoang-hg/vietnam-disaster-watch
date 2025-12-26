@@ -31,7 +31,8 @@ import {
   RefreshCw,
   ArrowRight,
   Search,
-  FileText
+  FileText,
+  Bell
 } from "lucide-react";
 
 const TYPE_TONES = {
@@ -70,6 +71,28 @@ export default function Dashboard() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        try {
+          const parsed = JSON.parse(storedUser);
+          if (parsed && typeof parsed === 'object') {
+              setUser(parsed);
+          }
+        } catch (e) {
+          console.error("Dashboard session sync error:", e);
+        }
+      }
+    };
+    handleStorage();
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const favoriteProvince = user?.favorite_province;
 
   const VALID_PROVINCES = [
     "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
@@ -203,6 +226,11 @@ export default function Dashboard() {
         .sort((a, b) => b.events - a.events);
   }, [events]);
 
+  const favoriteEvents = useMemo(() => {
+    if (!favoriteProvince) return [];
+    return rawEvents.filter(e => e.province === favoriteProvince).slice(0, 3);
+  }, [rawEvents, favoriteProvince]);
+
   return (
     <div className="space-y-6">
       {error && (
@@ -252,20 +280,20 @@ export default function Dashboard() {
                   <option value="all">Tất cả thông tin</option>
                   <option value="storm">Bão, ATNĐ</option>
                   <option value="flood">Lũ lụt</option>
-                  <option value="flash_flood">Lũ quét</option>
-                  <option value="landslide">Sạt lở đất</option>
-                  <option value="subsidence">Sụt lún</option>
+                  <option value="flash_flood">Lũ quét, Lũ ống</option>
+                  <option value="landslide">Sạt lở đất, đá</option>
+                  <option value="subsidence">Sụt lún đất</option>
                   <option value="drought">Hạn hán</option>
                   <option value="salinity">Xâm nhập mặn</option>
-                  <option value="extreme_weather">Mưa lớn, Lốc, Đá</option>
+                  <option value="extreme_weather">Mưa lớn, Lốc, Sét, Mưa Đá</option>
                   <option value="heatwave">Nắng nóng</option>
-                  <option value="cold_surge">Rét hại, Băng giá</option>
+                  <option value="cold_surge">Rét hại, Sương muối</option>
                   <option value="earthquake">Động đất</option>
                   <option value="tsunami">Sóng thần</option>
                   <option value="storm_surge">Nước dâng</option>
                   <option value="wildfire">Cháy rừng</option>
-                  <option value="warning_forecast">Tin dự báo</option>
-                  <option value="recovery">Khắc phục</option>
+                  <option value="warning_forecast">Cảnh báo, dự báo</option>
+                  <option value="recovery">Khắc phục hậu quả</option>
               </select>
               <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
            </div>
@@ -351,6 +379,28 @@ export default function Dashboard() {
                 Xem tất cả <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
+            
+            {/* Highlights for favorite area */}
+            {favoriteProvince && favoriteEvents.length > 0 && (
+              <div className="bg-blue-50/50 p-4 border-b border-blue-100">
+                <div className="flex items-center gap-2 text-blue-700 font-bold text-xs uppercase tracking-wider mb-3">
+                   <Bell className="w-3.5 h-3.5 animate-bounce" />
+                   Thiên tai tại {favoriteProvince}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {favoriteEvents.map(e => (
+                     <Link key={e.id} to={`/events/${e.id}`} className="bg-white p-3 rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-all flex flex-col">
+                        <Badge tone={TYPE_TONES[e.disaster_type] || "slate"} className="w-fit px-1.5 py-0.5 text-[8px] mb-2">
+                           {fmtType(e.disaster_type)}
+                        </Badge>
+                        <h5 className="font-bold text-slate-900 text-[11px] leading-tight line-clamp-2">{e.title}</h5>
+                        <span className="text-[10px] text-slate-500 mt-2">{fmtTimeAgo(e.last_updated_at)}</span>
+                     </Link>
+                   ))}
+                </div>
+              </div>
+            )}
+
             <div className="divide-y divide-slate-100 flex-1 min-h-[1050px]">
               {events.slice(page * 10, (page + 1) * 10).map((event) => (
                 <div key={event.id} className="p-4 hover:bg-slate-50 transition-colors group relative border-l-4 border-transparent hover:border-blue-500/30">
@@ -471,10 +521,10 @@ export default function Dashboard() {
             <h3 className="font-semibold text-slate-900 mb-4">Phân loại thiên tai</h3>
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 30 }} barCategoryGap="15%">
+                <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 30 }} barCategoryGap="15%">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                   <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
                   <Tooltip cursor={{fill: '#f1f5f9'}} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={24}>
                     {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}

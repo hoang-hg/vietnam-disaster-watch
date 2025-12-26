@@ -22,7 +22,7 @@ def normalize_url(url: str) -> str:
         params = parse_qs(parsed.query)
         tracking_params = {
             'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
-            'fbclid', 'gclid', 'msclkid', 'ref', 'source', 'share'
+            'fbclid', 'gclid', 'msclkid', 'ref', 'source', 'share', 'oc'
         }
         cleaned_params = {k: v for k, v in params.items() if k.lower() not in tracking_params}
         
@@ -81,17 +81,23 @@ def find_duplicate_article(
     """
     
     try:
+        norm_url = normalize_url(url)
+        
         # Strategy 0: GLOBAL Check for exact URL match (ignoring time window) 
         # This prevents UniqueConstraint violations for re-scraped old articles.
         exact_match = db.query(Article).filter(
             Article.domain == domain,
-            Article.url == url
+            Article.url == url # Check raw URL first
         ).first()
+        
+        if not exact_match:
+             # Try matching raw input against normalized stored URLs (if any) or just exact match
+             # Note: For performance, we check exact URL first. 
+             # For deeper check, we look at norm_url in Strategy 1.
+             pass
         
         if exact_match:
             return exact_match
-
-        norm_url = normalize_url(url)
 
         # Candidates in time window
         candidates = db.query(Article).filter(
