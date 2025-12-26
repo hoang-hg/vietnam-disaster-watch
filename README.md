@@ -77,7 +77,6 @@ Nếu bạn muốn chạy từng phần riêng lẻ để phát triển:
 Yêu cầu: Python 3.10+
 ```bash
 cd backend
-cd frontend
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000

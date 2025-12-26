@@ -66,3 +66,12 @@ class Event(Base):
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     articles = relationship("Article", back_populates="event")
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user", index=True) # "user", "admin"
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("IngestPotentials")
 
 LOGS_DIR = Path("logs")
-POTENTIAL_FILE = LOGS_DIR / "review_potential_disasters.jsonl"
+POTENTIAL_FILE = Path("d:/viet-disaster-watch/backend/logs/review_potential_disasters.jsonl")
 SUCCESS_COUNT = 0
 
 def ingest_item(db: Session, data: dict):
@@ -21,7 +21,6 @@ def ingest_item(db: Session, data: dict):
     title = data.get("title")
     url = data.get("url")
     source_name = data.get("source")
-    score = data.get("score", 0)
     
     pub_at_str = data.get("published_at")
     if pub_at_str:
@@ -84,31 +83,47 @@ def run_recovery():
     remaining_potentials = []
     
     with SessionLocal() as db:
+        if not hasattr(nlp, 'safe_impact_value'):
+            def _safe_val(v):
+                if v is None: return None
+                if isinstance(v, (int, float)): return v
+                if isinstance(v, dict): return v.get("max")
+                if isinstance(v, list) and len(v)>0: return v[0].get("max")
+                return None
+            nlp.safe_impact_value = _safe_val
+
         with open(POTENTIAL_FILE, "r", encoding="utf-8") as f:
             for line in f:
+                if not line.strip(): continue
                 try:
                     data = json.loads(line)
-                    score = data.get("score", 0)
+                    item_title = data.get("title", "No Title")
+                    full_text = f"{item_title}\n{data.get('summary', '')}"
+                    class_dict = nlp.classify_disaster(full_text)
                     
-                    # RECOVERY LOGIC: Ingest if score is good enough (e.g. > 8.5)
-                    # or if it has clear Disaster + Province info
-                    diag = data.get("diagnose", {})
-                    has_prov = diag.get("province") is not None
-                    has_hazard = len(diag.get("rule_matches", [])) > 0
+                    # VETO Check
+                    is_vetoed = False
+                    for pat in nlp.ABSOLUTE_VETO:
+                        if nlp.re.search(pat, full_text, nlp.re.IGNORECASE):
+                            is_vetoed = True
+                            break
                     
-                    if score >= 9.5 or (score >= 8.5 and has_prov and has_hazard):
+                    if not is_vetoed and class_dict.get("is_disaster"):
                         if ingest_item(db, data):
-                            logger.info(f"[RECOVERED] {data['title']} (Score: {score})")
+                            logger.info(f"[RECOVERED] {item_title} (Type: {class_dict.get('primary_type')})")
                         else:
-                            # If duplicate, just don't keep in potentials
-                            pass
+                            logger.info(f"[DUPLICATE/FAIL] {item_title}")
                     else:
-                        # Keep for manual review later
-                        remaining_potentials.append(data)
-                except Exception:
+                        if not is_vetoed:
+                            logger.info(f"[LOW SIGNAL] {item_title}")
+                            remaining_potentials.append(data)
+                        else:
+                            logger.info(f"[PURGED] {item_title} (Vetoed)")
+                except Exception as e:
+                    logger.error(f"Error processing line: {e}")
                     continue
 
-    # Update the potential file (remove recovered ones)
+    # Update potential file
     with open(POTENTIAL_FILE, "w", encoding="utf-8") as f:
         for p in remaining_potentials:
             f.write(json.dumps(p, ensure_ascii=False) + "\n")
@@ -116,14 +131,4 @@ def run_recovery():
     logger.info(f"Done. Successfully recovered {SUCCESS_COUNT} articles.")
 
 if __name__ == "__main__":
-    # Add helper to nlp if not exists for safe value extraction
-    if not hasattr(nlp, 'safe_impact_value'):
-        def _safe_val(v):
-            if v is None: return None
-            if isinstance(v, (int, float)): return v
-            if isinstance(v, dict): return v.get("max")
-            if isinstance(v, list) and len(v)>0: return v[0].get("max")
-            return None
-        nlp.safe_impact_value = _safe_val
-        
     run_recovery()

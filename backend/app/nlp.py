@@ -1844,7 +1844,6 @@ ABSOLUTE_VETO = [
     r"\b(?:tư\s*duy\s*triệu\s*phú|làm\s*giàu\s*không\s*khó|nghỉ\s*hưu\s*sớm|kế\s*hoạch\s*chi\s*tiêu|quản\s*lý\s*tài\s*sản)\b",
     r"\b(?:thành\s*lập\s*doanh\s*nghiệp|giấy\s*phép\s*điều\s*kiện|hợp\s*quy\s*kỹ\s*thuật|kiểm\s*định\s*độc\s*lập|chất\s*lượng\s*vượt\s*trội|thương\s*hiệu\s*uy\s*tín)\b",
     r"\b(?:kết\s*quả\s*mong\s*đợi)\b",
-
     # --- THE "BAILIFF PROCEDURES, ARTISAN CRAFTS & PUBLIC SUPERVISION" LAYER ---
     r"\b(?:lập\s*vi\s*bằng|niêm\s*phong\s*tài\s*sản|kê\s*biên\s*phát\s*mại|thông\s*báo\s*cưỡng\s*chế|vi\s*bằng\s*ghi\s*nhận)\b",
     r"\b(?:quạt\s*chàng\s*sơn|giấy\s*dó|tranh\s*điệp|lụa\s*vạn\s*phúc|gốm\s*bát\s*tràng|di\s*sản\s*văn\s*hóa\s*phi\s*vật\s*thể)\b",
@@ -1897,6 +1896,59 @@ CONDITIONAL_VETO = [
     r"(?:google|facebook|youtube|tiktok|zalo\s*pay|vneid).*(?:cập\s*nhật|tính\s*năng|ra\s*mắt|lỗi|hướng\s*dẫn)",
     r"how\s*to.*(?:tutorial|template|branding|customize)",
     r"sân\s*bay|hàng\s*không|hạ\s*cánh|cất\s*cánh|phi\s*công|cơ\s*trưởng",
+
+    # SAFETY ADVISORIES & EDUCATION (Non-emergencies)
+    r"\b(?:khuyến\s*cáo|nhắc\s*nhở|kỹ\s*năng|phòng\s*ngừa|tập\s*huấn)\s*(?:pccc|an\s*toàn|ngập\s*lụt|đuối\s*nước)\b",
+    
+    # INFRASTRUCTURE & TECHNICAL FAILURES (Non-disaster incidents)
+    r"\b(?:sự\s*cố|hỏng\s*hóc|bảo\s*trì|ngắt\s*điện|mất\s*điện|cắt\s*điện)\s*(?:lưới\s*điện|trạm\s*biến\s*áp|đường\s*dây|cáp\s*quang|internet|hệ\s*thống)\b",
+    r"\b(?:thủng\s*xăm|hỏng\s*xe|chết\s*máy|ùn\s*tắc|kẹt\s*xe|dòng\s*người\s*chen\s*chúc)\b",
+    r"\b(?:sập\s*giàn\s*giáo|tai\s*nạn\s*lao\s*động|ngộ\s*độc\s*thực\s*phẩm|cháy\s*nổ\s*bình\s*gas)\b",
+    
+    # ROUTINE URBAN NOISE
+    r"\b(?:triều\s*cường\s*rằm|ngập\s*do\s*triều|đỉnh\s*triều|hố\s*ga|nắp\s*cống|vỉ\s*hè|đường\s*hầm)\b",
+    r"\b(?:kiểm\s*tra\s*nồng\s*độ\s*cồn|phạt\s*nguội|xe\s*quá\s*tải|trạm\s*thu\s*phí|vào\s*cua|mất\s*lái)\b",
+
+    # MARINE & AGRI PRODUCTION (Routine production news)
+    r"\b(?:vươn\s*khơi|bám\s*biển|đánh\s*bắt|nuôi\s*trồng|tái\s*đàn|vào\s*vụ|thu\s*hoạch|giá\s*thu\s*mua|hải\s*sản|thủy\s*sản)\b",
+    
+    # PUBLIC HEALTH & EPIDEMICS (Medical, not natural disasters)
+    r"\b(?:sốt\s*xuất\s*huyết|tay\s*chân\s*miệng|dịch\s*sởi|cúm\s*gia\s*cầm|đỉnh\s*dịch|bùng\s*phát\s*dịch|phun\s*hóa\s*chất|diệt\s*loăng\s*quăng)\b",
+    
+    # PUBLIC WORKS MAINTENANCE (Routine)
+    r"\b(?:nạo\s*vét|khơi\s*thông|vệ\s*sinh).*(?:kênh\s*mương|cống\s*rãnh|dòng\s*chảy|rác\s*thải)\b",
+    r"\b(?:phủ\s*xanh|trồng\s*cây\s*gây\s*rừng|chăm\s*sóc\s*cây\s*xanh|cắt\s*tỉa\s*cành\s*cây)\b",
+
+    # MILITARY DRILLS & TRAINING (Non-incident)
+    r"\b(?:diễn\s*tập|thực\s*binh|hiệp\s*đồng|huấn\s*luyện|tình\s*huống\s*giả\s*định|phương\s*án\s*ứng\s*phó|tập\s*huấn)\b",
+    
+    # FUTURE SCENARIOS & RESEARCH (Not immediate events)
+    r"\b(?:kịch\s*bản\s*biến\s*đổi|tầm\s*nhìn\s*20\d{2}|dự\s*báo\s*đến\s*năm|mô\s*hình\s*mô\s*phỏng|nghiên\s*cứu\s*khoa\s*học|đề\s*tài\s*cấp\s*bộ)\b",
+    
+    # GENERAL WELFARE & CHARITY (Non-disaster relief)
+    r"\b(?:hộ\s*nghèo|cận\s*nghèo|giảm\s*nghèo\s*bền\s*vững|quà\s*tết|hiến\s*máu|khám\s*bệnh\s*miễn\s*phí|vượt\s*khó\s*vươn\s*lên)\b",
+
+    # HYDRO-POWER & IRRIGATION REGULATION (Routine vs Emergency)
+    r"\b(?:xả\s*nước\s*đổ\s*ải|vận\s*hành\s*phát\s*điện|phát\s*điện\s*định\s*kỳ|mực\s*nước\s*chết|hồ\s*thủy\s*điện\s*xả\s*nước(?!\s*khẩn\s*cấp))\b",
+    r"\b(?:tưới\s*tiêu|nguồn\s*nước\s*phục\s*vụ\s*sản\s*xuất|điều\s*tiết\s*nước\s*ruộng)\b",
+    
+    # ROUTINE MONITORING (Non-disaster sensors)
+    r"\b(?:kết\s*quả\s*quan\s*trắc|trạm\s*đo|chỉ\s*số\s*hàng\s*ngày|độ\s*mặn\s*đo\s*được|mặn\s*xâm\s*nhập\s*nhẹ)\b",
+    
+    # ROAD REPAIRS & TRANSPORT (Routine)
+    r"\b(?:thông\s*hầm|trải\s*nhựa|vá\s*đường|khắc\s*phục\s*ổ\s*gà|duy\s*tu|sửa\s*chữa\s*định\s*kỳ|mở\s*rộng\s*tuyến\s*đường)\b",
+
+    # ROUTINE WEATHER (Non-disaster/Pleasant weather)
+    r"\b(?:nắng\s*đẹp|thời\s*tiết\s*thuận\s*lợi|nắng\s*ấm|gió\s*nhẹ|mây\s*rải\s*rác|không\s*mưa|nắng\s*chan\s*hòa|bình\s*minh|hoàng\s*hôn)\b",
+    
+    # ACADEMIC & EXAM SEASONS (Metaphorical heat/waves)
+    r"\b(?:phòng\s*thi|sức\s*nóng\s*mùa\s*thi|sĩ\s*tử|vượt\s*vũ\s*môn|đề\s*thi|nộp\s*hồ\s*sơ|điểm\s*chuẩn|nguyện\s*vọng|tuyển\s*sinh)\b",
+    
+    # HISTORICAL NOSTALGIA & DOCUMENTARIES (Past events)
+    r"\b(?:ký\s*ức|hồi\s*tưởng|nhìn\s*lại|phim\s*tài\s*liệu|lịch\s*sử|năm\s*xưa|chuyện\s*cũ|tư\s*liệu\s*quý)\b",
+    
+    # RECRUITMENT & JOB MARKET
+    r"\b(?:thị\s*trường\s*lao\s*động|nhu\s*cầu\s*tuyển\s*dụng|cơ\s*hội\s*việc\s*làm|làn\s*sóng\s*nhảy\s*việc|nộp\s*c\s*v|phỏng\s*vấn\s*tuyển\s*dụng)\b"
 ]
 
 # 3. SOFT NEGATIVE: Potential False Positive (Politics, Admin, Economy)

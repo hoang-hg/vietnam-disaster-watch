@@ -399,8 +399,10 @@ async def stream_events(request: Request):
     return StreamingResponse(event_publisher(), media_type='text/event-stream')
 
 
+from .auth import get_current_admin
+
 @router.get('/admin/skip-logs')
-def get_skip_logs(limit: int = Query(200, ge=1, le=5000)):
+def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = Depends(get_current_admin)):
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     log_file = logs_dir / 'review_potential_disasters.jsonl'
     out = []
@@ -419,7 +421,7 @@ def get_skip_logs(limit: int = Query(200, ge=1, le=5000)):
 
 
 @router.post('/admin/label')
-def label_log(payload: dict):
+def label_log(payload: dict, admin: models.User = Depends(get_current_admin)):
     """Label a skipped/accepted item for training/audit. Payload must include `id` and `label`."""
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -437,7 +439,7 @@ def label_log(payload: dict):
 
 
 @router.post('/admin/label/revert')
-def revert_label(payload: dict):
+def revert_label(payload: dict, admin: models.User = Depends(get_current_admin)):
     """Record a revert/undo for a previously labeled item.
     Payload: {"id": "<article_id>"}
     This is append-only: we write a `revert` record that references the last label for the id.

@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from .settings import settings
 from .api import router as api_router
+from .auth_router import router as auth_router
 from .crawler import process_once, _process_once_async
 
 app = FastAPI(
@@ -21,6 +22,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(auth_router)
 
 # Configure scheduler to handle slow jobs strictly
 # max_instances=2 allows overlap if one is stuck, but mostly fixes the warning.

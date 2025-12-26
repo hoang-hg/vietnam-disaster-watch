@@ -2,8 +2,43 @@ export const API_BASE =
   import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
 export async function getJson(path) {
-  const res = await fetch(API_BASE + path);
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  const token = localStorage.getItem("access_token");
+  const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+  const res = await fetch(API_BASE + path, { headers });
+  if (!res.ok) {
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+    }
+    throw new Error(`API error ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function login(username, password) {
+  const formData = new URLSearchParams();
+  formData.append("username", username);
+  formData.append("password", password);
+
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Sai email hoặc mật khẩu");
+  return res.json();
+}
+
+export async function register(email, password, fullName) {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password, full_name: fullName }),
+  });
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.detail || "Đăng ký thất bại");
+  }
   return res.json();
 }
 

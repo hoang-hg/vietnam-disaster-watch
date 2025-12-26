@@ -1,27 +1,47 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search,
   User,
   Menu,
   X,
   Grid,
-  Bell
+  Bell,
+  LogOut,
+  ShieldCheck
 } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
 
-
-
 export default function MainLayout({ children }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const isMapPage = location.pathname.startsWith("/map");
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+    navigate("/login");
+  };
 
   const navigation = [
     { name: "TỔNG QUAN", href: "/", current: location.pathname === "/" },
     { name: "SỰ KIỆN", href: "/events", current: location.pathname.startsWith("/events") },
     { name: "BẢN ĐỒ", href: "/map", current: location.pathname === "/map" },
   ];
+
+  // Admin exclusive navigation
+  if (user?.role === "admin") {
+    navigation.push({ name: "DUYỆT TIN TỨC", href: "/admin/logs", current: location.pathname.startsWith("/admin/logs") });
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-100 font-sans">
@@ -62,7 +82,7 @@ export default function MainLayout({ children }) {
       {/* Navigation Bar (Teal - Bao Moi Style) */}
       <nav className="bg-[#2fa1b3] shadow-md sticky top-0 z-50 flex-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center h-12">
+            <div className="flex items-center h-12 justify-between">
                 {/* Desktop/Tablet Nav */}
                 <div className="flex h-full border-l border-white/20">
                     {navigation.map((item) => (
@@ -78,6 +98,41 @@ export default function MainLayout({ children }) {
                             {item.name}
                         </Link>
                     ))}
+                </div>
+
+                {/* Account Actions (Desktop) */}
+                <div className="hidden md:flex items-center gap-2 h-full">
+                    {user ? (
+                        <div className="flex items-center h-full">
+                            <span className="flex items-center gap-2 px-4 h-full text-white text-xs font-bold border-l border-white/20">
+                                {user.role === 'admin' ? <ShieldCheck className="w-4 h-4 text-yellow-300" /> : <User className="w-4 h-4" />}
+                                {user.name.toUpperCase()}
+                            </span>
+                            <button 
+                                onClick={handleLogout}
+                                className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-red-500 transition-colors border-l border-r border-white/20"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                ĐĂNG XUẤT
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <Link 
+                                to="/login" 
+                                className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-[#258a9b] transition-colors border-l border-white/20"
+                            >
+                                <User className="w-4 h-4" />
+                                ĐĂNG NHẬP
+                            </Link>
+                            <Link 
+                                to="/register" 
+                                className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-[#258a9b] transition-colors border-l border-r border-white/20 bg-white/10"
+                            >
+                                ĐĂNG KÝ
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
@@ -100,6 +155,38 @@ export default function MainLayout({ children }) {
                             {item.name}
                         </Link>
                     ))}
+                    <div className="pt-2 mt-2 border-t border-[#258a9b]">
+                        {user ? (
+                            <>
+                                <div className="px-3 py-2 text-xs font-bold text-white/70 uppercase">
+                                    Đang đăng nhập: {user.name} ({user.role})
+                                </div>
+                                <button
+                                    onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-red-500"
+                                >
+                                    ĐĂNG XUẤT
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    to="/login"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="block px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-[#258a9b]"
+                                >
+                                    ĐĂNG NHẬP
+                                </Link>
+                                <Link
+                                    to="/register"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="block px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-[#258a9b]"
+                                >
+                                    ĐĂNG KÝ
+                                </Link>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
         )}

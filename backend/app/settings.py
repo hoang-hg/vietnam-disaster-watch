@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     app_timezone: str = "Asia/Ho_Chi_Minh"
     user_agent: str = "Mozilla/5.0 (compatible; VietDisasterBot/1.0)"
     
+    # Auth
+    secret_key: str = Field(default="09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7", validation_alias="SECRET_KEY")
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60 * 24 * 7 # 7 days
+    
     # List of rotate user agents
     user_agents: list[str] = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
