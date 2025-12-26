@@ -37,8 +37,20 @@ class Article(Base):
     event = relationship("Event", back_populates="articles")
 
     needs_verification: Mapped[bool] = mapped_column(Integer, default=0) # 0=no, 1=yes
+    
+    # 3-Tier filtering status
+    # 'approved': automatically accepted or admin approved
+    # 'pending': waiting for admin review (score in grey area)
+    # 'rejected': admin explicitly rejected
+    status: Mapped[str] = mapped_column(String(20), default="approved", index=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    
+    # Unique identifier for content to prevent re-crawling rejected news
+    news_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
 
-    __table_args__ = (UniqueConstraint("domain", "url", name="uq_article_url"),)
+    __table_args__ = (
+        UniqueConstraint("domain", "url", name="uq_article_url"),
+    )
 
 class Event(Base):
     __tablename__ = "events"
@@ -75,3 +87,13 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user", index=True) # "user", "admin"
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+class Blacklist(Base):
+    """Stores hashes of articles that were rejected by admin to prevent re-crawling."""
+    __tablename__ = "blacklist"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    news_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+

@@ -106,7 +106,7 @@ export default function MainLayout({ children }) {
                         <div className="flex items-center h-full">
                             <span className="flex items-center gap-2 px-4 h-full text-white text-xs font-bold border-l border-white/20">
                                 {user.role === 'admin' ? <ShieldCheck className="w-4 h-4 text-yellow-300" /> : <User className="w-4 h-4" />}
-                                {user.name.toUpperCase()}
+                                {(user.full_name || user.email || "").toUpperCase()}
                             </span>
                             <button 
                                 onClick={handleLogout}
@@ -159,7 +159,7 @@ export default function MainLayout({ children }) {
                         {user ? (
                             <>
                                 <div className="px-3 py-2 text-xs font-bold text-white/70 uppercase">
-                                    Đang đăng nhập: {user.name} ({user.role})
+                                    Đang đăng nhập: {user.full_name || user.email} ({user.role || "user"})
                                 </div>
                                 <button
                                     onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}

@@ -774,7 +774,7 @@ DISASTER_RULES = [
   ("flood_landslide", [
     r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn\s*đá", r"lũ\s*lịch\s*sử", r"lũ\s*đầu\s*nguồn",
     r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu", r"ngập\s*cục\s*bộ", r"biển\s*nước", r"ngập\s*(?:nhà|đường|phố)",
-    r"sạt\s*lở\s*đất", r"trượt\s*lở\s*đất", r"sụt\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hàm\s*ếch",
+    r"sạt\s*lở\s*đất", r"trượt\s*lở\s*đất", r"sụt\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hàm\s*ếch", r"lở\s*núi", r"sập\s*cầu",
     r"vỡ\s*đê", r"tràn\s*đê", r"sự\s*cố\s+đập", r"xả\s+lũ", r"hồ\s+chứa\s+thủy\s+điện", r"thủy\s*lợi",
     r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lũ\s*dâng\s*cao", r"báo\s*động\s*(?:1|2|3|I|II|III)",
     r"chia\s*cắt", r"cô\s*lập", r"cuốn\s*trôi", r"vùi\s*lấp", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
@@ -857,7 +857,7 @@ DISASTER_RULES = [
     r"ranh\s*giới\s*độ\s*mặn", r"ranh\s*mặn",
     r"(?:1|4)\s*‰", r"(?:1|4)\s*phần\s*nghìn", r"(?:1|4)\s*ppt",
     r"độ\s*mặn\s*(?:cao\s*nhất|max)", r"độ\s*mặn\s*1\s*‰", r"độ\s*mặn\s*4\s*‰",
-    r"khoảng\s*cách\s*(?:chịu\s*ảnh\s*hưởng|xâm\s*nhập)", r"\b\d+\s*km\b",
+    r"khoảng\s*cách\s*(?:chịu\s*ảnh\s*hưởng|xâm\s*nhập)",
     r"xâm\s*nhập\s*mặn\s*sâu", r"đỉnh\s*mặn", r"đợt\s*xâm\s*nhập\s*mặn",
     r"nang\s*nong", r"han\s*han", r"xam\s*nhap\s*man", r"do\s*man", r"ranh\s*man",
     r"han\s*man", r"dot\s*han\s*man", r"han\s*man\s*lich\s*su", 
@@ -1276,6 +1276,8 @@ ABSOLUTE_VETO = [
     # ADMINISTRATIVE NOISE
     r"\b(?:đại\s*hội\s*đảng|ban\s*bí\s*thư|bộ\s*chính\s*trị|ủy\s*viên\s*trung\s*ương|hội\s*nghị\s*ban\s*chấp\s*hành|thành\s*ủy|tỉnh\s*ủy|ubnd|hđnd|mttq|điều\s*động\s*cán\s*bộ|bổ\s*nhiệm|luân\s*chuyển|phân\s*công|quy\s*tập\s*hài\s*cốt|liệt\s*sĩ|nghĩa\s*trang\s*liệt\s*sĩ|trao\s*huân\s*chương|cờ\s*thi\s*đua|vinh\s*danh|kỷ\s*niệm\s*ngày\s*thành\s*lập)\b",
     r"\b(?:nông\s*thôn\s*mới|quy\s*hoạch\s*đô\s*thị|vành\s*đai\s*\d+|cao\s*tốc|khởi\s*công|thông\s*xe|nghiệm\s*thu|đấu\s*giá\s*đất|sổ\s*đỏ|quyền\s*sử\s*dụng\s*đất|giao\s*đất|chuyển\s*nhượng)\b",
+    r"(?:dự\s*án\s*vành\s*đai|đường\s*vành\s*đai|nút\s*giao|hầm\s*chui|cầu\s*vượt|thông\s*xe|khánh\s*thành|khởi\s*công)", # Safer no-boundary match for infra
+    r"(?:va\s*chạm\s*liên\s*hoàn|tai\s*nạn\s*giao\s*thông|lật\s*xe|tông\s*xe|xe\s*khách|xe\s*tải|xe\s*ben)(?!\s*(?:do|vì|bởi)\s*(?:bão|lũ|sạt\s*lở|mưa))", # Traffic accident veto unless caused by disaster
 
     # OTHERS (Spam/Noise)
     r"việc\s*nhẹ\s*lương\s*cao|bóc\s*vỏ\s*tôm|tắt\s*camera|camera\s*quay\s*lén|giải\s*cứu\s*(?:rùa|chim|động\s*vật|thú\s*quý|tôm\s*hùm|nông\s*sản)",
@@ -1349,8 +1351,8 @@ ABSOLUTE_VETO = [
     # --- THE "TECHNICAL, AVIATION & INFRA" LAYER ---
     r"\b(?:trích\s*lập\s*dự\s*phòng|nợ\s*xấu|thanh\s*khoản|tái\s*cơ\s*cấu|phí\s*bảo\s*hiểm|hợp\s*đồng\s*nhân\s*thọ|quyền\s*lợi\s*khách\s*hàng)\b",
     r"\b(?:khớp\s*lệnh|dư\s*mua|dư\s*bán|chứng\s*khoán\s*phái\s*sinh|khối\s*ngoại|vốn\s*điều\s*lệ|lệnh\s*giới\s*hạn)\b",
-    r"\b(?:hoãn\s*chuyến|chậm\s*chuyến|hủy\s*chuyến|hành\s*lý\s*ký\s*gửi|soát\s*vé|thủ\s*tục\s*check-in|thị\s*thực|visa)\b",
-    r"\b(?:giấy\s*phép\s*xây\s*dựng|hoàn\s*công|bê\s*tông\s*tươi|ép\s*cọc|nền\s*móng|đấu\s*thầu\s*xây\s*lắp|nhà\s*thầu\s*chính|nghiệm\s*thu\s*dự\s*án)\b",
+    # Moved to CONDITIONAL (Aviation Ops)
+    # Moved to CONDITIONAL (Construction/Bidding)
     r"\b(?:vệ\s*tinh\s*nhân\s*tạo|trạm\s*không\s*gian|mưa\s*sao\s*băng|nhật\s*thực|nguyệt\s*thực|kính\s*thiên\s*văn|tàu\s*vũ\s*trụ)\b",
 
     # --- THE "JOURNALISM & LIFESTYLE DIGEST" LAYER ---
@@ -1368,11 +1370,11 @@ ABSOLUTE_VETO = [
     r"\b(?:bản\s*vá\s*lỗi|mã\s*nguồn|lỗ\s*hổng\s*bảo\s*mật|tấn\s*công\s*ddos|phần\s*mềm\s*độc\s*hại|trải\s*nghiệm\s*người\s*dùng|ux/ui|giao\s*diện\s*mới)\b",
 
     # --- THE "INDUSTRIAL, ENERGY & BIODIVERSITY" LAYER ---
-    r"\b(?:dây\s*chuyền\s*sản\s*xuất|khu\s*công\s*nghiệp|kcn|khu\s*chế\s*xuất|nguyên\s*liệu\s*đầu\s*vào|sản\s*lượng\s*hàng\s*năm|dệt\s*may|da\s*giày|linh\s*kiện\s*điện\s*tử)\b",
-    r"\b(?:điện\s*mặt\s*trời|điện\s*gió|điện\s*áp\s*mái|giá\s*mua\s*điện|truyền\s*tải\s*điện|tiết\s*kiệm\s*điện\s*năng|nguồn\s*năng\s*lượng\s*tái\s*tạo)\b",
+    # Moved to CONDITIONAL (Industrial Zones)
+    # Moved to CONDITIONAL (Energy Infra)
     r"\b(?:đa\s*dạng\s*sinh\s*học|bảo\s*tồn\s*động\s*vật|cá\s*thể\s*quý\s*hiếm|sách\s*đỏ|thả\s*về\s*rừng|vườn\s*quốc\s*gia|khu\s*bảo\s*tồn|tài\s*nguyên\s*sinh\s*vật)\b",
     r"\b(?:chứng\s*chỉ\s*hành\s*nghề|đào\s*tạo\s*nghiệp\s*vụ|kỹ\s*năng\s*chuyên\s*môn|huấn\s*luyện\s*an\s*toàn|văn\s*bằng\s*quốc\s*tế|phong\s*trào\s*tay\s*nghề)\b",
-    r"\b(?:vệ\s*sinh\s*môi\s*trường|thu\s*gom\s*rác\s*thải|nhà\s*máy\s*xử\s*lý|phí\s*vệ\s*sinh|cung\s*cấp\s*nước\s*sạch|giá\s*nước\s*sinh\s*hoạt)\b",
+    # Moved to CONDITIONAL (Env/Sanitation)
 
     # --- THE "STATE PROTOCOL, CORPORATE WELFARE & ACADEMIC ADMIN" LAYER ---
     r"\b(?:tiếp\s*đại\s*sứ|trình\s*quốc\s*thư|giao\s*lưu\s*hữu\s*nghị|củng\s*cố\s*quan\s*hệ|ngoại\s*giao\s*đa\s*phương|ký\s*kết\s*biên\s*bản\s*ghi\s*nhớ|MOU|đối\s*tác\s*chiến\s*lược)\b",
@@ -1397,9 +1399,10 @@ ABSOLUTE_VETO = [
     # --- THE "RURAL, MARINE & PHILANTHROPY" LAYER ---
     r"\b(?:ngư\s*trường\s*khai\s*thác|xuất\s*khẩu\s*hải\s*sản|vận\s*tải\s*biển|cảng\s*nước\s*sâu|luồng\s*hàng\s*hải|tàu\s*viễn\s*dương|giàn\s*khoan\s*dầu|dầu\s*khí\s*quốc\s*gia)\b",
     r"\b(?:cánh\s*đồng\s*mẫu\s*lớn|hợp\s*tác\s*xã\s*nông\s*nghiệp|sản\s*xuất\s*giỏi|chăn\s*nuôi\s*tập\s*trung|chuỗi\s*giá\s*trị|truy\s*xuất\s*nguồn\s*gốc)\b",
-    r"\b(?:hiến\s*máu\s*nhân\s*đạo|hành\s*trình\s*đỏ|quỹ\s*khuyến\s*học|mùa\s*hè\s*xanh|tiếp\s*sức\s*đến\s*trường|chương\s*trình\s*từ\s*thiện\s*thường\s*niên)\b",
+    # Moved to CONDITIONAL (Charity/Relief)
     r"\b(?:đấu\s*giá\s*tác\s*phẩm|thị\s*trường\s*nghệ\s*thuật|triển\s*lãm\s*cá\s*nhân|tài\s*sản\s*văn\s*hóa|giá\s*trị\s*dân\s*gian)\b",
     r"\b(?:vệ\s*sinh\s*an\s*toàn\s*thực\s*phẩm|ngộ\s*độc\s*thực\s*phẩm\s*tại\s*trường|kiểm\s*tra\s*liên\s*ngành|xử\s*phạt\s*hành\s*chính\s*cơ\s*sở)\b",
+    r"\b(?:chim|thú|động\s*vật)\s*(?:quý\s*hiếm|hoang\s*dã|sách\s*đỏ|bảo\s*tồn|thả\s*về\s*rừng|giao\s*nộp|bắt\s*được)\b",
 
     # --- THE "E-SPORTS, HOME IMPROVEMENT, FITNESS & ACADEMIC ADMIN" LAYER ---
     r"\b(?:giải\s*đấu\s*esports|vòng\s*bảng|vòng\s*playoff|tuyển\s*thủ\s*chuyên\s*nghiệp|binh\s*đoàn|patch\s*update|meta\s*game|tướng\s*mới|trang\s*phục\s*vĩnh\s*viễn)\b",
@@ -1415,10 +1418,10 @@ ABSOLUTE_VETO = [
     r"\b(?:văn\s*phòng\s*cho\s*thuê|co-working\s*space|khu\s*phức\s*hợp|tiện\s*ích\s*all-in-one|tòa\s*nhà\s*thông\s*minh|quản\s*lý\s*bất\s*động\s*sản)\b",
 
     # --- THE "SAFETY, COMPLIANCE & PROFESSIONAL STANDARDS" LAYER ---
-    r"\b(?:kiểm\s*tra\s*pccc|nghiệm\s*thu\s*phòng\s*cháy|diễn\s*tập\s*phòng\s*cháy|giấy\s*chứng\s*nhận\s*vệ\s*sinh\s*an\s*toàn|đạt\s*chuẩn\s*iso|hợp\s*quy\s*hợp\s*chuẩn|kiểm\s*định\s*chất\s*lượng)\b",
+    # Moved to CONDITIONAL (Safety/PCCC/ISO)
     r"\b(?:đạo\s*đức\s*pháp\s*luật|văn\s*hóa\s*ngành\s*y|kỷ\s*cương\s*hành\s*chính|tác\s*phong\s*công\s*vụ|đổi\s*mới\s*sáng\s*tạo|chuyển\s*đổi\s*số\s*quốc\s*gia)\b",
     r"\b(?:hội\s*thảo\s*chuyên\s*đề|tổng\s*kết\s*phong\s*trào|thi\s*đua\s*ngành\s*giáo\s*dục|trao\s*giải\s*thưởng\s*sáng\s*tạo|triển\s*khai\s*nhiệm\s*vụ\s*trọng\s*tâm)\b",
-    r"\b(?:vệ\s*sinh\s*môi\s*trường\s*đô\s*thị|phân\s*loại\s*rác\s*tại\s*nguồn|phát\s*động\s*tết\s*trồng\s*cây|hưởng\s*ứng\s*giờ\s*trái\s*đất)\b",
+    # Moved to CONDITIONAL (Env Campaigns)
 
     # --- THE "BANKING, TELCO & PERSONAL LIFECYCLE" LAYER ---
     r"\b(?:tin\s*buồn|lễ\s*viếng|vô\s*cùng\s*thương\s*tiếc|hưởng\s*thọ|lễ\s*truy\s*điệu|an\s*táng|phúng\s*viếng|chia\s*buồn\s*cùng\s*gia\s*đình)\b",
@@ -1445,6 +1448,11 @@ ABSOLUTE_VETO = [
     r"\b(?:x\s*s\s*m\s*b|x\s*s\s*m\s*n|x\s*s\s*m\s*t|mega\s*6/45|power\s*6/55|max\s*3d|giải\s*jackpot|kết\s*quả\s*xổ\s*số\s*hôm\s*nay)\b",
     r"\b(?:golf|mma|ufc|boxing|muay\s*thai|billiards|bi-a|võ\s*tự\s*do|sàn\s*đấu\s*rực\s*lửa|thu\s*phục|hạ\s*gục\s*đối\s*thủ)\b",
     r"\b(?:bạch\s*dương|kim\s*ngưu|song\s*tử|cự\s*giải|sư\s*tử|xử\s*nữ|thiên\s*bình|thiên\s*yết|hổ\s*cáp|nhân\s*mã|ma\s*kết|bảo\s*bình|song\s*ngư)\b",
+    
+    # --- ADDED: YEAR-END REVIEWS & EDITORIAL SUMMARIES ---
+    r"\b(?:nhìn\s*lại|tổng\s*kết|toàn\s*cảnh|dấu\s*ấn|tiêu\s*điểm)\s*(?:thế\s*giới|năm\s*20\d{2}|kinh\s*tế|thị\s*trường|quốc\s*tế)\b",
+    r"\bvòng\s*xoáy\s*(?:bất\s*ổn|xung\s*đột|bạo\s*lực|chiến\s*tranh|nợ\s*nần|khủng\s*hoảng)\b",
+    r"\b(?:bất\s*ổn\s*chính\s*trị|đảo\s*chính|biểu\s*tình|nội\s*chiến|xung\s*đột\s*sắc\s*tộc)\b",
 
     # --- THE "ACADEMIC EXCELLENCE, GENEALOGY & PROFESSIONAL MACHINERY" LAYER ---
     r"\b(?:chỉ\s*số\s*h-index|trích\s*dẫn\s*khoa\s*học|bài\s*báo\s*quốc\s*tế|phản\s*biện\s*kín|hội\s*đồng\s*chức\s*danh\s*giáo\s*sư|hệ\s*số\s*tác\s*động|impact\s*factor)\b",
@@ -1454,10 +1462,20 @@ ABSOLUTE_VETO = [
     r"\b(?:đồng\s*tiền\s*cổ|tem\s*phi\s*luật|sưu\s*tầm\s*đồ\s*xưa|đồ\s*gốm\s*sứ|giá\s*trị\s*thẩm\s*mỹ|nghệ\s*nhuật\s*sắp\s*đặt)\b",
 
     # --- THE "INDUSTRIAL STANDARDS, SPECIALIZED INTERIOR & AGRICULTURAL TECH" LAYER ---
-    r"\b(?:tiêu\s*chuẩn\s*tcvn|astm|iso\s*9001|hợp\s*chuẩn\s*hợp\s*quy|tiêu\s*chuẩn\s*kỹ\s*thuật|quy\s*trình\s*kiểm\s*định|giấy\s*phép\s*hoạt\s*động)\b",
+    # Moved to CONDITIONAL (Technical Standards)
     r"\b(?:gỗ\s*veneer|acrylic|mdf|laminate|sàn\s*gỗ\s*công\s*nghiệp|đồ\s*gỗ\s*nội\s*thất|phụ\s*kiện\s*tủ\s*bếp|đèn\s*led\s*trang\s*trí)\b",
     r"\b(?:thủy\s*canh|khí\s*canh|phân\s*bón\s*n\s*p\s*k|thuốc\s*bảo\s*vệ\s*thực\s*vật|giống\s*cây\s*lai|nuôi\s*cấy\s*mô|nhà\s*màng|nhà\s*lưới)\b",
     r"\b(?:vận\s*hành\s*quy\s*trình|tối\s*ưu\s*hệ\s*thống|tiết\s*kiệm\s*chi\s*phí|năng\s*suất\s*lao\s*động|quản\s*trị\s*chuỗi\s*cung\s*ứng)\b",
+
+    # --- ADDED VETO FOR RECENT FALSE POSITIVES (Smuggling, Insurance, Prostitution) ---
+    r"\b(?:bảo\s*hiểm\s*y\s*tế|bhyt|bảo\s*hiểm\s*xã\s*hội|bhxh|trục\s*lợi\s*bảo\s*hiểm|rút\s*tiền\s*bảo\s*hiểm|thẻ\s*bảo\s*hiểm)\b",
+    r"\b(?:thuốc\s*lá\s*(?:lậu|nhập\s*lậu|ngoại)|bao\s*thuốc\s*lá|tàng\s*trữ\s*thuốc\s*lá|buôn\s*bán\s*hàng\s*cấm)\b",
+    r"\b(?:mại\s*dâm|mua\s*bán\s*dâm|cà\s*phê\s*chòi|kích\s*dục|massage\s*kích\s*dục|tú\s*bà|chứa\s*mại\s*dâm)\b",
+    r"\b(?:hàng\s*lậu|hàng\s*cấm|tàng\s*trữ\s*trái\s*phép|vận\s*chuyển\s*trái\s*phép\s*chất\s*ma\s*túy|bắt\s*quả\s*tang\s*vụ)\b",
+    r"\b(?:đánh\s*bạc|sát\s*phạt|tụ\s*điểm\s*đá\s*gà|xóc\s*đĩa|lô\s*đề|ghi\s*số\s*đề|tổ\s*chức\s*đánh\s*bạc)\b",
+    r"\b(?:trộm\s*cắp|cướp\s*giật|móc\s*túi|đột\s*nhập|phá\s*khóa|trộm\s*xe|cướp\s*tài\s*sản)\b",
+    r"\b(?:giết\s*người|phân\s*xác|phi\s*tang|đâm\s*chết|mâu\s*thuẫn\s*tình\s*cảm|ghen\s*tuông|hành\s*hung|cố\s*ý\s*gây\s*thương\s*tích)\b", # Individual crime
+    r"\b(?:lừa\s*đảo\s*chiếm\s*đoạt|giả\s*danh\s*công\s*an|lừa\s*đảo\s*qua\s*mạng|tín\s*dụng\s*đen|cho\s*vay\s*lãi\s*nặng)\b",
     r"\b(?:mã\s*vạch|qr\s*code|tem\s*truy\s*xuất|hệ\s*thống\s*erp|phần\s*mềm\s*quản\s*lý|số\s*hóa\s*doanh\s*nghiệp)\b",
 
     # --- THE DEFINITIVE FINAL LAYER: COMMODITIES, SPIRITUAL & MUSIC TECH ---
@@ -1501,6 +1519,12 @@ ABSOLUTE_VETO = [
     r"\b(?:dịch\s*bệnh\s*gia\s*súc|lở\s*mồm\s*long\s*móng|tai\s*xanh|dịch\s*tả\s*lợn\s*châu\s*phi|thuốc\s*thú\s*y|kháng\s*sinh\s*cho\s*vật\s*nuôi|thức\s*ăn\s*chăn\s*nuôi|kỹ\s*thuật\s*vỗ\s*béo)\b",
     r"\b(?:vietgap|globalgap|haccp|chỉ\s*dẫn\s*địa\s*lý|thương\s*hiệu\s*quốc\s*gia|ocop|mỗi\s*xã\s*một\s*sản\s*phẩm)\b",
     r"\b(?:đăng\s*ký\s*thương\s*hiệu|sở\s*hữu\s*công\s*nghiệp|kiểu\s*dáng\s*độc\s*quyền|sách\s*trắng|báo\s*cáo\s*thường\s*niên|đại\s*hội\s*thành\s*viên|vốn\s*góp)\b",
+
+    # --- THE "STRICT POLITICAL & CEREMONIAL" LAYER (ABSOLUTE REJECT) ---
+    r"\b(?:đại\s*hội\s*đảng|bầu\s*cử\s*quốc\s*hội|hội\s*nghị\s*trung\s*ương|bổ\s*nhiệm\s*cán\s*bộ|luân\s*chuyển\s*nhân\s*sự|kỷ\s*luật\s*đảng|khai\s*trừ\s*đảng)\b",
+    r"\b(?:trao\s*huy\s*hiệu\s*đảng|huân\s*chương\s*lao\s*động|cờ\s*thi\s*đua\s*chính\s*phủ|bằng\s*khen\s*thủ\s*tướng|anh\s*hùng\s*lao\s*động)\b",
+    r"\b(?:tiếp\s*xúc\s*cử\s*tri|thảo\s*luận\s*tại\s*tổ|chất\s*vấn\s*bộ\s*trưởng|phiên\s*họp\s*thường\s*kỳ|thông\s*qua\s*nghị\s*quyết|lấy\s*phiếu\s*tín\s*nhiệm)\b",
+    r"\b(?:chúc\s*mừng\s*năm\s*mới|thư\s*chúc\s*tết|lời\s*kêu\s*gọi\s*thi\s*đua|thăm\s*hỏi\s*tặng\s*quà|dâng\s*hoa\s*viếng|tưởng\s*niệm\s*các\s*anh\s*hùng)\b",
 
     # --- THE "STATE ANNIVERSARIES, SPECIALIZED LIFESTYLE & VR TECHNICALS" LAYER ---
     r"\b(?:kỷ\s*niệm\s*\d+\s*năm\s*thành\s*lập|ngày\s*truyền\s*thống|đại\s*hội\s*đại\s*biểu|văn\s*kiện\s*đại\s*hội|báo\s*cáo\s*chính\s*trị|lễ\s*báo\s*công|viếng\s*lăng\s*chủ\s*tịch|dâng\s*hương\s*tưởng\s*niệm)\b",
@@ -1576,7 +1600,7 @@ ABSOLUTE_VETO = [
     r"\b(?:l'oreal|estee\s*lauder|shiseido|lancome|laneige|innisfree|sk-ii|mỹ\s*phẩm\s*chính\s*hãng|son\s*môi|kem\s*dưỡng\s*da|chu\s*trình\s*skincare)\b",
     r"\b(?:mcdonald's|kfc|lotteria|pizza\s*hut|starbucks|highlands\s*coffee|phúc\s*long|trà\s*sữa\s*topping|thực\s*đơn\s*nhanh|món\s*mới\s*ra\s*mắt)\b",
     r"\b(?:ăn\s*dặm\s*kiểu\s*nhật|ăn\s*dặm\s*blw|rèn\s*con\s*tự\s*lập|khủng\s*hoảng\s*tuổi\s*lên\s*ba|mẹ\s*bỉm\s*sữa|chọn\s*bỉm\s*sữa|sữa\s*công\s*thức|phát\s*triển\s*chiều\s*cao)\b",
-    r"\b(?:công\s*nghệ\s*hầm\s*dìm|nhịp\s*dây\s*văng|cáp\s*dự\s*ứng\s*lực|gối\s*cầu|khe\s*co\s*giãn|hầm\s*xuyên\s*núi|công\s*trình\s*trọng\s*điểm|thông\s*xe\s*kỹ\s*thuật)\b",
+    # Moved to CONDITIONAL (Infra Construction)
     r"\b(?:món\s*hời|áp\s*mã\s*giảm\s*giá|đổ\s*xô\s*mua\s*sắm|tình\s*trạng\s*cháy\s*hàng|vỡ\s*trận\s*vì\s*khuyến\s*mãi)\b",
 
     # --- THE "HERITAGE ARTS, PET CARE & LEGAL FORMALITIES" LAYER ---
@@ -1610,14 +1634,14 @@ ABSOLUTE_VETO = [
     # --- THE "CRAFTSMANSHIP, AROMATHERAPY & METRO ENGINEERING" LAYER ---
     r"\b(?:khảm\s*xà\s*cừ|mây\s*tre\s*đan|đúc\s*đồng|nghệ\s*thuật\s*chạm\s*khắc|sản\s*phẩm\s*mỹ\s*nghệ|tinh\s*hoa\s*di\s*sản)\b",
     r"\b(?:liệu\s*pháp\s*âm\s*thanh|aromatherapy|trị\s*liệu\s*mùi\s*hương|nước\s*hoa\s*niche|tầng\s*hương|độ\s*lưu\s*hương|tinh\s*dầu\s*thiên\s*nhiên|thư\s*giãn\s*tâm\s*hồn)\b",
-    r"\b(?:đường\s*ray|khổ\s*đường\s*tiêu\s*chuẩn|nhà\s*ga\s*trên\s*cao|tàu\s*điện\s*ngầm|m\s*e\s*t\s*r\s*o|vận\s*hành\s*chạy\s*thử|hệ\s*thống\s*tín\s*hiệu\s*đường\s*sắt)\b",
+    # Moved to CONDITIONAL (Railway/Metro)
     r"\b(?:chủ\s*trương\s*đại\s*hội|văn\s*kiện\s*quy\s*hoạch|đề\s*án\s*phát\s*triển|nguồn\s*lực\s*số|hạ\s*tầng\s*viễn\s*thông|phủ\s*sóng\s*5\s*g)\b",
     r"\b(?:xây\s*dựng\s*đội\s*ngũ|nâng\s*cao\s*năng\s*lực|đào\s*tạo\s*nguồn\s*nhân\s*lực|chính\s*sách\s*đãi\s*ngộ|môi\s*trường\s*chuyên\s*nghiệp)\b",
 
     # --- THE "CUSTOMS TECHNICALS, LAND DISPUTES & ENERGY GRID" LAYER ---
     r"\b(?:mã\s*h\s*s|chứng\s*nhận\s*xuất\s*xứ|c\s*o|tờ\s*khai\s*hải\s*quan|thông\s*quan\s*hàng\s*hóa|cước\s*vận\s*tải\s*biển|tàu\s*container|logistics\s*chuyên\s*dụng)\b",
     r"\b(?:tranh\s*chấp\s*quyền\s*sử\s*dụng\s*đất|thừa\s*kế\s*theo\s*pháp\s*luật|di\s*chúc\s*hợp\s*pháp|hợp\s*đồng\s*ủy\s*quyền|công\s*chứng\s*tư\s*pháp|thi\s*hành\s*án\s*dân\s*sự)\b",
-    r"\b(?:đường\s*dây\s*500kv|trạm\s*biến\s*áp|điều\s*độ\s*hệ\s*thống\s*điện|điện\s*mặt\s*trời\s*mái\s*nhà|dppa|mua\s*bán\s*điện\s*trực\s*tiếp)\b",
+    # Moved to CONDITIONAL (Grid Infra)
     r"\b(?:độc\s*quyền\s*phân\s*phối|nhượng\s*quyền\s*thương\s*mại|franchise|chiến\s*dịch\s*marketing|định\s*vị\s*thị\s*trường)\b",
     r"\b(?:phê\s*duyệt\s*quy\s*hoạch|nguồn\s*vốn\s*o\s*d\s*a|giải\s*ngân\s*vốn\s*đầu\s*tư|tiến\s*độ\s*dự\s*án|tổng\s*mức\s*đầu\s*tư)\b",
 
@@ -1638,7 +1662,7 @@ ABSOLUTE_VETO = [
     # --- THE "HISTORICAL WAR HISTORY, HEAVY WEAPONRY & AIRPORT TECHNICALS" LAYER ---
     r"\b(?:sư\s*đoàn|trung\s*đoàn|lữ\s*đoàn|tiểu\s*đoàn|quân\s*chủng|tiêm\s*kích|tàu\s*sân\s*bay|tên\s*lửa\s*đạn\s*đạo|tàu\s*ngầm|tác\s*chiến\s*điện\s*tử|chiến\s*lược\s*quân\s*sự)\b",
     r"\b(?:lịch\s*sử\s*kháng\s*chiến|tội\s*ác\s*chiến\s*tranh|di\s*tích\s*chiến\s*trường|tìm\s*kiếm\s*đồng\s*đội|huân\s*chương\s*chiến\s*công)\b",
-    r"\b(?:đường\s*băng|sân\s*đỗ|nhà\s*ga\s*hành\s*khách|cảng\s*hàng\s*không|phí\s*sân\s*bay|dịch\s*vụ\s*mặt\s*đất|kiểm\s*soát\s*viên\s*không\s*lưu|an\s*ninh\s*hàng\s*không)\b",
+    # Moved to CONDITIONAL (Airport Ops)
     r"\b(?:chương\s*trình\s*khuyến\s*mãi|hành\s*trình\s*bay|vé\s*máy\s*bay\s*giá\s*rẻ|giờ\s*bay|đăng\s*ký\s*trực\s*tuyến|check-in\s*online|phòng\s*chờ\s*hạng\s*thương\s*gia)\b",
     r"\b(?:quy\s*tắc\s*đạo\s*đức|hành\s*vi\s*ứng\s*xử|văn\s*hóa\s*gia\s*đình|giá\s*trị\s*cốt\s*lõi|phẩm\s*chất\s*đạo\s*đức|lối\s*sống\s*lành\s*mạnh|thể\s*dục\s*thể\s*thao)\b",
 
@@ -1659,8 +1683,8 @@ ABSOLUTE_VETO = [
     # --- THE "PARTY ADMIN, ADVANCED LOGISTICS & MEGA-PROJECT TECH" LAYER ---
     r"\b(?:đại\s*hội\s*chi\s*bộ|ban\s*chấp\s*hành|tiền\s*phong\s*gương\s*mẫu|kiểm\s*điểm\s*tự\s*phê\s*bình|phát\s*triển\s*đảng\s*viên|kết\s*nạp\s*đảng)\b",
     r"\b(?:logistics\s*ngược|kho\s*thông\s*minh|cảng\s*cạn\s*icd|hệ\s*thống\s*w\s*m\s*s|vận\s*tải\s*đa\s*phương\s*thức|chuỗi\s*cung\s*ứng\s*bền\s*vững|tối\s*ưu\s*chặng\s*cuối)\b",
-    r"\b(?:tàu\s*cao\s*tốc\s*bắc\s*nam|khổ\s*đường\s*1435mm|tốc\s*đế\s*thiết\s*kế\s*350km/h|siêu\s*dự\s*án|khả\s*năng\s*thông\s*qua|tải\s*trọng\s*trục|hành\s*lang\s*kinh\s*tế)\b",
-    r"\b(?:cấp\s*phép\s*xây\s*dựng|quy\s*hoạch\s*chi\s*tiết\s*1/500|mật\s*độ\s*xây\s*dựng|hệ\s*số\s*sử\s*dụng\s*đất|giải\s*phóng\s*mặt\s*bằng|đền\s*bù\s*tái\s*định\s*cư)\b",
+    # Moved to CONDITIONAL (High Speed Rail)
+    # Moved to CONDITIONAL (Planning/Land Clearance)
     r"\b(?:nâng\s*cao\s*chất\s*lượng|đổi\s*mới\s*toàn\s*diện|phát\s*triển\s*bền\s*vững|nguồn\s*nhân\s*lực\s*chất\s*lượng\s*cao|kinh\s*tế\s*tri\s*thức|công\s*nghiệp\s*4.0)\b",
 
     # --- THE "JOURNALISM SECTIONS, EXPERT COLUMNS & METRO HUB TECH" LAYER ---
@@ -1875,8 +1899,9 @@ CONDITIONAL_VETO = [
     r"lửa\s*ngùn\s*ngụt", r"bà\s*hỏa", r"chập\s*điện",
 
     # TRAFFIC ACCIDENTS (General)
-    r"(?:tai\s*nạn|va\s*chạm|tông|đâm)\s*(?:giao\s*thông|liên\s*hoàn)?",
-    r"(?:xe\s*máy|ô\s*tô|xe\s*khách|xe\s*tải|xe\s*container|xe\s*đầu\s*kéo|xe\s*buýt|tàu\s*hỏa|tàu\s*thủy|ca\s*nô|tàu\s*cá)\s*(?:lật|lao|tông|đâm|va\s*chạm)",
+    # TRAFFIC ACCIDENTS (Veto unless caused by weather/disaster keywords)
+    r"(?:va\s*chạm\s*liên\s*hoàn|tai\s*nạn\s*giao\s*thông|lật\s*xe|tông\s*xe|xe\s*khách|xe\s*tải|xe\s*ben)(?!.*(?:do|vì|bởi|tại)\s*(?:bão|lũ|sạt\s*lở|mưa|đường\s*trơn|sương\s*mù|gió\s*mạnh|ngập|mưa\s*đá|thời\s*tiết))",
+    r"(?:xe\s*máy|ô\s*tô|xe\s*khách|xe\s*tải|xe\s*container|xe\s*đầu\s*kéo|xe\s*buýt|tàu\s*hỏa|tàu\s*thủy|ca\s*nô|tàu\s*cá)\s*(?:lật|lao|tông|đâm|va\s*chạm)(?!.*(?:do|vì|bởi|tại)\s*(?:bão|lũ|sạt\s*lở|mưa|đường\s*trơn|sương\s*mù|gió\s*mạnh|ngập|mưa\s*đá|thời\s*tiết))",
     r"(?:CSGT|cảnh\s*sát\s*giao\s*thông|khám\s*nghiệm|điều\s*tra)\s*(?:nguyên\s*nhân|vụ\s*việc)?",
     r"mất\s*thắng|mất\s*phanh|xe\s*lu|xe\s*cẩu|xe\s*ủi|xe\s*ben|xe\s*bồn",
 
@@ -1919,6 +1944,10 @@ CONDITIONAL_VETO = [
     r"\b(?:nạo\s*vét|khơi\s*thông|vệ\s*sinh).*(?:kênh\s*mương|cống\s*rãnh|dòng\s*chảy|rác\s*thải)\b",
     r"\b(?:phủ\s*xanh|trồng\s*cây\s*gây\s*rừng|chăm\s*sóc\s*cây\s*xanh|cắt\s*tỉa\s*cành\s*cây)\b",
 
+    # ADMINISTRATIVE & NON-DISASTER DRILLS/MEETINGS
+    r"(?:nghiệm\s*thu|bàn\s*giao)\s*(?:công\s*trình|đề\s*tài|dự\s*án)(?!.*(?:khắc\s*phục|hậu\s*quả|sạt\s*lở|khẩn\s*cấp))",
+    r"(?:hội\s*nghị|hội\s*thảo|tập\s*huấn)\s.*(?:khoa\s*học|kỹ\s*thuật|công\s*nghệ|chuyên\s*đề)",
+
     # MILITARY DRILLS & TRAINING (Non-incident)
     r"\b(?:diễn\s*tập|thực\s*binh|hiệp\s*đồng|huấn\s*luyện|tình\s*huống\s*giả\s*định|phương\s*án\s*ứng\s*phó|tập\s*huấn)\b",
     
@@ -1948,7 +1977,40 @@ CONDITIONAL_VETO = [
     r"\b(?:ký\s*ức|hồi\s*tưởng|nhìn\s*lại|phim\s*tài\s*liệu|lịch\s*sử|năm\s*xưa|chuyện\s*cũ|tư\s*liệu\s*quý)\b",
     
     # RECRUITMENT & JOB MARKET
-    r"\b(?:thị\s*trường\s*lao\s*động|nhu\s*cầu\s*tuyển\s*dụng|cơ\s*hội\s*việc\s*làm|làn\s*sóng\s*nhảy\s*việc|nộp\s*c\s*v|phỏng\s*vấn\s*tuyển\s*dụng)\b"
+    r"\b(?:thị\s*trường\s*lao\s*động|nhu\s*cầu\s*tuyển\s*dụng|cơ\s*hội\s*việc\s*làm|làn\s*sóng\s*nhảy\s*việc|nộp\s*c\s*v|phỏng\s*vấn\s*tuyển\s*dụng)\b",
+
+    # INDUSTRY, INFRA & ADMIN (Conditional - Blocked if NO disaster context)
+    r"\b(?:giấy\s*phép\s*xây\s*dựng|hoàn\s*công|bê\s*tông\s*tươi|ép\s*cọc|nền\s*móng|đấu\s*thầu\s*xây\s*lắp|nhà\s*thầu\s*chính|nghiệm\s*thu\s*dự\s*án)\b",
+    r"\b(?:dây\s*chuyền\s*sản\s*xuất|khu\s*công\s*nghiệp|kcn|khu\s*chế\s*xuất|nguyên\s*liệu\s*đầu\s*vào|sản\s*lượng\s*hàng\s*năm|dệt\s*may|da\s*giày|linh\s*kiện\s*điện\s*tử)\b",
+    r"\b(?:vệ\s*sinh\s*môi\s*trường|thu\s*gom\s*rác\s*thải|nhà\s*máy\s*xử\s*lý|phí\s*vệ\s*sinh|cung\s*cấp\s*nước\s*sạch|giá\s*nước\s*sinh\s*hoạt)\b",
+    r"\b(?:kiểm\s*tra\s*pccc|nghiệm\s*thu\s*phòng\s*cháy|diễn\s*tập\s*phòng\s*cháy|giấy\s*chứng\s*nhận\s*vệ\s*sinh\s*an\s*toàn|đạt\s*chuẩn\s*iso|hợp\s*quy\s*hợp\s*chuẩn|kiểm\s*định\s*chất\s*lượng)\b",
+    r"\b(?:vệ\s*sinh\s*môi\s*trường\s*đô\s*thị|phân\s*loại\s*rác\s*tại\s*nguồn|phát\s*động\s*tết\s*trồng\s*cây|hưởng\s*ứng\s*giờ\s*trái\s*đất)\b",
+    r"\b(?:tiêu\s*chuẩn\s*tcvn|astm|iso\s*9001|hợp\s*chuẩn\s*hợp\s*quy|tiêu\s*chuẩn\s*kỹ\s*thuật|quy\s*trình\s*kiểm\s*định|giấy\s*phép\s*hoạt\s*động)\b",
+
+    # INFRASTRUCTURE, RAILWAY & PLANNING (Conditional - Blocked if NO disaster context)
+    r"\b(?:công\s*nghệ\s*hầm\s*dìm|nhịp\s*dây\s*văng|cáp\s*dự\s*ứng\s*lực|gối\s*cầu|khe\s*co\s*giãn|hầm\s*xuyên\s*núi|công\s*trình\s*trọng\s*điểm|thông\s*xe\s*kỹ\s*thuật)\b",
+    r"\b(?:đường\s*ray|khổ\s*đường\s*tiêu\s*chuẩn|nhà\s*ga\s*trên\s*cao|tàu\s*điện\s*ngầm|m\s*e\s*t\s*r\s*o|vận\s*hành\s*chạy\s*thử|hệ\s*thống\s*tín\s*hiệu\s*đường\s*sắt)\b",
+    r"\b(?:tàu\s*cao\s*tốc\s*bắc\s*nam|khổ\s*đường\s*1435mm|tốc\s*đế\s*thiết\s*kế\s*350km/h|siêu\s*dự\s*án|khả\s*năng\s*thông\s*qua|tải\s*trọng\s*trục|hành\s*lang\s*kinh\s*tế)\b",
+    r"\b(?:cấp\s*phép\s*xây\s*dựng|quy\s*hoạch\s*chi\s*tiết\s*1/500|mật\s*độ\s*xây\s*dựng|hệ\s*số\s*sử\s*dụng\s*đất|giải\s*phóng\s*mặt\s*bằng|đền\s*bù\s*tái\s*định\s*cư)\b",
+
+    # AVIATION & AIRPORT OPS (Conditional - Blocked if NO disaster context)
+    r"\b(?:hoãn\s*chuyến|chậm\s*chuyến|hủy\s*chuyến|hành\s*lý\s*ký\s*gửi|soát\s*vé|thủ\s*tục\s*check-in|thị\s*thực|visa)\b",
+    r"\b(?:đường\s*băng|sân\s*đỗ|nhà\s*ga\s*hành\s*khách|cảng\s*hàng\s*không|phí\s*sân\s*bay|dịch\s*vụ\s*mặt\s*đất|kiểm\s*soát\s*viên\s*không\s*lưu|an\s*ninh\s*hàng\s*không)\b",
+
+    # ENERGY INFRASTRUCTURE (Conditional - Blocked if NO disaster context)
+    r"\b(?:đường\s*dây\s*500kv|trạm\s*biến\s*áp|điện\s*gió|điện\s*mặt\s*trời|truyền\s*tải\s*điện|lưới\s*điện|cột\s*điện|trụ\s*điện)\b",
+
+    # FIRE SAFETY ADMIN (Conditional - Blocked if NO fire/disaster context)
+    r"\b(?:nghiệm\s*thu\s*pccc|hồ\s*sơ\s*pccc|thẩm\s*duyệt\s*pccc|chứng\s*nhận\s*pccc|giấy\s*phép\s*pccc|lắp\s*đặt\s*hệ\s*thống\s*báo\s*cháy)\b",
+
+    # CHARITY & RELIEF (Conditional - Blocked if NO disaster context)
+    r"\b(?:quỹ\s*từ\s*thiện|vận\s*động\s*quyên\s*góp|mạnh\s*thường\s*quân|trao\s*quà|hỗ\s*trợ\s*nhân\s*đạo|tấm\s*lòng\s*vàng|lá\s*lành\s*đùm\s*lá\s*rách)\b",
+    r"\b(?:hiến\s*máu\s*nhân\s*đạo|hành\s*trình\s*đỏ|quỹ\s*khuyến\s*học|tiếp\s*sức\s*đến\s*trường|chương\s*trình\s*từ\s*thiện)\b",
+
+    # GOVT AGENCIES & GENERIC INFRA (Conditional - Blocked if NO disaster context)
+    r"\b(?:ubnd|hđnd|mttq|thành\s*ủy|tỉnh\s*ủy)\b",
+    r"\b(?:cao\s*tốc|vành\s*đai\s*\d+|nút\s*giao|hầm\s*chui|cầu\s*vượt|khởi\s*công|khánh\s*thành|thông\s*xe|nghiệm\s*thu)\b",
+    r"\b(?:quy\s*hoạch\s*đô\s*thị|chỉnh\s*trang\s*đô\s*thị)\b"
 ]
 
 # 3. SOFT NEGATIVE: Potential False Positive (Politics, Admin, Economy)
@@ -1974,6 +2036,10 @@ SOFT_NEGATIVE = [
     # === E) Missing persons (soft flag only if NOT clearly disaster-related) ===
     r"mất\s*tích(?!.*(?:mưa\s*lũ|lũ|bão|nước\s*cuốn|sạt\s*lở|lũ\s*quét|tìm\s*kiếm\s*cứu\s*nạn))",
     r"(?:thanh\s*niên|nữ\s*sinh|học\s*sinh)\s*mất\s*tích(?!.*(?:mưa\s*lũ|lũ|bão|nước\s*cuốn))",
+
+    # === F) Agency/Org specific clutter (About Us, Intro, Technical Specs) ===
+    r"về\s*agpc|giới\s*thiệu\s*chung|chức\s*năng\s*nhiệm\s*vụ|cơ\s*cấu\s*tổ\s*chức|sơ\s*đồ\s*tổ\s*chức",
+    r"chống\s*sét\s*(?:cảm\s*ứng|lan\s*truyền|van|chủ\s*động)|kim\s*thu\s*sét|hệ\s*thống\s*tiếp\s*địa", # Lightning protection tech
 ]
 
 
@@ -2563,6 +2629,22 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
 
     # UNIFIED CONFIDENCE SCORE
     score = rule_score + impact_score + agency_score + source_score + province_score + trusted_bonus
+
+    # [OPTIMIZATION] Penalty for No Hazard Rule Match (Accident & Noise filtering)
+    # If we didn't match a specific Disaster Rule (Storm, Flood, etc.), we penalize.
+    if rule_score == 0.0:
+        # Check casualty count (calculated above)
+        total_casualties = d_count + m_count
+        if total_casualties == 0:
+            # No hazard + No deaths/missing = Heavy Penalty (Likely noise, minor accident, or admin news)
+            score -= 5.0
+        else:
+            # No hazard + Deaths involved = Ambiguous (Could be crime, traffic, or unknown disaster)
+            # We apply a smaller penalty to keep it from 'Auto-Approve' but allow 'Pending' if Score is very high
+            score -= 2.0
+    
+    if score < 0: score = 0.0
+
     # Context Matches (Optimized)
     context_hits = []
     # Use DISASTER_CONTEXT_RE

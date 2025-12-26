@@ -32,9 +32,18 @@ def register(user_in: UserCreate, db: Session = Depends(auth.get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Check if this is the first user, if so, make them admin (optional but handy)
+    # Initial logic: first user or email starting with "admin" can be admin
+    # Constraint: Maximum 3 admin accounts
+    admin_count = db.query(models.User).filter(models.User.role == "admin").count()
     is_first = db.query(models.User).count() == 0
-    role = "admin" if is_first or user_in.email.startswith("admin") else "user"
+    
+    role = "user"
+    if is_first or user_in.email.startswith("admin"):
+        if admin_count < 3:
+            role = "admin"
+        else:
+            # Fallback to "user" if admin limit (3) is reached
+            role = "user"
 
     hashed_pw = auth.get_password_hash(user_in.password)
     new_user = models.User(

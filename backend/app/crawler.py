@@ -67,10 +67,10 @@ except Exception:
 from sqlalchemy.orm import Session
 from .settings import settings
 from .database import SessionLocal, engine, Base
-from .models import Article
+from .models import Article, Blacklist
 from .sources import SOURCES, build_gnews_rss, CONFIG
 from . import nlp
-from .dedup import find_duplicate_article, get_article_hash
+from .dedup import find_duplicate_article, get_article_hash, normalize_url
 from .event_matcher import upsert_event_for_article
 from .html_scraper import HTMLScraper, fetch_article_full_text_async
 
@@ -380,74 +380,104 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     summary_raw = re.sub(r"\s+", " ", summary_raw)
                     
                     text_for_nlp = title + " " + summary_raw
-                    # ---------------------------------------------------------
-                    # 1. OPTIMIZATION: Advanced NLP Check (Title + Summary + Trust)
-                    # ---------------------------------------------------------
-                    # Uses Smart Filtering: 
-                    # - Trusted sources passed easier.
-                    # - Untrusted sources need Impact/Metrics.
-                    # - Hard Negatives filtered out.
-                    is_relevant = nlp.contains_disaster_keywords(summary_raw, title=title, trusted_source=src.trusted)
                     
-                    if not is_relevant:
+                    # ---------------------------------------------------------
+                    # 0. PRE-CHECK: Blacklist & Hash Deduplication
+                    # ---------------------------------------------------------
+                    news_hash = get_article_hash(title, src.domain, link)
+                    
+                    # Check blacklist
+                    blacklisted = db.query(Blacklist).filter(Blacklist.news_hash == news_hash).first()
+                    if blacklisted:
+                        continue
+                        
+                    # Check existing by hash
+                    existing = db.query(Article).filter(Article.news_hash == news_hash).first()
+                    if existing:
+                        continue
+
+                    # ---------------------------------------------------------
+                    # 1. TIERED FILTERING: 3-Tier Scoring System (User Adjusted)
+                    # ---------------------------------------------------------
+                    # T1 (Approved): Score > 13.0 -> Auto-ingest + Event Update
+                    # T2 (Pending): 7.0 <= Score <= 13.0 -> Log for Admin Review
+                    # T3 (Reject/Log): Score < 7.0 -> Auto Blacklist + Log
+                    
+                    diag = nlp.diagnose(text_for_nlp, title=title)
+                    score = diag["score"]
+                    
+                    status = None
+                    if score > 13.0:
+                        status = "approved"
+                    elif score >= 7.0:
+                        status = "pending"
+                    
+                    if not status:
+                        # Logic for low score items (< 7.0) -> Auto Blacklist
                         try:
-                            diag = nlp.diagnose(text_for_nlp, title=title)
-                            # If it's an ABSOLUTE VETO, we discard it completely to save space
-                            if diag["signals"].get("absolute_veto"):
-                                continue
+                            # Add to Blacklist to prevent re-crawling
+                            if news_hash:
+                                # Check if already blacklisted to avoid unique constraint error
+                                bl_exists = db.query(Blacklist).filter(Blacklist.news_hash == news_hash).first()
+                                if not bl_exists:
+                                    bl_entry = Blacklist(
+                                        news_hash=news_hash,
+                                        title=title,
+                                        reason=f"Low Score: {score} ({diag['reason']})"
+                                    )
+                                    db.add(bl_entry)
+                                    db.commit()
 
-                            # NEW: Only log if score is at least 3.0 or has some disaster signals
-                            # to avoid filling logs with complete noise (0-2 score items)
-                            if diag["score"] < 3.0 and not diag["signals"].get("rule_matches"):
-                                continue
+                            # Log to file still, for audit (only if score > 3 to avoid complete noise)
+                            if score >= 3.0 or diag["signals"].get("rule_matches"):
+                                logs_dir = Path(__file__).resolve().parents[1] / "logs"
+                                logs_dir.mkdir(parents=True, exist_ok=True)
+                                potential_file = logs_dir / "review_potential_disasters.jsonl"
+                                record = {
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                                    "published_at": published_at.isoformat(),
+                                    "action": "auto_blacklisted",
+                                    "source": src.name,
+                                    "domain": src.domain,
+                                    "title": title,
+                                    "url": link,
+                                    "news_hash": news_hash,
+                                    "score": score,
+                                    "reason": diag["reason"],
+                                    "diagnose": diag["signals"]
+                                }
+                                with potential_file.open("a", encoding="utf-8") as f:
+                                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
-                            # LOG REJECTS (that aren't vetoed and have some signal) to review file
+                        except Exception as e:
+                            logger.error(f"Error blacklisting low-score item: {e}")
+                            db.rollback()
+                        continue
+
+                    # For articles in the reviewable range (6.0 - 11.5), we also log them to JSONL 
+                    # as per user request, while keeping them in DB as 'pending' for structure
+                    if status == "pending":
+                        try:
                             logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                            logs_dir.mkdir(parents=True, exist_ok=True)
                             potential_file = logs_dir / "review_potential_disasters.jsonl"
                             record = {
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "published_at": published_at.isoformat(),
-                                "action": "potential_disaster",
+                                "action": "pending_review",
                                 "source": src.name,
                                 "domain": src.domain,
                                 "title": title,
                                 "url": link,
-                                "score": diag["score"],
-                                "reason": diag["reason"],
-                                "diagnose": diag["signals"]
+                                "news_hash": news_hash,
+                                "score": score,
+                                "reason": diag["reason"]
                             }
                             with potential_file.open("a", encoding="utf-8") as f:
                                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                        except Exception as e:
-                            logger.error(f"Error logging potential: {e}")
-                        continue
+                        except Exception: pass
 
-                    # Second-pass: optional classifier rejects low-probability items
-                    try:
-                        if _classifier is not None:
-                            text_for_classify = (title + "\n" + (getattr(entry, "summary", "") or "")).strip()
-                            prob = None
-                            try:
-                                prob = float(_classifier.predict_proba([text_for_classify])[0][1])
-                            except Exception:
-                                # some sklearn models expose predict_proba differently
-                                prob = None
-                            if prob is not None:
-                                # configurable threshold (0.5 by default)
-                                if prob < 0.5:
-                                    # log classifier skip
-                                    try:
-                                        # If classifier rejects it, it might still be a potential disaster 
-                                        # but usually classifier is more accurate at identifying noise.
-                                        # To save space, we don't log classifier skips for now unless requested.
-                                        pass
-                                    except Exception:
-                                        pass
-                                    print(f"[SKIP_CLASSIFIER] {src.name} #{record['id']}: prob={prob:.2f}")
-                                    continue
-                    except Exception:
-                        pass
+
+                    # If we reach here, it's either 'approved' or 'pending'
                     
                     disaster_info = nlp.classify_disaster(text_for_nlp)
                     disaster_type = disaster_info.get("primary_type", "unknown")
@@ -456,10 +486,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     impacts = nlp.extract_impacts(summary_raw or title)
                     summary_text = nlp.summarize(summary_raw.replace("&nbsp;", " "), title=title)
                     
-                    # Detect Event Stage (Warning vs Impact vs Recovery)
                     stage = nlp.determine_event_stage(text_for_nlp)
-                    
-                    # Mapping to Vietnamese for display
                     stage_vn = {
                         "FORECAST": "DỰ BÁO",
                         "INCIDENT": "DIỄN BIẾN",
@@ -468,30 +495,14 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     
                     summary = f"[{stage_vn}] {summary_text}"
 
-
-                    # Check for duplicates before inserting
-                    duplicate = find_duplicate_article(
-                        db,
-                        src.domain,
-                        link,
-                        title,
-                        published_at,
-                        time_window_hours=24
-                    )
-                    
-                    if duplicate:
-                        # Link to existing article instead of creating duplicate
-                        article_hash = get_article_hash(title, src.domain)
-                        logger.info(f"Skipping duplicate article: {title[:50]}... (hash={article_hash})")
-                        
-                        # Duplicate logging removed to save space as per user request
-                        continue
-
                     article = Article(
                         source=src.name,
                         domain=src.domain,
                         title=title,
                         url=link,
+                        news_hash=news_hash,
+                        status=status,
+                        score=score,
                         published_at=published_at,
                         disaster_type=disaster_type,
                         province=province,
@@ -510,9 +521,16 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     try:
                         db.add(article)
                         db.flush()
+                        
+                        # Only update events for APPROVED articles
+                        if status == "approved":
+                            upsert_event_for_article(db, article)
+                            print(f"   [ADDED] {src.name}: {title[:70]}...")
+                        else:
+                            print(f"   [PENDING] {src.name}: {title[:70]}... (Score: {score:.1f})")
+                            
                         new_count += 1
                         src_info["articles_added"] += 1
-                        print(f"   [ADDED] {src.name}: {title[:70]}...")
                     except Exception as e:
                         db.rollback()
                         print(f"   [ERROR_DB] {src.name}: {e}")
@@ -602,8 +620,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         pass
                             except Exception as e:
                                 logger.debug(f"Full-text fetch failed for {link}: {e}")
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        db.rollback()
+                        logger.error(f"Error processing article {link}: {e}")
 
                     upsert_event_for_article(db, article)
                 
@@ -755,9 +774,15 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         if img:
                                             article.image_url = img
                                     
-                                    db.commit()
-                            except Exception:
-                                pass
+                                    try:
+                                        db.commit()
+                                    except Exception as e:
+                                        db.rollback()
+                                        print(f"[WARN] DB Commit failed (possible duplicate): {e}")
+
+                            except Exception as e:
+                                db.rollback()
+                                print(f"[WARN] Full text update failed: {e}")
                         
                         feed_worked = True
                     else:

@@ -36,6 +36,11 @@ scheduler = BackgroundScheduler(timezone=settings.app_timezone, job_defaults=job
 
 @app.on_event("startup")
 async def on_startup():
+    # 0. Create database tables if they don't exist
+    from .database import engine, Base
+    from . import models # ensure models are registered
+    Base.metadata.create_all(bind=engine)
+
     # 1. Initial full crawl on startup
     import asyncio
     asyncio.create_task(_process_once_async())
@@ -107,27 +112,10 @@ async def on_startup():
         misfire_grace_time=300
     )
 
-    # Job 5: Potential Disaster Recovery (Auto-Ingest) - Frequency: 60 mins
-    # Checks review_potential_disasters.jsonl and ingests ones with high scores.
-    def run_auto_recovery():
-        try:
-            import sys
-            from pathlib import Path
-            backend_dir = Path(__file__).resolve().parents[1]
-            if str(backend_dir) not in sys.path:
-                sys.path.append(str(backend_dir))
-            from ingest_potentials import run_recovery
-            run_recovery()
-        except Exception as e:
-            print(f"[ERROR] scheduler auto-recovery failed: {e}")
+    # Job 5: Potential Disaster Recovery (Auto-Ingest) - DISABLED
+    # This was replaced by the manual 3-tier review dashboard.
+    # The JSONL logs are now only for audit/audit trail.
 
-    scheduler.add_job(
-        run_auto_recovery,
-        trigger=IntervalTrigger(minutes=60, jitter=5),
-        id="potential_recovery",
-        replace_existing=True,
-        misfire_grace_time=120
-    )
 
     # Job 6: Log Rotation & Cleanup - Frequency: 12 HOURS
     # Keeps log files small and prevents disk full issues.

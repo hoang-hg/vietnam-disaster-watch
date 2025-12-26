@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   getJson,
+  deleteJson,
   fmtType,
   fmtDate,
   fmtTimeAgo,
   fmtVndBillion,
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 
 const TYPE_TONES = {
   storm: "blue",
@@ -31,7 +32,10 @@ const isJunkImage = (url) => {
       'gstatic.com', 
       'news_logo', 
       'default_image',
-      'placeholder'
+      'placeholder',
+      'tabler-icons',
+      'triangle.svg',
+      'droplet.svg'
   ];
   return junkPatterns.some(p => url.toLowerCase().includes(p));
 };
@@ -41,6 +45,24 @@ export default function EventDetail() {
   const [ev, setEv] = useState(null);
   const [error, setError] = useState(null);
   const [expandedSummary, setExpandedSummary] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(!!localStorage.getItem("access_token"));
+
+  const handleDeleteArticle = async (e, articleId) => {
+    e.preventDefault();
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bài báo này? Bài báo sẽ bị đánh dấu 'rejected' và loại khỏi sự kiện.")) return;
+
+    try {
+        await deleteJson(`/api/articles/${articleId}`);
+        // Update local state
+        setEv(prev => ({
+            ...prev,
+            articles: prev.articles.filter(a => a.id !== articleId),
+            sources_count: Math.max(0, prev.sources_count - 1)
+        }));
+    } catch (err) {
+        alert("Xóa thất bại: " + err.message);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -304,9 +326,9 @@ export default function EventDetail() {
                 className="relative border-l-2 border-gray-300 pb-4 pl-6"
               >
                 <div className="absolute -left-2.5 top-1 h-5 w-5 rounded-full bg-blue-500" />
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-3 group/item">
                   <a
-                    className={`font-medium text-sm transition-all ${a.is_broken ? 'text-slate-400 cursor-not-allowed no-underline' : 'underline decoration-gray-300 hover:decoration-gray-600 text-blue-600 hover:text-blue-800'}`}
+                    className={`font-medium text-sm transition-all flex-1 ${a.is_broken ? 'text-slate-400 cursor-not-allowed no-underline' : 'underline decoration-gray-300 hover:decoration-gray-600 text-blue-600 hover:text-blue-800'}`}
                     href={a.is_broken ? '#' : a.url}
                     onClick={(e) => a.is_broken && e.preventDefault()}
                     target={a.is_broken ? '_self' : '_blank'}
@@ -315,6 +337,15 @@ export default function EventDetail() {
                     {a.title}
                     {a.is_broken && <span className="ml-2 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">BÀI GỐC ĐÃ GỠ</span>}
                   </a>
+                  {isAdmin && (
+                      <button
+                          onClick={(e) => handleDeleteArticle(e, a.id)}
+                          className="p-2 ml-2 flex-shrink-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                          title="Xóa bài báo (Admin)"
+                      >
+                          <Trash2 className="w-4 h-4" />
+                      </button>
+                  )}
                 </div>
                 <div className="mt-1 text-xs text-gray-600 flex flex-wrap gap-2">
                   <span className="text-gray-900 font-medium bg-gray-100 px-2 py-1 rounded">
@@ -338,6 +369,11 @@ export default function EventDetail() {
                    {a.needs_verification === 1 && (
                      <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
                         SỐ LIỆU CẦN XÁC MINH
+                     </span>
+                  )}
+                  {a.status === 'pending' && (
+                     <span className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm">
+                        ĐANG CHỜ DUYỆT
                      </span>
                   )}
                   {a.is_broken && (

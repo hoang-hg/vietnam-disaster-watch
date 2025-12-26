@@ -3,11 +3,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 from sqlalchemy.sql import text
 from .database import get_db, engine
+from . import models
 from .models import Article, Event
 from .schemas import ArticleOut, EventOut, EventDetailOut
 from datetime import datetime, timedelta
-from fastapi import Response, Request
+from fastapi import Response, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
+from .event_matcher import upsert_event_for_article
 import asyncio
 from pathlib import Path
 import json
@@ -50,7 +52,7 @@ def latest_articles(
     exclude_unknown: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Article).order_by(desc(Article.published_at))
+    q = db.query(Article).filter(Article.status == "approved").order_by(desc(Article.published_at))
     if type:
         q = q.filter(Article.disaster_type == type)
     if province:
@@ -70,6 +72,7 @@ def events(
     q: str | None = Query(None),
     date: str | None = Query(None),
     db: Session = Depends(get_db),
+    sort: str = Query("impact", description="Sort by: 'impact' or 'latest'"),
 ):
     query = db.query(Event).order_by(desc(Event.started_at))
     
@@ -109,14 +112,18 @@ def events(
     raw_events = query.all()
     filtered = filter_disaster_events(raw_events)
     
-    # Sort by impact priority before unique-province logic
-    # Priority: Casualties > Damage > Article Count > Confidence
-    filtered.sort(key=lambda x: (
-        (x.deaths or 0) + (x.missing or 0) + (x.injured or 0),
-        (x.damage_billion_vnd or 0.0),
-        (x.sources_count or 0),
-        (x.confidence or 0.0)
-    ), reverse=True)
+    # Sort based on user preference
+    if sort == "latest":
+        filtered.sort(key=lambda x: x.started_at, reverse=True)
+    else:
+        # Sort by impact priority before unique-province logic
+        # Priority: Casualties > Damage > Article Count > Confidence
+        filtered.sort(key=lambda x: (
+            (x.deaths or 0) + (x.missing or 0) + (x.injured or 0),
+            (x.damage_billion_vnd or 0.0),
+            (x.sources_count or 0),
+            (x.confidence or 0.0)
+        ), reverse=True)
     
     # Limit results
     filtered = filtered[:limit]
@@ -129,12 +136,19 @@ def events(
             h_start = datetime.utcnow() - timedelta(hours=hours)
             ev_data.articles_count = db.query(Article).filter(
                 Article.event_id == ev.id,
+                Article.status == "approved",
                 Article.published_at >= h_start
             ).count()
         else:
-            ev_data.articles_count = db.query(Article).filter(Article.event_id == ev.id).count()
+            ev_data.articles_count = db.query(Article).filter(
+                Article.event_id == ev.id,
+                Article.status == "approved"
+            ).count()
 
-        first_article = db.query(Article).filter(Article.event_id == ev.id).order_by(desc(Article.published_at)).first()
+        first_article = db.query(Article).filter(
+            Article.event_id == ev.id,
+            Article.status == "approved"
+        ).order_by(desc(Article.published_at)).first()
         if first_article:
             ev_data.image_url = first_article.image_url
             ev_data.source = first_article.source
@@ -202,7 +216,65 @@ def event_detail(event_id: int, db: Session = Depends(get_db)):
     # Usually event table doesn't have image_url column? Wait, actually Article has it.
     # EventDetailOut aggregates articles.
     
+    # Detail view: Show both Approved and Pending articles
+    # This ensures "sources_count" matches the visible list, preventing "1 source but empty list" confusion.
+    if ev.articles:
+        ev.articles = [a for a in ev.articles if a.status in ("approved", "pending")]
+    
+    # Sort articles by published_at desc
+    if ev.articles:
+        ev.articles.sort(key=lambda x: x.published_at, reverse=True)
+        
     return ev
+
+@router.delete("/events/{event_id}", status_code=204)
+def delete_event(
+    event_id: int, 
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an event (admin only).
+    Also updates associated articles to 'rejected' status so they don't reappear.
+    """
+    ev = db.query(Event).filter(Event.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    # Mark all associated articles as Rejected/Hidden
+    # We set status to 'rejected' so they are not re-clustered.
+    # We also unlink them from the event (event_id = NULL) to ensure data integrity before deleting the event row.
+    db.query(Article).filter(Article.event_id == event_id).update(
+        {"status": "rejected", "event_id": None}, 
+        synchronize_session=False
+    )
+    
+    # Delete the event
+    db.delete(ev)
+    db.commit()
+    
+    
+    return
+
+@router.delete("/articles/{article_id}", status_code=204)
+def delete_article(
+    article_id: int, 
+    db: Session = Depends(get_db)
+):
+    """
+    Delete/Reject an article (admin only).
+    """
+    art = db.query(Article).filter(Article.id == article_id).first()
+    if not art:
+        raise HTTPException(status_code=404, detail="Article not found")
+        
+    # Mark as Rejected and Unlink
+    art.status = "rejected"
+    art.event_id = None
+    db.commit()
+    
+    return
+
+
 
 @router.get("/stats/summary")
 def stats_summary(
@@ -234,12 +306,14 @@ def stats_summary(
     # 1. New articles count (total signals)
     total_articles = db.query(Article).filter(
         Article.published_at >= start, 
-        Article.published_at < end
+        Article.published_at < end,
+        Article.status == "approved"
     ).count()
 
     needs_verification_count = db.query(Article).filter(
         Article.published_at >= start,
         Article.published_at < end,
+        Article.status == "approved",
         Article.needs_verification == 1
     ).count()
 
@@ -438,15 +512,57 @@ def label_log(payload: dict, admin: models.User = Depends(get_current_admin)):
     return {'ok': True}
 
 
-@router.post('/admin/label/revert')
-def revert_label(payload: dict, admin: models.User = Depends(get_current_admin)):
-    """Record a revert/undo for a previously labeled item.
-    Payload: {"id": "<article_id>"}
-    This is append-only: we write a `revert` record that references the last label for the id.
-    """
-    logs_dir = Path(__file__).resolve().parents[1] / 'logs'
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    labels_file = logs_dir / 'labels.jsonl'
+@router.get('/admin/pending-articles')
+def get_pending_articles(
+    skip: int = 0, 
+    limit: int = 50, 
+    db: Session = Depends(get_db), 
+    admin: models.User = Depends(get_current_admin)
+):
+    """Fetch articles waiting for admin review."""
+    return db.query(models.Article).filter(models.Article.status == "pending")\
+             .order_by(models.Article.published_at.desc())\
+             .offset(skip).limit(limit).all()
+
+
+@router.post('/admin/approve-article/{article_id}')
+async def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    """Approve a pending article and integrate it into events."""
+    article = db.query(models.Article).filter(models.Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+        
+    article.status = "approved"
+    # Update events
+    upsert_event_for_article(db, article)
+    db.commit()
+    return {"ok": True, "message": "Article approved and event updated"}
+
+
+@router.post('/admin/reject-article/{article_id}')
+async def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    """Reject an article and add its hash to blacklist to prevent re-crawling."""
+    article = db.query(models.Article).filter(models.Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+        
+    article.status = "rejected"
+    
+    # Add to blacklist if hash exists
+    if article.news_hash:
+        blacklist_entry = models.Blacklist(
+            news_hash=article.news_hash,
+            title=article.title,
+            reason="Admin explicit rejection"
+        )
+        # Avoid duplicate blacklist entries
+        existing = db.query(models.Blacklist).filter(models.Blacklist.news_hash == article.news_hash).first()
+        if not existing:
+            db.add(blacklist_entry)
+            
+    db.commit()
+    return {"ok": True, "message": "Article rejected and blacklisted"}
+
     entry_id = payload.get('id') if isinstance(payload, dict) else None
     if not entry_id:
         return {'ok': False, 'error': 'missing id'}

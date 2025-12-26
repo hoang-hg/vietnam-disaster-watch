@@ -15,6 +15,26 @@ export async function getJson(path) {
   return res.json();
 }
 
+export async function deleteJson(path) {
+  const token = localStorage.getItem("access_token");
+  const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+  const res = await fetch(API_BASE + path, { method: "DELETE", headers });
+  if (!res.ok) {
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+    }
+    let errorDetail = "";
+    try {
+        const errData = await res.json();
+        errorDetail = errData.detail || "";
+    } catch(e) {}
+    
+    throw new Error(errorDetail || `API error ${res.status}`);
+  }
+  return true;
+}
+
 export async function login(username, password) {
   const formData = new URLSearchParams();
   formData.append("username", username);

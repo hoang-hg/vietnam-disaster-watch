@@ -12,12 +12,19 @@ DB_PATH = BASE_DIR / "data" / "app.db"
 class Settings(BaseSettings):
     # Default to SQLite if DATABASE_URL not set
     # Alias validation to read from APP_DB_URL or DATABASE_URL
-    app_db_url: str = Field(default="sqlite:///" + str(DB_PATH), validation_alias="APP_DB_URL")
+    app_db_url: str = Field(
+        default="sqlite:///" + str(DB_PATH), 
+        validation_alias="APP_DB_URL"
+    )
     
     # Allow overriding with PostgreSQL URL via env var
     # Example: postgresql://postgres:password@localhost:5432/viet_disaster_watch
     
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env", 
+        env_file_encoding="utf-8", 
+        extra="ignore"
+    )
     
     crawl_interval_minutes: int = 60
     app_timezone: str = "Asia/Ho_Chi_Minh"

@@ -111,14 +111,22 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         # publish new event to subscribers
         try:
             import asyncio
-            asyncio.create_task(broadcast.publish_event({
+            data = {
                 "type": "new_event",
                 "event_id": ev.id,
                 "title": ev.title,
                 "disaster_type": ev.disaster_type,
                 "province": ev.province,
                 "started_at": ev.started_at.isoformat() if ev.started_at else None,
-            }))
+            }
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(broadcast.publish_event(data))
+            except RuntimeError:
+                # No running loop (likely running from a script or background worker outside FastAPI loop)
+                # We still append to buffer as publish_event does internally (but publish_event is async)
+                msg = broadcast._make_message(data)
+                broadcast._append_to_buffer(msg)
         except Exception:
             pass
         return ev
@@ -139,6 +147,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
        (new_is_trusted == current_lead_is_trusted and len(article.title) > len(ev.title) + 5):
         ev.title = article.title
         # Keep old details but update bucket if this is a more severe report
+        if ev.details is None:
+            ev.details = {}
         ev.details["impact_bucket"] = impact_bucket
 
     # Update Stage (Recovery > Incident > Forecast)
@@ -238,10 +248,10 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     # Use the most descriptive title (often from trusted or longest titles)
     # Prefer title with VIP terms
     best_title = ev.title
-    if has_vip_term and not any(re.search(v, best_title.lower()) for v in VIP_TERMS):
+    if has_vip_term and not any(pat.search(best_title.lower()) for pat in VIP_TERMS_RE):
         # Current title doesn't have VIP but new article might
         for a in all_articles:
-            if any(re.search(v, a.title.lower()) for v in VIP_TERMS):
+            if any(pat.search(a.title.lower()) for pat in VIP_TERMS_RE):
                 best_title = a.title; break
     elif has_trusted_source:
         # If we have trusted sources, prefer their titles (take the longest one for detail)

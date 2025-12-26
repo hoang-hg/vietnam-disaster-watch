@@ -21,6 +21,8 @@ class ArticleOut(BaseModel):
     image_url: str | None
     event_id: int | None
     needs_verification: int = 0
+    status: str | None = None
+    score: float | None = None
 
     class Config:
         from_attributes = True
