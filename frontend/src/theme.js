@@ -4,34 +4,39 @@
  */
 
 export const THEME_COLORS = {
-  // Brand / UI
-  primary: "#0f172a", // Slate 900
-  secondary: "#334155", // Slate 700
-  background: "#f8fafc", // Slate 50
-  surface: "#ffffff",
-  border: "#e2e8f0", // Slate 200
-
-  // 14 Official Disaster Types
-  storm: "#3B82F6",           // Blue 500
-  flood: "#06B6D4",           // Cyan 500
-  flash_flood: "#14B8A6",     // Teal 500
-  landslide: "#F59E0B",       // Amber 500
-  subsidence: "#78350F",      // Brown 900 -> used 78350F for better contrast
-  drought: "#F97316",         // Orange 500
-  salinity: "#0EA5E9",        // Sky 500
-  extreme_weather: "#EAB308", // Yellow 500
-  heatwave: "#EF4444",        // Red 500
-  cold_surge: "#6366F1",      // Indigo 500
-  earthquake: "#475569",      // Slate 600
-  tsunami: "#1E3A8A",         // Blue 900
-  storm_surge: "#8B5CF6",     // Violet 500
-  wildfire: "#B91C1C",        // Red 700
-
-  // 2 Special Groups
-  warning_forecast: "#FACC15", // Yellow 400
-  recovery: "#10B981",         // Emerald 500
+  // Brand / UI - Standardized Teal Brand
+  brand: "#2fa1b3",
+  brandLight: "#eef9fa",
+  brandDark: "#258a9b",
+  primary: "#2fa1b3", 
+  secondary: "#64748b", // Slate 500
   
-  unknown: "#94A3B8",          // Slate 400
+  // Neutral Semantic
+  success: "#10b981", // Emerald 500
+  warning: "#f59e0b", // Amber 500
+  danger: "#ef4444",  // Red 500
+  info: "#3b82f6",    // Blue 500
+
+  // 14 Official Disaster Types + 2 Special (Refined for Premium Contrast)
+  storm: "#2563eb",           // Blue 600
+  flood: "#06b6d4",           // Cyan 500
+  flash_flood: "#0d9488",     // Teal 600
+  landslide: "#d97706",       // Amber 600
+  subsidence: "#7c2d12",      // Brown 900
+  drought: "#ea580c",         // Orange 600
+  salinity: "#0284c7",        // Sky 600
+  extreme_weather: "#ca8a04", // Yellow 600
+  heatwave: "#dc2626",        // Red 600
+  cold_surge: "#4f46e5",      // Indigo 600
+  earthquake: "#4b5563",      // Slate 600
+  tsunami: "#1e3a8a",         // Blue 900
+  storm_surge: "#7c3aed",     // Violet 600
+  wildfire: "#991b1b",        // Red 800
+  
+  warning_forecast: "#eab308", // Yellow 500
+  recovery: "#059669",         // Emerald 600
+  
+  unknown: "#94a3b8",          // Slate 400
 };
 
 export const CHART_COLORS = [
@@ -39,6 +44,8 @@ export const CHART_COLORS = [
   THEME_COLORS.flood,
   THEME_COLORS.flash_flood,
   THEME_COLORS.landslide,
-  THEME_COLORS.subsidence,
+  THEME_COLORS.drought,
   THEME_COLORS.extreme_weather,
+  THEME_COLORS.heatwave,
+  THEME_COLORS.wildfire,
 ];

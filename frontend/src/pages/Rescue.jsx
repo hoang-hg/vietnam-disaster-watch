@@ -56,7 +56,7 @@ export default function RescuePage() {
     return (
         <div className="max-w-6xl mx-auto px-4 py-8">
             <Helmet>
-                <title>Cứu hộ khẩn cấp | Viet Disaster Watch</title>
+                <title>Cứu hộ khẩn cấp | BÁO TỔNG HỢP RỦI RO THIÊN TAI</title>
                 <meta name="description" content="Danh bạ số điện thoại cứu hộ, cứu nạn khẩn cấp khi có bão lũ, thiên tai tại các tỉnh thành Việt Nam." />
             </Helmet>
 
@@ -162,7 +162,7 @@ export default function RescuePage() {
 
             <div className="mt-12 text-center">
                  <div className="inline-flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-                    Viet Disaster Watch • Vì một Việt Nam an toàn hơn
+                    BÁO TỔNG HỢP RỦI RO THIÊN TAI • Vì một Việt Nam an toàn hơn
                  </div>
                  <div className="flex justify-center gap-6">
                     <a href="#" className="text-slate-400 hover:text-blue-600 transition-colors text-xs font-bold flex items-center gap-1">

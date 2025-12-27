@@ -6,9 +6,11 @@ from sqlalchemy import text
 engine = create_engine(
     settings.app_db_url,
     connect_args={"check_same_thread": False} if settings.app_db_url.startswith("sqlite") else {},
-    pool_size=20,
-    max_overflow=10,
+    # Optimization for 10,000+ concurrent requests
+    pool_size=50 if not settings.app_db_url.startswith("sqlite") else 5,
+    max_overflow=100 if not settings.app_db_url.startswith("sqlite") else 10,
     pool_timeout=30,
+    pool_recycle=1800, # Recycle connections every 30 mins to avoid stale links
 )
 
 # Register JSON adapters for psycopg2 if using Postgres

@@ -34,7 +34,7 @@ import {
   Calendar,
   Filter,
   RefreshCw,
-  ArrowRight,
+  ChevronRight,
   Search,
   FileText,
   Bell
@@ -160,9 +160,10 @@ export default function Dashboard() {
       let queryParams = `?start_date=${startDate}`;
       if (endDate) queryParams += `&end_date=${endDate}`;
 
+      // Optimized: Fetch summary, recent events (limited), and latest articles in parallel
       const [s, evs, arts] = await Promise.all([
         getJson(`/api/stats/summary${queryParams}`),
-        getJson(`/api/events${queryParams}&limit=200`),
+        getJson(`/api/events${queryParams}&limit=100&hours=72`), 
         getJson(`/api/articles/latest?limit=20`)
       ]);
       setStats(s);
@@ -258,9 +259,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <Helmet>
-        <title>Viet Disaster Watch | Hệ thống theo dõi rủi ro thiên tai</title>
+        <title>BÁO TỔNG HỢP RỦI RO THIÊN TAI | Hệ thống theo dõi rủi ro</title>
         <meta name="description" content="Hệ thống tổng hợp và cảnh báo thiên tai sớm từ các cơ quan chính thống tại Việt Nam." />
-        <meta property="og:title" content="Viet Disaster Watch - Theo dõi thiên tai thời gian thực" />
+        <meta property="og:title" content="BÁO TỔNG HỢP RỦI RO THIÊN TAI - Theo dõi rủi ro thời gian thực" />
         <meta property="og:description" content="Theo dõi bão, lũ, sạt lở và các cực đoan thời tiết tại Việt Nam." />
         <meta property="og:image" content="/og-image.png" />
         <meta property="og:type" content="website" />
@@ -291,7 +292,7 @@ export default function Dashboard() {
                  placeholder="Tìm theo tỉnh..."
                  value={provQuery}
                  onChange={(e) => setProvQuery(e.target.value)}
-                 className="w-48 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-48 py-1.5 pl-8 pr-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
            </div>
@@ -302,7 +303,7 @@ export default function Dashboard() {
                  placeholder="Tìm tên sự kiện..."
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
-                 className="w-48 py-1.5 pl-8 pr-2 bg-white border border-slate-200 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                 className="w-48 py-1.5 pl-8 pr-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
            </div>
@@ -311,7 +312,7 @@ export default function Dashboard() {
               <select
                   value={hazardType}
                   onChange={(e) => setHazardType(e.target.value)}
-                  className="appearance-none bg-white border border-slate-200 text-slate-700 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+                  className="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 cursor-pointer"
               >
                   <option value="all">Tất cả thông tin</option>
                   <option value="storm">Bão, ATNĐ</option>
@@ -340,7 +341,7 @@ export default function Dashboard() {
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
                  {startDate.split('-').reverse().join('/')}
               </span>
-              <Calendar className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
+              <Calendar className="w-4 h-4 text-[#2fa1b3] group-hover:scale-110 transition-transform" />
               <input 
                   ref={dateInputRef}
                   type="date"
@@ -370,7 +371,7 @@ export default function Dashboard() {
           sub={stats?.needs_verification_count ? `${stats.needs_verification_count} tin cần xác minh` : "Dữ liệu thời gian thực"}
           icon={Activity}
           trend={stats?.events_count > 0 ? "up" : "neutral"}
-          color="text-blue-600"
+          color="brand"
           active={quickFilter === null}
           onClick={() => setQuickFilter(null)}
         />
@@ -379,7 +380,7 @@ export default function Dashboard() {
           value={stats?.provinces_count || 0}
           sub="Ghi nhận trong kỳ"
           icon={MapPin}
-          color="text-orange-600"
+          color="brand"
           active={quickFilter === "provinces"}
           onClick={() => setQuickFilter(quickFilter === "provinces" ? null : "provinces")}
         />
@@ -388,7 +389,7 @@ export default function Dashboard() {
           value={stats?.events_with_human_damage || 0}
           sub="Số vụ ghi nhận thương vong"
           icon={AlertTriangle}
-          color="text-red-500"
+          color="red"
           active={quickFilter === "casualties"}
           onClick={() => setQuickFilter(quickFilter === "casualties" ? null : "casualties")}
         />
@@ -397,76 +398,12 @@ export default function Dashboard() {
           value={stats?.events_with_property_damage || 0}
           sub="Số vụ ghi nhận mất mát tài sản"
           icon={TrendingUp}
-          color="text-emerald-500"
+          color="emerald"
           active={quickFilter === "damage"}
           onClick={() => setQuickFilter(quickFilter === "damage" ? null : "damage")}
         />
       </div>
 
-      {/* [NEW] ANALYTICS INSIGHT SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in zoom-in duration-1000">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-red-500" /> Biểu đồ thương vong (Xu hướng)
-                </h3>
-              </div>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={impactTrendData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-50 dark:opacity-10" />
-                    <XAxis dataKey="date" tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                    <YAxis tick={{fontSize: 10, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: isDark ? '#1e293b' : '#fff' }}
-                      itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
-                    />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                    <Line type="monotone" dataKey="deaths" name="Tử vong" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="missing" name="Mất tích" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="injured" name="Bị thương" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-              <h3 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-blue-500" /> Tỉ lệ loại hình thiên tai
-              </h3>
-              <div className="h-64 flex items-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData.filter(d => d.count > 0)}
-                      cx="40%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="count"
-                      nameKey="name"
-                      isAnimationActive={true}
-                    >
-                      {chartData.filter(d => d.count > 0).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: isDark ? '#1e293b' : '#fff' }}
-                    />
-                    <Legend 
-                       layout="vertical" 
-                       align="right" 
-                       verticalAlign="middle" 
-                       iconType="circle"
-                       wrapperStyle={{ fontSize: '11px', paddingLeft: '20px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-          </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
@@ -476,7 +413,7 @@ export default function Dashboard() {
                 <Activity className="w-4 h-4 text-emerald-500" /> Danh sách sự kiện
               </h3>
               <Link to="/events" className="text-xs flex items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
-                Xem tất cả <ArrowRight className="w-3 h-3" />
+                Xem tất cả <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
             
@@ -501,7 +438,13 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1 min-h-[1050px]">
+            <div className={`divide-y divide-slate-100 dark:divide-slate-800 flex-1 min-h-[400px] relative transition-all duration-500 ${loading ? 'opacity-50 grayscale-[0.5]' : 'opacity-100'}`}>
+              {loading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/20 dark:bg-slate-900/20 backdrop-blur-[2px]">
+                   <RefreshCw className="w-8 h-8 text-[#2fa1b3] animate-spin" />
+                </div>
+              )}
+              
               {events.slice(page * 10, (page + 1) * 10).map((event) => (
                 <div key={event.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group relative border-l-4 border-transparent hover:border-blue-500/30">
                   <div className="flex justify-between items-start mb-2">
@@ -522,7 +465,21 @@ export default function Dashboard() {
                   </div>
                 </div>
               ))}
-              {events.length === 0 && <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-sm">Chưa có dữ liệu sự kiện</div>}
+              
+              {!loading && events.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400 text-sm">
+                   <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                      <AlertTriangle className="w-8 h-8 text-slate-300 dark:text-slate-600" />
+                   </div>
+                   <p className="font-bold text-slate-400 uppercase tracking-widest text-[11px]">Không tìm thấy sự kiện nào khớp với bộ lọc</p>
+                   <button 
+                      onClick={handleReset}
+                      className="mt-4 text-xs font-bold text-[#2fa1b3] hover:underline"
+                   >
+                      ĐẶT LẠI BỘ LỌC
+                   </button>
+                </div>
+              )}
             </div>
 
             {/* Pagination Controls - Fixed at Bottom */}
@@ -559,7 +516,7 @@ export default function Dashboard() {
                           onClick={() => setPage(i - 1)}
                           className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
                             i === currentPage
-                              ? 'bg-blue-600 text-white shadow-md scale-110 z-10'
+                              ? 'bg-[#2fa1b3] text-white shadow-md scale-110 z-10'
                               : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
                           }`}
                         >
@@ -589,31 +546,36 @@ export default function Dashboard() {
               <AlertTriangle className="w-4 h-4 text-orange-500" /> Điểm nóng rủi ro
             </h3>
             <div className="space-y-1">
-              {riskiestHotspots?.slice(0, 15).map((p, idx) => {
-                const isActive = provQuery === p.province;
-                return (
-                  <button 
-                    key={p.province} 
-                    onClick={() => setProvQuery(isActive ? "" : p.province)}
-                    className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg transition-all ${
-                      isActive 
-                        ? "bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800 shadow-sm" 
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${
-                        isActive ? "bg-blue-600 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
-                      }`}>{idx + 1}</span>
-                      <span className={`text-sm font-medium ${isActive ? "text-blue-700 dark:text-blue-300" : "text-slate-700 dark:text-slate-300"}`}>{p.province}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className={`font-bold text-sm ${isActive ? "text-blue-900 dark:text-blue-100" : "text-slate-900 dark:text-slate-100"}`}>{p.events}</span>
-                      <span className={`text-[10px] ml-1 ${isActive ? "text-blue-500 dark:text-blue-400" : "text-slate-500 dark:text-slate-500"}`}>vụ</span>
-                    </div>
-                  </button>
-                );
-              })}
+              {riskiestHotspots?.length > 0 ? (
+                riskiestHotspots.slice(0, 15).map((p, idx) => {
+                  const isActive = provQuery === p.province;
+                  return (
+                    <button 
+                      key={p.province} 
+                      onClick={() => setProvQuery(isActive ? "" : p.province)}
+                      className={`w-full flex items-center justify-between py-1.5 px-2 rounded-lg transition-all ${
+                        isActive 
+                          ? "bg-blue-50 dark:bg-blue-900/40 border border-blue-100 dark:border-blue-800 shadow-sm" 
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-5 h-5 flex items-center justify-center rounded-md text-[10px] font-bold ${
+                          idx < 3 ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                        <span className={`text-xs font-medium ${isActive ? 'text-blue-600 dark:text-blue-400 font-bold' : ''}`}>{p.province}</span>
+                      </div>
+                      <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-500">{p.events} vụ</span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="text-center py-10 text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                  Không có điểm nóng<br/>trong khu vực/thời gian này
+                </div>
+              )}
             </div>
           </div>
 

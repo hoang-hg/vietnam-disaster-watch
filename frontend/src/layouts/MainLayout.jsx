@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
   Search,
   User,
@@ -19,7 +20,7 @@ import {
   Phone
 } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
-import { putJson } from "../api.js";
+import { putJson, API_BASE } from "../api.js";
 import NotificationDropdown from "../components/NotificationDropdown";
 import CrowdsourceModal from "../components/CrowdsourceModal";
 
@@ -29,8 +30,8 @@ const PROVINCES = [
 
 export default function MainLayout({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem("theme") === "dark" || 
-           (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    // Default to Light Mode (false) unless explicitly set to dark
+    return localStorage.getItem("theme") === "dark";
   });
   const [toasts, setToasts] = useState([]);
   const [user, setUser] = useState(null);
@@ -53,42 +54,85 @@ export default function MainLayout({ children }) {
 
   useEffect(() => {
     // Real-time WebSocket connection
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.hostname === 'localhost' ? 'localhost:8001' : window.location.host;
-    const wsUrl = `${protocol}//${host}/ws`;
-    
-    let ws = new WebSocket(wsUrl);
-    
-    ws.onmessage = (event) => {
-        try {
-            const msg = JSON.parse(event.data);
-            if (msg.type === "EVENT_UPSERT") {
-                const newToast = {
-                    id: Date.now(),
-                    title: msg.data.title,
-                    event_id: msg.data.id,
-                    province: msg.data.province
-                };
-                setToasts(prev => [newToast, ...prev].slice(0, 3));
-                // Auto-remove after 8 seconds
-                setTimeout(() => {
-                    setToasts(prev => prev.filter(t => t.id !== newToast.id));
-                }, 8000);
-            }
-        } catch (e) {
-            console.error("WS parse error", e);
-        }
-    };
-    
-    ws.onclose = () => {
-        // Simple reconnect after 5s
-        setTimeout(() => {
-            console.log("WS reconnecting...");
-            window.location.reload(); 
-        }, 5000);
+    let ws;
+    let reconnectTimer;
+
+    const connect = () => {
+        // Use API_BASE to derive WS URL to ensure consistency
+        const wsBase = API_BASE.replace(/^http/, 'ws');
+        const wsUrl = `${wsBase}/ws`;
+        
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+            console.log("WS connected successfully to:", wsUrl);
+        };
+        
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === "EVENT_UPSERT" && msg.data?.event_id) {
+                    const data = msg.data;
+                    const eventId = data.event_id;
+                    const eventTitle = data.title;
+                    
+                    // [VISIBILITY FILTER]
+                    // Only show 'Khẩn cấp' toasts to Guests/Users if the event is high quality
+                    // (Confidence >= 0.8 OR Admin-verified)
+                    const storedUserStr = localStorage.getItem("user");
+                    let role = "guest";
+                    try {
+                        const u = JSON.parse(storedUserStr);
+                        role = u?.role || "guest";
+                    } catch (e) {}
+
+                    const isHighQuality = (data.confidence >= 0.8) || (data.needs_verification === 0 && data.sources_count >= 2);
+                    const isAdmin = role === "admin";
+                    const isKnownType = !["unknown", "other"].includes(data.disaster_type);
+
+                    if (!isAdmin && (!isHighQuality || !isKnownType)) {
+                        return; // Skip notification for non-admins if quality is low
+                    }
+
+                    setToasts(prev => {
+                        // Prevent duplicate toasts for the same event already visible
+                        if (prev.some(t => t.event_id === eventId)) return prev;
+                        
+                        const newId = `${eventId}_${Date.now()}`;
+                        const newToast = {
+                            id: newId,
+                            title: eventTitle,
+                            event_id: eventId,
+                            province: msg.data.province
+                        };
+
+                        // Auto-remove after 8s
+                        setTimeout(() => {
+                            setToasts(current => current.filter(t => t.id !== newId));
+                        }, 8000);
+
+                        return [newToast, ...prev].slice(0, 3);
+                    });
+                }
+            } catch (e) { console.error("WS parse error", e); }
+        };
+        
+        ws.onclose = () => {
+            console.log("WS closed. Reconnecting in 5s...");
+            reconnectTimer = setTimeout(connect, 5000);
+        };
+        
+        ws.onerror = (err) => {
+            console.error("WS Error", err);
+            ws.close();
+        };
     };
 
-    return () => ws.close();
+    connect();
+    return () => {
+        if (ws) ws.close();
+        clearTimeout(reconnectTimer);
+    };
   }, []);
 
   useEffect(() => {
@@ -144,8 +188,23 @@ export default function MainLayout({ children }) {
     { name: "QUẢN TRỊ & DUYỆT TIN", href: "/admin/logs", current: location.pathname.startsWith("/admin/logs") },
   ] : [];
 
+  const [showScroll, setShowScroll] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => setShowScroll(window.scrollY > 400);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100 dark:bg-slate-950 font-sans transition-colors duration-300">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b1120] font-sans transition-colors duration-300">
+      <Helmet>
+        <title>BÁO TỔNG HỢP RỦI RO THIÊN TAI - Theo dõi rủi ro thời gian thực</title>
+        <meta name="description" content="Hệ thống giám sát và tổng hợp tin tức thiên tai tại Việt Nam thời gian thực. Cập nhật bão, lũ, sạt lở từ các nguồn tin chính thống." />
+        <meta name="keywords" content="thiên tai, bão lũ, thời tiết Việt Nam, cứu hộ, trực tuyến, tin tức khẩn cấp" />
+        <meta property="og:title" content="BÁO TỔNG HỢP RỦI RO THIÊN TAI - Hệ thống giám sát thiên tai" />
+        <meta property="og:description" content="Cập nhật tin tức thiên tai 24/7 từ 63 tỉnh thành Việt Nam." />
+        <meta property="og:type" content="website" />
+      </Helmet>
       {/* Top Header (White / Dark) */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex-none z-30 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -162,10 +221,10 @@ export default function MainLayout({ children }) {
                         </div>
                         <div className="flex flex-col">
                             <span className="text-xl font-black tracking-tighter text-slate-800 dark:text-white leading-none">
-                                VIET DISASTER <span className="text-[#2fa1b3] dark:text-[#4fd1e3]">WATCH</span>
+                                BÁO TỔNG HỢP <span className="text-[#2fa1b3] dark:text-[#4fd1e3]">RỦI RO THIÊN TAI</span>
                             </span>
-                            <span className="text-[9px] font-bold text-[#2fa1b3] dark:text-[#4fd1e3] tracking-[0.3em] uppercase mt-0.5">
-                                Real-time Surveillance
+                            <span className="text-[9px] font-bold text-[#2fa1b3] dark:text-[#4fd1e3] tracking-[0.2em] uppercase mt-0.5">
+                                VIETNAM DISASTER SURVEILLANCE
                             </span>
                         </div>
                 </Link>
@@ -456,7 +515,7 @@ export default function MainLayout({ children }) {
                 <div className="md:col-span-8 md:text-right space-y-2 text-slate-500 dark:text-slate-500 text-xs leading-relaxed border-t md:border-t-0 border-slate-100 dark:border-slate-800 pt-4 md:pt-0">
                     <p>
                         <span className="font-bold text-slate-900 dark:text-slate-200 uppercase text-sm block mb-1">
-                            BÁO TỔNG HỢP RỦI RO THIÊN TAI - VIỆT NAM DISASTER WATCHING
+                            BÁO TỔNG HỢP RỦI RO THIÊN TAI - VIETNAM DISASTER SURVEILLANCE
                         </span>
                         <span>Đơn vị thiết lập: Nhóm nghiên cứu & Phát triển.</span>
                     </p>
@@ -522,6 +581,16 @@ export default function MainLayout({ children }) {
         ))}
       </div>
       
+      {/* Scroll to Top */}
+      {showScroll && (
+        <button 
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 left-6 z-40 p-3 bg-white dark:bg-slate-800 text-[#2fa1b3] rounded-full shadow-2xl border border-slate-200 dark:border-slate-700 hover:scale-110 active:scale-90 transition-all animate-bounce"
+        >
+          <ArrowRight className="w-6 h-6 -rotate-90" />
+        </button>
+      )}
+
       {/* Crowdsourcing Modal */}
       <CrowdsourceModal 
         isOpen={isCrowdsourceOpen} 

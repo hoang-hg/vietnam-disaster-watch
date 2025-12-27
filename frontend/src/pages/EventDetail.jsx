@@ -10,7 +10,7 @@ import {
   fmtTimeAgo,
   fmtVndBillion,
 } from "../api.js";
-import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { API_BASE } from "../api.js";
 
@@ -191,6 +191,11 @@ export default function EventDetail() {
   };
 
   useEffect(() => {
+    if (!id || id === 'undefined' || id === '[object Object]') {
+       setError("Mã sự kiện không hợp lệ.");
+       return;
+    }
+    
     (async () => {
       try {
         setError(null);
@@ -233,7 +238,7 @@ export default function EventDetail() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 report-container">
       <Helmet>
-        <title>{`${fmtType(ev.disaster_type)} tại ${ev.province || "Việt Nam"} | VDW`}</title>
+        <title>{`${fmtType(ev.disaster_type)} tại ${ev.province || "Việt Nam"} | BÁO TỔNG HỢP RỦI RO THIÊN TAI`}</title>
         <meta name="description" content={ev.summary?.substring(0, 160) || "Cập nhật diễn biến thiên tai mới nhất."} />
         
         {/* OpenGraph / Facebook */}
@@ -326,8 +331,8 @@ export default function EventDetail() {
       {/* Professional Report Header */}
       <div className="mb-6 flex items-center justify-between border-b-4 border-red-600 pb-4">
         <div className="flex items-center gap-4">
-          <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-xl tracking-tighter">
-            VDW
+          <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-[10px] tracking-tighter text-center leading-tight w-16">
+            BÁO TỔNG HỢP
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
@@ -395,9 +400,15 @@ export default function EventDetail() {
                 {HAZARD_TYPES.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
               </select>
             ) : (
-              <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"} className="px-3 py-1 font-black uppercase text-[10px] tracking-widest">
+              <span className={`px-3 py-1 font-black uppercase text-[10px] tracking-widest rounded-lg border shadow-sm flex items-center gap-1.5 ${
+                ev.disaster_type === 'storm' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                ev.disaster_type === 'flood' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                ev.disaster_type === 'landslide' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                ev.disaster_type === 'wildfire' ? 'bg-red-50 text-red-700 border-red-200' :
+                'bg-slate-50 text-slate-700 border-slate-200'
+              }`}>
                 {fmtType(ev.disaster_type)}
-              </Badge>
+              </span>
             )}
             
             {isEditing ? (
@@ -410,9 +421,10 @@ export default function EventDetail() {
                   Cần kiểm chứng
                 </label>
             ) : ev.needs_verification === 1 && (
-              <Badge tone="red" className="text-[9px] font-bold">
+              <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
                 Dữ liệu cần kiểm chứng
-              </Badge>
+              </span>
             )}
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
               Tổng hợp từ {ev.sources_count} báo
@@ -433,30 +445,14 @@ export default function EventDetail() {
                <span>{isFollowing ? "ĐANG THEO DÕI" : "THEO DÕI"}</span>
             </button>
             <div className="w-px h-6 bg-slate-200 mx-1"></div>
-            <div className="px-2 text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">Chia sẻ</div>
             <a 
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
               target="_blank" rel="noopener noreferrer"
-              className="p-2 bg-white text-[#1877F2] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/fb"
-              title="Facebook"
+              className="p-2 bg-white text-[#1877F2] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/fb flex items-center gap-2 px-4 py-2"
+              title="Chia sẻ Facebook"
             >
                 <Facebook className="w-4 h-4 group-hover/fb:scale-110 transition-transform" />
-            </a>
-            <a 
-              href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(ev.title)}`}
-              target="_blank" rel="noopener noreferrer"
-              className="p-2 bg-white text-[#26A5E4] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/tg"
-              title="Telegram"
-            >
-                <Send className="w-4 h-4 group-hover/tg:scale-110 transition-transform" />
-            </a>
-            <a 
-              href={`https://zalo.me/s/share?link=${encodeURIComponent(window.location.href)}`}
-              target="_blank" rel="noopener noreferrer"
-              className="px-3 py-2 bg-white text-[#0068FF] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all font-black text-[10px] flex items-center gap-1 group/zl"
-              title="Zalo"
-            >
-                <span className="group-hover/zl:scale-110 transition-transform tracking-tighter">ZALO</span>
+                <span className="text-[10px] font-black uppercase">Chia sẻ Facebook</span>
             </a>
           </div>
         </div>
@@ -706,35 +702,14 @@ export default function EventDetail() {
                   className="text-sm text-gray-700 leading-relaxed summary-content"
                   dangerouslySetInnerHTML={{ __html: short }}
                 />
-                {/* Professional Report Header */}
-                <div className="mb-6 flex items-center justify-between border-b-4 border-slate-900 pb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-slate-900 text-white px-4 py-2 rounded-lg font-black text-xl tracking-tighter">
-                      VDW
-                    </div>
-                    <div>
-                      <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
-                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
-                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                        ID: {ev.id.toString().padStart(6, '0')} • Hệ thống giám sát thời gian thực
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Print-only QR Code Placeholder */}
-                  <div className="hidden print:block text-right">
-                    <div className="w-16 h-16 border-2 border-slate-900 ml-auto flex items-center justify-center text-[8px] font-bold text-center leading-none">
-                        MÃ QR<br/>TRUY XUẤT
-                    </div>
-                    <div className="text-[10px] font-bold mt-1 uppercase">viet-disaster.gov.vn</div>
-                  </div>
-                </div>
+                
                 {combined.length > limit ? (
                   <button
-                    className="mt-2 text-sm text-blue-600 hover:underline font-medium"
+                    className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 group/more"
                     onClick={() => setExpandedSummary((s) => !s)}
                   >
-                    {expandedSummary ? "Thu gọn" : "Xem thêm chi tiết"}
+                    <span>{expandedSummary ? "RÚT GỌN" : "XEM TOÀN BỘ NỘI DUNG TỔNG HỢP"}</span>
+                    <ArrowRight className={`w-3 h-3 transition-transform ${expandedSummary ? '-rotate-90' : 'rotate-90'}`} />
                   </button>
                 ) : null}
               </div>

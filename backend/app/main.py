@@ -22,6 +22,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Custom Rate Limiter Middleware (Simple Memory-based)
+from fastapi import Request, Response
+import time
+from collections import defaultdict
+
+request_counts = defaultdict(list)
+RATE_LIMIT = 50  # requests
+RATE_PERIOD = 60 # seconds
+
+@app.middleware("http")
+async def cdn_optimization_middleware(request: Request, call_next):
+    """
+    Ensures optimal caching for CDNs like Cloudflare.
+    """
+    response = await call_next(request)
+    # Add Vary header for compression awareness
+    response.headers["Vary"] = "Accept-Encoding, Authorization"
+    # Ensure a default Cache-Control if not set (to prevent CDN from caching sensitive data)
+    if not response.headers.get("Cache-Control"):
+        if request.url.path.startswith("/api"):
+            # Default private for API if not specified
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host
+    now = time.time()
+    
+    # Simple whitelist for static or local requests if needed
+    if request.url.path.startswith("/static"):
+        return await call_next(request)
+
+    # Filter out old requests
+    request_counts[client_ip] = [t for t in request_counts[client_ip] if now - t < RATE_PERIOD]
+    
+    if len(request_counts[client_ip]) >= RATE_LIMIT:
+        return Response(content="Too Many Requests", status_code=429)
+    
+    request_counts[client_ip].append(now)
+    response = await call_next(request)
+    return response
+
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(user_router)
@@ -86,34 +129,34 @@ async def on_startup():
             "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
         ]
 
-    # Job 1: Group 1 (Critical Official Sources) - Frequency: 15 mins
+    # Job 1: Group 1 (Critical Official Sources) - Frequency: 2 HOURS (120 mins)
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier1_sources()),
-        trigger=IntervalTrigger(minutes=15, jitter=5),
+        trigger=IntervalTrigger(minutes=120, jitter=10),
         id="crawl_group1_critical",
         replace_existing=True,
-        misfire_grace_time=60
+        misfire_grace_time=300
     )
 
-    # Job 2: Group 2 (Major National News) - Frequency: 60 mins
+    # Job 2: Group 2 (Major National News) - Frequency: 4 HOURS (240 mins)
     # Coverage: VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí, VTV, VOV...
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier2_sources()),
-        trigger=IntervalTrigger(minutes=60, jitter=15),
+        trigger=IntervalTrigger(minutes=240, jitter=20),
         id="crawl_group2_major",
         replace_existing=True,
-        misfire_grace_time=180
+        misfire_grace_time=600
     )
 
-    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 6 HOURS (360 mins)
+    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 8 HOURS (480 mins)
     # Performs a complete scan of all sources in sources.json.
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=360, jitter=120),
+        trigger=IntervalTrigger(minutes=480, jitter=120),
         id="crawl_group3_full",
         replace_existing=True,
-        misfire_grace_time=300
+        misfire_grace_time=1200
     )
 
     # Job 4: Source Health Monitor (Periodic Check) - Frequency: 12 HOURS (720 mins)
@@ -126,10 +169,6 @@ async def on_startup():
         replace_existing=True,
         misfire_grace_time=300
     )
-
-    # Job 5: Potential Disaster Recovery (Auto-Ingest) - DISABLED
-    # This was replaced by the manual 3-tier review dashboard.
-    # The JSONL logs are now only for audit/audit trail.
 
 
     # Job 6: Log Rotation & Cleanup - Frequency: 12 HOURS

@@ -78,6 +78,9 @@ Base.metadata.create_all(bind=engine)
 
 logger = logging.getLogger(__name__)
 
+# User Requirement: Skip any news before 2025-01-01
+CRAWL_MIN_DATE = datetime(2025, 1, 1)
+
 # Optional classifier loader (joblib). If model exists, use as second-pass.
 _classifier = None
 try:
@@ -350,7 +353,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
         
         for src_name, src_info in sources_feeds.items():
             src = src_info["source"]
-            stat = {"source": src.name, "feed_used": None, "elapsed": None, "error": None, "articles_added": 0}
+            stat = {"source": src.name, "feed_used": None, "elapsed": 0.0, "error": None, "articles_added": 0}
             
             feed_worked = False
             for feed_type, url in src_info["feed_urls"]:
@@ -399,6 +402,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     link = getattr(entry, "link", "").strip()
                     
                     published_at = _to_dt(entry)
+                    if published_at < CRAWL_MIN_DATE:
+                        # Skip historical news before Jan 1st 2025
+                        continue
                     raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
                     summary_raw = html.unescape(html.unescape(raw_summary)).strip()
                     summary_raw = re.sub(r"<[^>]+>", "", summary_raw)
@@ -451,13 +457,13 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         continue # Skip to next article in feed
 
                     status = None
-                    if score > 14.5:
+                    if score > 15:
                         status = "approved"
-                    elif score >= 7.0:
+                    elif score >= 10.0:
                         status = "pending"
                     
                     if not status:
-                        # Logic for low score items (< 7.0) -> Auto Blacklist
+                        # Logic for low score items (< 10.0) -> Auto Blacklist
                         try:
                             # Add to Blacklist to prevent re-crawling
                             if news_hash:
@@ -732,6 +738,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             
                             # Use scrape time as publish time
                             published_at = datetime.utcnow()
+                            if published_at < CRAWL_MIN_DATE:
+                                continue
                             
                             summary_raw_scraper = html.unescape(scraped.get("summary", "") or scraped.get("description", "") or "")
                             text_for_nlp = title + " " + summary_raw_scraper
@@ -781,10 +789,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 route=impacts.get("route"),
                                 cause=impacts.get("cause"),
                                 characteristics=impacts.get("characteristics"),
-                                deaths=impacts["deaths"],
-                                missing=impacts["missing"],
-                                injured=impacts["injured"],
-                                damage_billion_vnd=impacts["damage_billion_vnd"],
+                                deaths=_get_impact_value(impacts["deaths"]),
+                                missing=_get_impact_value(impacts["missing"]),
+                                injured=_get_impact_value(impacts["injured"]),
+                                damage_billion_vnd=_get_impact_value(impacts["damage_billion_vnd"]),
                                 agency=impacts["agency"][:255] if impacts["agency"] else None,
                                 summary=summary,
                                 impact_details=nlp.extract_impact_details(text_for_nlp),
@@ -877,7 +885,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 
                 c_status.last_run_at = datetime.utcnow()
                 c_status.articles_added = src_info["articles_added"]
-                c_status.latency_ms = int(stat.get("elapsed", 0) * 1000)
+                c_status.latency_ms = int((stat.get("elapsed") or 0.0) * 1000)
                 
                 if stat.get("error"):
                     c_status.status = "error"

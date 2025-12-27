@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, func
 from sqlalchemy.sql import text
 from .database import get_db, engine
@@ -16,29 +16,13 @@ import json
 from .nlp import RECOVERY_KEYWORDS, PROVINCES
 from .sources import DISASTER_KEYWORDS
 from .risk_lookup import canon
-from . import broadcast
+from . import broadcast, auth
+from .cache import cache
 import time
 import io
+from typing import Optional
 
-# Simple In-Memory Cache for Dashboard performance
-class SimpleCache:
-    def __init__(self, ttl_seconds=300):
-        self.cache = {}
-        self.ttl = ttl_seconds
-
-    def get(self, key):
-        if key in self.cache:
-            val, expiry = self.cache[key]
-            if time.time() < expiry:
-                return val
-            else:
-                del self.cache[key]
-        return None
-
-    def set(self, key, value):
-        self.cache[key] = (value, time.time() + self.ttl)
-
-stats_cache = SimpleCache(ttl_seconds=120) # 2 minutes for stats
+# stats_cache is now replaced by centralized 'cache' from .cache
 
 # Unified filtering rules for Dashboard/Stats
 def filter_disaster_events(events):
@@ -80,7 +64,7 @@ def latest_articles(
     db: Session = Depends(get_db),
 ):
     cache_key = f"articles_latest_{limit}_{type}_{province}_{exclude_unknown}"
-    cached = stats_cache.get(cache_key)
+    cached = cache.get(cache_key)
     if cached: return cached
 
     q = db.query(Article).filter(Article.status == "approved").order_by(desc(Article.published_at))
@@ -92,70 +76,94 @@ def latest_articles(
         q = q.filter(Article.disaster_type != 'unknown')
     
     res = q.limit(limit).all()
-    stats_cache.set(cache_key, res)
+    cache.set(cache_key, res, ttl=120)
     return res
+
+# Optimized filtering logic: move simple filters to DB to reduce payload
+def get_base_event_query(db: Session):
+    # Defer heavy fields for list views to save memory and I/O
+    from sqlalchemy.orm import defer
+    return db.query(Event).options(
+        defer(Event.cause),
+        defer(Event.characteristics),
+        defer(Event.details)
+    )
 
 @router.get("/events", response_model=list[EventOut])
 def events(
+    request: Request,
+    response: Response,
     limit: int = Query(50, ge=1, le=2000),
     hours: int | None = Query(None, ge=1, le=720),
     type: str | None = Query(None),
     province: str | None = Query(None),
-    start_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
-    end_date: str | None = Query(None, description="Format: YYYY-MM-DD"),
+    start_date: str | None = Query(None),
+    end_date: str | None = Query(None),
     q: str | None = Query(None),
     date: str | None = Query(None),
     db: Session = Depends(get_db),
-    sort: str = Query("impact", description="Sort by: 'impact' or 'latest'"),
+    sort: str = Query("impact"),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
 ):
-    cache_key = f"events_{limit}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}"
-    cached = stats_cache.get(cache_key)
-    if cached: return cached
-
-    query = db.query(Event).order_by(desc(Event.started_at))
+    is_admin = current_user and current_user.role == "admin"
     
+    # Cache optimization - include is_admin in key
+    cache_key = f"ev_v2_{limit}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}_{is_admin}"
+    cached = cache.get(cache_key)
+    if cached:
+        response.headers["X-Cache"] = "HIT"
+        # 5 minute browser cache for list views
+        response.headers["Cache-Control"] = "public, max-age=300"
+        return cached
+
+    # 1. Base query with deferred large fields
+    query = get_base_event_query(db).order_by(desc(Event.started_at))
+    
+    # [VISIBILITY] Restricted visibility for public users
+    if not is_admin:
+        # Public only sees:
+        # 1. Events with high confidence (auto-pushed)
+        # 2. Events explicitly verified by admin (needs_verification == 0 and has consensus)
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            Event.confidence >= 0.8,
+            (Event.needs_verification == 0) & (Event.sources_count >= 2)
+        ))
+    
+    # 2. Database-level filters (The "Easy" part of filter_disaster_events)
+    # We always exclude unknown/other at the DB level for performance
+    query = query.filter(Event.disaster_type.notin_(["unknown", "other"]))
+
     if date:
         try:
             target_date = datetime.strptime(date, "%Y-%m-%d")
             start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
             end = start + timedelta(days=1)
             query = query.filter(Event.started_at >= start, Event.started_at < end)
-        except ValueError:
-            pass
+        except ValueError: pass
     elif hours:
         since = datetime.utcnow() - timedelta(hours=hours)
         query = query.filter(Event.last_updated_at >= since)
 
-    if type:
-        query = query.filter(Event.disaster_type == type)
-    if province:
-        query = query.filter(Event.province == province)
+    if type: query = query.filter(Event.disaster_type == type)
+    if province: query = query.filter(Event.province == province)
+    if q: query = query.filter(Event.title.ilike(f"%{q}%"))
+    
     if start_date:
-        try:
-            dt_start = datetime.strptime(start_date, "%Y-%m-%d")
-            query = query.filter(Event.started_at >= dt_start)
-        except ValueError:
-            pass
+        try: query = query.filter(Event.started_at >= datetime.strptime(start_date, "%Y-%m-%d"))
+        except ValueError: pass
     if end_date:
-        try:
-            dt_end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-            query = query.filter(Event.started_at < dt_end)
-        except ValueError:
-            pass
-            
-    if q:
-        query = query.filter(Event.title.ilike(f"%{q}%"))
-        
-    # Apply unified filter
-    raw_events = query.all()
+        try: query = query.filter(Event.started_at < datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1))
+        except ValueError: pass
+
+    # 3. Fetch candidates (limit to slightly more than requested to allow Python-side complex filtering)
+    raw_events = query.limit(limit * 2).all()
     filtered = filter_disaster_events(raw_events)
     
-    # Sort based on user preference
+    # 4. Final sorting & capping
     if sort == "latest":
         filtered.sort(key=lambda x: x.started_at, reverse=True)
     else:
-        # Sort by impact priority before unique-province logic
-        # Priority: Casualties > Damage > Article Count > Confidence
         filtered.sort(key=lambda x: (
             (x.deaths or 0) + (x.missing or 0) + (x.injured or 0),
             (x.damage_billion_vnd or 0.0),
@@ -163,50 +171,67 @@ def events(
             (x.confidence or 0.0)
         ), reverse=True)
     
-    # Limit results
     filtered = filtered[:limit]
+    if not filtered:
+        return []
 
+    # 5. [OPTIMIZATION] Fix N+1: Batch Fetch Article Counts
+    event_ids = [e.id for e in filtered]
+    
+    # Count approved articles per event in one query
+    count_q = db.query(Article.event_id, func.count(Article.id)).filter(
+        Article.event_id.in_(event_ids),
+        Article.status == "approved"
+    )
+    if hours:
+        h_start = datetime.utcnow() - timedelta(hours=hours)
+        count_q = count_q.filter(Article.published_at >= h_start)
+    
+    counts_map = {row[0]: row[1] for row in count_q.group_by(Article.event_id).all()}
+
+    # 6. [OPTIMIZATION] Fix N+1: Batch Fetch Images & Sources
+    # We use a subquery/distinct to get the latest article for each event in the batch
+    from sqlalchemy import and_
+    subq = db.query(
+        Article.event_id,
+        Article.image_url,
+        Article.source,
+        func.row_number().over(
+            partition_by=Article.event_id,
+            order_by=desc(Article.published_at)
+        ).label("rn")
+    ).filter(
+        Article.event_id.in_(event_ids),
+        Article.status == "approved"
+    ).subquery()
+    
+    leads = db.query(subq).filter(subq.c.rn == 1).all()
+    leads_map = {row.event_id: (row.image_url, row.source) for row in leads}
+
+    # 7. Final response assembly
     events_out = []
-    for ev in filtered[:limit]:
-        ev_data = EventOut.from_orm(ev)
-        # Articles count windowed
-        if hours:
-            h_start = datetime.utcnow() - timedelta(hours=hours)
-            ev_data.articles_count = db.query(Article).filter(
-                Article.event_id == ev.id,
-                Article.status == "approved",
-                Article.published_at >= h_start
-            ).count()
-        else:
-            ev_data.articles_count = db.query(Article).filter(
-                Article.event_id == ev.id,
-                Article.status == "approved"
-            ).count()
-
-        first_article = db.query(Article).filter(
-            Article.event_id == ev.id,
-            Article.status == "approved"
-        ).order_by(desc(Article.published_at)).first()
-        if first_article:
-            ev_data.image_url = first_article.image_url
-            ev_data.source = first_article.source
+    for ev in filtered:
+        # We manually map to avoid multiple DB hits from ORM attributes
+        ev_data = EventOut.model_validate(ev)
+        ev_id = ev.id
         
-        # Inject Default Image if missing
+        ev_data.articles_count = counts_map.get(ev_id, 0)
+        
+        img, src = leads_map.get(ev_id, (None, None))
+        ev_data.image_url = img
+        ev_data.source = src
+        
+        # Inject Fallback Image
         if not ev_data.image_url:
-            dtype = ev.disaster_type
-            title_lower = ev.title.lower() if ev.title else ""
-            
-            # Smart sub-variant selection based on Title keywords
-            chosen_img = DEFAULT_IMAGES.get(dtype, DEFAULT_IMAGES["unknown"])
-            
-            if dtype == "extreme_weather" and "mưa đá" in title_lower:
+            chosen_img = DEFAULT_IMAGES.get(ev.disaster_type, DEFAULT_IMAGES["unknown"])
+            if ev.disaster_type == "extreme_weather" and "mưa đá" in (ev.title or "").lower():
                 chosen_img = SUB_IMAGES["hail"]
-                
             ev_data.image_url = chosen_img
 
         events_out.append(ev_data)
 
-    stats_cache.set(cache_key, events_out)
+    cache.set(cache_key, [e.model_dump() for e in events_out], ttl=300)
+    response.headers["Cache-Control"] = "public, max-age=300"
     return events_out
 
 # Lightweight SVGs (stable CDN, pinned version)
@@ -242,33 +267,41 @@ SUB_IMAGES = {
 }
 
 @router.get("/events/{event_id}", response_model=EventDetailOut)
-def event_detail(event_id: int, db: Session = Depends(get_db)):
-    ev = db.query(Event).filter(Event.id == event_id).one()
-    # Pydantic model conversion happens automatically, but we can't inject defaults easily 
-    # unless we use response_model_exclude_unset or modify the object.
-    # The clean way is to return a dict or modify current object if it's not committed.
-    # But EventDetailOut expects specific fields. 
-    # Let's trust the frontend logic? OR we can force update the DB object just for view? No.
-    # Best way: return dictionary with injected check.
+def event_detail(event_id: int, response: Response, db: Session = Depends(get_db)):
+    # 1. Try Cache
+    cache_key = f"ev_detail_{event_id}"
+    cached = cache.get(cache_key)
+    if cached:
+        response.headers["X-Cache"] = "HIT"
+        response.headers["Cache-Control"] = "public, max-age=60" # 1 min cache for specific events
+        return cached
+
+    # 2. Optimized Fetch (Fixes N+1 and lazy loading lag)
+    ev = db.query(Event).options(
+        joinedload(Event.articles)
+    ).filter(Event.id == event_id).first()
     
-    # Actually, for detail view, let's just let it be. 
-    # But wait, user asked for "những sự kiện không có ảnh thì mình tự chèn".
-    # So we should inject it here too.
-    
-    # Check if we need to fetch image from articles first?
-    # Usually event table doesn't have image_url column? Wait, actually Article has it.
-    # EventDetailOut aggregates articles.
-    
-    # Detail view: Show both Approved and Pending articles
-    # This ensures "sources_count" matches the visible list, preventing "1 source but empty list" confusion.
-    if ev.articles:
-        ev.articles = [a for a in ev.articles if a.status in ("approved", "pending")]
-    
-    # Sort articles by published_at desc
-    if ev.articles:
-        ev.articles.sort(key=lambda x: x.published_at, reverse=True)
+    if not ev:
+        raise HTTPException(status_code=404, detail="Sự kiện không tồn tại.")
         
-    return ev
+    # 3. Filter and Sort Articles
+    # Only show relevant articles (approved/pending)
+    articles = [a for a in ev.articles if a.status in ("approved", "pending")]
+    articles.sort(key=lambda x: x.published_at, reverse=True)
+    
+    # We create a dictionary to avoid ORM lazy load issues after sorting
+    ev_data = EventDetailOut.model_validate(ev)
+    ev_data.articles = [ArticleOut.model_validate(a) for a in articles]
+    
+    # Update count to match visible list
+    ev_data.sources_count = len(set(a.source for a in articles))
+    
+    # 4. Save to Cache
+    result = ev_data.model_dump()
+    cache.set(cache_key, result, ttl=300)
+    
+    response.headers["Cache-Control"] = "public, max-age=60"
+    return result
 
 @router.put("/events/{event_id}", response_model=EventOut)
 def update_event(
@@ -383,11 +416,15 @@ def stats_summary(
     date: str | None = Query(None), 
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
-    db: Session = Depends(get_db)
+    response: Response = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
 ):
-    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}"
-    cached = stats_cache.get(cache_key)
+    is_admin = current_user and current_user.role == "admin"
+    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{is_admin}"
+    cached = cache.get(cache_key)
     if cached:
+        if response: response.headers["Cache-Control"] = "public, max-age=120"
         return cached
 
     if start_date or end_date:
@@ -408,7 +445,7 @@ def stats_summary(
     else:
         start = datetime.utcnow() - timedelta(hours=hours)
         end = datetime.utcnow()
-    
+
     # 1. New articles count (total signals)
     total_articles = db.query(Article).filter(
         Article.published_at >= start, 
@@ -423,15 +460,27 @@ def stats_summary(
         Article.needs_verification == 1
     ).count()
 
-    # 2. Events Summary (Unique Provinces per User Request)
-    events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    # 2. Events Summary (Optimized Query - load details avoid N+1 in filter_disaster_events)
+    events_q = db.query(Event).filter(
+        Event.started_at >= start, 
+        Event.started_at < end,
+        Event.disaster_type.notin_(["unknown", "other"])
+    )
+    
+    if not is_admin:
+        from sqlalchemy import or_
+        events_q = events_q.filter(or_(
+            Event.confidence >= 0.8,
+            (Event.needs_verification == 0) & (Event.sources_count >= 2)
+        ))
+
+    events = events_q.all()
     filtered_events = filter_disaster_events(events)
     
     provinces_seen = set()
     for ev in filtered_events:
-        p = ev.province or "unknown"
-        if p in PROVINCES:
-            provinces_seen.add(p)
+        if ev.province in PROVINCES:
+            provinces_seen.add(ev.province)
     
     events_count = len(filtered_events) 
     provinces_count = len(provinces_seen)
@@ -496,11 +545,15 @@ def stats_summary(
         },
         "by_type": type_counts,
     }
-    stats_cache.set(cache_key, res)
+    cache.set(cache_key, res, ttl=120)
+    from fastapi import Response
+    # Cache summary for 2 mins (same as internal cache)
+    response.headers["Cache-Control"] = "public, max-age=120"
     return res
 
 @router.get("/stats/timeline")
 def stats_timeline(
+    response: Response,
     hours: int = Query(24, ge=1, le=168), 
     date: str | None = Query(None),
     start_date: str | None = Query(None),
@@ -508,6 +561,12 @@ def stats_timeline(
     db: Session = Depends(get_db)
 ):
     """Timeline: số sự kiện theo giờ."""
+    cache_key = f"timeline_{hours}_{date}_{start_date}_{end_date}"
+    cached = cache.get(cache_key)
+    if cached: 
+        response.headers["Cache-Control"] = "public, max-age=180"
+        return cached
+
     if start_date or end_date:
         try:
             start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
@@ -562,6 +621,7 @@ def stats_timeline(
             h_str = hour.strftime('%Y-%m-%d %H:00:00') if hasattr(hour, 'strftime') else str(hour)
             data.append({"time": h_str, "events": count})
     
+    response.headers["Cache-Control"] = "public, max-age=300"
     return {"window": date or f"{hours}h", "data": data}
 
 

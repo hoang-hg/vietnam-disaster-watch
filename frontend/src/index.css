@@ -6,14 +6,68 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 transition-colors duration-300;
-    @apply dark:bg-[#0f172a] dark:text-slate-100;
+    @apply bg-slate-50 text-slate-900 transition-colors duration-500 overflow-x-hidden;
+    @apply dark:bg-[#0b1120] dark:text-slate-100;
     font-family: 'Be Vietnam Pro', sans-serif;
   }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  .glass-dark {
+    @apply bg-slate-900/70 backdrop-blur-md border border-slate-700/30 shadow-2xl;
+  }
+}
+
+/* Leaflet Cluster Styles */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+    background-color: rgba(47, 161, 179, 0.2);
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+    background-color: rgba(47, 161, 179, 0.8);
+    color: white;
+    font-weight: 800;
+    font-family: 'Inter', sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+    @apply rounded-xl shadow-2xl border-none p-0 overflow-hidden dark:bg-slate-900 dark:text-white !important;
+}
+.leaflet-popup-tip {
+    @apply dark:bg-slate-900 !important;
+}
+.leaflet-popup-content {
+    @apply m-0 p-0 !important;
+}
+
+/* Custom Scrollbar for Premium Feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full transition-colors;
+  @apply dark:bg-slate-800;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-[#2fa1b3] dark:bg-[#2fa1b3]/60;
 }
 
 .leaflet-container {
   height: 420px;
   width: 100%;
-  border-radius: 16px;
+  border-radius: 20px;
+  @apply shadow-xl border border-white/20 dark:border-slate-800;
+}
+
+.report-container {
+  @apply bg-white dark:bg-slate-900 shadow-2xl rounded-3xl border border-slate-100 dark:border-slate-800;
 }

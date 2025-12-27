@@ -16,6 +16,8 @@ class Settings(BaseSettings):
         default="sqlite:///" + str(DB_PATH), 
         validation_alias="APP_DB_URL"
     )
+
+    redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")
     
     # Allow overriding with PostgreSQL URL via env var
     # Example: postgresql://postgres:password@localhost:5432/viet_disaster_watch

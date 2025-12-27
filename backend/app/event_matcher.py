@@ -394,6 +394,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             "damage": ev.damage_billion_vnd,
             "confidence": ev.confidence,
             "sources_count": ev.sources_count,
+            "needs_verification": getattr(ev, 'needs_verification', 1),
             "last_updated": ev.last_updated_at.isoformat() if ev.last_updated_at else None
         }
         asyncio.create_task(broadcast.publish_event(data))

@@ -3,7 +3,7 @@ export default function About() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="text-2xl font-semibold text-gray-900">Giới thiệu</div>
       <div className="mt-3 text-gray-700 leading-relaxed">
-        Viet Disaster Watch là hệ thống tổng hợp tin thiên tai từ 12 nguồn báo
+        BÁO TỔNG HỢP RỦI RO THIÊN TAI là hệ thống tổng hợp tin thiên tai từ các nguồn báo
         chính thống, tự động phân loại và nhóm thành Sự kiện.
       </div>
 

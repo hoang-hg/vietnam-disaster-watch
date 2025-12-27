@@ -139,40 +139,34 @@ export default function Events() {
       if (!isBackground) setLoading(true);
       setError(null);
       
-      // Fetch base data first (filtered by Category on server for efficiency)
+      // Fetch base data first (Optimized: Server-side filtering)
       const params = new URLSearchParams();
-      params.append("limit", "400"); // 40 items * 10 pages
+      params.append("limit", "100"); // Reduced from 400 for speed
       params.append("sort", "latest");
       
       if (type) params.append("type", type);
+      if (province) params.append("province", province);
+      if (q) params.append("q", q);
       
-      // Use startDate as the 'Ceiling' to fill the list chronologically backwards
-      if (startDate) params.append("end_date", startDate);
-      if (endDate) params.append("start_date", endDate); // Inversed or dual range if needed
+      // Date range logic: If both provided, use them. If only startDate, use as exact date or start of range.
+      if (startDate && endDate) {
+          params.append("start_date", endDate); // range from end to start
+          params.append("end_date", startDate);
+      } else if (startDate) {
+          params.append("date", startDate); // exact day
+      }
       
-      const evs = await getJson(`/api/events?${params.toString()}`);
-      
-      let filteredEvents = evs.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
+      const initialEvents = await getJson(`/api/events?${params.toString()}`);
+      let filteredEvents = initialEvents.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
 
       // Client-side smart filtering for Text and Province (unaccented support)
       if (q) {
+          // Keep lightweight local filter for instant feedback if needed, 
+          // but server already filtered most of it.
           const query = normalizeStr(q, true);
-          filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title, true).includes(query));
+          // filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title, true).includes(query));
       }
-      if (province) {
-          // Special cases for HCM / HN
-          let query = normalizeStr(province, true);
-          if (query === "tphochiminh") query = "hochiminh"; // allow matching "TP. Hồ Chí Minh" with just "hochiminh"
-          
-          filteredEvents = filteredEvents.filter(e => {
-            if (!e.province) return false;
-            let target = normalizeStr(e.province, true);
-            return target.includes(query) || query.includes(target);
-          });
-      }
-      
-      // Sort by newest first
-      filteredEvents.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+      // province is already fully filtered by server
       
       setEvents(filteredEvents);
       // Only reset page on explicit filter change (user interaction), NOT on background refresh
@@ -428,7 +422,7 @@ export default function Events() {
         <div className="bg-white rounded-xl border border-slate-300 overflow-hidden shadow-xl report-container">
             <div className="p-6 bg-slate-50 border-b border-slate-200 text-center hidden print:block">
                 <div className="text-xl font-black uppercase text-slate-900 leading-tight">Báo cáo Tổng hợp Thiên tai Ngày {startDate?.split('-').reverse().join('/')}</div>
-                <div className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Hệ thống Vietnam Disaster Watch</div>
+                <div className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Hệ thống Báo tổng hợp rủi ro thiên tai</div>
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full report-table">

@@ -45,6 +45,14 @@ export default function StatCard({ title, value, sub, icon: Icon, trend, color =
       iconText: "text-slate-600",
       iconActive: "bg-slate-600 text-white",
       hover: "hover:border-slate-300"
+    },
+    brand: {
+      border: "border-[#2fa1b3]",
+      ring: "ring-[#2fa1b3]/20",
+      iconBg: "bg-[#eef9fa]",
+      iconText: "text-[#2fa1b3]",
+      iconActive: "bg-[#2fa1b3] text-white",
+      hover: "hover:border-[#2fa1b3]"
     }
   };
 

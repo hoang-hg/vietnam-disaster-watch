@@ -89,6 +89,17 @@ cd frontend
 npm install
 npm run dev
 ```
+Cách 1: Chạy trực tiếp bằng Python của Backend (Khuyên dùng)
+Trong thư mục D:\viet-disaster-watch\backend, bạn chạy lệnh này:
+
+powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+Cách 2: Kích hoạt lại môi trường ảo đúng của Backend
+Bạn thực hiện các lệnh sau:
+
+Huỷ kích hoạt môi trường cũ: deactivate
+Kích hoạt môi trường của backend: .\.venv\Scripts\Activate.ps1
+Sau đó chạy lại lệnh cũ: python -m uvicorn app.main:app --reload --port 8000
 
 ## 📂 Cấu trúc dự án
 

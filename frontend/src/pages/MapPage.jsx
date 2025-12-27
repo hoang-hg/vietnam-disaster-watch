@@ -7,13 +7,24 @@ import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
 import logoIge from "../assets/logo_ige.png";
 
 // Build province lookup map
-const PROVINCE_COORDS = {};
-VIETNAM_LOCATIONS.forEach(loc => {
-  if (loc.properties.category === "provincial_unit") {
-    const [lon, lat] = loc.geometry.coordinates;
-    PROVINCE_COORDS[loc.properties.name] = { lat, lon };
+const getProvCoords = (name) => {
+  // Try standardized centroids first (from provinces.js)
+  if (window.__PROVINCE_CENTROIDS__ && window.__PROVINCE_CENTROIDS__[name]) {
+    const [lat, lon] = window.__PROVINCE_CENTROIDS__[name];
+    return { lat, lon };
   }
-});
+  
+  // Fallback to static geojson
+  const match = VIETNAM_LOCATIONS.find(loc => 
+    loc.properties.category === "provincial_unit" && 
+    (loc.properties.name === name || name.includes(loc.properties.name))
+  );
+  if (match) {
+    const [lon, lat] = match.geometry.coordinates;
+    return { lat, lon };
+  }
+  return null;
+};
 
 const LEGEND_ITEMS = [
     { key: "storm", color: THEME_COLORS.storm, label: "Bão / Áp thấp" },
@@ -49,11 +60,12 @@ export default function MapPage() {
             // Enrich events with coordinates from province if missing
             const enrichedEvents = evs.map(e => {
               if (e.lat && e.lon) return e;
-              if (e.province && PROVINCE_COORDS[e.province]) {
+              const coords = getProvCoords(e.province);
+              if (coords) {
                 return {
                   ...e,
-                  lat: PROVINCE_COORDS[e.province].lat,
-                  lon: PROVINCE_COORDS[e.province].lon
+                  lat: coords.lat,
+                  lon: coords.lon
                 };
               }
               return e; // will be filtered out next step if still no coords

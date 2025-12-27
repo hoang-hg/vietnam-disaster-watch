@@ -10,71 +10,6 @@ from . import risk_lookup
 
 logger = logging.getLogger(__name__)
 
-# [HYBRID NLP] Micro-Intent Classifier (FastText-inspired)
-# A high-performance linear classifier using weighted semantic density.
-class FastIntent:
-    INTENTS = ["DISASTER", "ECONOMIC", "SPORT", "ENT", "ADMIN"]
-    
-    # Pre-baked weights for top semantic markers
-    WEIGHTS = {
-        # Economic (Gold, stocks, pricing metaphors)
-        "giá": {"ECONOMIC": 0.8}, "vàng": {"ECONOMIC": 0.9}, "lãi": {"ECONOMIC": 0.7}, "suất": {"ECONOMIC": 0.7},
-        "chứng": {"ECONOMIC": 0.9}, "khoán": {"ECONOMIC": 0.9}, "bất": {"ECONOMIC": 0.5}, "động": {"ECONOMIC": 0.4, "DISASTER": 0.3}, # Ambiguous (động đất vs BĐS)
-        "sản": {"ECONOMIC": 0.6}, "đầu": {"ECONOMIC": 0.5, "SPORT": 0.3}, "tư": {"ECONOMIC": 0.7}, "thị": {"ECONOMIC": 0.6},
-        "trường": {"ECONOMIC": 0.6}, "doanh": {"ECONOMIC": 0.8}, "nghiệp": {"ECONOMIC": 0.8}, "tài": {"ECONOMIC": 0.7},
-        "chính": {"ECONOMIC": 0.6, "ADMIN": 0.6}, "tỷ": {"ECONOMIC": 0.8}, "tỉ": {"ECONOMIC": 0.8}, "đô": {"ECONOMIC": 0.9},
-        
-        # Sport (Football, scores, medals)
-        "bóng": {"SPORT": 0.9}, "đá": {"SPORT": 0.9, "DISASTER": 0.3}, # Ambiguous (đá bóng vs sạt lở đá)
-        "cầu": {"SPORT": 0.7, "DISASTER": 0.2}, "thủ": {"SPORT": 0.9}, "đội": {"SPORT": 0.6}, "tuyển": {"SPORT": 0.8},
-        "bàn": {"SPORT": 0.9}, "thắng": {"SPORT": 0.9}, "trận": {"SPORT": 0.8}, "đấu": {"SPORT": 0.8},
-        "huy": {"SPORT": 0.9}, "chương": {"SPORT": 0.9}, "vô": {"SPORT": 0.8}, "địch": {"SPORT": 0.8},
-        "huấn": {"SPORT": 0.9}, "luyện": {"SPORT": 0.9}, "viên": {"SPORT": 0.9}, "cup": {"SPORT": 1.0},
-        
-        # Entertainment (Showbiz, idols, social drama)
-        "nghệ": {"ENT": 0.9}, "sĩ": {"ENT": 0.9}, "ca": {"ENT": 0.8}, "diễn": {"ENT": 0.8},
-        "showbiz": {"ENT": 1.0}, "drama": {"ENT": 1.0}, "mạng": {"ENT": 0.7, "DISASTER": 0.2},
-        "hậu": {"ENT": 0.8}, "hoa": {"ENT": 0.7}, "phim": {"ENT": 0.9}, "liveshow": {"ENT": 1.0},
-        "scandal": {"ENT": 1.0}, "idol": {"ENT": 1.0}, "view": {"ENT": 0.9}, "like": {"ENT": 0.8},
-        
-        # Admin / Social (Conferences, awards, policies)
-        "hội": {"ADMIN": 0.8}, "nghị": {"ADMIN": 0.9}, "biểu": {"ADMIN": 0.7}, "ban": {"ADMIN": 0.6},
-        "chấp": {"ADMIN": 0.8}, "hành": {"ADMIN": 0.7}, "ủy": {"ADMIN": 0.9}, "quyết": {"ADMIN": 0.8},
-        "định": {"ADMIN": 0.6}, "tỉnh": {"ADMIN": 0.5, "DISASTER": 0.3}, "thành": {"ADMIN": 0.4},
-        "trao": {"ADMIN": 0.8}, "tặng": {"ADMIN": 0.8}, "phát": {"ADMIN": 0.5, "DISASTER": 0.3},
-        
-        # Disaster (Actual events)
-        "bão": {"DISASTER": 0.9, "ECONOMIC": 0.1}, "lũ": {"DISASTER": 1.0}, "ngập": {"DISASTER": 1.0, "ECONOMIC": 0.1},
-        "sạt": {"DISASTER": 1.0}, "lở": {"DISASTER": 1.0}, "thiên": {"DISASTER": 1.0}, "tai": {"DISASTER": 1.0},
-        "cứu": {"DISASTER": 0.9}, "hộ": {"DISASTER": 0.8, "ADMIN": 0.2}, "mất": {"DISASTER": 0.5},
-        "tích": {"DISASTER": 0.9}, "tử": {"DISASTER": 0.9}, "vong": {"DISASTER": 0.9}, "thiệt": {"DISASTER": 0.7},
-        "mạng": {"DISASTER": 0.5, "ENT": 0.5}, "chìm": {"DISASTER": 0.9}, "đắm": {"DISASTER": 0.9}
-    }
-
-    @classmethod
-    def predict(cls, text: str) -> dict:
-        text = text.lower()
-        words = re.findall(r"\w+", text)
-        scores = {intent: 0.0 for intent in cls.INTENTS}
-        
-        for w in words:
-            if w in cls.WEIGHTS:
-                for intent, weight in cls.WEIGHTS[w].items():
-                    scores[intent] += weight
-        
-        # Normalize
-        total = sum(scores.values())
-        if total > 0:
-            probs = {k: v/total for k, v in scores.items()}
-        else:
-            probs = {k: 0.0 for k in cls.INTENTS}
-            probs["DISASTER"] = 0.0 # Unknown
-            
-        top_intent = max(probs, key=probs.get)
-        return {"intent": top_intent, "probs": probs, "total_signal": total}
-
-intent_model = FastIntent()
-
 # CONSTANTS & CONFIG
 def dedupe_keep_order(items):
     seen = set()
@@ -2231,11 +2166,6 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     search_text = f"{title}\n{text}" if title and title not in text else text
     t_acc, t_no = risk_lookup.canon(search_text or "")
 
-    # [AI INTENT CHECK] Small Hybrid AI Model prediction
-    intent_res = intent_model.predict(search_text)
-    intent_label = intent_res["intent"]
-    intent_conf = intent_res["probs"].get(intent_label, 0.0)
-
     rule_matches = []
     hazard_counts = {}
     # Check Rules using Two-Channel Strategy
@@ -2510,9 +2440,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "is_province_match": best_prov != "unknown",
         "is_agency_match": agency_match is not None,
         "is_sensitive_location": len(sensitive_found) > 0,
-        "stage": event_stage, # Add the detected stage
-        "intent": intent_label,
-        "intent_conf": intent_conf
+        "stage": event_stage # Add the detected stage
     }
 
 def determine_event_stage(text: str) -> str:
@@ -2592,13 +2520,6 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
     # Calculate final signals and score
     sig = compute_disaster_signals(text, title=title, trusted_source=trusted_source, authority_level=authority_level)
     
-    # [HYBRID NLP] Semantic Intent Veto
-    # If the AI model identifies this as clearly NON-DISASTER (Economic, Sports, Ent)
-    # and the confidence is high, we reject even if keywords match.
-    if sig["intent"] in ["ECONOMIC", "SPORT", "ENT"] and sig["intent_conf"] > 0.65:
-        # High-confidence non-disaster intent
-        return False
-
     if sig["absolute_veto"]:
         return False
 
@@ -2614,9 +2535,8 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
     is_planning = any(pk in full_text.lower() for pk in PLANNING_PREP_KEYWORDS)
     
     # Article Mode Thresholds:
-    # Incident news passes at 8.5 (Raised from 7.0)
-    # Forecast news (Bulletins) needs 9.5+ (Raised from 8.0)
-    threshold = 9.5 if is_forecast else 8.5
+    # Increased to 10.0 for all types as per user request to be stricter for 'Pending'
+    threshold = 10.5 if is_forecast else 10.0
     
     if sig["score"] >= threshold:
         # Check if title is actually relevant or just mentions location
@@ -2634,11 +2554,9 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
 
 def diagnose(text: str, title: str = "", authority_level: int = 1) -> dict:
     sig = compute_disaster_signals(text, title=title, authority_level=authority_level)
-    reason = f"Score {sig['score']:.1f} < 8.5"
-    if sig["intent"] in ["ECONOMIC", "SPORT", "ENT"] and sig["intent_conf"] > 0.65:
-        reason = f"Intent Veto: Identified as {sig['intent']} ({sig['intent_conf']*100:.1f}%)"
-    elif sig["absolute_veto"]: reason = "Negative keyword match (Veto)"
-    elif sig["score"] >= 8.5: reason = "Passed (Score >= 8.5)"
+    reason = f"Score {sig['score']:.1f} < 10.0"
+    if sig["absolute_veto"]: reason = "Negative keyword match (Veto)"
+    elif sig["score"] >= 10.0: reason = "Passed (Score >= 10.0)"
     elif sig.get("rule_matches"): reason = f"Score too low. Met: {sig['rule_matches']}"
     
     return {"score": sig["score"], "signals": sig, "reason": reason}

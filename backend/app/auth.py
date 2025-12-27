@@ -10,6 +10,7 @@ from . import models, database, settings as app_settings
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
@@ -60,3 +61,16 @@ async def get_current_admin(current_user: models.User = Depends(get_current_user
             detail="The user doesn't have enough privileges",
         )
     return current_user
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[models.User]:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, app_settings.settings.secret_key, algorithms=[app_settings.settings.algorithm])
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+    except JWTError:
+        return None
+    
+    return db.query(models.User).filter(models.User.email == email).first()
