@@ -278,6 +278,7 @@ class Source:
     backup_rss: str | None = None   # Backup RSS URL
     note: str | None = None
     trusted: bool | None = False
+    authority_level: int = 1         # 1: Normal, 2: Trusted, 3: High Authority (Direct Gov/VTV)
 
 GNEWS_IMPACT_KEYWORDS = [ 
     "thiệt hại","tổn thất", "đổ nhà","đổ tường", "hư hỏng","cuốn trôi", "trôi nhà","ngập nhà","vỡ đê","tràn đê",
@@ -336,7 +337,8 @@ def load_sources_from_json(file_path: str) -> List[Source]:
             primary_rss=s.get("primary_rss"),
             backup_rss=s.get("backup_rss"),
             note=s.get("note"),
-            trusted=s.get("trusted", False)
+            trusted=s.get("trusted", False),
+            authority_level=s.get("authority_level", 2 if s.get("trusted") else 1)
         ))
     return sources
 

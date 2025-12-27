@@ -7,13 +7,46 @@ import re
 # Vietnamese stop words to improve similarity accuracy
 STOPWORDS = {
     "về", "của", "tại", "và", "những", "các", "là", "bị", "cho", "đến", "trong", "do",
-    "đã", "đang", "sẽ", "có", "một", "với", "này", "qua", "trên", "dưới", "tờ", "báo"
+    "đã", "đang", "sẽ", "có", "một", "với", "này", "qua", "trên", "dưới", "tờ", "báo",
+    "việc", "vừa", "mới", "vẫn", "được", "rất", "hay", "như", "nhưng", "nếu", "thì"
 }
 
 def _get_tokens(text):
-    tokens = re.findall(r"\w+", text.lower())
-    # Filter out stopwords and numeric-only tokens (like years or IDs)
-    return set(t for t in tokens if t not in STOPWORDS and not t.isdigit() and len(t) > 1)
+    if not text: return set(), set()
+    # Normalize: lowercase, remove special characters
+    text = re.sub(r"[^\w\s]", " ", text.lower())
+    words = [t for t in text.split() if t not in STOPWORDS and not t.isdigit() and len(t) > 1]
+    
+    # 1-grams
+    unigrams = set(words)
+    
+    # 2-grams (bigrams) for semantic context (e.g., "nước dâng", "mưa lớn")
+    bigrams = set()
+    if len(words) >= 2:
+        for i in range(len(words) - 1):
+            bigrams.add(f"{words[i]} {words[i+1]}")
+            
+    return unigrams, bigrams
+
+def _calculate_similarity(tokens1, tokens2):
+    """Calculates a hybrid Jaccard similarity for unigrams and bigrams."""
+    u1, b1 = tokens1
+    u2, b2 = tokens2
+    
+    # Unigram similarity
+    u_inter = len(u1 & u2)
+    u_union = len(u1 | u2)
+    u_sim = u_inter / u_union if u_union > 0 else 0.0
+    
+    # Bigram similarity (higher weight for semantic matching)
+    b_inter = len(b1 & b2)
+    b_union = len(b1 | b2)
+    b_sim = b_inter / b_union if b_union > 0 else 0.0
+    
+    # Weighted average: Bigrams are more specific
+    if b_union > 0:
+        return (u_sim * 0.4) + (b_sim * 0.6)
+    return u_sim
 
 def _get_impact_bucket(article: Article) -> str:
     """Creates a discrete string bucket based on impact severity."""
@@ -60,26 +93,19 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     new_tokens = _get_tokens(article.title)
     
     for cand in candidates:
-        # STRICT GROUPING: Covered by Event.disaster_type == article.disaster_type in query filter.
-        # This keeps (1) Incident, (2) Warning, (3) Recovery as separate events.
-
         cand_tokens = _get_tokens(cand.title)
-        intersection = len(new_tokens & cand_tokens)
-        union = len(new_tokens | cand_tokens)
-        title_sim = intersection / union if union > 0 else 0.0
+        title_sim = _calculate_similarity(new_tokens, cand_tokens)
         
-        # USER REQUIREMENT: Title similarity MUST be >= 80% regardless of location
-        if title_sim < 0.8:
+        # Semantic threshold: 0.7 for hybrid is quite restrictive and accurate
+        if title_sim < 0.7:
             continue
 
         score = title_sim
         
         # LOCATION BOOST: If same group & high title sim, use location to confirm the matches
         if article.commune and cand.commune and article.commune.lower() == cand.commune.lower():
-            score += 0.4
+            score += 0.3
         if article.village and cand.village and article.village.lower() == cand.village.lower():
-            score += 0.5
-        if article.route and cand.route and article.route.lower() == cand.route.lower():
             score += 0.4
             
         # The threshold for a definitive match remains high to ensure quality
@@ -144,6 +170,10 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             try:
                 loop = asyncio.get_running_loop()
                 loop.create_task(broadcast.publish_event(data))
+                
+                # Also Push via WebSocket
+                from .ws import manager
+                loop.create_task(manager.broadcast({"type": "EVENT_UPSERT", "data": data}))
             except RuntimeError:
                 # No running loop (likely running from a script or background worker outside FastAPI loop)
                 # We still append to buffer as publish_event does internally (but publish_event is async)
@@ -152,7 +182,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         except Exception:
             pass
 
-        # Email Notifications
+        # Telegram Notifications
         try:
             from .notifications import notify_users_of_event
             notify_users_of_event(db, ev)
@@ -249,9 +279,26 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     from .sources import SOURCES, VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
     from . import nlp
     
-    all_articles = ev.articles + [article]
+    # [OPTIMIZATION 3] Multi-Source Consolidation & Auto-Promotion
+    # Get all articles current linked to this event + the new one
+    all_articles = [a for a in ev.articles if a.id != article.id] + [article]
+    
+    unique_domains = {a.domain for a in all_articles if a.domain}
     sources_used = {a.source for a in all_articles}
     ev.sources_count = len(sources_used)
+
+    # If we have 3 or more unique domains reporting this, it's a strong consensus signal.
+    # We auto-promote all "pending" articles linked to this event.
+    if len(unique_domains) >= 3:
+        promoted = 0
+        for a in all_articles:
+            if a.status == "pending":
+                a.status = "approved"
+                promoted += 1
+        if promoted > 0:
+            print(f"   [AUTO-UPGRADE] Event ID {ev.id}: Promoted {promoted} articles to APPROVED based on consensus ({len(unique_domains)} sources).")
+            # We don't need to manually broadcast here as the main upsert_event_for_article loop
+            # sends an EVENT_UPSERT notification at the end of the process.
     
     # 1. Check for Strong Signals across all articles in this event
     trusted_map = {s.name: (s.trusted or False) for s in SOURCES}
@@ -323,11 +370,19 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             ev.confidence = 0.85
 
     article.event_id = ev.id
+
+    # Notification for followers
+    try:
+        from .notifications import notify_followers_of_article
+        notify_followers_of_article(db, ev, article)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Follower notification error: {e}")
     
     # Real-time Broadcast: Notify subscribers of event updates
     try:
         import asyncio
-        asyncio.create_task(broadcast.publish_event({
+        data = {
             "type": "event_updated",
             "event_id": ev.id,
             "title": ev.title,
@@ -340,7 +395,16 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             "confidence": ev.confidence,
             "sources_count": ev.sources_count,
             "last_updated": ev.last_updated_at.isoformat() if ev.last_updated_at else None
-        }))
+        }
+        asyncio.create_task(broadcast.publish_event(data))
+        
+        # Also Push via WebSocket
+        try:
+            from .ws import manager
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast({"type": "EVENT_UPSERT", "data": data}))
+        except (RuntimeError, ImportError):
+            pass
     except Exception:
         pass
 

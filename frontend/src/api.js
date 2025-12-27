@@ -57,6 +57,50 @@ export async function putJson(path, payload) {
   return res.json();
 }
 
+export async function postJson(path, payload) {
+  const token = localStorage.getItem("access_token");
+  const headers = { 
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+  const res = await fetch(API_BASE + path, { 
+    method: "POST", 
+    headers, 
+    body: JSON.stringify(payload) 
+  });
+  if (!res.ok) {
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+    }
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `API error ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function patchJson(path, payload = {}) {
+  const token = localStorage.getItem("access_token");
+  const headers = { 
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+  const res = await fetch(API_BASE + path, { 
+    method: "PATCH", 
+    headers, 
+    body: JSON.stringify(payload) 
+  });
+  if (!res.ok) {
+    if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+    }
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `API error ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function login(username, password) {
   const formData = new URLSearchParams();
   formData.append("username", username);

@@ -37,13 +37,7 @@ const TYPE_TONES = {
 // Extract provinces for dropdown
 // Must match PROVINCE_MAPPING keys in backend/app/nlp.py
 const PROVINCES = [
-  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
-  "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh",
-  "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình",
-  "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế",
-  "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa",
-  "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp",
-  "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
+  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
 ].sort();
 
 export default function Events() {
@@ -200,11 +194,11 @@ export default function Events() {
     fetchEvents(false);
   }, [q, type, province, startDate, endDate]);
 
-  // Auto-refresh every 15 seconds (reduced from 60s for better responsiveness)
+  // Auto-refresh every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       fetchEvents(true);
-    }, 15000); // 15 seconds
+    }, 300000); 
     return () => clearInterval(interval);
   }, [q, type, province, startDate, endDate]);
 

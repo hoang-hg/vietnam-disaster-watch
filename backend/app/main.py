@@ -5,6 +5,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from .settings import settings
 from .api import router as api_router
 from .auth_router import router as auth_router
+from .user_router import router as user_router
 from .crawler import process_once, _process_once_async
 
 app = FastAPI(
@@ -23,6 +24,20 @@ app.add_middleware(
 
 app.include_router(api_router)
 app.include_router(auth_router)
+app.include_router(user_router)
+
+from .ws import manager
+from fastapi import WebSocket
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, we don't expect client messages for now
+            await websocket.receive_text()
+    except Exception:
+        manager.disconnect(websocket)
 
 # Configure scheduler to handle slow jobs strictly
 # max_instances=2 allows overlap if one is stuck, but mostly fixes the warning.

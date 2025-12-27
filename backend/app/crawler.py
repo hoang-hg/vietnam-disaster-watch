@@ -67,7 +67,7 @@ except Exception:
 from sqlalchemy.orm import Session
 from .settings import settings
 from .database import SessionLocal, engine, Base
-from .models import Article, Blacklist
+from .models import Article, Blacklist, CrawlerStatus
 from .sources import SOURCES, build_gnews_rss, CONFIG
 from . import nlp
 from .dedup import find_duplicate_article, get_article_hash, normalize_url
@@ -421,7 +421,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     # ---------------------------------------------------------
                     # 1. TIERED FILTERING: 3-Tier Scoring System (User Adjusted)
                     # ---------------------------------------------------------
-                    diag = nlp.diagnose(text_for_nlp, title=title)
+                    diag = nlp.diagnose(text_for_nlp, title=title, authority_level=src.authority_level)
                     score = diag["score"]
 
                     # Logic for upgrading Pending -> Approved
@@ -571,9 +571,12 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         db.add(article)
                         db.flush()
                         
-                        # Only update events for APPROVED articles
-                        if status == "approved":
+                        # Process event matching for both Approved and Pending articles
+                        # This allows "pending" articles to contribute to event metadata (multi-source count)
+                        if status in ("approved", "pending"):
                             upsert_event_for_article(db, article)
+
+                        if status == "approved":
                             print(f"   [ADDED] {src.name}: {title[:70]}...")
                         else:
                             print(f"   [PENDING] {src.name}: {title[:70]}... (Score: {score:.1f})")
@@ -736,9 +739,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             # Pre-filter using main NLP: 
                             # - Explicitly check using full NLP (Veto/Rules)
                             # - Pass trusted_source=src.trusted to allow lighter threshold for official sources
-                            if not nlp.contains_disaster_keywords(summary_raw_scraper, title=title, trusted_source=src.trusted):
+                            if not nlp.contains_disaster_keywords(summary_raw_scraper, title=title, trusted_source=src.trusted, authority_level=src.authority_level):
                                 article_hash = get_article_hash(title, src.domain)
-                                diag = nlp.diagnose(summary_raw_scraper, title=title)
+                                diag = nlp.diagnose(summary_raw_scraper, title=title, authority_level=src.authority_level)
                                 print(f"[SKIP] {src.name} #{article_hash}: nlp-rejected score={diag['score']:.1f} reason={diag['reason']}")
                                 continue
                             
@@ -864,7 +867,32 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             
             stat["articles_added"] = src_info["articles_added"]
             per_source_stats.append(stat)
-            db.commit()
+            
+            # Update CrawlerStatus table for this source
+            try:
+                c_status = db.query(CrawlerStatus).filter(CrawlerStatus.source_name == src.name).first()
+                if not c_status:
+                    c_status = CrawlerStatus(source_name=src.name)
+                    db.add(c_status)
+                
+                c_status.last_run_at = datetime.utcnow()
+                c_status.articles_added = src_info["articles_added"]
+                c_status.latency_ms = int(stat.get("elapsed", 0) * 1000)
+                
+                if stat.get("error"):
+                    c_status.status = "error"
+                    c_status.last_error = stat["error"]
+                elif stat.get("feed_used") and "gnews" in stat["feed_used"] and ("primary_rss" not in stat["feed_used"]):
+                    c_status.status = "warning"
+                    c_status.last_error = "Using GNews fallback"
+                else:
+                    c_status.status = "success"
+                    c_status.last_error = None
+                
+                db.commit()
+            except Exception as e:
+                print(f"[WARN] Failed to update CrawlerStatus for {src.name}: {e}")
+                db.rollback()
             
         total_elapsed = time.perf_counter() - start_total
         print(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
@@ -886,6 +914,14 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             print(f"[WARN] failed writing crawl log: {e}")
 
         return {"new_articles": new_count, "timestamp": datetime.now(timezone.utc).isoformat(), "elapsed": total_elapsed, "per_source": per_source_stats}
+    except Exception as e:
+        print(f"[CRITICAL] crawler cycle failed: {e}")
+        try:
+            from .notifications import send_system_health_alert
+            asyncio.create_task(send_system_health_alert(f"Crawler cycle failed: {str(e)[:200]}"))
+        except:
+             pass
+        raise e
     finally:
         db.close()
 

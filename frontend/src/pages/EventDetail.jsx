@@ -4,13 +4,15 @@ import {
   getJson,
   deleteJson,
   putJson,
+  postJson,
   fmtType,
   fmtDate,
   fmtTimeAgo,
   fmtVndBillion,
 } from "../api.js";
-import Badge from "../components/Badge.jsx";
-import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw } from "lucide-react";
+import { Helmet } from "react-helmet-async";
+import { API_BASE } from "../api.js";
 
 const TYPE_TONES = {
   storm: "blue",
@@ -33,7 +35,7 @@ const TYPE_TONES = {
 };
 
 const PROVINCES = [
-  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
+  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
 ].sort();
 
 const HAZARD_TYPES = [
@@ -44,15 +46,15 @@ const HAZARD_TYPES = [
   { id: "subsidence", label: "Sụt lún đất" },
   { id: "drought", label: "Hạn hán" },
   { id: "salinity", label: "Xâm nhập mặn" },
-  { id: "extreme_weather", label: "Mưa lớn, Lốc, Sét, Đá" },
+  { id: "extreme_weather", label: "Mưa lớn, Lốc, Sét, Mưa Đá" },
   { id: "heatwave", label: "Nắng nóng" },
   { id: "cold_surge", label: "Rét hại, Sương muối" },
   { id: "earthquake", label: "Động đất" },
   { id: "tsunami", label: "Sóng thần" },
   { id: "storm_surge", label: "Nước dâng" },
   { id: "wildfire", label: "Cháy rừng" },
-  { id: "warning_forecast", label: "Tin cảnh báo, dự báo" },
-  { id: "recovery", label: "Tin khắc phục hậu quả" }
+  { id: "warning_forecast", label: "Cảnh báo, dự báo" },
+  { id: "recovery", label: "Khắc phục hậu quả" }
 ];
 
 const isJunkImage = (url) => {
@@ -118,9 +120,63 @@ export default function EventDetail() {
     }
   };
 
+  const [isReclassifying, setIsReclassifying] = useState(null);
+
   const handleStartEdit = () => {
     setEditForm({ ...ev });
     setIsEditing(true);
+  };
+
+  const submitReclassification = async (correctedType) => {
+    if (!isReclassifying) return;
+    try {
+        await postJson("/api/admin/ai-feedback", {
+            article_id: isReclassifying.id,
+            corrected_type: correctedType,
+            comment: "Manual reclassification from Event Detail"
+        });
+        // Update local article list
+        setEv(prev => ({
+            ...prev,
+            articles: prev.articles.map(a => a.id === isReclassifying.id ? {...a, disaster_type: correctedType} : a)
+        }));
+        setIsReclassifying(null);
+    } catch (err) {
+        alert("Phân loại lại thất bại: " + err.message);
+    }
+  };
+
+  const handleExportExcel = () => {
+    const token = localStorage.getItem("access_token");
+    window.open(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel&token=${token}`, '_blank');
+  };
+
+  const handleExportPdf = () => {
+    const token = localStorage.getItem("access_token");
+    window.open(`${API_BASE}/api/admin/export/event/${ev.id}?format=pdf&token=${token}`, '_blank');
+  };
+
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  useEffect(() => {
+    if (user && ev?.id) {
+      getJson(`/api/user/events/${ev.id}/is-following`)
+        .then(data => setIsFollowing(data.is_following))
+        .catch(console.error);
+    }
+  }, [user, ev?.id]);
+
+  const toggleFollow = async () => {
+    if (!user) {
+      alert("Vui lòng đăng nhập để theo dõi sự kiện.");
+      return;
+    }
+    try {
+      const res = await postJson(`/api/user/events/${ev.id}/follow`);
+      setIsFollowing(res.status === "followed");
+    } catch (err) {
+      alert("Lỗi: " + err.message);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -176,6 +232,24 @@ export default function EventDetail() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 report-container">
+      <Helmet>
+        <title>{`${fmtType(ev.disaster_type)} tại ${ev.province || "Việt Nam"} | VDW`}</title>
+        <meta name="description" content={ev.summary?.substring(0, 160) || "Cập nhật diễn biến thiên tai mới nhất."} />
+        
+        {/* OpenGraph / Facebook */}
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={`${fmtType(ev.disaster_type)} tại ${ev.province || "Việt Nam"}`} />
+        <meta property="og:description" content={ev.summary?.substring(0, 200) || "Cập nhật diễn biến thiên tai."} />
+        {ev.articles?.[0]?.image_url && !isJunkImage(ev.articles[0].image_url) && (
+             <meta property="og:image" content={ev.articles[0].image_url} />
+        )}
+        <meta property="og:url" content={window.location.href} />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${fmtType(ev.disaster_type)} tại ${ev.province || "Việt Nam"}`} />
+        <meta name="twitter:description" content={ev.summary?.substring(0, 200) || "Cập nhật diễn biến thiên tai."} />
+      </Helmet>
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -197,13 +271,29 @@ export default function EventDetail() {
         {isAdmin && (
           <div className="flex gap-2">
             {!isEditing ? (
-              <button 
-                onClick={handleStartEdit}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
-              >
-                <Edit2 className="w-4 h-4" />
-                <span>Chỉnh sửa</span>
-              </button>
+              <>
+                <button 
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Xuất Excel</span>
+                </button>
+                <button 
+                  onClick={handleExportPdf}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Xuất PDF</span>
+                </button>
+                <button 
+                  onClick={handleStartEdit}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  <span>Chỉnh sửa</span>
+                </button>
+              </>
             ) : (
                 <>
                 <button 
@@ -257,9 +347,9 @@ export default function EventDetail() {
         </div>
       </div>
 
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-2xl font-semibold leading-snug text-gray-900">
+      <div className="flex flex-col lg:flex-row items-start justify-between gap-6 mb-8 pb-6 border-b border-slate-100">
+        <div className="flex-1 space-y-4">
+          <div className="text-3xl font-black leading-tight text-slate-900 tracking-tight">
             {isEditing ? (
               <input 
                 value={editForm.title}
@@ -268,58 +358,108 @@ export default function EventDetail() {
               />
             ) : ev.title}
           </div>
-          <div className="mt-2 text-sm text-gray-600 flex flex-wrap gap-2 items-center">
-            {isEditing ? (
-              <select 
-                value={editForm.province}
-                onChange={e => setEditForm({...editForm, province: e.target.value})}
-                className="border rounded px-1 py-0.5 bg-white"
-              >
-                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            ) : <span>{ev.province}</span>}
-            <span>•</span>
-            <span>Bắt đầu: {fmtDate(ev.started_at)}</span>
-            <span>•</span>
-            <span>
-              Cập nhật: {fmtTimeAgo(ev.last_updated_at)} (
-              {fmtDate(ev.last_updated_at)})
+
+          <div className="text-sm font-medium text-slate-500 flex flex-wrap gap-x-4 gap-y-2 items-center">
+            <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md text-slate-700">
+               <MapPin className="w-3.5 h-3.5 text-slate-400" />
+               {isEditing ? (
+                <select 
+                  value={editForm.province}
+                  onChange={e => setEditForm({...editForm, province: e.target.value})}
+                  className="bg-transparent focus:outline-none cursor-pointer"
+                >
+                  {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              ) : <span>{ev.province || "Cả nước"}</span>}
+            </div>
+            <span className="flex items-center gap-1.5">
+               <Calendar className="w-3.5 h-3.5 text-slate-400" />
+               Bắt đầu: {fmtDate(ev.started_at)}
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="flex items-center gap-1.5 italic text-xs">
+              Cập nhật {fmtTimeAgo(ev.last_updated_at)} ({fmtDate(ev.last_updated_at)})
             </span>
           </div>
         </div>
+
+        <div className="flex flex-col sm:flex-row lg:flex-col items-end gap-4 min-w-fit">
+          {/* Status Badges */}
           <div className="flex flex-col items-end gap-2">
             {isEditing ? (
               <select 
                 value={editForm.disaster_type}
                 onChange={e => setEditForm({...editForm, disaster_type: e.target.value})}
-                className="border rounded px-2 py-1 bg-white text-sm font-bold"
+                className="border rounded px-2 py-1 bg-white text-sm font-bold shadow-sm"
               >
                 {HAZARD_TYPES.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
               </select>
             ) : (
-              <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"}>
+              <Badge tone={TYPE_TONES[ev.disaster_type] || "slate"} className="px-3 py-1 font-black uppercase text-[10px] tracking-widest">
                 {fmtType(ev.disaster_type)}
               </Badge>
             )}
             
             {isEditing ? (
-               <label className="flex items-center gap-2 text-xs font-bold text-red-600">
-                 <input 
-                   type="checkbox" 
-                   checked={editForm.needs_verification === 1}
-                   onChange={e => setEditForm({...editForm, needs_verification: e.target.checked ? 1 : 0})}
-                 />
-                 Cần kiểm chứng
-               </label>
+                <label className="flex items-center gap-2 text-[10px] font-black text-red-600 uppercase">
+                  <input 
+                    type="checkbox" 
+                    checked={editForm.needs_verification === 1}
+                    onChange={e => setEditForm({...editForm, needs_verification: e.target.checked ? 1 : 0})}
+                  />
+                  Cần kiểm chứng
+                </label>
             ) : ev.needs_verification === 1 && (
-              <Badge tone="red">
+              <Badge tone="red" className="text-[9px] font-bold">
                 Dữ liệu cần kiểm chứng
               </Badge>
             )}
-            <div className="text-xs text-gray-600">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
               Tổng hợp từ {ev.sources_count} báo
             </div>
           </div>
+
+          {/* Quick Share Buttons */}
+          <div className="no-print flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+            <button
+               onClick={toggleFollow}
+               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm hover:shadow-md ${
+                 isFollowing 
+                   ? "bg-slate-800 text-yellow-400" 
+                   : "bg-white text-slate-700 hover:bg-slate-50"
+               }`}
+            >
+               {isFollowing ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5 text-blue-600" />}
+               <span>{isFollowing ? "ĐANG THEO DÕI" : "THEO DÕI"}</span>
+            </button>
+            <div className="w-px h-6 bg-slate-200 mx-1"></div>
+            <div className="px-2 text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:block">Chia sẻ</div>
+            <a 
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="p-2 bg-white text-[#1877F2] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/fb"
+              title="Facebook"
+            >
+                <Facebook className="w-4 h-4 group-hover/fb:scale-110 transition-transform" />
+            </a>
+            <a 
+              href={`https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodeURIComponent(ev.title)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="p-2 bg-white text-[#26A5E4] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/tg"
+              title="Telegram"
+            >
+                <Send className="w-4 h-4 group-hover/tg:scale-110 transition-transform" />
+            </a>
+            <a 
+              href={`https://zalo.me/s/share?link=${encodeURIComponent(window.location.href)}`}
+              target="_blank" rel="noopener noreferrer"
+              className="px-3 py-2 bg-white text-[#0068FF] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all font-black text-[10px] flex items-center gap-1 group/zl"
+              title="Zalo"
+            >
+                <span className="group-hover/zl:scale-110 transition-transform tracking-tighter">ZALO</span>
+            </a>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-3">
@@ -632,13 +772,22 @@ export default function EventDetail() {
                     {a.is_broken && <span className="ml-2 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">BÀI GỐC ĐÃ GỠ</span>}
                   </a>
                   {isAdmin && (
-                      <button
-                          onClick={(e) => handleDeleteArticle(e, a.id)}
-                          className="p-2 ml-2 flex-shrink-0 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors no-print"
-                          title="Xóa bài báo (Admin)"
-                      >
-                          <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-1 no-print">
+                        <button
+                            onClick={() => setIsReclassifying({id: a.id, currentType: a.disaster_type})}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                            title="Phân loại lại AI"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                            onClick={(e) => handleDeleteArticle(e, a.id)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            title="Xóa bài báo (Admin)"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                   )}
                 </div>
                 <div className="mt-1 text-xs text-gray-600 flex flex-wrap gap-2">
@@ -700,6 +849,40 @@ export default function EventDetail() {
             ))}
         </div>
       </div>
+      {/* Reclassification Modal */}
+      {isReclassifying && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4 no-print">
+            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Phân loại lại AI</h3>
+                    <button onClick={() => setIsReclassifying(null)} className="p-2 text-slate-400 hover:text-slate-600">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="p-6">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Chọn loại thiên tai chính xác:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                        {HAZARD_TYPES.map(type => (
+                            <button
+                                key={type.id}
+                                onClick={() => submitReclassification(type.id)}
+                                className={`px-4 py-3 rounded-xl border-2 transition-all font-bold text-sm text-left ${
+                                    isReclassifying.currentType === type.id 
+                                    ? "bg-slate-800 text-white border-slate-800 shadow-lg" 
+                                    : "border-slate-100 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                                }`}
+                            >
+                                {type.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="p-4 bg-slate-50 text-center">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Hệ thống sẽ ghi nhận Feedback để tự huấn luyện</p>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 }

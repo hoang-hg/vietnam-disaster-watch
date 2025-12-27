@@ -6,7 +6,8 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+    @apply dark:bg-[#0f172a] dark:text-slate-100;
     font-family: 'Be Vietnam Pro', sans-serif;
   }
 }

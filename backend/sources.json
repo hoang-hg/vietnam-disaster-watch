@@ -334,7 +334,8 @@
       "primary_rss": "https://vtv.vn/rss/xa-hoi.rss",
       "backup_rss": "https://vtv.vn/rss/home.rss",
       "note": "Updated to Official RSS",
-      "trusted": true
+      "trusted": true,
+      "authority_level": 3
     },
     {
       "name": "Nông Nghiệp & Môi trường",
@@ -374,7 +375,8 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "Using HTML Scraper fallback.",
-      "trusted": true
+      "trusted": true,
+      "authority_level": 3
     },
     {
       "name": "KTTV Ninh Bình",
@@ -398,7 +400,8 @@
       "primary_rss": null,
       "backup_rss": null,
       "note": "User requested; fallback to GNews",
-      "trusted": true
+      "trusted": true,
+      "authority_level": 3
     },
     {
       "name": "PCTT Hà Nội",
@@ -430,7 +433,8 @@
       "primary_rss": "https://igp-vast.vn/tin-tuc.rss",
       "backup_rss": null,
       "note": "Nguồn DUY NHẤT tin động đất & sóng thần chính thức.",
-      "trusted": true
+      "trusted": true,
+      "authority_level": 3
     },
     {
       "name": "Báo Nông nghiệp VN",

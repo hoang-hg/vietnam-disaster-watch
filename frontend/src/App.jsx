@@ -9,6 +9,7 @@ import About from "./pages/About.jsx";
 import AdminSkipLogs from "./pages/AdminSkipLogs.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
+import RescuePage from "./pages/Rescue.jsx";
 import { Navigate } from "react-router-dom";
 
 function ProtectedRoute({ children, roleRequired }) {
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/about" element={<About />} />
+          <Route path="/rescue" element={<RescuePage />} />
           <Route path="/admin/logs" element={
             <ProtectedRoute roleRequired="admin">
               <AdminSkipLogs />

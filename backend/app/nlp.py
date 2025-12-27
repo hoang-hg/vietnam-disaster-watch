@@ -10,6 +10,71 @@ from . import risk_lookup
 
 logger = logging.getLogger(__name__)
 
+# [HYBRID NLP] Micro-Intent Classifier (FastText-inspired)
+# A high-performance linear classifier using weighted semantic density.
+class FastIntent:
+    INTENTS = ["DISASTER", "ECONOMIC", "SPORT", "ENT", "ADMIN"]
+    
+    # Pre-baked weights for top semantic markers
+    WEIGHTS = {
+        # Economic (Gold, stocks, pricing metaphors)
+        "giá": {"ECONOMIC": 0.8}, "vàng": {"ECONOMIC": 0.9}, "lãi": {"ECONOMIC": 0.7}, "suất": {"ECONOMIC": 0.7},
+        "chứng": {"ECONOMIC": 0.9}, "khoán": {"ECONOMIC": 0.9}, "bất": {"ECONOMIC": 0.5}, "động": {"ECONOMIC": 0.4, "DISASTER": 0.3}, # Ambiguous (động đất vs BĐS)
+        "sản": {"ECONOMIC": 0.6}, "đầu": {"ECONOMIC": 0.5, "SPORT": 0.3}, "tư": {"ECONOMIC": 0.7}, "thị": {"ECONOMIC": 0.6},
+        "trường": {"ECONOMIC": 0.6}, "doanh": {"ECONOMIC": 0.8}, "nghiệp": {"ECONOMIC": 0.8}, "tài": {"ECONOMIC": 0.7},
+        "chính": {"ECONOMIC": 0.6, "ADMIN": 0.6}, "tỷ": {"ECONOMIC": 0.8}, "tỉ": {"ECONOMIC": 0.8}, "đô": {"ECONOMIC": 0.9},
+        
+        # Sport (Football, scores, medals)
+        "bóng": {"SPORT": 0.9}, "đá": {"SPORT": 0.9, "DISASTER": 0.3}, # Ambiguous (đá bóng vs sạt lở đá)
+        "cầu": {"SPORT": 0.7, "DISASTER": 0.2}, "thủ": {"SPORT": 0.9}, "đội": {"SPORT": 0.6}, "tuyển": {"SPORT": 0.8},
+        "bàn": {"SPORT": 0.9}, "thắng": {"SPORT": 0.9}, "trận": {"SPORT": 0.8}, "đấu": {"SPORT": 0.8},
+        "huy": {"SPORT": 0.9}, "chương": {"SPORT": 0.9}, "vô": {"SPORT": 0.8}, "địch": {"SPORT": 0.8},
+        "huấn": {"SPORT": 0.9}, "luyện": {"SPORT": 0.9}, "viên": {"SPORT": 0.9}, "cup": {"SPORT": 1.0},
+        
+        # Entertainment (Showbiz, idols, social drama)
+        "nghệ": {"ENT": 0.9}, "sĩ": {"ENT": 0.9}, "ca": {"ENT": 0.8}, "diễn": {"ENT": 0.8},
+        "showbiz": {"ENT": 1.0}, "drama": {"ENT": 1.0}, "mạng": {"ENT": 0.7, "DISASTER": 0.2},
+        "hậu": {"ENT": 0.8}, "hoa": {"ENT": 0.7}, "phim": {"ENT": 0.9}, "liveshow": {"ENT": 1.0},
+        "scandal": {"ENT": 1.0}, "idol": {"ENT": 1.0}, "view": {"ENT": 0.9}, "like": {"ENT": 0.8},
+        
+        # Admin / Social (Conferences, awards, policies)
+        "hội": {"ADMIN": 0.8}, "nghị": {"ADMIN": 0.9}, "biểu": {"ADMIN": 0.7}, "ban": {"ADMIN": 0.6},
+        "chấp": {"ADMIN": 0.8}, "hành": {"ADMIN": 0.7}, "ủy": {"ADMIN": 0.9}, "quyết": {"ADMIN": 0.8},
+        "định": {"ADMIN": 0.6}, "tỉnh": {"ADMIN": 0.5, "DISASTER": 0.3}, "thành": {"ADMIN": 0.4},
+        "trao": {"ADMIN": 0.8}, "tặng": {"ADMIN": 0.8}, "phát": {"ADMIN": 0.5, "DISASTER": 0.3},
+        
+        # Disaster (Actual events)
+        "bão": {"DISASTER": 0.9, "ECONOMIC": 0.1}, "lũ": {"DISASTER": 1.0}, "ngập": {"DISASTER": 1.0, "ECONOMIC": 0.1},
+        "sạt": {"DISASTER": 1.0}, "lở": {"DISASTER": 1.0}, "thiên": {"DISASTER": 1.0}, "tai": {"DISASTER": 1.0},
+        "cứu": {"DISASTER": 0.9}, "hộ": {"DISASTER": 0.8, "ADMIN": 0.2}, "mất": {"DISASTER": 0.5},
+        "tích": {"DISASTER": 0.9}, "tử": {"DISASTER": 0.9}, "vong": {"DISASTER": 0.9}, "thiệt": {"DISASTER": 0.7},
+        "mạng": {"DISASTER": 0.5, "ENT": 0.5}, "chìm": {"DISASTER": 0.9}, "đắm": {"DISASTER": 0.9}
+    }
+
+    @classmethod
+    def predict(cls, text: str) -> dict:
+        text = text.lower()
+        words = re.findall(r"\w+", text)
+        scores = {intent: 0.0 for intent in cls.INTENTS}
+        
+        for w in words:
+            if w in cls.WEIGHTS:
+                for intent, weight in cls.WEIGHTS[w].items():
+                    scores[intent] += weight
+        
+        # Normalize
+        total = sum(scores.values())
+        if total > 0:
+            probs = {k: v/total for k, v in scores.items()}
+        else:
+            probs = {k: 0.0 for k in cls.INTENTS}
+            probs["DISASTER"] = 0.0 # Unknown
+            
+        top_intent = max(probs, key=probs.get)
+        return {"intent": top_intent, "probs": probs, "total_signal": total}
+
+intent_model = FastIntent()
+
 # CONSTANTS & CONFIG
 def dedupe_keep_order(items):
     seen = set()
@@ -491,9 +556,8 @@ NUMBER_WORDS = {
 # 34 PROVINCES MAPPING (NEW - Effective July 1, 2025)
 # Format: New_Name -> List of Old_Names/Variants to match in text
 PROVINCE_MAPPING = {
-    # I. Units kept as is (11 units)
-    "Hà Nội": ["Hà Nội", "HN", "Ha Noi", "Thủ đô Hà Nội"],
-    "Huế": ["Huế", "Thành phố Huế", "TP Huế", "Thừa Thiên Huế", "TT Huế", "Thua Thien Hue"],
+    "TP. Hà Nội": ["Hà Nội", "HN", "Ha Noi", "Thủ đô Hà Nội"],
+    "TP. Huế": ["Huế", "Thành phố Huế", "TP Huế", "Thừa Thiên Huế", "TT Huế", "Thua Thien Hue"],
     "Lai Châu": ["Lai Châu", "Lai Chau"],
     "Điện Biên": ["Điện Biên", "Dien Bien"],
     "Sơn La": ["Sơn La", "Son La"],
@@ -503,31 +567,29 @@ PROVINCE_MAPPING = {
     "Nghệ An": ["Nghệ An", "Nghe An"],
     "Hà Tĩnh": ["Hà Tĩnh", "Ha Tinh"],
     "Cao Bằng": ["Cao Bằng", "Cao Bang"],
-
-    # II. New units formed by merger (23 units)
     "Tuyên Quang": ["Tuyên Quang", "Hà Giang", "Ha Giang", "Tuyen Quang"],
     "Lào Cai": ["Lào Cai", "Yên Bái", "Yen Bai", "Lao Cai"],
     "Thái Nguyên": ["Thái Nguyên", "Bắc Kạn", "Bac Kan", "Thai Nguyen"],
     "Phú Thọ": ["Phú Thọ", "Vĩnh Phúc", "Hòa Bình", "Phu Tho", "Vinh Phuc", "Hoa Binh"],
     "Bắc Ninh": ["Bắc Ninh", "Bắc Giang", "Bac Ninh", "Bac Giang"],
     "Hưng Yên": ["Hưng Yên", "Thái Bình", "Hung Yen", "Thai Binh"],
-    "Hải Phòng": ["Hải Phòng", "Hải Dương", "Hai Phong", "Hai Duong", "HP"],
+    "TP. Hải Phòng": ["Hải Phòng", "Hải Dương", "Hai Phong", "Hai Duong", "HP"],
     "Ninh Bình": ["Ninh Bình", "Hà Nam", "Nam Định", "Ninh Binh", "Ha Nam", "Nam Dinh"],
     "Quảng Trị": ["Quảng Trị", "Quảng Bình", "Quang Tri", "Quang Binh"],
-    "Đà Nẵng": ["Đà Nẵng", "Quảng Nam", "Da Nang", "Quang Nam", "ĐN"],
+    "TP. Đà Nẵng": ["Đà Nẵng", "Quảng Nam", "Da Nang", "Quang Nam", "ĐN"],
     "Quảng Ngãi": ["Quảng Ngãi", "Kon Tum", "Quang Ngai", "Kon Tum", "QNg"],
     "Gia Lai": ["Gia Lai", "Bình Định", "Gia Lai", "Binh Dinh"],
-    "Khánh Hòa": ["Khánh Hòa", "Ninh Thuận", "Khanh Hoa", "Ninh Thuan"],
-    "Lâm Đồng": ["Lâm Đồng", "Đắk Nông", "Bình Thuận", "Lam Dong", "Dak Nong", "Binh Thuan"],
-    "TP Hồ Chí Minh": ["Hồ Chí Minh", "TP.HCM", "TPHCM", "Sài Gòn", "Bà Rịa - Vũng Tàu", "Bà Rịa", "Vũng Tàu", "Bình Dương", "HCMC", "Sai Gon", "BRVT", "Binh Duong", "SG"],
+    "Đắk Lắk": ["Đắk Lắk", "Đắk Nông", "Dak Lak", "Dak Nong"],
+    "Khánh Hòa": ["Khánh Hòa", "Ninh Thuận", "Phú Yên", "Khanh Hoa", "Ninh Thuan", "Phu Yen"],
+    "Lâm Đồng": ["Lâm Đồng", "Bình Thuận", "Lam Dong", "Binh Thuan"],
+    "TP. Hồ Chí Minh": ["Hồ Chí Minh", "TP.HCM", "TPHCM", "Sài Gòn", "Bà Rịa - Vũng Tàu", "Bà Rịa", "Vũng Tàu", "Bình Dương", "HCMC", "Sai Gon", "BRVT", "Binh Duong", "SG"],
     "Đồng Nai": ["Đồng Nai", "Bình Phước", "Dong Nai", "Binh Phuoc"],
-    "Long An": ["Long An", "Tây Ninh", "Long An", "Tay Ninh"],
+    "Tây Ninh": ["Tây Ninh", "Long An", "Tay Ninh", "Long An"],
+    "Đồng Tháp": ["Đồng Tháp", "Tiền Giang", "Bến Tre", "Dong Thap", "Tien Giang", "Ben Tre"],
     "An Giang": ["An Giang", "Kiên Giang", "An Giang", "Kien Giang"],
-    "Cần Thơ": ["Cần Thơ", "Hậu Giang", "Sóc Trăng", "Can Tho", "Hau Giang", "Soc Trang"],
-    "Tiền Giang": ["Tiền Giang", "Bến Tre", "Tien Giang", "Ben Tre"],
-    "Vĩnh Long": ["Vĩnh Long", "Đồng Tháp", "Vinh Long", "Dong Thap"],
-    "Bạc Liêu": ["Bạc Liêu", "Cà Mau", "Bac Lieu", "Ca Mau"],
-    "Trà Vinh": ["Trà Vinh", "Tra Vinh"]
+    "Vĩnh Long": ["Vĩnh Long", "Trà Vinh", "Vinh Long", "Tra Vinh"],
+    "TP. Cần Thơ": ["Cần Thơ", "Hậu Giang", "Sóc Trăng", "Can Tho", "Hau Giang", "Soc Trang"],
+    "Cà Mau": ["Cà Mau", "Bạc Liêu", "Ca Mau", "Bac Lieu"]
 }
 
 # Deduplicate province variants
@@ -538,8 +600,8 @@ PROVINCES = list(PROVINCE_MAPPING.keys())
 
 # Geographic coordinates for the 34 provinces (Approximate Center)
 PROVINCE_COORDINATES = {
-    "Hà Nội": [21.0285, 105.8542],
-    "Huế": [16.4637, 107.5908],
+    "TP. Hà Nội": [21.0285, 105.8542],
+    "TP. Huế": [16.4637, 107.5908],
     "Lai Châu": [22.3846, 103.4641],
     "Điện Biên": [21.3852, 103.0235],
     "Sơn La": [21.3259, 103.9126],
@@ -549,29 +611,29 @@ PROVINCE_COORDINATES = {
     "Nghệ An": [19.0000, 105.0000],
     "Hà Tĩnh": [18.3444, 105.9056],
     "Cao Bằng": [22.6667, 106.2500],
-    "Tuyên Quang": [22.0000, 105.2500], # Merged Tuyen Quang/Ha Giang
-    "Lào Cai": [22.4833, 103.9667],    # Merged Lao Cai/Yen Bai
-    "Thái Nguyên": [21.5928, 105.8442], # Merged Thai Nguyen/Bac Kan
-    "Phú Thọ": [21.3236, 105.2111],    # Merged Phu Tho/Vinh Phuc/Hoa Binh
-    "Bắc Ninh": [21.1833, 106.0667],    # Merged Bac Ninh/Bac Giang
-    "Hưng Yên": [20.6500, 106.0500],    # Merged Hung Yen/Thai Binh
-    "Hải Phòng": [20.8449, 106.6881],   # Merged Hai Phong/Hai Duong
-    "Ninh Bình": [20.2539, 105.9750],   # Merged Ninh Binh/Ha Nam/Nam Dinh
-    "Quảng Trị": [16.7500, 107.1667],   # Merged Quang Tri/Quang Binh
-    "Đà Nẵng": [16.0544, 108.2022],    # Merged Da Nang/Quang Nam
-    "Quảng Ngãi": [15.1206, 108.8042],  # Merged Quang Ngai/Kon Tum
-    "Gia Lai": [14.0000, 108.0000],     # Merged Gia Lai/Binh Dinh
-    "Khánh Hòa": [12.2500, 109.1833],   # Merged Khanh Hoa/Ninh Thuan
-    "Lâm Đồng": [11.9464, 108.4419],   # Merged Lam Dong/Dak Nong/Binh Thuan
-    "TP Hồ Chí Minh": [10.8231, 106.6297], # Merged HCMC/BRVT/Binh Duong
-    "Đồng Nai": [11.0000, 107.0000],    # Merged Dong Nai/Binh Phuoc
-    "Long An": [10.5333, 106.4167],     # Merged Long An/Tay Ninh
-    "An Giang": [10.3833, 105.4333],    # Merged An Giang/Kien Giang
-    "Cần Thơ": [10.0333, 105.7833],     # Merged Can Tho/Hau Giang/Soc Trang
-    "Tiền Giang": [10.4167, 106.3667],  # Merged Tien Giang/Ben Tre
-    "Vĩnh Long": [10.2500, 105.9667],   # Merged Vinh Long/Dong Thap
-    "Bạc Liêu": [9.2833, 105.7167],     # Merged Bac Lieu/Ca Mau
-    "Trà Vinh": [9.9500, 106.3333]
+    "Tuyên Quang": [22.0000, 105.2500],
+    "Lào Cai": [22.4833, 103.9667],
+    "Thái Nguyên": [21.5928, 105.8442],
+    "Phú Thọ": [21.3236, 105.2111],
+    "Bắc Ninh": [21.1833, 106.0667],
+    "Hưng Yên": [20.6500, 106.0500],
+    "TP. Hải Phòng": [20.8449, 106.6881],
+    "Ninh Bình": [20.2539, 105.9750],
+    "Quảng Trị": [16.7500, 107.1667],
+    "TP. Đà Nẵng": [16.0544, 108.2022],
+    "Quảng Ngãi": [15.1206, 108.8042],
+    "Gia Lai": [14.0000, 108.0000],
+    "Đắk Lắk": [12.6667, 108.0500],
+    "Khánh Hòa": [12.2500, 109.1833],
+    "Lâm Đồng": [11.9464, 108.4419],
+    "TP. Hồ Chí Minh": [10.8231, 106.6297],
+    "Đồng Nai": [11.0000, 107.0000],
+    "Tây Ninh": [11.3000, 106.1667],
+    "Đồng Tháp": [10.5000, 105.6667],
+    "An Giang": [10.3833, 105.4333],
+    "Vĩnh Long": [10.2500, 105.9667],
+    "TP. Cần Thơ": [10.0333, 105.7833],
+    "Cà Mau": [9.1833, 105.1500]
 }
 
 PROVINCE_REGIONS = [
@@ -2163,11 +2225,16 @@ def extract_disaster_metrics(text: str) -> dict:
 
     return metrics
 
-def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = False) -> dict:
+def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = False, authority_level: int = 1) -> dict:
     # 1. Standardize Normalization using risk_lookup.canon (Provides Two Channels)
     # Combine title for search if not already in text
     search_text = f"{title}\n{text}" if title and title not in text else text
     t_acc, t_no = risk_lookup.canon(search_text or "")
+
+    # [AI INTENT CHECK] Small Hybrid AI Model prediction
+    intent_res = intent_model.predict(search_text)
+    intent_label = intent_res["intent"]
+    intent_conf = intent_res["probs"].get(intent_label, 0.0)
 
     rule_matches = []
     hazard_counts = {}
@@ -2312,11 +2379,18 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
 
     source_score = min(4.0, float(len(non_ambiguous_hits)) * WEIGHT_SOURCE)
 
-    # [OPTIMIZATION] Trusted Source Boost: Absolute points for official papers
-    trusted_bonus = 1.5 if trusted_source else 0.0
+    # [OPTIMIZATION] Authority Boost: Scale points based on source tier
+    # Level 1: Standard (0.0)
+    # Level 2: Trusted (1.5)
+    # Level 3: High Authority / Gov (4.0) - Replaces common 3.0+ user request
+    authority_bonus = 0.0
+    if authority_level >= 3:
+        authority_bonus = 4.0
+    elif authority_level == 2 or trusted_source:
+        authority_bonus = 1.5
 
     # UNIFIED CONFIDENCE SCORE
-    score = rule_score + impact_score + agency_score + source_score + province_score + trusted_bonus
+    score = rule_score + impact_score + agency_score + source_score + province_score + authority_bonus
 
     # [OPTIMIZATION] Penalty for No Hazard Rule Match (Accident & Noise filtering)
     # If we didn't match a specific Disaster Rule (Storm, Flood, etc.), we penalize.
@@ -2436,7 +2510,9 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "is_province_match": best_prov != "unknown",
         "is_agency_match": agency_match is not None,
         "is_sensitive_location": len(sensitive_found) > 0,
-        "stage": event_stage # Add the detected stage
+        "stage": event_stage, # Add the detected stage
+        "intent": intent_label,
+        "intent_conf": intent_conf
     }
 
 def determine_event_stage(text: str) -> str:
@@ -2477,7 +2553,7 @@ def determine_event_stage(text: str) -> str:
     return "INCIDENT"
 
 
-def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool = False) -> bool:
+def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool = False, authority_level: int = 1) -> bool:
     """
     Stricter Filtering (v4):
     - Separate Title and Body context.
@@ -2514,8 +2590,15 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
             return False
 
     # Calculate final signals and score
-    sig = compute_disaster_signals(text, title=title, trusted_source=trusted_source)
+    sig = compute_disaster_signals(text, title=title, trusted_source=trusted_source, authority_level=authority_level)
     
+    # [HYBRID NLP] Semantic Intent Veto
+    # If the AI model identifies this as clearly NON-DISASTER (Economic, Sports, Ent)
+    # and the confidence is high, we reject even if keywords match.
+    if sig["intent"] in ["ECONOMIC", "SPORT", "ENT"] and sig["intent_conf"] > 0.65:
+        # High-confidence non-disaster intent
+        return False
+
     if sig["absolute_veto"]:
         return False
 
@@ -2549,10 +2632,12 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
     return False
 
 
-def diagnose(text: str, title: str = "") -> dict:
-    sig = compute_disaster_signals(text, title=title)
+def diagnose(text: str, title: str = "", authority_level: int = 1) -> dict:
+    sig = compute_disaster_signals(text, title=title, authority_level=authority_level)
     reason = f"Score {sig['score']:.1f} < 8.5"
-    if sig["absolute_veto"]: reason = "Negative keyword match (Veto)"
+    if sig["intent"] in ["ECONOMIC", "SPORT", "ENT"] and sig["intent_conf"] > 0.65:
+        reason = f"Intent Veto: Identified as {sig['intent']} ({sig['intent_conf']*100:.1f}%)"
+    elif sig["absolute_veto"]: reason = "Negative keyword match (Veto)"
     elif sig["score"] >= 8.5: reason = "Passed (Score >= 8.5)"
     elif sig.get("rule_matches"): reason = f"Score too low. Met: {sig['rule_matches']}"
     

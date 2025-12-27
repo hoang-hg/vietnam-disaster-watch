@@ -5,32 +5,91 @@ import {
   User,
   Menu,
   X,
-  Grid,
+  AlertTriangle,
   Bell,
   LogOut,
   ShieldCheck,
   MapPin,
-  Mail
+  Sun,
+  Moon,
+  Info,
+  Activity,
+  ArrowRight,
+  ShieldAlert,
+  Phone
 } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
 import { putJson } from "../api.js";
+import NotificationDropdown from "../components/NotificationDropdown";
+import CrowdsourceModal from "../components/CrowdsourceModal";
 
 const PROVINCES = [
-    "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
-  "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh",
-  "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình",
-  "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế",
-  "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa",
-  "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp",
-  "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
+  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
 ].sort();
 
 export default function MainLayout({ children }) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem("theme") === "dark" || 
+           (!localStorage.getItem("theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
+  const [toasts, setToasts] = useState([]);
   const [user, setUser] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isCrowdsourceOpen, setIsCrowdsourceOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const isMapPage = location.pathname.startsWith("/map");
+
+  useEffect(() => {
+      if (isDark) {
+          document.documentElement.classList.add("dark");
+          localStorage.setItem("theme", "dark");
+      } else {
+          document.documentElement.classList.remove("dark");
+          localStorage.setItem("theme", "light");
+      }
+  }, [isDark]);
+
+  useEffect(() => {
+    // Real-time WebSocket connection
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.hostname === 'localhost' ? 'localhost:8001' : window.location.host;
+    const wsUrl = `${protocol}//${host}/ws`;
+    
+    let ws = new WebSocket(wsUrl);
+    
+    ws.onmessage = (event) => {
+        try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === "EVENT_UPSERT") {
+                const newToast = {
+                    id: Date.now(),
+                    title: msg.data.title,
+                    event_id: msg.data.id,
+                    province: msg.data.province
+                };
+                setToasts(prev => [newToast, ...prev].slice(0, 3));
+                // Auto-remove after 8 seconds
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(t => t.id !== newToast.id));
+                }, 8000);
+            }
+        } catch (e) {
+            console.error("WS parse error", e);
+        }
+    };
+    
+    ws.onclose = () => {
+        // Simple reconnect after 5s
+        setTimeout(() => {
+            console.log("WS reconnecting...");
+            window.location.reload(); 
+        }, 5000);
+    };
+
+    return () => ws.close();
+  }, []);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -73,26 +132,12 @@ export default function MainLayout({ children }) {
     window.dispatchEvent(new Event("storage"));
   };
 
-  const toggleEmailNotifications = async () => {
-    if (!user || user.role === 'guest') {
-        alert("Vui lòng đăng nhập để sử dụng tính năng nhận tin qua Email.");
-        return;
-    }
-    try {
-        const newVal = !user.email_notifications;
-        const updatedUser = await putJson("/api/auth/me/preferences", { email_notifications: newVal });
-        setUser(updatedUser);
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        window.dispatchEvent(new Event("storage"));
-    } catch (err) {
-        console.error("Failed to update email preferences", err);
-    }
-  };
 
   const userNavigation = [
     { name: "TỔNG QUAN", href: "/", current: location.pathname === "/" },
     { name: "SỰ KIỆN", href: "/events", current: location.pathname.startsWith("/events") },
     { name: "BẢN ĐỒ", href: "/map", current: location.pathname === "/map" },
+    { name: "CỨU HỘ", href: "/rescue", current: location.pathname === "/rescue" },
   ];
 
   const adminNavigation = user?.role === "admin" ? [
@@ -100,38 +145,76 @@ export default function MainLayout({ children }) {
   ] : [];
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-100 font-sans">
-      {/* Top Header (White) */}
-      <header className="bg-white border-b border-slate-100 flex-none">
+    <div className="flex flex-col min-h-screen bg-slate-100 dark:bg-slate-950 font-sans transition-colors duration-300">
+      {/* Top Header (White / Dark) */}
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex-none z-30 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
             {/* Logo / Brand */}
             <div className="flex-shrink-0 flex items-center">
                 <Link to="/" className="flex items-center gap-2">
                     {/* Icon Logo */}
-                        <div className="w-12 h-12 flex items-center justify-center overflow-hidden">
+                        <div className="w-12 h-12 flex items-center justify-center overflow-hidden bg-white rounded-lg p-1">
                             <img 
                                 src={logoIge} 
                                 alt="IGE Logo" 
                                 className="w-full h-full object-contain" 
-                                style={{ mixBlendMode: 'multiply' }}
                             />
                         </div>
-                        {/* Text Logo */}
-                        <span className="text-2xl font-black tracking-tighter text-[#2fa1b3] uppercase leading-none">
-                            BÁO TỔNG HỢP RỦI RO THIÊN TAI 
-                            {user?.role === 'admin' && (
-                                <span className="ml-2 bg-slate-900 text-yellow-400 text-[10px] px-2 py-0.5 rounded-full border border-yellow-400/50 align-middle tracking-widest font-black shadow-lg shadow-yellow-400/10 animate-pulse">
-                                    ADMIN
-                                </span>
-                            )}
-                        </span>
+                        <div className="flex flex-col">
+                            <span className="text-xl font-black tracking-tighter text-slate-800 dark:text-white leading-none">
+                                VIET DISASTER <span className="text-[#2fa1b3] dark:text-[#4fd1e3]">WATCH</span>
+                            </span>
+                            <span className="text-[9px] font-bold text-[#2fa1b3] dark:text-[#4fd1e3] tracking-[0.3em] uppercase mt-0.5">
+                                Real-time Surveillance
+                            </span>
+                        </div>
                 </Link>
             </div>
 
-            {/* Mobile Menu Button - Moved to right since actions are gone */}
-            <div className="flex items-center md:hidden">
+            {/* Desktop Actions (Right) */}
+            <div className="hidden md:flex items-center gap-3">
+               <button 
+                  onClick={() => setIsDark(!isDark)}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-[#2fa1b3] hover:bg-[#2fa1b3]/10 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+                  title={isDark ? "Chế độ sáng" : "Chế độ tối"}
+               >
+                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+               </button>
+
+               <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-2" />
+
+               {user && user.role !== 'guest' ? (
+                 <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{user.role}</span>
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{user.full_name || user.email}</span>
+                    </div>
+                    <button 
+                        onClick={handleLogout}
+                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-100 dark:border-red-900/30 shadow-sm"
+                        title="Đăng xuất"
+                    >
+                        <LogOut className="w-5 h-5" />
+                    </button>
+                 </div>
+               ) : (
+                 <div className="flex items-center gap-2">
+                    <Link to="/login" className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-[#2fa1b3] transition-colors">Đăng nhập</Link>
+                    <Link to="/register" className="px-4 py-2 text-sm font-bold bg-[#2fa1b3] text-white rounded-xl hover:bg-[#258a9b] transition-all shadow-lg shadow-[#2fa1b3]/20">Đăng ký</Link>
+                 </div>
+               )}
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="flex items-center md:hidden gap-3">
                 <button 
-                    className="p-2 text-slate-700"
+                    onClick={() => setIsDark(!isDark)}
+                    className="p-2 text-slate-500 dark:text-slate-400"
+                >
+                    {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+                <button 
+                    className="p-2 text-slate-700 dark:text-slate-200"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 >
                     {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -156,6 +239,7 @@ export default function MainLayout({ children }) {
                                     : "text-white/80 hover:bg-[#258a9b] hover:text-white"
                             }`}
                         >
+                            {item.name === "CỨU HỘ" && <ShieldAlert className="w-3.5 h-3.5 mr-2 text-red-100 group-hover:text-white" />}
                             {item.name}
                         </Link>
                     ))}
@@ -192,28 +276,25 @@ export default function MainLayout({ children }) {
                 </div>
 
 
-                {/* Email Notification Toggle */}
-                {user && user.role !== 'guest' && (
-                    <div className="flex items-center h-full border-l border-white/20">
-                        <button 
-                            onClick={toggleEmailNotifications}
-                            title={user.email_notifications ? "Đang bật nhận tin qua Email" : "Đã tắt nhận tin qua Email"}
-                            className={`flex items-center gap-1.5 px-4 h-full transition-all group ${user.email_notifications ? "text-yellow-300" : "text-white/40 hover:text-white"}`}
-                        >
-                            {user.email_notifications ? (
-                                <Mail className="w-4 h-4 animate-pulse" />
-                            ) : (
-                                <Mail className="w-4 h-4 opacity-40" />
-                            )}
-                            <span className="text-[10px] font-black uppercase">
-                                {user.email_notifications ? "Bật" : "Tắt"}
-                            </span>
-                        </button>
-                    </div>
-                )}
 
                 {/* Account Actions (Desktop) */}
                 <div className="hidden md:flex items-center gap-2 h-full">
+                    {/* Crowdsourcing & Notifications (Logged in users only) */}
+                    {user && user.role !== 'guest' && (
+                        <>
+                            <button 
+                                onClick={() => setIsCrowdsourceOpen(true)}
+                                className="flex items-center gap-2 px-4 h-full text-white text-[10px] font-black hover:bg-white/10 transition-colors border-l border-white/20 uppercase tracking-tighter"
+                            >
+                                <AlertTriangle className="w-3.5 h-3.5 text-yellow-300" />
+                                Đóng góp hiện trường
+                            </button>
+                            <div className="h-full border-l border-white/20 flex items-center px-2">
+                                <NotificationDropdown isOpen={isNotifOpen} setIsOpen={setIsNotifOpen} user={user} />
+                            </div>
+                        </>
+                    )}
+
                     {user && user.role !== 'guest' ? (
                         <div className="flex items-center h-full">
                             <span className="flex items-center gap-2 px-4 h-full text-white text-xs font-bold border-l border-white/20">
@@ -251,7 +332,7 @@ export default function MainLayout({ children }) {
         
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
-            <div className="md:hidden bg-[#2fa1b3] border-t border-[#258a9b]">
+            <div className="md:hidden bg-[#2fa1b3] dark:bg-slate-900 border-t border-[#258a9b] dark:border-slate-800">
                 <div className="px-2 pt-2 pb-3 space-y-1">
                     {userNavigation.map((item) => (
                         <Link
@@ -282,11 +363,29 @@ export default function MainLayout({ children }) {
                             {item.name}
                         </Link>
                     ))}
+                    {user && user.role !== 'guest' && (
+                        <>
+                            <button 
+                                onClick={() => { setIsCrowdsourceOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-bold text-white bg-red-600/30 hover:bg-red-600/50 mt-2"
+                            >
+                                <AlertTriangle className="w-4 h-4 text-yellow-300" />
+                                ĐÓNG GÓP HIỆN TRƯỜNG
+                            </button>
+                            <button 
+                                onClick={() => { setIsNotifOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-[#258a9b]"
+                            >
+                                <Bell className="w-4 h-4" />
+                                THÔNG BÁO
+                            </button>
+                        </>
+                    )}
                     <div className="pt-2 mt-2 border-t border-[#258a9b]">
                         {user ? (
                             <>
                                 <div className="px-3 py-2 text-xs font-bold text-white/70 uppercase">
-                                    Đang đăng nhập: {user.full_name || user.email} ({user.role || "user"})
+                                    {user.full_name || user.email}
                                 </div>
                                 <button
                                     onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
@@ -326,14 +425,14 @@ export default function MainLayout({ children }) {
 
       {/* Footer (Simplified) */}
       {/* Footer (Professional) */}
-      <footer className="bg-white border-t border-slate-200 mt-auto flex-none">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 mt-auto flex-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 text-sm">
                 
                 {/* Column 1: Liên hệ */}
                 <div className="md:col-span-2 space-y-3">
-                    <h3 className="font-bold text-slate-900 uppercase tracking-wider">Liên hệ</h3>
-                    <ul className="space-y-2 text-slate-600">
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Liên hệ</h3>
+                    <ul className="space-y-2 text-slate-600 dark:text-slate-400">
                         <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Giới thiệu</a></li>
                         <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Điều khoản sử dụng</a></li>
                         <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Chính sách bảo mật</a></li>
@@ -343,19 +442,20 @@ export default function MainLayout({ children }) {
 
                 {/* Column 2: Khác */}
                 <div className="md:col-span-2 space-y-3">
-                    <h3 className="font-bold text-slate-900 uppercase tracking-wider">Khác</h3>
-                    <ul className="space-y-2 text-slate-600">
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Khác</h3>
+                    <ul className="space-y-2 text-slate-600 dark:text-slate-400">
                         <li><Link to="/map" className="hover:text-[#2fa1b3] transition-colors">Bản đồ rủi ro</Link></li>
                         <li><Link to="/events" className="hover:text-[#2fa1b3] transition-colors">Dòng sự kiện</Link></li>
+                        <li><Link to="/rescue" className="hover:text-red-500 font-bold transition-colors">Cứu hộ khẩn cấp</Link></li>
                         <li><Link to="/admin/logs" className="hover:text-[#2fa1b3] transition-colors">Xác minh tin (Admin)</Link></li>
                         <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">RSS Feeds</a></li>
                     </ul>
                 </div>
 
-                {/* Column 3: License / Info (Right aligned equivalent) */}
-                <div className="md:col-span-8 md:text-right space-y-2 text-slate-500 text-xs leading-relaxed border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
+                {/* Column 3: License / Info */}
+                <div className="md:col-span-8 md:text-right space-y-2 text-slate-500 dark:text-slate-500 text-xs leading-relaxed border-t md:border-t-0 border-slate-100 dark:border-slate-800 pt-4 md:pt-0">
                     <p>
-                        <span className="font-bold text-slate-900 uppercase text-sm block mb-1">
+                        <span className="font-bold text-slate-900 dark:text-slate-200 uppercase text-sm block mb-1">
                             BÁO TỔNG HỢP RỦI RO THIÊN TAI - VIỆT NAM DISASTER WATCHING
                         </span>
                         <span>Đơn vị thiết lập: Nhóm nghiên cứu & Phát triển.</span>
@@ -373,6 +473,61 @@ export default function MainLayout({ children }) {
             </div>
         </div>
       </footer>
+
+      {/* Real-time Notification Toast Container */}
+      <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {toasts.map(toast => (
+          <div 
+            key={toast.id}
+            className="pointer-events-auto bg-white dark:bg-slate-800 border-l-4 border-red-500 rounded-xl shadow-2xl p-4 flex gap-4 animate-in slide-in-from-right duration-500 group relative overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700"
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 dark:bg-red-500/10 rounded-full translate-x-12 -translate-y-12 blur-2xl" />
+            
+            <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 flex-none flex items-center justify-center text-red-600 dark:text-red-400">
+              <AlertTriangle className="w-5 h-5 animate-bounce" />
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] font-black uppercase tracking-tighter text-red-500 bg-red-50 dark:bg-red-900/50 px-1.5 py-0.5 rounded">
+                  Khẩn cấp
+                </span>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                  Vừa xong
+                </span>
+              </div>
+              <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
+                {toast.title}
+              </h4>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                Khu vực: <span className="font-bold text-slate-700 dark:text-slate-200">{toast.province}</span>
+              </p>
+              
+              <Link 
+                to={`/events/${toast.event_id}`}
+                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                className="mt-2 flex items-center gap-1 text-[10px] font-bold text-[#2fa1b3] hover:text-[#258a9b] dark:text-[#4fd1e3] transition-colors"
+              >
+                XEM CHI TIẾT <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            <button 
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+              className="absolute top-2 right-2 p-1 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+      
+      {/* Crowdsourcing Modal */}
+      <CrowdsourceModal 
+        isOpen={isCrowdsourceOpen} 
+        onClose={() => setIsCrowdsourceOpen(false)} 
+        user={user} 
+      />
     </div>
   );
 }

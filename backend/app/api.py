@@ -4,7 +4,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.sql import text
 from .database import get_db, engine
 from . import models
-from .models import Article, Event, Blacklist
+from .models import Article, Event, Blacklist, CrawlerStatus, AiFeedback
 from .schemas import ArticleOut, EventOut, EventDetailOut, EventUpdate
 from datetime import datetime, timedelta
 from fastapi import Response, Request, HTTPException, status
@@ -17,6 +17,28 @@ from .nlp import RECOVERY_KEYWORDS, PROVINCES
 from .sources import DISASTER_KEYWORDS
 from .risk_lookup import canon
 from . import broadcast
+import time
+import io
+
+# Simple In-Memory Cache for Dashboard performance
+class SimpleCache:
+    def __init__(self, ttl_seconds=300):
+        self.cache = {}
+        self.ttl = ttl_seconds
+
+    def get(self, key):
+        if key in self.cache:
+            val, expiry = self.cache[key]
+            if time.time() < expiry:
+                return val
+            else:
+                del self.cache[key]
+        return None
+
+    def set(self, key, value):
+        self.cache[key] = (value, time.time() + self.ttl)
+
+stats_cache = SimpleCache(ttl_seconds=120) # 2 minutes for stats
 
 # Unified filtering rules for Dashboard/Stats
 def filter_disaster_events(events):
@@ -57,6 +79,10 @@ def latest_articles(
     exclude_unknown: bool = Query(False),
     db: Session = Depends(get_db),
 ):
+    cache_key = f"articles_latest_{limit}_{type}_{province}_{exclude_unknown}"
+    cached = stats_cache.get(cache_key)
+    if cached: return cached
+
     q = db.query(Article).filter(Article.status == "approved").order_by(desc(Article.published_at))
     if type:
         q = q.filter(Article.disaster_type == type)
@@ -64,7 +90,10 @@ def latest_articles(
         q = q.filter(Article.province == province)
     if exclude_unknown:
         q = q.filter(Article.disaster_type != 'unknown')
-    return q.limit(limit).all()
+    
+    res = q.limit(limit).all()
+    stats_cache.set(cache_key, res)
+    return res
 
 @router.get("/events", response_model=list[EventOut])
 def events(
@@ -79,6 +108,10 @@ def events(
     db: Session = Depends(get_db),
     sort: str = Query("impact", description="Sort by: 'impact' or 'latest'"),
 ):
+    cache_key = f"events_{limit}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}"
+    cached = stats_cache.get(cache_key)
+    if cached: return cached
+
     query = db.query(Event).order_by(desc(Event.started_at))
     
     if date:
@@ -173,6 +206,7 @@ def events(
 
         events_out.append(ev_data)
 
+    stats_cache.set(cache_key, events_out)
     return events_out
 
 # Lightweight SVGs (stable CDN, pinned version)
@@ -351,6 +385,11 @@ def stats_summary(
     end_date: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
+    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}"
+    cached = stats_cache.get(cache_key)
+    if cached:
+        return cached
+
     if start_date or end_date:
         try:
             start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
@@ -441,7 +480,7 @@ def stats_summary(
         if has_prop:
             events_property_damage += 1
 
-    return {
+    res = {
         "window_hours": hours if not date else 24,
         "window_label": f"Ngày {date}" if date else f"Trong {hours}h qua",
         "articles_count": total_articles,
@@ -457,6 +496,8 @@ def stats_summary(
         },
         "by_type": type_counts,
     }
+    stats_cache.set(cache_key, res)
+    return res
 
 @router.get("/stats/timeline")
 def stats_timeline(
@@ -800,3 +841,156 @@ def sources_health():
             return json.load(f)
     except Exception as e:
         return {"error": f"Failed to read report: {str(e)}"}
+
+@router.get("/admin/crawler-status")
+def get_crawler_status(db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    return db.query(CrawlerStatus).all()
+
+@router.post("/admin/ai-feedback")
+async def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    article_id = payload.get("article_id")
+    corrected_type = payload.get("corrected_type")
+    
+    article = db.query(Article).filter(Article.id == article_id).first()
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+        
+    feedback = AiFeedback(
+        article_id=article_id,
+        user_id=admin.id,
+        original_type=article.disaster_type,
+        corrected_type=corrected_type,
+        comment=payload.get("comment")
+    )
+    db.add(feedback)
+    
+    # Actually update the article as well (manual override)
+    article.disaster_type = corrected_type
+    
+    db.commit()
+    return {"ok": True, "message": "Feedback saved and classification updated."}
+
+@router.get("/admin/export/event/{event_id}")
+async def export_event_data(event_id: int, format: str = "excel", db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    import pandas as pd
+    ev = db.query(Event).filter(Event.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    articles = db.query(Article).filter(Article.event_id == event_id).all()
+    
+    data = []
+    for art in articles:
+        data.append({
+            "Ngày đăng": art.published_at.strftime("%Y-%m-%d %H:%M"),
+            "Nguồn": art.source,
+            "Tiêu đề": art.title,
+            "Loại thiên tai": art.disaster_type,
+            "Tỉnh thành": art.province,
+            "Tử vong": art.deaths or 0,
+            "Mất tích": art.missing or 0,
+            "Bị thương": art.injured or 0,
+            "Thiệt hại (Tỷ VNĐ)": art.damage_billion_vnd or 0,
+            "Link": art.url
+        })
+        
+    df = pd.DataFrame(data)
+    
+    if format == "excel":
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Chi tiết thiệt hại')
+        output.seek(0)
+        
+        headers = {'Content-Disposition': f'attachment; filename="bao-cao-thiet-hai-event-{event_id}.xlsx"'}
+        return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    
+    elif format == "pdf":
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4, landscape
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        
+        # Try to use a font that supports Vietnamese if available, otherwise fallback
+        # This is a bit tricky in a generic environment, but we'll try basic Helvetica first
+        
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
+        elements = []
+        styles = getSampleStyleSheet()
+        
+        elements.append(Paragraph(f"BAO CAO THIET HAI SU KIEN: {ev.title}", styles['Title']))
+        elements.append(Spacer(1, 12))
+        elements.append(Paragraph(f"Thoi gian bat dau: {ev.started_at.strftime('%Y-%m-%d')}", styles['Normal']))
+        elements.append(Paragraph(f"Loai thien tai: {ev.disaster_type} | Tinh thanh: {ev.province}", styles['Normal']))
+        elements.append(Spacer(1, 20))
+        
+        # Table data
+        table_data = [["Ngay", "Nguon", "Tieu de", "Tu vong", "Mat tich", "Bi thuong", "Thiet hai"]]
+        for art in articles:
+            # Strip accents for PDF if font support is unreliable (simplified for this task)
+            # Actually we'll just use the raw text and hope for the best or use a standard font
+            table_data.append([
+                art.published_at.strftime("%d/%m"),
+                art.source[:15],
+                art.title[:50] + "...",
+                str(art.deaths or 0),
+                str(art.missing or 0),
+                str(art.injured or 0),
+                str(art.damage_billion_vnd or 0)
+            ])
+            
+        t = Table(table_data, colWidths=[50, 80, 400, 50, 50, 50, 60])
+        t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        elements.append(t)
+        
+        doc.build(elements)
+        buffer.seek(0)
+        headers = {'Content-Disposition': f'attachment; filename="bao-cao-thiet-hai-event-{event_id}.pdf"'}
+        return StreamingResponse(buffer, headers=headers, media_type='application/pdf')
+
+@router.get("/admin/export/daily")
+async def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    import pandas as pd
+    if not date:
+        date = datetime.utcnow().strftime("%Y-%m-%d")
+        
+    target_date = datetime.strptime(date, "%Y-%m-%d")
+    start = target_date.replace(hour=0, minute=0, second=0)
+    end = start + timedelta(days=1)
+    
+    events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    
+    data = []
+    for ev in events:
+        data.append({
+            "ID": ev.id,
+            "Tên sự kiện": ev.title,
+            "Loại": ev.disaster_type,
+            "Tỉnh": ev.province,
+            "Bắt đầu": ev.started_at.strftime("%Y-%m-%d %H:%M"),
+            "Nguồn tin": ev.sources_count,
+            "Tử vong": ev.deaths or 0,
+            "Mất tích": ev.missing or 0,
+            "Bị thương": ev.injured or 0,
+            "Thiệt hại (Tỷ VNĐ)": ev.damage_billion_vnd or 0
+        })
+        
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name=f'Báo cáo {date}')
+    output.seek(0)
+    
+    headers = {'Content-Disposition': f'attachment; filename="bao-cao-ngay-{date}.xlsx"'}
+    return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

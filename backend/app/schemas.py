@@ -80,3 +80,38 @@ class EventUpdate(BaseModel):
     injured: int | None = None
     damage_billion_vnd: float | None = None
     needs_verification: int | None = None
+
+class CrowdsourcedReportOut(BaseModel):
+    id: int
+    user_id: int
+    event_id: int | None = None
+    province: str | None = None
+    lat: float
+    lon: float
+    description: str
+    image_url: str | None = None
+    status: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class CrowdsourcedReportCreate(BaseModel):
+    event_id: int | None = None
+    province: str | None = None
+    lat: float
+    lon: float
+    description: str
+    image_url: str | None = None
+
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    title: str
+    message: str
+    link: str | None = None
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
