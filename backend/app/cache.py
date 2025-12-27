@@ -67,5 +67,39 @@ class CacheManager:
         # 2. Store in local memory
         self.memory_cache[key] = (value, time.time() + ttl)
 
+    def delete(self, key: str):
+        # 1. Delete from Redis
+        if self.redis_client:
+            try:
+                self.redis_client.delete(key)
+            except Exception as e:
+                logger.error(f"Redis delete failed: {e}")
+        
+        # 2. Delete from local memory
+        if key in self.memory_cache:
+            del self.memory_cache[key]
+
+    def delete_match(self, pattern: str):
+        """Delete all keys matching the glob pattern (e.g. 'stats_*')"""
+        import fnmatch
+        
+        # 1. Redis
+        if self.redis_client:
+            try:
+                # Use SCAN to find keys non-blocking
+                cursor = '0'
+                while cursor != 0:
+                    cursor, keys = self.redis_client.scan(cursor=cursor, match=pattern, count=100)
+                    if keys:
+                        self.redis_client.delete(*keys)
+            except Exception as e:
+                logger.error(f"Redis delete_match failed: {e}")
+
+        # 2. Local Memory
+        # Create list of keys to delete to avoid runtime error during iteration
+        to_delete = [k for k in self.memory_cache if fnmatch.fnmatch(k, pattern)]
+        for k in to_delete:
+            del self.memory_cache[k]
+
 # Singleton instance
 cache = CacheManager()

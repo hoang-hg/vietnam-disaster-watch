@@ -1,64 +1,224 @@
-import React, { useState } from 'react';
-import { Phone, MapPin, Heart, Shield, Info, ExternalLink, Search } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Phone, MapPin, Shield, Info, ExternalLink, Search, Plus, Edit2, Trash2, X, Save, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
+import { getJson, postJson, putJson, deleteJson } from '../api';
 
-const RESCUE_DATA = [
-    { province: "Toàn quốc", main: "112", subtitle: "Tìm kiếm cứu nạn khẩn cấp", color: "red" },
-    { province: "Cảnh sát", main: "113", subtitle: "An ninh trật tự", color: "blue" },
-    { province: "Cứu hỏa", main: "114", subtitle: "PCCC & Cứu nạn", color: "orange" },
-    { province: "Y tế", main: "115", subtitle: "Cấp cứu y tế", color: "emerald" },
-];
+const PROVINCES = [
+    "Toàn quốc",
+    "TP. Hà Nội", "TP. Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", 
+    "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Thái Nguyên", 
+    "Phú Thọ", "Bắc Ninh", "Hưng Yên", "TP. Hải Phòng", "Ninh Bình", "Quảng Trị", "TP. Đà Nẵng", 
+    "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "TP. Hồ Chí Minh", "Đồng Nai", 
+    "Tây Ninh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
+].sort();
 
-const PROVINCE_HOTLINES = [
-    { province: "TP. Hà Nội", phone: "0243.3824.507", agency: "Ban CM PCTT & TKCN" },
-    { province: "TP. Hồ Chí Minh", phone: "0283.8293.134", agency: "Ban CM PCTT & TKCN" },
-    { province: "TP. Đà Nẵng", phone: "0236.3822.131", agency: "Ban CM PCTT & TKCN" },
-    { province: "TP. Cần Thơ", phone: "0292.3820.536", agency: "Ban CM PCTT & TKCN" },
-    { province: "Quảng Ninh", phone: "0203.3835.549", agency: "Ban CM PCTT & TKCN" },
-    { province: "TP. Hải Phòng", phone: "0225.3842.124", agency: "Ban CM PCTT & TKCN" },
-    { province: "Thanh Hóa", phone: "0237.3852.126", agency: "Ban CM PCTT & TKCN" },
-    { province: "Nghệ An", phone: "0238.3844.755", agency: "Ban CM PCTT & TKCN" },
-    { province: "Hà Tĩnh", phone: "0239.3855.514", agency: "Ban CM PCTT & TKCN" },
-    { province: "Quảng Trị", phone: "0233.3852.144", agency: "Ban CM PCTT & TKCN" },
-    { province: "TP. Huế", phone: "0234.3823.116", agency: "Ban CM PCTT & TKCN" },
-    { province: "Quảng Ngãi", phone: "0255.3822.124", agency: "Ban CM PCTT & TKCN" },
-    { province: "Gia Lai", phone: "0269.3824.134", agency: "Ban CM PCTT & TKCN" },
-    { province: "Khánh Hòa", phone: "0258.3822.131", agency: "Ban CM PCTT & TKCN" },
-    { province: "Lào Cai", phone: "0214.3820.124", agency: "Ban CM PCTT" },
-    { province: "Sơn La", phone: "0212.3852.124", agency: "Ban CM PCTT" },
-    { province: "Thái Nguyên", phone: "0208.3852.124", agency: "Ban CM PCTT" },
-    { province: "Lạng Sơn", phone: "0205.3870.124", agency: "Ban CM PCTT" },
-    { province: "Tuyên Quang", phone: "0207.3822.124", agency: "Ban CM PCTT" },
-    { province: "Lai Châu", phone: "0213.3876.124", agency: "Ban CM PCTT" },
-    { province: "Điện Biên", phone: "0215.3824.124", agency: "Ban CM PCTT" },
-    { province: "Lâm Đồng", phone: "0263.3822.134", agency: "Ban CM PCTT" },
-    { province: "Đắk Lắk", phone: "0262.3852.134", agency: "Ban CM PCTT" },
-    { province: "Cà Mau", phone: "0290.3831.134", agency: "Ban CM PCTT" },
-    { province: "Cao Bằng", phone: "0206.3852.124", agency: "Ban CM PCTT" },
-    { province: "Phú Thọ", phone: "0210.3852.124", agency: "Ban CM PCTT" },
-    { province: "Bắc Ninh", phone: "0222.3852.124", agency: "Ban CM PCTT" },
-    { province: "Hưng Yên", phone: "0221.3852.124", agency: "Ban CM PCTT" },
-    { province: "Ninh Bình", phone: "0229.3852.124", agency: "Ban CM PCTT" },
-    { province: "Tây Ninh", phone: "0276.3852.124", agency: "Ban CM PCTT" },
-    { province: "Đồng Tháp", phone: "0277.3852.124", agency: "Ban CM PCTT" },
-    { province: "An Giang", phone: "0296.3852.124", agency: "Ban CM PCTT" },
-    { province: "Vĩnh Long", phone: "0270.3852.124", agency: "Ban CM PCTT" },
-    { province: "Đồng Nai", phone: "0251.3852.124", agency: "Ban CM PCTT" }
-];
+// Helper to get style for national hotlines
+const getNationalStyle = (phone) => {
+    if (phone.includes("112")) return { color: "red", icon: Shield };
+    if (phone.includes("113")) return { color: "blue", icon: Shield };
+    if (phone.includes("114")) return { color: "orange", icon: Shield };
+    if (phone.includes("115")) return { color: "emerald", icon: Shield };
+    return { color: "slate", icon: Phone };
+};
 
-export default function RescuePage() {
-    const [search, setSearch] = useState("");
-
-    const filtered = PROVINCE_HOTLINES.filter(h => 
-        h.province.toLowerCase().includes(search.toLowerCase())
-    );
+const Toast = ({ message, type, onClose }) => {
+    useEffect(() => {
+        const timer = setTimeout(onClose, 3000);
+        return () => clearTimeout(timer);
+    }, [onClose]);
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className={`fixed top-4 right-4 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-right-10 duration-300 ${
+            type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+            {type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+            <span className="text-sm font-bold">{message}</span>
+            <button onClick={onClose} className="p-1 hover:bg-black/5 rounded-full ml-2">
+                <X className="w-4 h-4" />
+            </button>
+        </div>
+    );
+};
+
+const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, isLoading }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+                <h3 className="text-lg font-black text-slate-900 mb-2">{title}</h3>
+                <p className="text-slate-600 mb-6 font-medium">{message}</p>
+                <div className="flex gap-3 justify-end">
+                    <button 
+                        type="button"
+                        onClick={onCancel}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50"
+                    >
+                        Hủy
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {isLoading ? "Đang xóa..." : "Xác nhận xóa"}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default function RescuePage() {
+    const [hotlines, setHotlines] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filterProvince, setFilterProvince] = useState("An Giang"); // Default to first alphabetic or intelligent default
+    const [search, setSearch] = useState("");
+    const [user, setUser] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editItem, setEditItem] = useState(null);
+    const [formData, setFormData] = useState({ province: "", agency: "", phone: "", address: "" });
+
+    // Toast & Confirm State
+    const [toast, setToast] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const ITEMS_per_PAGE = 12;
+
+    useEffect(() => {
+        const u = localStorage.getItem("user");
+        if (u) setUser(JSON.parse(u));
+        // Default filter logic: if "Toàn quốc" is not preferred by default for the list, set something else? 
+        // Actually lets default to "Toàn quốc" in the dropdown but the list logic separates them.
+        setFilterProvince("Toàn quốc"); 
+        fetchHotlines();
+    }, []);
+
+    const fetchHotlines = async () => {
+        setLoading(true);
+        try {
+            const data = await getJson("/api/user/rescue/hotlines?limit=1000");
+            setHotlines(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+    };
+
+    // Separate Data
+    const nationalHotlines = hotlines.filter(h => h.province === "Toàn quốc");
+    const otherHotlines = hotlines.filter(h => h.province !== "Toàn quốc");
+
+    const filteredHotlines = otherHotlines.filter(h => {
+        const matchProvince = filterProvince === "Toàn quốc" || h.province === filterProvince;
+        const matchSearch = h.province.toLowerCase().includes(search.toLowerCase()) || 
+                            h.agency.toLowerCase().includes(search.toLowerCase()) ||
+                            (h.address && h.address.toLowerCase().includes(search.toLowerCase()));
+        return matchProvince && matchSearch;
+    }).sort((a, b) => {
+        // Sort by Province A-Z
+        const provinceCompare = a.province.localeCompare(b.province);
+        if (provinceCompare !== 0) return provinceCompare;
+        // Then by Agency A-Z
+        return a.agency.localeCompare(b.agency);
+    });
+
+    // Pagination
+    const totalPages = Math.ceil(filteredHotlines.length / ITEMS_per_PAGE);
+    const displayedHotlines = filteredHotlines.slice(
+        (currentPage - 1) * ITEMS_per_PAGE,
+        currentPage * ITEMS_per_PAGE
+    );
+
+    const handleEdit = (item) => {
+        setEditItem(item);
+        setFormData({
+            province: item.province,
+            agency: item.agency,
+            phone: item.phone,
+            address: item.address || ""
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleAdd = () => {
+        setEditItem(null);
+        // Auto-select province if currently filtering by one
+        const defaultProvince = filterProvince !== "Toàn quốc" ? filterProvince : "";
+        setFormData({ province: defaultProvince, agency: "", phone: "", address: "" });
+        setIsModalOpen(true);
+    };
+
+    const confirmDelete = (id) => {
+        setConfirmModal({ isOpen: true, id });
+    };
+
+    const handleDelete = async () => {
+        if (!confirmModal.id) return;
+        setIsDeleting(true);
+        try {
+            await deleteJson(`/api/user/admin/rescue/${confirmModal.id}`);
+            showToast("Đã xóa liên hệ thành công", "success");
+            await fetchHotlines();
+        } catch (err) {
+            showToast(err.message || "Lỗi khi xóa", "error");
+        } finally {
+            setIsDeleting(false);
+            setConfirmModal({ isOpen: false, id: null });
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            if (editItem) {
+                await putJson(`/api/user/admin/rescue/${editItem.id}`, formData);
+                showToast("Cập nhật thành công", "success");
+            } else {
+                await postJson("/api/user/admin/rescue", formData);
+                showToast("Thêm mới thành công", "success");
+            }
+            setIsModalOpen(false);
+            fetchHotlines();
+        } catch (err) {
+            showToast(err.message || "Lỗi khi lưu", "error");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const isAdmin = user?.role === 'admin';
+
+    return (
+        <div className="max-w-6xl mx-auto px-4 py-8 relative">
             <Helmet>
                 <title>Cứu hộ khẩn cấp | BÁO TỔNG HỢP RỦI RO THIÊN TAI</title>
                 <meta name="description" content="Danh bạ số điện thoại cứu hộ, cứu nạn khẩn cấp khi có bão lũ, thiên tai tại các tỉnh thành Việt Nam." />
             </Helmet>
+
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+            
+            <ConfirmModal 
+                isOpen={confirmModal.isOpen} 
+                title="Xác nhận xóa" 
+                message="Bạn có chắc chắn muốn xóa thông tin liên hệ này không? Hành động này không thể hoàn tác."
+                onConfirm={handleDelete}
+                onCancel={() => setConfirmModal({ isOpen: false, id: null })}
+                isLoading={isDeleting}
+            />
 
             <div className="mb-8 text-center">
                 <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-3">
@@ -67,98 +227,235 @@ export default function RescuePage() {
                 <p className="text-slate-500 mt-2 font-medium">Lưu lại các số điện thoại này để sử dụng trong trường hợp cấp bách</p>
             </div>
 
+            {/* National Hotlines (Editable) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-                {RESCUE_DATA.map((item) => (
-                    <div key={item.province} className={`bg-white border-2 border-${item.color}-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group`}>
-                        <div className={`w-12 h-12 rounded-xl bg-${item.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                            <Phone className={`w-6 h-6 text-${item.color}-600`} />
+                {nationalHotlines.map((item) => {
+                    const style = getNationalStyle(item.phone);
+                    return (
+                        <div key={item.id} className={`bg-white border-2 border-${style.color}-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative`}>
+                            {isAdmin && (
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => handleEdit(item)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100">
+                                        <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button onClick={() => confirmDelete(item.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
+                                        <Trash2 className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                            <div className={`w-12 h-12 rounded-xl bg-${style.color}-50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                                <Phone className={`w-6 h-6 text-${style.color}-600`} />
+                            </div>
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.province}</div>
+                            <div className={`text-3xl font-black text-${style.color}-600 my-1`}>{item.phone}</div>
+                            <div className="text-xs font-semibold text-slate-600">{item.agency}</div>
                         </div>
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.province}</div>
-                        <div className={`text-3xl font-black text-${item.color}-600 my-1`}>{item.main}</div>
-                        <div className="text-xs font-semibold text-slate-600">{item.subtitle}</div>
-                        <a href={`tel:${item.main}`} className={`mt-4 w-full py-2 bg-${item.color}-600 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity`}>
-                            <Phone className="w-3 h-3" /> Gọi ngay
-                        </a>
-                    </div>
-                ))}
+                    );
+                })}
+                {/* Fallback if no national hotlines or if we want to show placeholder */}
+                {nationalHotlines.length === 0 && !loading && (
+                     <div className="col-span-full text-center text-slate-400 py-4 italic">Chưa có dữ liệu hotlines quốc gia</div>
+                )}
             </div>
 
-            <div className="bg-slate-900 rounded-3xl p-8 text-white mb-12 relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
-                    <div className="max-w-md">
-                        <h2 className="text-2xl font-black mb-4">Bạn đang ở vùng nguy hiểm?</h2>
-                        <ul className="space-y-3 text-slate-300 text-sm">
-                            <li className="flex items-start gap-2">
-                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center mt-0.5 shrink-0">1</div>
-                                <span>Giữ bình tĩnh, tìm nơi cao ráo và kiên cố nhất có thể.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center mt-0.5 shrink-0">2</div>
-                                <span>Tiết kiệm pin điện thoại, chỉ gọi khi thực sự cần cứu trợ.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center mt-0.5 shrink-0">3</div>
-                                <span>Phát tín hiệu bằng đèn pin hoặc quần áo màu sắc nổi bật.</span>
-                            </li>
-                        </ul>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 w-full md:w-80">
-                         <div className="flex items-center gap-2 mb-4 text-emerald-400 font-bold text-sm">
-                            <Info className="w-4 h-4" /> Tổng đài quốc gia
-                         </div>
-                         <div className="space-y-4">
-                            <div>
-                                <div className="text-[10px] text-slate-400 uppercase font-black tracking-widest">TK Cứu nạn Quốc gia</div>
-                                <div className="text-xl font-black">024.3733.3664</div>
-                            </div>
-                            <div>
-                                <div className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Bưu điện PCTT</div>
-                                <div className="text-xl font-black">1800 1090</div>
-                            </div>
-                         </div>
-                    </div>
-                </div>
-                {/* Decoration */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-emerald-500/20 transition-all"></div>
-            </div>
-
+            {/* Province Hotlines Section */}
             <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-center gap-4">
                     <h3 className="font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight text-sm">
-                        <MapPin className="w-4 h-4 text-blue-600" /> Đường dây nóng các tỉnh thành
+                        <MapPin className="w-4 h-4 text-blue-600" /> 
+                        {filterProvince !== "Toàn quốc" ? `Đường dây nóng ${filterProvince}` : "Đường dây nóng các tỉnh thành"}
+                        <span className="ml-1 text-slate-400 font-medium normal-case">({filteredHotlines.length} liên hệ)</span>
                     </h3>
-                    <div className="relative w-full sm:w-64">
-                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                         <input 
-                            type="text" 
-                            placeholder="Tìm theo tỉnh thành..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                         />
+                    
+                    <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto items-center">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            {/* Province Filter */}
+                            <select 
+                                value={filterProvince}
+                                onChange={(e) => { setFilterProvince(e.target.value); setCurrentPage(1); }}
+                                className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto"
+                            >
+                                {PROVINCES.map(p => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                            
+                            {/* Reset Button */}
+                            {filterProvince !== "Toàn quốc" && (
+                                <button 
+                                    onClick={() => { setFilterProvince("Toàn quốc"); setCurrentPage(1); }}
+                                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors"
+                                    title="Xem tất cả"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Search */}
+                        <div className="relative w-full sm:w-64">
+                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                             <input 
+                                type="text" 
+                                placeholder="Tìm theo tên cơ quan, địa chỉ..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                             />
+                        </div>
+
+                        {/* Add Button (Admin) */}
+                        {isAdmin && (
+                            <button 
+                                onClick={handleAdd}
+                                className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-green-700 transition-colors shadow-sm whitespace-nowrap"
+                            >
+                                <Plus className="w-4 h-4" /> Thêm
+                            </button>
+                        )}
                     </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-x divide-y divide-slate-50">
-                    {filtered.map((h) => (
-                        <div key={h.province} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center group/item">
-                            <div>
-                                <div className="font-bold text-slate-900 text-sm">{h.province}</div>
-                                <div className="text-[9px] text-slate-400 uppercase font-black">{h.agency}</div>
-                            </div>
-                            <a 
-                                href={`tel:${h.phone}`}
-                                className="flex items-center gap-2 text-blue-600 font-black text-sm hover:translate-x-1 transition-transform"
-                            >
-                                {h.phone}
-                                <Phone className="w-3.5 h-3.5" />
-                            </a>
+                    {loading ? (
+                        <div className="col-span-full py-20 flex justify-center text-slate-400">
+                            <Loader2 className="w-8 h-8 animate-spin" />
                         </div>
-                    ))}
-                    {filtered.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-slate-400 italic">Không tìm thấy tỉnh thành này</div>
+                    ) : displayedHotlines.length === 0 ? (
+                        <div className="col-span-full py-12 text-center text-slate-400 italic">Không tìm thấy dữ liệu phù hợp</div>
+                    ) : (
+                        displayedHotlines.map((h) => (
+                            <div key={h.id} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-start group/item relative">
+                                <div className="flex-1 min-w-0 pr-4">
+                                    <div className="font-bold text-slate-900 text-sm truncate">{h.province}</div>
+                                    <div className="text-[10px] text-slate-400 uppercase font-black truncate">{h.agency}</div>
+                                    {h.address && (
+                                        <div className="mt-1 text-xs text-slate-500 line-clamp-2">
+                                            <MapPin className="w-3 h-3 inline mr-1 text-slate-400" />
+                                            {h.address}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
+                                    <div 
+                                        className="flex items-center gap-2 text-blue-600 font-black text-sm"
+                                    >
+                                        {h.phone}
+                                        <Phone className="w-3.5 h-3.5" />
+                                    </div>
+                                    {isAdmin && (
+                                        <div className="flex gap-1 pt-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                            <button onClick={() => handleEdit(h)} className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
+                                                <Edit2 className="w-3 h-3" />
+                                            </button>
+                                            <button onClick={() => confirmDelete(h.id)} className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200">
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))
                     )}
                 </div>
+                
+                {/* Pagination */}
+                {!loading && totalPages > 1 && (
+                    <div className="p-4 border-t border-slate-100 flex justify-center gap-2">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                            <button
+                                key={p}
+                                onClick={() => setCurrentPage(p)}
+                                className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${
+                                    currentPage === p 
+                                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" 
+                                        : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                                }`}
+                            >
+                                {p}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
+
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800">
+                                {editItem ? "Chỉnh sửa liên hệ" : "Thêm liên hệ mới"}
+                            </h3>
+                            <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600" disabled={isSaving}>
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Tỉnh thành</label>
+                                <select 
+                                    required
+                                    disabled={isSaving}
+                                    value={formData.province}
+                                    onChange={e => setFormData({...formData, province: e.target.value})}
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                >
+                                    <option value="">Chọn tỉnh thành...</option>
+                                    {PROVINCES.map(p => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Tên đơn vị</label>
+                                <input 
+                                    required
+                                    disabled={isSaving}
+                                    type="text"
+                                    placeholder="VD: Ban CM PCTT & TKCN"
+                                    value={formData.agency}
+                                    onChange={e => setFormData({...formData, agency: e.target.value})}
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Số điện thoại</label>
+                                <input 
+                                    required
+                                    disabled={isSaving}
+                                    type="text"
+                                    placeholder="VD: 0243.3824.507"
+                                    value={formData.phone}
+                                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Địa chỉ cụ thể</label>
+                                <input 
+                                    type="text"
+                                    disabled={isSaving}
+                                    placeholder="VD: 123 Đường ABC..."
+                                    value={formData.address}
+                                    onChange={e => setFormData({...formData, address: e.target.value})}
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
+                                />
+                            </div>
+                            <div className="pt-2">
+                                <button 
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-all flex justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    {isSaving ? "Đang lưu..." : "Lưu thông tin"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
 
             <div className="mt-12 text-center">
                  <div className="inline-flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
@@ -168,10 +465,7 @@ export default function RescuePage() {
                     <a href="#" className="text-slate-400 hover:text-blue-600 transition-colors text-xs font-bold flex items-center gap-1">
                         <ExternalLink className="w-3 h-3" /> Website Chính phủ
                     </a>
-                    <a href="#" className="text-slate-400 hover:text-blue-600 transition-colors text-xs font-bold flex items-center gap-1">
-                        <ExternalLink className="w-3 h-3" /> NCHMF Việt Nam
-                    </a>
-                 </div>
+                </div>
             </div>
         </div>
     );

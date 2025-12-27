@@ -7,6 +7,7 @@ import EventDetail from "./pages/EventDetail.jsx";
 import MapPage from "./pages/MapPage.jsx";
 import About from "./pages/About.jsx";
 import AdminSkipLogs from "./pages/AdminSkipLogs.jsx";
+import AdminReports from "./pages/AdminReports.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import RescuePage from "./pages/Rescue.jsx";
@@ -43,6 +44,11 @@ export default function App() {
           <Route path="/admin/logs" element={
             <ProtectedRoute roleRequired="admin">
               <AdminSkipLogs />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/reports" element={
+            <ProtectedRoute roleRequired="admin">
+              <AdminReports />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<LoginPage />} />

@@ -644,8 +644,9 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
         # 2. Text Extraction
         content_text = ""
         potential_containers = [
-            "article", ".fck_detail", ".detail-content", ".cms-body", ".post-content", 
-            ".content-detail", ".article-body", ".content_detail", "#content_detail"
+            "article", ".article", ".fck_detail", ".detail-content", ".cms-body", ".post-content", 
+            ".content-detail", ".article-body", ".article__body", ".article__sapo", ".article-content",
+            ".content_detail", "#content_detail", ".main-content-detail", ".detail-content-body"
         ]
         
         for selector in potential_containers:

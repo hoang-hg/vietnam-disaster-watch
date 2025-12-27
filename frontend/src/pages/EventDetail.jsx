@@ -10,9 +10,12 @@ import {
   fmtTimeAgo,
   fmtVndBillion,
 } from "../api.js";
-import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle, ChevronRight } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { API_BASE } from "../api.js";
+import ConfirmModal from "../components/ConfirmModal.jsx";
+import Toast from "../components/Toast.jsx";
+import { useNavigate } from "react-router-dom";
 
 const TYPE_TONES = {
   storm: "blue",
@@ -102,21 +105,68 @@ export default function EventDetail() {
   }, []);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const navigate = useNavigate();
 
-  const handleDeleteArticle = async (e, articleId) => {
+  // Modal states
+  const [deleteModal, setDeleteModal] = useState({ open: false, type: null, id: null });
+  
+  // Toast state
+  const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+
+  const handleDeleteArticle = (e, articleId) => {
     e.preventDefault();
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài báo này? Bài báo sẽ bị đánh dấu 'rejected' và loại khỏi sự kiện.")) return;
+    setDeleteModal({ open: true, type: 'article', id: articleId });
+  };
 
+  const confirmDeleteArticle = async () => {
+    const articleId = deleteModal.id;
     try {
         await deleteJson(`/api/articles/${articleId}`);
-        // Update local state
         setEv(prev => ({
             ...prev,
             articles: prev.articles.filter(a => a.id !== articleId),
             sources_count: Math.max(0, prev.sources_count - 1)
         }));
+        setToast({ isVisible: true, message: 'Đã xóa bài báo thành công!', type: 'success' });
     } catch (err) {
-        alert("Xóa thất bại: " + err.message);
+        if (err.message.includes("404")) {
+            setEv(prev => ({
+                ...prev,
+                articles: prev.articles.filter(a => a.id !== articleId)
+            }));
+            setToast({ isVisible: true, message: 'Bài báo đã được gỡ trước đó.', type: 'info' });
+        } else {
+            setToast({ isVisible: true, message: "Xóa thất bại: " + err.message, type: 'error' });
+        }
+    }
+  };
+
+  const handleApproveArticle = async (e, articleId) => {
+    e.preventDefault();
+    try {
+        await postJson(`/api/admin/approve-article/${articleId}`);
+        // Update local state to reflect approved status
+        setEv(prev => ({
+            ...prev,
+            articles: prev.articles.map(a => a.id === articleId ? {...a, status: 'approved'} : a)
+        }));
+        setToast({ isVisible: true, message: 'Đã duyệt bài báo thành công!', type: 'success' });
+    } catch (err) {
+        setToast({ isVisible: true, message: "Duyệt bài thất bại: " + err.message, type: 'error' });
+    }
+  };
+
+  const handleApproveEvent = async () => {
+    try {
+        await postJson(`/api/admin/events/${ev.id}/approve`);
+        setEv(prev => ({
+            ...prev,
+            needs_verification: 0,
+            articles: prev.articles.map(a => ({...a, status: 'approved'}))
+        }));
+        setToast({ isVisible: true, message: 'Đã duyệt toàn bộ sự kiện thành công!', type: 'success' });
+    } catch (err) {
+        setToast({ isVisible: true, message: "Duyệt sự kiện thất bại: " + err.message, type: 'error' });
     }
   };
 
@@ -140,20 +190,34 @@ export default function EventDetail() {
             ...prev,
             articles: prev.articles.map(a => a.id === isReclassifying.id ? {...a, disaster_type: correctedType} : a)
         }));
+        setToast({ isVisible: true, message: 'Đã cập nhật phân loại thành công!', type: 'success' });
         setIsReclassifying(null);
     } catch (err) {
-        alert("Phân loại lại thất bại: " + err.message);
+        setToast({ isVisible: true, message: "Phân loại lại thất bại: " + err.message, type: 'error' });
+    }
+  };
+
+  const handleDeleteEvent = () => {
+    setDeleteModal({ open: true, type: 'event', id: ev.id });
+  };
+
+  const confirmDeleteEvent = async () => {
+    try {
+        await deleteJson(`/api/events/${ev.id}`);
+        // Redirect with success parameter
+        window.location.href = "/events?deleted=true";
+    } catch (err) {
+        if (err.message.includes("404") || err.status === 404) {
+            window.location.href = "/events?deleted=true";
+        } else {
+            setToast({ isVisible: true, message: "Xóa sự kiện thất bại: " + err.message, type: 'error' });
+        }
     }
   };
 
   const handleExportExcel = () => {
     const token = localStorage.getItem("access_token");
-    window.open(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel&token=${token}`, '_blank');
-  };
-
-  const handleExportPdf = () => {
-    const token = localStorage.getItem("access_token");
-    window.open(`${API_BASE}/api/admin/export/event/${ev.id}?format=pdf&token=${token}`, '_blank');
+    window.open(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel&token_query=${token}`, '_blank');
   };
 
   const [isFollowing, setIsFollowing] = useState(false);
@@ -184,9 +248,9 @@ export default function EventDetail() {
         const updated = await putJson(`/api/events/${ev.id}`, editForm);
         setEv({ ...ev, ...updated });
         setIsEditing(false);
-        alert("Cập nhật thành công!");
+        setToast({ isVisible: true, message: 'Cập nhật sự kiện thành công!', type: 'success' });
     } catch (err) {
-        alert("Lỗi cập nhật: " + err.message);
+        setToast({ isVisible: true, message: "Lỗi cập nhật: " + err.message, type: 'error' });
     }
   };
 
@@ -285,8 +349,8 @@ export default function EventDetail() {
                   <span>Xuất Excel</span>
                 </button>
                 <button 
-                  onClick={handleExportPdf}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md"
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Xuất PDF</span>
@@ -298,6 +362,23 @@ export default function EventDetail() {
                   <Edit2 className="w-4 h-4" />
                   <span>Chỉnh sửa</span>
                 </button>
+                <button 
+                  onClick={handleDeleteEvent}
+                  className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-all shadow-md group"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Xóa sự kiện</span>
+                </button>
+                {(ev.needs_verification === 1 || ev.articles.some(a => a.status === 'pending')) && (
+                  <button 
+                    onClick={handleApproveEvent}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md animate-pulse hover:animate-none"
+                    title="Duyệt nhanh toàn bộ sự kiện và bài báo"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Duyệt nhanh</span>
+                  </button>
+                )}
               </>
             ) : (
                 <>
@@ -317,13 +398,6 @@ export default function EventDetail() {
                 </button>
               </>
             )}
-            <button 
-                onClick={() => window.print()}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
-            >
-                <Printer className="w-4 h-4" />
-                <span>In (PDF)</span>
-            </button>
           </div>
         )}
       </div>
@@ -331,8 +405,8 @@ export default function EventDetail() {
       {/* Professional Report Header */}
       <div className="mb-6 flex items-center justify-between border-b-4 border-red-600 pb-4">
         <div className="flex items-center gap-4">
-          <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-[10px] tracking-tighter text-center leading-tight w-16">
-            BÁO TỔNG HỢP
+          <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-[10px] tracking-tighter text-center leading-tight w-24">
+            BÁO TỔNG HỢP RỦI RO THIÊN TAI
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
@@ -368,14 +442,22 @@ export default function EventDetail() {
             <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md text-slate-700">
                <MapPin className="w-3.5 h-3.5 text-slate-400" />
                {isEditing ? (
-                <select 
-                  value={editForm.province}
-                  onChange={e => setEditForm({...editForm, province: e.target.value})}
-                  className="bg-transparent focus:outline-none cursor-pointer"
-                >
-                  {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              ) : <span>{ev.province || "Cả nước"}</span>}
+                <>
+                  <select 
+                    value={editForm.province}
+                    onChange={e => setEditForm({...editForm, province: e.target.value})}
+                    className="bg-transparent focus:outline-none cursor-pointer text-xs font-bold"
+                  >
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  <input 
+                    placeholder="Địa chỉ cụ thể..."
+                    value={editForm.location_description || ""} 
+                    onChange={e => setEditForm({...editForm, location_description: e.target.value})}
+                    className="w-32 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent text-xs px-1"
+                  />
+                </>
+              ) : <span>{ev.province || "Cả nước"} {ev.location_description ? `- ${ev.location_description}` : ''}</span>}
             </div>
             <span className="flex items-center gap-1.5">
                <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -554,7 +636,7 @@ export default function EventDetail() {
                       ) : (
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${ev.cause.includes('Mưa') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
                           {ev.cause}
-                        </span>
+                         </span>
                       )}
                     </td>
                   </tr>
@@ -709,7 +791,7 @@ export default function EventDetail() {
                     onClick={() => setExpandedSummary((s) => !s)}
                   >
                     <span>{expandedSummary ? "RÚT GỌN" : "XEM TOÀN BỘ NỘI DUNG TỔNG HỢP"}</span>
-                    <ArrowRight className={`w-3 h-3 transition-transform ${expandedSummary ? '-rotate-90' : 'rotate-90'}`} />
+                    <ChevronRight className={`w-3 h-3 transition-transform ${expandedSummary ? '-rotate-90' : 'rotate-90'}`} />
                   </button>
                 ) : null}
               </div>
@@ -746,29 +828,22 @@ export default function EventDetail() {
                     {a.title}
                     {a.is_broken && <span className="ml-2 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">BÀI GỐC ĐÃ GỠ</span>}
                   </a>
-                  {isAdmin && (
-                      <div className="flex gap-1 no-print">
-                        <button
-                            onClick={() => setIsReclassifying({id: a.id, currentType: a.disaster_type})}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                            title="Phân loại lại AI"
-                        >
-                            <RefreshCw className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                            onClick={(e) => handleDeleteArticle(e, a.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title="Xóa bài báo (Admin)"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                  )}
+                   {isAdmin && a.status === 'pending' && (
+                       <div className="flex gap-1 no-print">
+                          <button
+                              onClick={(e) => handleApproveArticle(e, a.id)}
+                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                              title="Duyệt bài báo (Admin)"
+                          >
+                              <Check className="w-3.5 h-3.5" />
+                          </button>
+                       </div>
+                   )}
                 </div>
-                <div className="mt-1 text-xs text-gray-600 flex flex-wrap gap-2">
-                  <span className="text-gray-900 font-medium bg-gray-100 px-2 py-1 rounded">
-                    {a.source}
-                  </span>
+                <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-2 items-center">
+                     <span className="text-blue-600 hover:underline font-semibold bg-gray-50 px-2 py-1 rounded border border-gray-100 uppercase">
+                     {a.source.replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
+                   </span>
                   <span>{fmtTimeAgo(a.published_at)}</span>
                   <span>•</span>
                   <span>{fmtType(a.disaster_type)}</span>
@@ -784,27 +859,37 @@ export default function EventDetail() {
                       <span className="font-medium">Xác nhận: {a.agency}</span>
                     </>
                   ) : null}
-                   {a.needs_verification === 1 && (
+                   {a.needs_verification === 1 ? (
                      <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
                         SỐ LIỆU CẦN XÁC MINH
                      </span>
-                  )}
-                  {a.status === 'pending' && (
+                  ) : null}
+                  {a.status === 'pending' ? (
                      <span className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm">
                         ĐANG CHỜ DUYỆT
                      </span>
-                  )}
-                  {a.is_broken && (
+                  ) : null}
+                  {a.is_broken ? (
                      <span className="bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded text-[10px] font-bold">
                         ĐÃ LƯU TRỮ TẠI HỆ THỐNG
                      </span>
-                  )}
+                  ) : null}
                 </div>
-                {a.is_broken && a.full_text ? (
-                  <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-800 leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap">
-                    <div className="font-bold text-[10px] text-slate-400 uppercase mb-2">Nội dung đã lưu trữ</div>
-                    {a.full_text}
-                  </div>
+                {a.full_text ? (
+                   <div className="mt-3">
+                     <details className="group/fulltext border border-slate-100 rounded-lg overflow-hidden">
+                       <summary className="bg-slate-50 px-3 py-2 text-[10px] font-bold text-blue-600 cursor-pointer uppercase hover:text-blue-800 transition-colors list-none flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <ChevronRight className="w-3 h-3 group-open/fulltext:rotate-90 transition-transform" />
+                            {a.is_broken ? 'Nội dung đã lưu trữ tại hệ thống' : 'Xem nội dung chi tiết bài báo'}
+                          </span>
+                          <span className="text-slate-400 font-medium lowercase italic">{Math.round(a.full_text.length / 5)} chữ</span>
+                       </summary>
+                       <div className="p-4 bg-white text-xs text-slate-800 leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap font-serif">
+                          {a.full_text}
+                       </div>
+                     </details>
+                   </div>
                 ) : a.summary ? (
                   <div className={`mt-2 text-xs text-gray-700 ${a.is_broken ? '' : 'line-clamp-2'}`}>
                     {a.summary}
@@ -824,6 +909,7 @@ export default function EventDetail() {
             ))}
         </div>
       </div>
+
       {/* Reclassification Modal */}
       {isReclassifying && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4 no-print">
@@ -858,6 +944,27 @@ export default function EventDetail() {
             </div>
         </div>
       )}
+
+      {/* Modern Confirm Modal */}
+      <ConfirmModal 
+        isOpen={deleteModal.open}
+        onClose={() => setDeleteModal({ open: false, type: null, id: null })}
+        onConfirm={deleteModal.type === 'event' ? confirmDeleteEvent : confirmDeleteArticle}
+        title={deleteModal.type === 'event' ? "Xóa sự kiện" : "Xóa bài báo"}
+        message={deleteModal.type === 'event' 
+            ? "Bạn có chắc chắn muốn xóa TOÀN BỘ sự kiện này? Các bài báo liên quan sẽ bị loại khỏi hệ thống và không thể khôi phục."
+            : "Bạn có chắc chắn muốn xóa bài báo này? Bài báo sẽ bị gỡ khỏi sự kiện và chuyển vào danh sách đen."
+        }
+        confirmLabel="Xác nhận xóa"
+        variant="danger"
+      />
+
+      <Toast 
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, isVisible: false })}
+      />
     </div>
   );
 }

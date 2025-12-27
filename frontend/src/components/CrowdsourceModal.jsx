@@ -10,6 +10,9 @@ export default function CrowdsourceModal({ isOpen, onClose, user }) {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [formData, setFormData] = useState({
+        name: user?.full_name || "",
+        phone: "",
+        address: "",
         province: "",
         description: "",
         image_url: "",
@@ -28,7 +31,16 @@ export default function CrowdsourceModal({ isOpen, onClose, user }) {
             setTimeout(() => {
                 onClose();
                 setSuccess(false);
-                setFormData({ province: "", description: "", image_url: "", lat: 0, lon: 0 });
+                setFormData({ 
+                    name: user?.full_name || "", 
+                    phone: "", 
+                    address: "", 
+                    province: "", 
+                    description: "", 
+                    image_url: "", 
+                    lat: 0, 
+                    lon: 0 
+                });
             }, 2000);
         } catch (err) {
             alert("Lỗi: " + err.message);
@@ -78,17 +90,51 @@ export default function CrowdsourceModal({ isOpen, onClose, user }) {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Họ tên của bạn</label>
+                                <input 
+                                    type="text"
+                                    placeholder="Nguyễn Văn A"
+                                    value={formData.name || ""}
+                                    onChange={e => setFormData({...formData, name: e.target.value})}
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Số điện thoại</label>
+                                <input 
+                                    type="tel"
+                                    placeholder="0987..."
+                                    value={formData.phone || ""}
+                                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
+                                />
+                            </div>
+                        </div>
+
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tỉnh thành</label>
-                            <select 
-                                required
-                                value={formData.province}
-                                onChange={e => setFormData({...formData, province: e.target.value})}
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tỉnh thành</label>
+                             <select 
+                                 required
+                                 value={formData.province}
+                                 onChange={e => setFormData({...formData, province: e.target.value})}
+                                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
+                             >
+                                 <option value="">Chọn tỉnh thành...</option>
+                                 {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                             </select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Địa chỉ cụ thể</label>
+                            <input 
+                                type="text"
+                                placeholder="Số nhà, đường, thôn/xóm..."
+                                value={formData.address || ""}
+                                onChange={e => setFormData({...formData, address: e.target.value})}
                                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
-                            >
-                                <option value="">Chọn tỉnh thành...</option>
-                                {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                            </select>
+                            />
                         </div>
 
                         <div className="space-y-1">

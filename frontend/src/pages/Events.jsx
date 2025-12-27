@@ -12,6 +12,9 @@ import Badge from "../components/Badge.jsx";
 import { THEME_COLORS } from "../theme.js";
 import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle, ArrowRight, Calendar, Trash2, Printer, Download } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
+import ConfirmModal from "../components/ConfirmModal.jsx";
+import Toast from "../components/Toast.jsx";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // Updated tones for 8 groups
 const TYPE_TONES = {
@@ -37,7 +40,12 @@ const TYPE_TONES = {
 // Extract provinces for dropdown
 // Must match PROVINCE_MAPPING keys in backend/app/nlp.py
 const PROVINCES = [
-  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
+  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", 
+  "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", 
+  "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", 
+  "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", 
+  "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", 
+  "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
 ].sort();
 
 export default function Events() {
@@ -55,11 +63,23 @@ export default function Events() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 40;
+  const itemsPerPage = 20; 
+  const [totalEvents, setTotalEvents] = useState(0);
   
   const [error, setError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [user, setUser] = useState(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Modal states
+  const [deleteId, setDeleteId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Toast state
+  const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkRole = () => {
@@ -78,39 +98,90 @@ export default function Events() {
       }
     };
     checkRole();
+
+    // Check for toast in URL
+    const params = new URLSearchParams(location.search);
+    if (params.get('deleted')) {
+      setToast({ isVisible: true, message: 'Đã xóa sự kiện thành công!', type: 'success' });
+      // Remove the param from URL without refreshing
+      navigate(location.pathname, { replace: true });
+    }
+
     window.addEventListener("storage", checkRole);
     return () => window.removeEventListener("storage", checkRole);
   }, []);
 
-  const handleDelete = async (e, eventId) => {
+  const handleDelete = (e, eventId) => {
     e.preventDefault(); // Prevent navigation
-    if (!window.confirm("Bạn có chắc chắn muốn xóa sự kiện này? Bài viết liên quan sẽ bị loại bỏ khỏi hệ thống.")) return;
+    e.stopPropagation(); // Stop event from bubbling to parent <a> tag
+    setDeleteId(eventId);
+    setShowDeleteModal(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteId) return;
     try {
-      await deleteJson(`/api/events/${eventId}`);
+      await deleteJson(`/api/events/${deleteId}`);
       // Remove from local state immediately
-      setEvents(prev => prev.filter(ev => ev.id !== eventId));
+      setEvents(prev => prev.filter(ev => ev.id !== deleteId));
+      setDeleteId(null);
+      setToast({ isVisible: true, message: 'Đã xóa sự kiện thành công!', type: 'success' });
     } catch (err) {
-      alert("Xóa thất bại: " + err.message);
+      if (err.message.includes("404") || err.status === 404) {
+        // If already deleted, treat as success
+        setEvents(prev => prev.filter(ev => ev.id !== deleteId));
+        setDeleteId(null);
+        setToast({ isVisible: true, message: 'Sự kiện đã được xóa trước đó.', type: 'info' });
+      } else {
+        setToast({ isVisible: true, message: "Xóa thất bại: " + err.message, type: 'error' });
+      }
     }
   };
 
   const handleExportCSV = () => {
     // Basic CSV Export
-    const headers = ["Ngày", "ID", "Loại hình", "Tỉnh", "Xã", "Thôn", "Tuyến đường", "Nguyên nhân", "Đặc điểm", "Thiệt hại người", "Thiệt hại tiền (tỷ)"];
-    const rows = events.map(e => [
-        new Date(e.started_at).toLocaleDateString('vi-VN'),
-        e.key,
-        fmtType(e.disaster_type),
-        e.province,
-        e.commune || "",
-        e.village || "",
-        e.route || "",
-        e.cause || "",
-        e.characteristics || "",
-        `${e.deaths || 0} chết, ${e.missing || 0} mất tích`,
-        e.damage_billion_vnd || 0
-    ]);
+    const headers = [
+        "Loại hình thiên tai", 
+        "Thời gian", 
+        "Ngày đăng tin", 
+        "Tuyến đường", 
+        "Vị trí thôn/bản", 
+        "Xã", 
+        "Tỉnh", 
+        "Nguyên nhân (mưa hay hoạt động nhân sinh)", 
+        "Mô tả đặc điểm trượt lở", 
+        "Mô tả thiệt hại",
+        "Hình ảnh",
+        "Nguồn"
+    ];
+    
+    // Map raw data to CSV rows
+    const rows = events.map(e => {
+        const dead = e.deaths || 0;
+        const missing = e.missing || 0;
+        const injured = e.injured || 0;
+        let damageStr = [];
+        if (dead > 0) damageStr.push(`${dead} chết`);
+        if (missing > 0) damageStr.push(`${missing} mất tích`);
+        if (injured > 0) damageStr.push(`${injured} bị thương`);
+        if (e.damage_billion_vnd > 0) damageStr.push(`${e.damage_billion_vnd} tỷ`);
+        const damageText = damageStr.length > 0 ? damageStr.join(", ") : "0";
+
+        return [
+            fmtType(e.disaster_type),
+            new Date(e.started_at).toLocaleDateString('vi-VN'),
+            new Date(e.last_updated_at || e.started_at).toLocaleDateString('vi-VN'),
+            e.route || "",
+            e.village || "",
+            e.commune || "",
+            e.province || "",
+            e.cause || "",
+            e.characteristics || "",
+            damageText,
+            e.image_url || "",
+            e.source_url || e.source || ""
+        ];
+    });
     
     let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
     csvContent += headers.join(",") + "\n";
@@ -134,46 +205,45 @@ export default function Events() {
     return res;
   }
 
-  const fetchEvents = async (isBackground = false) => {
+  const fetchEvents = async (isBackground = false, pageToFetch = 1) => {
     try {
       if (!isBackground) setLoading(true);
       setError(null);
       
-      // Fetch base data first (Optimized: Server-side filtering)
+      const offset = (pageToFetch - 1) * itemsPerPage;
       const params = new URLSearchParams();
-      params.append("limit", "100"); // Reduced from 400 for speed
+      params.append("limit", itemsPerPage.toString()); 
+      params.append("offset", offset.toString());
       params.append("sort", "latest");
+      params.append("wrapper", "true"); // Request total count
       
       if (type) params.append("type", type);
       if (province) params.append("province", province);
       if (q) params.append("q", q);
       
-      // Date range logic: If both provided, use them. If only startDate, use as exact date or start of range.
       if (startDate && endDate) {
-          params.append("start_date", endDate); // range from end to start
+          params.append("start_date", endDate);
           params.append("end_date", startDate);
       } else if (startDate) {
-          params.append("date", startDate); // exact day
+          params.append("date", startDate);
       }
       
-      const initialEvents = await getJson(`/api/events?${params.toString()}`);
-      let filteredEvents = initialEvents.filter((e) => e.disaster_type && e.disaster_type !== "unknown");
-
-      // Client-side smart filtering for Text and Province (unaccented support)
-      if (q) {
-          // Keep lightweight local filter for instant feedback if needed, 
-          // but server already filtered most of it.
-          const query = normalizeStr(q, true);
-          // filteredEvents = filteredEvents.filter(e => e.title && normalizeStr(e.title, true).includes(query));
-      }
-      // province is already fully filtered by server
+      const response = await getJson(`/api/events?${params.toString()}`);
       
-      setEvents(filteredEvents);
-      // Only reset page on explicit filter change (user interaction), NOT on background refresh
-      // But here we can't easily distinguish generic 'fetch' from 'filter change' using just this function.
-      // Ideally, setCurrentPage(1) should be called by the filter setters or a separate effect tracking filter changes.
-      // For now, we'll assume if it's NOT background, it might be a filter change or initial load.
-      if (!isBackground) setCurrentPage(1);
+      let fetchedEvents = [];
+      if (response && response.items) {
+          fetchedEvents = response.items;
+          if (response.total !== undefined) {
+              setTotalEvents(response.total);
+          }
+      } else if (Array.isArray(response)) {
+           // Fallback if backend doesn't support wrapper yet (shouldn't happen)
+           fetchedEvents = response;
+      }
+      
+      // We don't append, we replace for standard pagination
+      setEvents(fetchedEvents);
+      setCurrentPage(pageToFetch);
       
     } catch (e) {
       console.error("Fetch error:", e);
@@ -183,18 +253,27 @@ export default function Events() {
     }
   };
 
+  // Handler for page change
+  const handlePageChange = (newPage) => {
+      fetchEvents(false, newPage);
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Initial load & Filter change
   useEffect(() => {
-    fetchEvents(false);
+    fetchEvents(false, 1);
   }, [q, type, province, startDate, endDate]);
 
-  // Auto-refresh every 5 minutes
+  // Auto-refresh every 5 minutes (only updates standard list if on page 1)
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchEvents(true);
+      if (currentPage === 1) {
+          fetchEvents(true, 1);
+      }
     }, 300000); 
     return () => clearInterval(interval);
-  }, [q, type, province, startDate, endDate]);
+  }, [q, type, province, startDate, endDate, currentPage]);
 
   const clearFilters = () => {
     setQ("");
@@ -202,16 +281,15 @@ export default function Events() {
     setProvince("");
     setStartDate(new Date().toISOString().split('T')[0]);
     setEndDate("");
-    setCurrentPage(1);
+    // fetchEvents will be triggered by useEffect
   };
-
-  // Pagination logic
-  const totalPages = Math.ceil(events.length / itemsPerPage);
+  // No client-side pagination logic
+  // const totalPages = Math.ceil(events.length / itemsPerPage);
 
   // Group events by date for rendering
   const groupedEvents = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const currentEvents = events.slice(startIndex, startIndex + itemsPerPage);
+    // No slicing, use all fetched events
+    const currentEvents = events;
     
     const groups = {};
     const todayStr = new Date().toLocaleDateString('vi-VN');
@@ -230,7 +308,7 @@ export default function Events() {
         groups[label].push(e);
     });
     return Object.entries(groups);
-  }, [events, currentPage, itemsPerPage]);
+  }, [events]); // removed currentPage dependency
 
   const hasFilters = q || type || province || startDate || endDate;
 
@@ -403,17 +481,12 @@ export default function Events() {
       {!loading && events.length > 0 && (
         <div className="mb-6 flex items-center justify-between">
            <div className="text-sm text-slate-600 font-medium">
-             Hiển thị <span className="text-slate-900">{(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, events.length)}</span> trong tổng số <span className="text-slate-900">{events.length}</span> sự kiện
+             Đang hiển thị <span className="text-slate-900 font-bold">{events.length}</span> sự kiện mới nhất
            </div>
-           {Math.ceil(events.length / itemsPerPage) > 1 && (
-             <div className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-md font-bold">
-                TRANG {currentPage} / {Math.ceil(events.length / itemsPerPage)}
-             </div>
-           )}
         </div>
       )}
 
-      {loading ? (
+      {loading && events.length === 0 ? (
         <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-blue-600"></div>
         </div>
@@ -491,7 +564,7 @@ export default function Events() {
                     >
                     <div className="h-1 w-full" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
                     <div className="w-full h-44 overflow-hidden relative flex items-center justify-center bg-slate-100/30">
-                        {!isJunkImage(e.image_url) ? (
+                        {e.image_url && !isJunkImage(e.image_url) ? (
                             <img 
                                 src={e.image_url} 
                                 alt={e.title} 
@@ -502,14 +575,14 @@ export default function Events() {
                                 }
                             />
                         ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white">
+                            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white relative overflow-hidden">
+                                <div className="absolute inset-0 opacity-5" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
                                 <img 
                                     src={logoIge} 
                                     alt="Logo IGE" 
-                                    className="w-28 h-28 object-contain opacity-95 group-hover:scale-110 transition-transform duration-700" 
-                                    style={{ mixBlendMode: 'multiply' }}
+                                    className="w-36 h-36 object-contain opacity-90 group-hover:scale-110 transition-transform duration-700 grayscale group-hover:grayscale-0" 
                                 />
-                                <div className="mt-3 h-1.5 w-16 rounded-full" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
+                                <div className="mt-2 h-1 w-16 rounded-full opacity-50" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
                             </div>
                         )}
                         <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
@@ -554,7 +627,9 @@ export default function Events() {
                             <span>{fmtTimeAgo(e.started_at)}</span>
                             </div>
                             {e.source && (
-                            <span className="font-bold text-red-500 uppercase ml-auto">{e.source}</span>
+                            <span className="font-bold text-red-500 uppercase ml-auto">
+                              {e.source.replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
+                            </span>
                             )}
                         </div>
 
@@ -630,52 +705,97 @@ export default function Events() {
                 </div>
             </div>
             ))}
+
         </div>
       )}
 
-      {/* Pagination Controls */}
-      {!loading && events.length > 0 && totalPages > 1 && !showExportView && (
+      {/* Pagination Controls (Standard) */}
+      {!loading && events.length > 0 && Math.ceil(totalEvents / itemsPerPage) > 1 && !showExportView && (
         <div className="mt-8 flex justify-center items-center gap-2">
           <button
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1}
             className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Quay lại
           </button>
           
-          <div className="flex gap-1">
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-               // Show 5 pages window
-               let start = Math.max(1, currentPage - 2);
-               if (start + 4 > totalPages) start = Math.max(1, totalPages - 4);
-               const p = start + i;
+          <div className="hidden sm:flex gap-1">
+            {(() => {
+               const totalPages = Math.ceil(totalEvents / itemsPerPage);
+               const pageNumbers = [];
+               const delta = 2; // number of pages around current
                
-               return (
+               if (totalPages <= 7) {
+                   for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
+               } else {
+                   // Always show first, last, and window around current
+                   pageNumbers.push(1);
+                   if (currentPage > 1 + delta + 1) pageNumbers.push('...');
+                   
+                   let start = Math.max(2, currentPage - delta);
+                   let end = Math.min(totalPages - 1, currentPage + delta);
+                   
+                   for (let i = start; i <= end; i++) pageNumbers.push(i);
+                   
+                   if (currentPage < totalPages - delta - 1) pageNumbers.push('...');
+                   pageNumbers.push(totalPages);
+               }
+
+               return pageNumbers.map((p, idx) => (
                 <button
-                    key={p}
-                    onClick={() => setCurrentPage(p)}
-                    className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
-                      currentPage === p 
+                    key={idx}
+                    onClick={() => typeof p === 'number' ? handlePageChange(p) : null}
+                    disabled={typeof p !== 'number'}
+                    className={`min-w-[36px] h-9 px-2 rounded-lg text-sm font-bold transition-colors ${
+                      p === currentPage 
                         ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                        : typeof p === 'number' 
+                           ? "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                           : "text-slate-400 border-none bg-transparent cursor-default"
                     }`}
                 >
                     {p}
                 </button>
-               );
-            })}
+               ));
+            })()}
           </div>
+          
+          {/* Mobile simple display */}
+          <span className="sm:hidden text-sm font-bold text-slate-600">
+             {currentPage} / {Math.ceil(totalEvents / itemsPerPage)}
+          </span>
 
           <button
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === Math.ceil(totalEvents / itemsPerPage)}
             className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Tiếp theo
           </button>
         </div>
       )}
+
+      {/* Modern Confirm Modal */}
+      <ConfirmModal 
+        isOpen={showDeleteModal}
+        onClose={() => {
+            setShowDeleteModal(false);
+            setDeleteId(null);
+        }}
+        onConfirm={confirmDelete}
+        title="Xóa sự kiện"
+        message="Bạn có chắc chắn muốn xóa sự kiện này? Tất cả các bài báo liên quan sẽ bị gỡ khỏi hệ thống và không thể khôi phục."
+        confirmLabel="Xác nhận xóa"
+        variant="danger"
+      />
+
+      <Toast 
+        isVisible={toast.isVisible}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, isVisible: false })}
+      />
     </div>
   );
 }

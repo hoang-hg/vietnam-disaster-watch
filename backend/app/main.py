@@ -48,6 +48,10 @@ async def cdn_optimization_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    # Skip rate limiting for OPTIONS requests (CORS preflight)
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     client_ip = request.client.host
     now = time.time()
     
@@ -58,7 +62,10 @@ async def rate_limit_middleware(request: Request, call_next):
     # Filter out old requests
     request_counts[client_ip] = [t for t in request_counts[client_ip] if now - t < RATE_PERIOD]
     
-    if len(request_counts[client_ip]) >= RATE_LIMIT:
+    # Increase limit to 100 for smoother admin/dev experience
+    limit = 100 
+    
+    if len(request_counts[client_ip]) >= limit:
         return Response(content="Too Many Requests", status_code=429)
     
     request_counts[client_ip].append(now)
@@ -74,12 +81,15 @@ from fastapi import WebSocket
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
     try:
+        await manager.connect(websocket)
         while True:
             # Keep connection alive, we don't expect client messages for now
             await websocket.receive_text()
-    except Exception:
+    except Exception as e:
+        # Client disconnected or other error
+        pass
+    finally:
         manager.disconnect(websocket)
 
 # Configure scheduler to handle slow jobs strictly
@@ -100,8 +110,15 @@ async def on_startup():
     Base.metadata.create_all(bind=engine)
 
     # 1. Initial full crawl on startup
-    import asyncio
-    asyncio.create_task(_process_once_async())
+    # 1. Initial full crawl on startup
+    # Use scheduler to run in background thread to avoid blocking main loop (WebSocket handshake)
+    from datetime import datetime, timedelta
+    scheduler.add_job(
+        process_once,
+        'date',
+        run_date=datetime.now() + timedelta(seconds=15),
+        id="startup_crawl"
+    )
 
     # Tier 1: Critical Official Sources (High Frequency: 15 mins)
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management

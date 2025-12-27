@@ -174,3 +174,59 @@ def reject_report(
     report.status = "rejected"
     db.commit()
     return {"ok": True}
+
+@router.get("/rescue/hotlines", response_model=List[schemas.RescueHotlineOut])
+def get_rescue_hotlines(
+    limit: int = 1000,
+    province: str | None = None,
+    db: Session = Depends(get_db)
+):
+    q = db.query(models.RescueHotline)
+    if province:
+        q = q.filter(models.RescueHotline.province == province)
+    return q.limit(limit).all()
+
+@router.post("/admin/rescue", response_model=schemas.RescueHotlineOut)
+def create_rescue_hotline(
+    payload: schemas.RescueHotlineCreate,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    hotline = models.RescueHotline(**payload.model_dump())
+    db.add(hotline)
+    db.commit()
+    db.refresh(hotline)
+    return hotline
+
+@router.put("/admin/rescue/{hotline_id}", response_model=schemas.RescueHotlineOut)
+def update_rescue_hotline(
+    hotline_id: int,
+    payload: schemas.RescueHotlineUpdate,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    hotline = db.query(models.RescueHotline).filter(models.RescueHotline.id == hotline_id).first()
+    if not hotline:
+        raise HTTPException(status_code=404, detail="Hotline not found")
+        
+    data = payload.model_dump(exclude_unset=True)
+    for k, v in data.items():
+        setattr(hotline, k, v)
+        
+    db.commit()
+    db.refresh(hotline)
+    return hotline
+
+@router.delete("/admin/rescue/{hotline_id}", status_code=204)
+def delete_rescue_hotline(
+    hotline_id: int,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    hotline = db.query(models.RescueHotline).filter(models.RescueHotline.id == hotline_id).first()
+    if not hotline:
+        raise HTTPException(status_code=404, detail="Hotline not found")
+        
+    db.delete(hotline)
+    db.commit()
+    return

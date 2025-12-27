@@ -205,6 +205,18 @@ export default function Dashboard() {
     })), [events]);
 
   const chartData = useMemo(() => {
+    // [OPTIMIZATION] Use server-side aggregated stats if available
+    if (stats && stats.by_type) {
+       return Object.entries(stats.by_type)
+            .map(([k, v]) => ({ 
+                name: fmtType(k), 
+                count: v,
+                fill: THEME_COLORS[k] || THEME_COLORS.unknown
+            }))
+            .sort((a, b) => b.count - a.count);
+    }
+    
+    // Fallback: Client-side aggregation (slower / truncated)
     const agg = {
       storm: 0, flood: 0, flash_flood: 0, landslide: 0, subsidence: 0, 
       drought: 0, salinity: 0, extreme_weather: 0, heatwave: 0, cold_surge: 0,
@@ -221,9 +233,15 @@ export default function Dashboard() {
             fill: THEME_COLORS[k] || THEME_COLORS.unknown
         }))
         .sort((a, b) => b.count - a.count);
-  }, [events]);
+  }, [events, stats]);
 
   const riskiestHotspots = useMemo(() => {
+    // [OPTIMIZATION] Use server-side aggregated stats if available
+    if (stats && stats.by_province) {
+        return stats.by_province;
+    }
+
+    // Fallback
     const counts = {};
     events.forEach(e => {
         if (e.province && VALID_PROVINCES.includes(e.province)) {
@@ -233,7 +251,7 @@ export default function Dashboard() {
     return Object.entries(counts)
         .map(([province, count]) => ({ province, events: count }))
         .sort((a, b) => b.events - a.events);
-  }, [events]);
+  }, [events, stats]);
 
   const favoriteEvents = useMemo(() => {
     if (!favoriteProvince) return [];

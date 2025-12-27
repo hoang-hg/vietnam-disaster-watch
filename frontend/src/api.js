@@ -10,7 +10,9 @@ export async function getJson(path) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
     }
-    throw new Error(`API error ${res.status}`);
+    const err = new Error(`API error ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -30,7 +32,9 @@ export async function deleteJson(path) {
         errorDetail = errData.detail || "";
     } catch(e) {}
     
-    throw new Error(errorDetail || `API error ${res.status}`);
+    const err = new Error(errorDetail || `API error ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return true;
 }
@@ -52,7 +56,9 @@ export async function putJson(path, payload) {
         localStorage.removeItem("user");
     }
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.detail || `API error ${res.status}`);
+    const err = new Error(errData.detail || `API error ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -74,7 +80,9 @@ export async function postJson(path, payload) {
         localStorage.removeItem("user");
     }
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.detail || `API error ${res.status}`);
+    const err = new Error(errData.detail || `API error ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }
@@ -96,7 +104,9 @@ export async function patchJson(path, payload = {}) {
         localStorage.removeItem("user");
     }
     const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.detail || `API error ${res.status}`);
+    const err = new Error(errData.detail || `API error ${res.status}`);
+    err.status = res.status;
+    throw err;
   }
   return res.json();
 }

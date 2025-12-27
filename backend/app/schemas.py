@@ -41,6 +41,7 @@ class EventOut(BaseModel):
     commune: str | None = None
     village: str | None = None
     route: str | None = None
+    location_description: str | None = None
     cause: str | None = None
     characteristics: str | None = None
     started_at: datetime
@@ -59,6 +60,7 @@ class EventOut(BaseModel):
     needs_verification: int = 0
     image_url: str | None = None
     source: str | None = None
+    source_url: str | None = None
 
     class Config:
         from_attributes = True
@@ -73,6 +75,7 @@ class EventUpdate(BaseModel):
     commune: str | None = None
     village: str | None = None
     route: str | None = None
+    location_description: str | None = None
     cause: str | None = None
     characteristics: str | None = None
     deaths: int | None = None
@@ -83,13 +86,18 @@ class EventUpdate(BaseModel):
 
 class CrowdsourcedReportOut(BaseModel):
     id: int
-    user_id: int
+    user_id: int | None = None
     event_id: int | None = None
     province: str | None = None
     lat: float
     lon: float
     description: str
     image_url: str | None = None
+    
+    name: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    
     status: str
     created_at: datetime
     
@@ -103,6 +111,10 @@ class CrowdsourcedReportCreate(BaseModel):
     lon: float
     description: str
     image_url: str | None = None
+    
+    name: str = "Khách" # Default for guests
+    phone: str | None = None
+    address: str | None = None
 
 class NotificationOut(BaseModel):
     id: int
@@ -113,5 +125,26 @@ class NotificationOut(BaseModel):
     is_read: bool
     created_at: datetime
 
+    class Config:
+        from_attributes = True
+
+class RescueHotlineBase(BaseModel):
+    province: str
+    agency: str
+    phone: str
+    address: str | None = None
+
+class RescueHotlineCreate(RescueHotlineBase):
+    pass
+
+class RescueHotlineUpdate(BaseModel):
+    province: str | None = None
+    agency: str | None = None
+    phone: str | None = None
+    address: str | None = None
+
+class RescueHotlineOut(RescueHotlineBase):
+    id: int
+    updated_at: datetime
     class Config:
         from_attributes = True

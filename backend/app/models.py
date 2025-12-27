@@ -178,3 +178,12 @@ class AiFeedback(Base):
     
     article = relationship("Article")
     user = relationship("User")
+
+class RescueHotline(Base):
+    __tablename__ = "rescue_hotlines"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    province: Mapped[str] = mapped_column(String(64), index=True)
+    agency: Mapped[str] = mapped_column(String(255))
+    phone: Mapped[str] = mapped_column(String(50))
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

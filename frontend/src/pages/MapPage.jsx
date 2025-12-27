@@ -28,13 +28,15 @@ const getProvCoords = (name) => {
 
 const LEGEND_ITEMS = [
     { key: "storm", color: THEME_COLORS.storm, label: "Bão / Áp thấp" },
-    { key: "flood_landslide", color: THEME_COLORS.flood_landslide, label: "Lũ / Sạt lở" },
-    { key: "heat_drought", color: THEME_COLORS.heat_drought, label: "Nắng nóng / Hạn" },
-    { key: "wind_fog", color: THEME_COLORS.wind_fog, label: "Gió mạnh / Sương mù" },
+    { key: "flood_landslide", color: THEME_COLORS.landslide, label: "Lũ / Sạt lở" },
+    { key: "heat_drought", color: THEME_COLORS.drought, label: "Nắng nóng / Hạn" },
+    { key: "wind_fog", color: THEME_COLORS.cold_surge, label: "Gió mạnh / Sương mù" },
     { key: "storm_surge", color: THEME_COLORS.storm_surge, label: "Nước dâng" },
-    { key: "extreme_other", color: THEME_COLORS.extreme_other, label: "Cực đoan khác" },
+    { key: "extreme_other", color: THEME_COLORS.extreme_weather, label: "Cực đoan khác" },
     { key: "wildfire", color: THEME_COLORS.wildfire, label: "Cháy rừng" },
-    { key: "quake_tsunami", color: THEME_COLORS.quake_tsunami, label: "Động đất" },
+    { key: "quake_tsunami", color: THEME_COLORS.earthquake, label: "Động đất" },
+    { key: "warning_forecast", color: THEME_COLORS.warning_forecast, label: "Tin cảnh báo" },
+    { key: "recovery", color: THEME_COLORS.recovery, label: "Khắc phục hậu quả" },
 ];
 
 export default function MapPage() {
@@ -44,7 +46,9 @@ export default function MapPage() {
   // Filters
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState('');
-  const [activeFilters, setActiveFilters] = useState(() => LEGEND_ITEMS.map(i => i.key));
+  const [activeFilter, setActiveFilter] = useState("storm");
+  const row1 = LEGEND_ITEMS.slice(0, 5);
+  const row2 = LEGEND_ITEMS.slice(5);
 
   // Fetch Data
   useEffect(() => {
@@ -83,16 +87,24 @@ export default function MapPage() {
 
   // Derived state for display
   const displayedEvents = useMemo(() => {
-    return dataEvents.filter(e => activeFilters.includes(e.disaster_type));
-  }, [dataEvents, activeFilters]);
+    const MAPPING = {
+        storm: ['storm'],
+        flood_landslide: ['flood', 'flash_flood', 'landslide', 'subsidence'],
+        heat_drought: ['heatwave', 'drought', 'salinity'],
+        wind_fog: ['cold_surge', 'wind_fog'],
+        storm_surge: ['storm_surge'],
+        extreme_other: ['extreme_weather', 'unknown'],
+        wildfire: ['wildfire'],
+        quake_tsunami: ['earthquake', 'tsunami'],
+        warning_forecast: ['warning_forecast'],
+        recovery: ['recovery']
+    };
 
-  const toggleFilter = (key) => {
-    setActiveFilters(prev => 
-        prev.includes(key) 
-            ? prev.filter(k => k !== key) 
-            : [...prev, key]
-    );
-  };
+    return dataEvents.filter(e => {
+        const matchTypes = MAPPING[activeFilter] || [activeFilter];
+        return matchTypes.includes(e.disaster_type);
+    });
+  }, [dataEvents, activeFilter]);
 
   return (
     <div className="flex flex-col flex-1 w-full bg-slate-100 font-sans h-full">
@@ -135,30 +147,68 @@ export default function MapPage() {
                     </div>
                 </div>
 
-                {/* Row 2: Filters (Simple Pill Style) */}
-                <div className="flex flex-wrap items-center gap-2">
-                    {LEGEND_ITEMS.map((item) => {
-                        const isActive = activeFilters.includes(item.key);
-                        return (
-                            <button
-                                key={item.key}
-                                onClick={() => toggleFilter(item.key)}
-                                className={`
-                                    flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-all duration-200 shadow-sm
-                                    ${isActive 
-                                        ? 'bg-blue-50 border-blue-600 text-blue-700 font-bold shadow-sm' 
-                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
-                                    }
-                                `}
-                            >
-                                <span 
-                                    className="w-2 h-2 rounded-full shadow-sm"
-                                    style={{ backgroundColor: item.color }}
-                                ></span>
-                                {item.label}
-                            </button>
-                        );
-                    })}
+                {/* Filters (Symmetrical 2 rows of 5) */}
+                <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {row1.map((item) => {
+                            const isActive = activeFilter === item.key;
+                            return (
+                                <button
+                                    key={item.key}
+                                    onClick={() => setActiveFilter(item.key)}
+                                    className={`
+                                        flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] uppercase font-black transition-all duration-200 shadow-sm whitespace-nowrap
+                                        ${isActive 
+                                            ? 'shadow-md scale-105 ring-1 ring-offset-1' 
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                        }
+                                    `}
+                                    style={isActive ? {
+                                        backgroundColor: `${item.color}15`, 
+                                        borderColor: item.color,
+                                        color: item.color,
+                                        boxShadow: `0 4px 6px -1px ${item.color}20`
+                                    } : {}}
+                                >
+                                    <span 
+                                        className="w-2.5 h-2.5 rounded-full shadow-inner"
+                                        style={{ backgroundColor: item.color }}
+                                    ></span>
+                                    {item.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {row2.map((item) => {
+                            const isActive = activeFilter === item.key;
+                            return (
+                                <button
+                                    key={item.key}
+                                    onClick={() => setActiveFilter(item.key)}
+                                    className={`
+                                        flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] uppercase font-black transition-all duration-200 shadow-sm whitespace-nowrap
+                                        ${isActive 
+                                            ? 'shadow-md scale-105 ring-1 ring-offset-1' 
+                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                        }
+                                    `}
+                                    style={isActive ? {
+                                        backgroundColor: `${item.color}15`, 
+                                        borderColor: item.color,
+                                        color: item.color,
+                                        boxShadow: `0 4px 6px -1px ${item.color}20`
+                                    } : {}}
+                                >
+                                    <span 
+                                        className="w-2.5 h-2.5 rounded-full shadow-inner"
+                                        style={{ backgroundColor: item.color }}
+                                    ></span>
+                                    {item.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>

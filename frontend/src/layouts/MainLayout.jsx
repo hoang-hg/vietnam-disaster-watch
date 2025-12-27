@@ -186,6 +186,7 @@ export default function MainLayout({ children }) {
 
   const adminNavigation = user?.role === "admin" ? [
     { name: "QUẢN TRỊ & DUYỆT TIN", href: "/admin/logs", current: location.pathname.startsWith("/admin/logs") },
+    { name: "BÁO CÁO CỘNG ĐỒNG", href: "/admin/reports", current: location.pathname.startsWith("/admin/reports") },
   ] : [];
 
   const [showScroll, setShowScroll] = useState(false);
@@ -303,20 +304,7 @@ export default function MainLayout({ children }) {
                         </Link>
                     ))}
 
-                    {/* Province Selector (Area of Interest) - Moved next to Nav items */}
-                    <div className="flex items-center gap-2 px-4 border-r border-white/20 h-full bg-black/10">
-                        <MapPin className="w-3.5 h-3.5 text-white/70" />
-                        <select 
-                            value={user?.favorite_province || ""}
-                            onChange={(e) => handleProvinceChange(e.target.value)}
-                            className="bg-transparent text-white text-[11px] font-black uppercase outline-none cursor-pointer hover:text-yellow-300 transition-colors"
-                        >
-                            <option value="" className="text-slate-900">Toàn quốc</option>
-                            {PROVINCES.map(p => (
-                                <option key={p} value={p} className="text-slate-900">{p}</option>
-                            ))}
-                        </select>
-                    </div>
+
                     
                     {adminNavigation.length > 0 && adminNavigation.map((item) => (
                         <Link
@@ -339,8 +327,7 @@ export default function MainLayout({ children }) {
                 {/* Account Actions (Desktop) */}
                 <div className="hidden md:flex items-center gap-2 h-full">
                     {/* Crowdsourcing & Notifications (Logged in users only) */}
-                    {user && user.role !== 'guest' && (
-                        <>
+                    {user?.role !== "admin" && (
                             <button 
                                 onClick={() => setIsCrowdsourceOpen(true)}
                                 className="flex items-center gap-2 px-4 h-full text-white text-[10px] font-black hover:bg-white/10 transition-colors border-l border-white/20 uppercase tracking-tighter"
@@ -348,6 +335,9 @@ export default function MainLayout({ children }) {
                                 <AlertTriangle className="w-3.5 h-3.5 text-yellow-300" />
                                 Đóng góp hiện trường
                             </button>
+                    )}
+                    {user && user.role !== 'guest' && (
+                        <>
                             <div className="h-full border-l border-white/20 flex items-center px-2">
                                 <NotificationDropdown isOpen={isNotifOpen} setIsOpen={setIsNotifOpen} user={user} />
                             </div>
@@ -422,8 +412,7 @@ export default function MainLayout({ children }) {
                             {item.name}
                         </Link>
                     ))}
-                    {user && user.role !== 'guest' && (
-                        <>
+                    {user?.role !== "admin" && (
                             <button 
                                 onClick={() => { setIsCrowdsourceOpen(true); setIsMobileMenuOpen(false); }}
                                 className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-bold text-white bg-red-600/30 hover:bg-red-600/50 mt-2"
@@ -431,6 +420,9 @@ export default function MainLayout({ children }) {
                                 <AlertTriangle className="w-4 h-4 text-yellow-300" />
                                 ĐÓNG GÓP HIỆN TRƯỜNG
                             </button>
+                    )}
+                    {user && user.role !== 'guest' && (
+                        <>
                             <button 
                                 onClick={() => { setIsNotifOpen(true); setIsMobileMenuOpen(false); }}
                                 className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-[#258a9b]"
