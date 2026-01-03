@@ -24,6 +24,12 @@ try:
 except ImportError:
     _HAS_BS4 = False
 
+try:
+    from playwright.async_api import async_playwright
+    _HAS_PLAYWRIGHT = True
+except ImportError:
+    _HAS_PLAYWRIGHT = False
+
 # Import Standardized Disaster Groups and Negative Patterns from nlp.py
 from .nlp import DISASTER_RULES as NLP_DISASTER_RULES, DISASTER_NEGATIVE as NLP_DISASTER_NEGATIVE
 
@@ -31,6 +37,75 @@ from .nlp import DISASTER_RULES as NLP_DISASTER_RULES, DISASTER_NEGATIVE as NLP_
 # or just use the rules directly.
 DISASTER_RULES = NLP_DISASTER_RULES
 DISASTER_NEGATIVE = NLP_DISASTER_NEGATIVE
+
+def extract_metadata(soup: BeautifulSoup) -> dict:
+    """
+    Extracts high-quality metadata from SEO Meta Tags (OpenGraph, Twitter).
+    """
+    meta_data = {
+        "image": None,
+        "description": None,
+        "title": None,
+        "published_time": None
+    }
+    
+    if not soup: return meta_data
+
+    # 1. Image Priority: og:image -> twitter:image -> schema:image
+    img_selectors = [
+        {"property": "og:image"},
+        {"property": "og:image:url"},
+        {"property": "og:image:secure_url"},
+        {"name": "twitter:image"},
+        {"name": "twitter:image:src"},
+        {"itemprop": "image"}
+    ]
+    for sel in img_selectors:
+        tag = soup.find("meta", attrs=sel)
+        if tag and tag.get("content"):
+            meta_data["image"] = tag["content"]
+            break
+
+    # 2. Description Priority: og:description -> twitter:description -> description
+    desc_selectors = [
+        {"property": "og:description"},
+        {"name": "twitter:description"},
+        {"name": "description"},
+        {"itemprop": "description"}
+    ]
+    for sel in desc_selectors:
+        tag = soup.find("meta", attrs=sel)
+        if tag and tag.get("content"):
+            meta_data["description"] = tag["content"]
+            break
+
+    # 3. Title Priority: og:title -> twitter:title -> title tag
+    title_selectors = [
+        {"property": "og:title"},
+        {"name": "twitter:title"},
+        {"itemprop": "headline"}
+    ]
+    for sel in title_selectors:
+        tag = soup.find("meta", attrs=sel)
+        if tag and tag.get("content"):
+            meta_data["title"] = tag["content"]
+            break
+            
+    # 4. Published Time
+    time_selectors = [
+        {"property": "article:published_time"},
+        {"property": "article:modified_time"},
+        {"name": "pubdate"},
+        {"name": "publish-date"},
+        {"itemprop": "datePublished"}
+    ]
+    for sel in time_selectors:
+        tag = soup.find("meta", attrs=sel)
+        if tag and tag.get("content"):
+            meta_data["published_time"] = tag["content"]
+            break
+
+    return meta_data
 
 def contains_disaster_keywords(text: str) -> bool:
     """Check if text contains disaster keywords using regex patterns."""
@@ -71,23 +146,48 @@ class HTMLScraper:
             )
         return HTMLScraper._shared_client
 
-    async def _get_with_retry(self, url: str) -> Optional[httpx.Response]:
-        """Fetch URL with retries, random User-Agent, and exponential backoff."""
-        client = await self.get_client()
+    async def _get_with_retry(self, url: str) -> Optional[str]:
+        """Fetch URL with retries, random User-Agent, and Playwright fallback."""
+        
         for attempt in range(3):
+            # INNER JITTER: Sleep between attempts and between different sources
+            await asyncio.sleep(random.uniform(0.5, 2.0))
+            
             try:
-                # Select random UA if available
                 ua = random.choice(settings.user_agents) if hasattr(settings, 'user_agents') and settings.user_agents else self.default_ua
                 headers = {"User-Agent": ua}
                 
-                response = await client.get(url, headers=headers)
-                response.raise_for_status()
-                return response
+                # If we have proxies, use a one-off client for this request to rotate IPs effectively
+                if settings.crawler_proxies:
+                    proxy = random.choice(settings.crawler_proxies)
+                    async with httpx.AsyncClient(proxy=proxy, timeout=self.timeout, follow_redirects=True, verify=False) as client:
+                        response = await client.get(url, headers=headers)
+                        response.raise_for_status()
+                else:
+                    client = await self.get_client()
+                    response = await client.get(url, headers=headers)
+                    response.raise_for_status()
+                
+                html = response.text
+                # Check for Cloudflare or empty content
+                if "cloudflare" in html.lower() or len(html) < 500:
+                    if _HAS_PLAYWRIGHT:
+                        logger.info(f"Detected Cloudflare or empty content at {url}, trying Playwright...")
+                        pw_res = await fetch_with_playwright(url, timeout=20)
+                        if pw_res:
+                            return pw_res["html"]
+                
+                return html
             except httpx.HTTPError as e:
                 if attempt == 2:
+                    if _HAS_PLAYWRIGHT:
+                        logger.info(f"HTTP error for {url}, attempting Playwright fallback...")
+                        pw_res = await fetch_with_playwright(url, timeout=20)
+                        if pw_res:
+                            return pw_res["html"]
                     logger.debug(f"Failed to fetch {url} after 3 attempts: {e}")
                     return None
-                await asyncio.sleep(0.5 * (attempt + 1)) # Reduced backoff for performance
+                await asyncio.sleep(0.5 * (attempt + 1))
             except Exception as e:
                 logger.debug(f"Unexpected error fetching {url}: {e}")
                 return None
@@ -97,171 +197,146 @@ class HTMLScraper:
         """Scrape Tuổi Trẻ news listing - fallback only."""
         if not _HAS_BS4: return []
         
-        response = await self._get_with_retry("https://tuoitre.vn/")
-        if not response: return []
-        
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "tuoitre.vn", max_items=15)
+        html_content = await self._get_with_retry("https://tuoitre.vn/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "tuoitre.vn", max_items=15)
 
     async def scrape_vnexpress(self) -> List[dict]:
         """Scrape VnExpress news listing - fallback only."""
         if not _HAS_BS4: return []
         
-        response = await self._get_with_retry("https://vnexpress.net/")
-        if not response: return []
-        
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vnexpress.net", max_items=15)
+        html_content = await self._get_with_retry("https://vnexpress.net/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vnexpress.net", max_items=15)
 
     async def scrape_dantri(self) -> List[dict]:
         """Scrape Dân Trí news listing - fallback only."""
         if not _HAS_BS4: return []
         
-        response = await self._get_with_retry("https://dantri.com.vn/")
-        if not response: return []
-        
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "dantri.com.vn", max_items=15)
+        html_content = await self._get_with_retry("https://dantri.com.vn/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "dantri.com.vn", max_items=15)
 
     async def scrape_nld(self) -> List[dict]:
         """Scrape Người Lao Động news listing - fallback only."""
         if not _HAS_BS4: return []
         
-        response = await self._get_with_retry("https://nld.com.vn/")
-        if not response: return []
-        
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "nld.com.vn", max_items=15)
+        html_content = await self._get_with_retry("https://nld.com.vn/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "nld.com.vn", max_items=15)
 
     async def scrape_sggp(self) -> List[dict]:
         """Scrape SGGP news listing - fallback only."""
         if not _HAS_BS4: return []
         
-        response = await self._get_with_retry("https://sggp.org.vn/")
-        if not response: return []
-        
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "sggp.org.vn", max_items=15)
+        html_content = await self._get_with_retry("https://sggp.org.vn/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "sggp.org.vn", max_items=15)
 
     async def scrape_thanhnien(self) -> List[dict]:
         """Scrape Thanh Niên news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://thanhnien.vn/thoi-su.htm")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "thanhnien.vn", max_items=15)
+        html_content = await self._get_with_retry("https://thanhnien.vn/thoi-su.htm")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "thanhnien.vn", max_items=15)
 
     async def scrape_vietnamnet(self) -> List[dict]:
         """Scrape VietNamNet news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://vietnamnet.vn/thoi-su")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vietnamnet.vn", max_items=15)
+        html_content = await self._get_with_retry("https://vietnamnet.vn/thoi-su")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vietnamnet.vn", max_items=15)
 
     async def scrape_laodong(self) -> List[dict]:
         """Scrape Lao Động news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://laodong.vn/thoi-su")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "laodong.vn", max_items=15)
+        html_content = await self._get_with_retry("https://laodong.vn/thoi-su")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "laodong.vn", max_items=15)
 
     async def scrape_nhandan(self) -> List[dict]:
         """Scrape Nhân Dân news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://nhandan.vn/xa-hoi")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "nhandan.vn", max_items=15)
+        html_content = await self._get_with_retry("https://nhandan.vn/xa-hoi")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "nhandan.vn", max_items=15)
 
     async def scrape_tienphong(self) -> List[dict]:
         """Scrape Tiền Phong news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://tienphong.vn/xa-hoi")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "tienphong.vn", max_items=15)
+        html_content = await self._get_with_retry("https://tienphong.vn/xa-hoi")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "tienphong.vn", max_items=15)
 
     async def scrape_baotintuc(self) -> List[dict]:
         """Scrape Báo Tin Tức news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://baotintuc.vn/thoi-su.htm")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "baotintuc.vn", max_items=15)
+        html_content = await self._get_with_retry("https://baotintuc.vn/thoi-su.htm")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "baotintuc.vn", max_items=15)
 
     async def scrape_vtv(self) -> List[dict]:
         """Scrape VTV News news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://vtv.vn/xa-hoi.htm")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vtv.vn", max_items=15)
+        html_content = await self._get_with_retry("https://vtv.vn/xa-hoi.htm")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vtv.vn", max_items=15)
 
     async def scrape_vov(self) -> List[dict]:
         """Scrape VOV (Voice of Vietnam) news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://vov.vn/xa-hoi")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vov.vn", max_items=15)
+        html_content = await self._get_with_retry("https://vov.vn/xa-hoi")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vov.vn", max_items=15)
 
     async def scrape_vietnamplus(self) -> List[dict]:
         """Scrape VietnamPlus news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://www.vietnamplus.vn/xa-hoi/")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vietnamplus.vn", max_items=15)
+        html_content = await self._get_with_retry("https://www.vietnamplus.vn/xa-hoi/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vietnamplus.vn", max_items=15)
 
     async def scrape_vietnamvn(self) -> List[dict]:
         """Scrape Vietnam.vn (Official Portal)."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://www.vietnam.vn/category/xa-hoi/")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vietnam.vn", max_items=15)
+        html_content = await self._get_with_retry("https://www.vietnam.vn/category/xa-hoi/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vietnam.vn", max_items=15)
 
     async def scrape_vtcnews(self) -> List[dict]:
         """Scrape VTC News news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://vtcnews.vn/thoi-su")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "vtcnews.vn", max_items=15)
+        html_content = await self._get_with_retry("https://vtcnews.vn/thoi-su")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "vtcnews.vn", max_items=15)
 
     async def scrape_bnews(self) -> List[dict]:
         """Scrape Bnews (VNA branch) news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://bnews.vn/thoi-su/50.html")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "bnews.vn", max_items=15)
+        html_content = await self._get_with_retry("https://bnews.vn/thoi-su/50.html")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "bnews.vn", max_items=15)
 
     async def scrape_suckhoedoisong(self) -> List[dict]:
         """Scrape Báo Sức khỏe & Đời sống news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://suckhoedoisong.vn/thoi-su.htm")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "suckhoedoisong.vn", max_items=15)
+        html_content = await self._get_with_retry("https://suckhoedoisong.vn/thoi-su.htm")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "suckhoedoisong.vn", max_items=15)
 
     async def scrape_monre_news(self) -> List[dict]:
         """Scrape Báo Tài nguyên & Môi trường news listing."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry("https://baotainguyenmoitruong.vn/thoi-su")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, "baotainguyenmoitruong.vn", max_items=15)
+        html_content = await self._get_with_retry("https://baotainguyenmoitruong.vn/thoi-su")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, "baotainguyenmoitruong.vn", max_items=15)
 
     async def scrape_generic(self, domain: str) -> List[dict]:
         """Generic fallback scraper for any domain."""
         if not _HAS_BS4: return []
-        response = await self._get_with_retry(f"https://{domain}/")
-        if not response: return []
-        response.encoding = "utf-8"
-        return self._extract_generic_links(response.text, domain, max_items=15)
+        html_content = await self._get_with_retry(f"https://{domain}/")
+        if not html_content: return []
+        return self._extract_generic_links(html_content, domain, max_items=15)
 
     async def scrape_kttv_portal(self, domain: str) -> List[dict]:
         """Scrape any KTTV portal (National or Provincial) - Targeted Scrape."""
@@ -275,25 +350,24 @@ class HTMLScraper:
         else:
             url = f"https://{domain}/kttv/" if "kttv.gov.vn" in domain and domain != "kttv.gov.vn" else f"https://{domain}"
 
-        response = await self._get_with_retry(url)
-        if not response:
+        html_content = await self._get_with_retry(url)
+        if not html_content:
             # Try standard /kttv/ path if root fails
             if not url.endswith("/kttv/"):
                 url_alt = url.rstrip("/") + "/kttv/"
-                response = await self._get_with_retry(url_alt)
+                html_content = await self._get_with_retry(url_alt)
             
-            if not response:
+            if not html_content:
                 # Fallback to nchmf for national domain
                 if "thoitietvietnam" in domain or "nchmf" in domain:
                     url = "https://nchmf.gov.vn/kttv/"
-                    response = await self._get_with_retry(url)
+                    html_content = await self._get_with_retry(url)
                 
-                if not response: return []
+                if not html_content: return []
 
-        response.encoding = "utf-8"
         articles = []
         try:
-            soup = BeautifulSoup(response.text, "html.parser")
+            soup = BeautifulSoup(html_content, "html.parser")
             # Provincial sites often have news in these containers
             content_containers = soup.find_all(['ul', 'div'], class_=re.compile(r'list-news|uk-list|news-list|tin-tuc|lastest-news', re.I))
             
@@ -592,6 +666,53 @@ def decode_gnews_url(url: str) -> str:
         
     return url
 
+async def fetch_with_playwright(url: str, timeout: int = 30) -> Optional[dict]:
+    """
+    Fallback fetcher using Playwright to handle JS-heavy sites or bot detection.
+    """
+    if not _HAS_PLAYWRIGHT:
+        logger.debug("Playwright not available - skipping browser fallback")
+        return None
+
+    try:
+        async with async_playwright() as p:
+            # Proxy configuration
+            launch_kwargs = {"headless": True}
+            if settings.crawler_proxies:
+                proxy_server = random.choice(settings.crawler_proxies)
+                launch_kwargs["proxy"] = {"server": proxy_server}
+                logger.debug(f"Using proxy for Playwright: {proxy_server}")
+                
+            browser = await p.chromium.launch(**launch_kwargs)
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={'width': 1280, 'height': 800}
+            )
+            page = await context.new_page()
+            
+            # Set a shorter timeout for navigation
+            try:
+                # Wait for 'domcontentloaded' instead of 'networkidle' for speed
+                await page.goto(url, timeout=timeout * 1000, wait_until="domcontentloaded")
+                # Wait a bit for JS content
+                await asyncio.sleep(1)
+                
+                content = await page.content()
+                final_url = page.url
+                
+                return {
+                    "html": content,
+                    "final_url": final_url
+                }
+            except Exception as e:
+                logger.debug(f"Playwright navigation error for {url}: {e}")
+                return None
+            finally:
+                await browser.close()
+    except Exception as e:
+        logger.debug(f"Playwright execution error: {e}")
+        return None
+
 async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional[dict]:
     """
     Asynchronous version of fetch_article_full_text.
@@ -611,27 +732,53 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
         "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
     }
     
+    final_url = url
+    html_content = None
+    
     try:
-        scraper = HTMLScraper(timeout=timeout)
-        client = await scraper.get_client()
-        
-        resp = await client.get(url, follow_redirects=True, headers=headers)
-        resp.raise_for_status()
-            
-        final_url = str(resp.url)
-        
-        # Smart encoding detection
-        if resp.encoding == 'ISO-8859-1' or not resp.encoding:
-            resp.encoding = resp.apparent_encoding
-        
-        html_content = resp.text
+        if settings.crawler_proxies:
+            proxy = random.choice(settings.crawler_proxies)
+            async with httpx.AsyncClient(proxy=proxy, timeout=timeout, follow_redirects=True, verify=False) as client:
+                resp = await client.get(url, headers=headers)
+                resp.raise_for_status()
+                final_url = str(resp.url)
+                if resp.encoding == 'ISO-8859-1' or not resp.encoding:
+                    resp.encoding = resp.apparent_encoding
+                html_content = resp.text
+        else:
+            scraper = HTMLScraper(timeout=timeout)
+            client = await scraper.get_client()
+            resp = await client.get(url, follow_redirects=True, headers=headers)
+            resp.raise_for_status()
+            final_url = str(resp.url)
+            if resp.encoding == 'ISO-8859-1' or not resp.encoding:
+                resp.encoding = resp.apparent_encoding
+            html_content = resp.text
+    except Exception as e:
+        logger.debug(f"Initial httpx fetch failed for {url}: {e}")
+
+    # --- NEW: Fallback to Playwright if content is missing, suspicious or blocked ---
+    is_suspicious = not html_content or len(html_content) < 3000 or "cloudflare" in html_content.lower() or "javascript" in html_content.lower() and len(html_content) < 10000
+    
+    if is_suspicious and _HAS_PLAYWRIGHT:
+        logger.info(f"Content from {url} is missing, suspicious or blocked. Retrying with Playwright...")
+        pw_res = await fetch_with_playwright(url, timeout=20)
+        if pw_res:
+            html_content = pw_res["html"]
+            final_url = pw_res["final_url"]
+            logger.debug(f"Successfully fetched {url} using Playwright fallback")
+
+    if not html_content:
+        return None
+
+    try:
         soup = BeautifulSoup(html_content, "html.parser")
+        meta = extract_metadata(soup)
         
         # 1. Image Extraction
         images = []
-        og_img = soup.find("meta", property="og:image")
-        if og_img and og_img.get("content"):
-            images.append(og_img["content"])
+        if meta["image"]:
+            images.append(meta["image"])
         
         for img in soup.find_all("img", src=True):
             src = img["src"]
@@ -662,6 +809,10 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
             paragraphs = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 40]
             content_text = "\n".join(paragraphs)
             
+        # 3. Meta Description Fallback
+        if len(content_text) < 150 and meta["description"]:
+            content_text = meta["description"]
+            
         return {
             "text": content_text if len(content_text) > 100 else None,
             "images": list(dict.fromkeys(images)),
@@ -670,7 +821,7 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
         }
                 
     except Exception as e:
-        logger.debug(f"Error fetching full text from {url}: {e}")
+        logger.error(f"Error parsing final HTML from {url}: {e}")
         return None
 
 def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:

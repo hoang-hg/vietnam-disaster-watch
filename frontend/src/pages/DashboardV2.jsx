@@ -43,19 +43,20 @@ import { Helmet } from "react-helmet-async";
 
 const TYPE_TONES = {
   storm: "blue",
-  flood: "cyan",
+  flood: "sky",
   flash_flood: "cyan",
-  landslide: "orange",
+  landslide: "amber",
   subsidence: "slate",
   drought: "orange",
-  salinity: "blue",
-  extreme_weather: "yellow",
+  salinity: "indigo",
+  extreme_weather: "amber",
   heatwave: "red",
   cold_surge: "indigo",
   earthquake: "slate",
   tsunami: "blue",
-  storm_surge: "purple",
-  wildfire: "red",
+  storm_surge: "violet",
+  wildfire: "rose",
+  erosion: "pink",
   warning_forecast: "yellow",
   recovery: "emerald",
   unknown: "slate",
@@ -336,7 +337,7 @@ export default function Dashboard() {
                   <option value="storm">Bão, ATNĐ</option>
                   <option value="flood">Lũ lụt</option>
                   <option value="flash_flood">Lũ quét, Lũ ống</option>
-                  <option value="landslide">Sạt lở đất, đá</option>
+                  <option value="landslide">Sạt lở</option>
                   <option value="subsidence">Sụt lún đất</option>
                   <option value="drought">Hạn hán</option>
                   <option value="salinity">Xâm nhập mặn</option>
@@ -346,6 +347,8 @@ export default function Dashboard() {
                   <option value="earthquake">Động đất</option>
                   <option value="tsunami">Sóng thần</option>
                   <option value="storm_surge">Nước dâng</option>
+                  <option value="wildfire">Cháy rừng</option>
+                  <option value="erosion">Xói lở</option>
                   <option value="warning_forecast">Cảnh báo, dự báo</option>
                   <option value="recovery">Khắc phục hậu quả</option>
               </select>
@@ -470,6 +473,11 @@ export default function Dashboard() {
                       <Badge tone={TYPE_TONES[event.disaster_type] || "slate"} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
                         {fmtType(event.disaster_type)}
                       </Badge>
+                      {event.is_red_alert && (
+                        <Badge tone="red" className="px-1.5 py-0.5 text-[9px] uppercase font-black bg-red-600 text-white animate-pulse">
+                          CẢNH BÁO ĐỎ
+                        </Badge>
+                      )}
                     </div>
                   </div>
                   <Link to={`/events/${event.id}`}>

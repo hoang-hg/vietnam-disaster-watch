@@ -150,7 +150,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             route=article.route,
             cause=article.cause,
             characteristics=article.characteristics,
-            details={"impact_bucket": impact_bucket}
+            details={"impact_bucket": impact_bucket},
+            is_red_alert=article.is_red_alert
         )
         db.add(ev)
         db.flush()
@@ -234,6 +235,9 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     if article.needs_verification:
         ev.needs_verification = 1
 
+    if article.is_red_alert:
+        ev.is_red_alert = True
+
     # Update location details in Event if article has more specific info
     if article.commune and not ev.commune: ev.commune = article.commune
     if article.village and not ev.village: ev.village = article.village
@@ -304,7 +308,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     trusted_map = {s.name: (s.trusted or False) for s in SOURCES}
     has_trusted_source = any(trusted_map.get(a.source, False) for a in all_articles)
     
-    # Check for VIP, Sensitive Locations, and Metrics
+    # Check for Red Alert, VIP, Sensitive Locations, and Metrics
+    has_red_alert = any(a.is_red_alert for a in all_articles)
     has_vip_term = False
     has_sensitive_loc = False
     has_strong_metrics = False
@@ -349,6 +354,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     # 3. Calculate Smart Confidence
     if has_vip_term:
         ev.confidence = 1.0  # Absolute priority (Emergency dispatch)
+    elif has_red_alert:
+        ev.confidence = 1.0  # Red Alert implies extreme danger
     elif has_sensitive_loc and has_trusted_source:
         ev.confidence = 0.98 # Strategic infrastructure at risk
     elif has_trusted_source:
@@ -395,6 +402,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             "confidence": ev.confidence,
             "sources_count": ev.sources_count,
             "needs_verification": getattr(ev, 'needs_verification', 1),
+            "is_red_alert": ev.is_red_alert,
             "last_updated": ev.last_updated_at.isoformat() if ev.last_updated_at else None
         }
         asyncio.create_task(broadcast.publish_event(data))

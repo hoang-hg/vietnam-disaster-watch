@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: viet_disaster_proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - backend
+
+  certbot:
+    image: certbot/certbot
+    container_name: viet_disaster_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  db:
+    image: postgres:15-alpine
+    container_name: viet_disaster_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_DB=${DB_NAME:-viet_disaster}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: viet_disaster_redis
+    restart: always
+
+  backend:
+    build: 
+      context: ./backend
+    container_name: viet_disaster_backend
+    restart: always
+    environment:
+      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-viet_disaster}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your_secret_key_here}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_API_BASE=${VITE_API_BASE:-/api} # Use relative path since Nginx maps /api
+    container_name: viet_disaster_frontend
+    restart: always
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  backend_data:
+  backend_logs:

@@ -19,19 +19,20 @@ import { useNavigate } from "react-router-dom";
 
 const TYPE_TONES = {
   storm: "blue",
-  flood: "cyan",
+  flood: "sky",
   flash_flood: "cyan",
-  landslide: "orange",
+  landslide: "amber",
   subsidence: "slate",
   drought: "orange",
-  salinity: "blue",
-  extreme_weather: "yellow",
+  salinity: "indigo",
+  extreme_weather: "amber",
   heatwave: "red",
   cold_surge: "indigo",
   earthquake: "slate",
   tsunami: "blue",
-  storm_surge: "purple",
-  wildfire: "red",
+  storm_surge: "violet",
+  wildfire: "rose",
+  erosion: "pink",
   warning_forecast: "yellow",
   recovery: "emerald",
   unknown: "slate",
@@ -56,6 +57,7 @@ const HAZARD_TYPES = [
   { id: "tsunami", label: "Sóng thần" },
   { id: "storm_surge", label: "Nước dâng" },
   { id: "wildfire", label: "Cháy rừng" },
+  { id: "erosion", label: "Xói lở" },
   { id: "warning_forecast", label: "Cảnh báo, dự báo" },
   { id: "recovery", label: "Khắc phục hậu quả" }
 ];
@@ -330,6 +332,19 @@ export default function EventDetail() {
           .article-item { page-break-inside: avoid; }
         }
       `}</style>
+      
+      {ev.is_red_alert && (
+        <div className="bg-red-600 text-white px-4 py-3 rounded-xl flex items-center justify-between gap-3 mb-6 animate-pulse shadow-lg shadow-red-200 no-print">
+          <div className="flex items-center gap-3">
+             <AlertTriangle className="w-6 h-6 flex-shrink-0" />
+             <div>
+                <div className="font-black text-lg uppercase tracking-wider leading-none">CẢNH BÁO ĐỎ - NGUY HIỂM KHẨN CẤP</div>
+                <div className="text-[10px] font-bold opacity-90 uppercase tracking-tighter mt-1">Đây là bản tin cảnh báo cấp độ cao. Yêu cầu theo dõi sát sao và thực hiện các biện pháp phòng tránh.</div>
+             </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Actions */}
       <div className="flex justify-between items-center no-print mb-6">
         <Link to="/events" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors group">

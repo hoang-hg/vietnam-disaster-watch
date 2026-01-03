@@ -93,10 +93,9 @@ DISASTER_GROUPS = {
 
     # 8) Mưa lớn/Mưa đá/Lốc/Sét (Extreme Weather)
     "extreme_weather": [
-        "mưa lớn", "mưa rất to", "mưa đá", "dông lốc", "lốc xoáy", "vòi rồng", "tố lốc",
-        "sét đánh", "giông sét", "lượng mưa kỷ lục", "mưa trút xuống", "mưa như trút",
-        "mưa diện rộng", "mưa cục bộ", "gió giật mạnh", "giông tố",
-        "mưa xối xả", "giông cực mạnh", "gió rít", "trắng trời"
+        "mưa lớn", "mưa xối xả", "mưa trắng trời", "mưa đá", "lốc", "sét", "phóng điện", "dông", "giông", "lốc xoáy", "gió mạnh", "quật đổ", "tốc mái", "vòi rồng",
+        "mưa rất to", "dông lốc", "tố lốc", "sét đánh", "giông sét", "lượng mưa kỷ lục", "mưa trút xuống", "mưa như trút",
+        "mưa diện rộng", "mưa cục bộ", "gió giật mạnh", "giông tố", "giông cực mạnh", "gió rít", "trắng trời"
     ],
 
     # 9) Nắng nóng (Heatwave)
@@ -135,12 +134,18 @@ DISASTER_GROUPS = {
 
     # 14) Cháy rừng (Wildfire)
     "wildfire": [
-        "cháy rừng", "nguy cơ cháy rừng", "cấp dự báo cháy rừng", "PCCCR", "cháy thực bì", "lửa rừng",
+        "cháy rừng", "cháy tán", "cháy ngầm", "cột khói", "dập lửa",
+        "nguy cơ cháy rừng", "cấp dự báo cháy rừng", "PCCCR", "cháy thực bì", "lửa rừng",
         "cháy rừng phòng hộ", "chữa cháy rừng", "đám cháy lan",
         "giặc lửa", "điểm cháy", "khói mù", "thiêu rụi"
     ],
 
-    # 15) Tin cảnh báo, dự báo (Warning/Forecast)
+    # 15) Xói lở (Erosion)
+    "erosion": [
+        "xói lở", "sạt lở bờ sông", "sạt lở bờ biển", "hàm ếch", "mương xói", "rãnh xói", "xâm thực", "xói mòn"
+    ],
+
+    # 16) Tin cảnh báo, dự báo (Warning/Forecast)
     "warning_forecast": [
         "bản tin dự báo", "tin cảnh báo", "dự báo thời tiết", "cảnh báo thiên tai",
         "tin cuối cùng", "tin phát đi", "bản tin cập nhật", "dự báo khí tượng",
@@ -148,7 +153,7 @@ DISASTER_GROUPS = {
         "thông báo khẩn", "điểm tin thiên tai", "đài khí tượng", "dự báo khí hậu", "cảnh báo cực đoan"
     ],
 
-    # 16) Khắc phục hậu quả (Recovery)
+    # 17) Khắc phục hậu quả (Recovery)
     "recovery": [
         "khắc phục hậu quả", "khắc phục sự cố", "khôi phục giao thông", "thống kê thiệt hại",
         "ủng hộ đồng bào", "cứu trợ", "tiếp tế", "dọn dẹp sau bão", "viện trợ", "hỗ trợ khẩn cấp"

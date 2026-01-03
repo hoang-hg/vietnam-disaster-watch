@@ -692,48 +692,50 @@ DISASTER_RULES = [
 
   # 3) Lũ quét/Lũ ống (Flash Flood)
   ("flash_flood", [
-    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn\s*đá", r"lũ\s*nhanh",
+    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn(?:\s*đá)?", r"lũ\s*đá", r"nghẽn\s*dòng", r"lũ\s*nhanh",
     r"tin\s*cảnh\s*báo\s*lũ\s*quét", r"nguy\s*cơ\s*lũ\s*quét", r"lũ\s*dữ",
     r"lũ\s*cuồn\s*cuộn", r"dòng\s*lũ\s*chảy\s*xiết", r"đất\s*đá\s*đổ\s*về", r"trôi\s*cầu"
   ]),
 
   # 4) Sạt lở (Landslide)
   ("landslide", [
-    r"sạt\s*lở\s*đất", r"trượt\s*lở\s*đất", r"lở\s*núi", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
-    r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"trượt\s*mái\s*đê", r"sạt\s*lở\s*kè", r"đá\s*lăn", r"vùi\s*lấp",
+    r"sạt\s*lở(?!\s*bờ\s*(?:sông|biển))", r"trượt\s*lở(?!\s*bờ\s*(?:sông|biển))", r"lở\s*núi", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
+    r"đá\s*lăn", r"đá\s*đổ", r"đá\s*rơi", r"sụt\s*trượt", r"vết\s*nứt(?!\s*(?:tường|nhà))",
     r"đứt\s*gãy", r"trượt\s*sạt", r"vết\s*nứt\s*núi", r"sụp\s*đổ\s*địa\s*chất", r"sạt\s*taluy\s*dương", r"sạt\s*taluy\s*âm"
   ]),
 
   # 5) Sụt lún đất (Land Subsidence)
   ("subsidence", [
-    r"sụt\s*lún(?:\s*đất)?", r"sụp\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hàm\s*ếch", r"nứt\s*đất", r"hố\s*sụt",
+    r"sụt\s*lún(?:\s*đất)?", r"sụp\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hố\s*sụt",
+    r"nghiêng\s*lún", r"sập\s*đổ",
     r"sụt\s*lún\s*hạ\s*tầng", r"biến\s*dạng\s*mặt\s*đường", r"lún\s*xụt"
   ]),
 
   # 6) Hạn hán (Drought)
   ("drought", [
-    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước\s*ngọt", r"nứt\s*nẻ", r"khô\s*cằn", r"cạn\s*hồ",
+    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước(?:\s*sinh\s*hoạt)?", r"nứt\s*nẻ", r"khô\s*cằn", r"cạn\s*hồ", r"cạn\s*trơ", r"cây\s*héo",
     r"thiếu\s*hụt\s*nguồn\s*nước", r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn", r"hạn\s*mặn",
     r"vùng\s*hạn", r"chống\s*hạn", r"thiếu\s*hụt\s*mưa", r"mực\s*nước\s*chết", r"nứt\s*nẻ\s*ruộng\s*đồng"
   ]),
 
   # 7) Xâm nhập mặn (Salinity Intrusion)
   ("salinity", [
-    r"xâm\s*nhập\s*mặn", r"nhiễm\s*mặn", r"độ\s*mặn", r"ranh\s*mặn", r"mặn\s*xâm\s*nhập\s*sâu",
-    r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn", r"\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b",
+    r"xâm\s*nhập\s*mặn", r"nhiễm\s*phèn", r"nhiễm\s*mặn", r"độ\s*mặn(?:\s*cao)?", r"ranh\s*mặn", r"mặn\s*xâm\s*nhập\s*sâu",
+    r"cống\s*ngăn\s*mặn", r"ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn", r"\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b",
     r"nước\s*lợ", r"độ\s*mặn\s*vượt\s*ngưỡng", r"mặn\s*bủa\s*vây", r"ranh\s*mặn\s*4\s*g\/l", r"nhiễm\s*mặn\s*sâu"
   ]),
 
   # 8) Mưa lớn/Mưa đá/Lốc/Sét (Extreme Weather)
   ("extreme_weather", [
-    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"mưa\s*kỷ\s*lục",
-    r"mưa\s*đá", r"dông\s*lốc", r"lốc\s*xoáy", r"vòi\s*rồng", r"tố\s*lốc", r"sét\s*đánh", r"giông\s*sét",
-    r"mưa\s*đá\s*trắng\s*trời", r"hạt\s*mưa\s*đá", r"tia\s*sét",
-    r"mưa\s*xối\s*xả", r"giông\s*cực\s*mạnh", r"gió\s*rít", r"trắng\s*trời"
+    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"mưa\s*kỷ\s*lục", r"mưa\s*xối\s*xả", r"mưa\s*trắng\s*trời",
+    r"mưa\s*đá", r"lốc(?!\s*xoáy)", r"sét", r"phóng\s*điện", r"dông", r"giông", r"lốc\s*xoáy", r"vòi\s*rồng", r"gió\s*mạnh", r"quật\s*đổ", r"tốc\s*mái",
+    r"tố\s*lốc", r"sét\s*đánh", r"giông\s*sét", r"hạt\s*mưa\s*đá", r"tia\s*sét",
+    r"giông\s*cực\s*mạnh", r"gió\s*rít", r"trắng\s*trời"
   ]),
 
   # 9) Nắng nóng (Heatwave)
   ("heatwave", [
+    r"nắng\s*nóng", r"thiêu\s*đốt", r"nhiệt\s*độ\s*cao", r"sốc\s*nhiệt", r"trú\s*nóng",
     r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
     r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"đợt\s*nắng\s*nóng", r"nhiệt\s*độ\s*cao\s*nhất",
     r"nắng\s*cháy\s*da", r"nóng\s*rát", r"nắng\s*hạn", r"nóng\s*như\s*thiêu\s*như\s*đốt"
@@ -741,44 +743,54 @@ DISASTER_RULES = [
 
   # 10) Rét hại/Sương muối (Cold/Frost)
   ("cold_surge", [
-    r"rét\s*đậm\s*rét\s*hại", r"rét\s*hại", r"băng\s*giá", r"sương\s*muối", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
-    r"rét\s*buốt", r"mưa\s*tuyết", r"tuyết\s*rơi",
-    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc", r"rét\s*tê\s*tái", r"trắng\s*xóa\s*băng", r"đợt\s*rét\s*mạnh"
+    r"trời\s*rét", r"rét\s*hại", r"rét\s*đậm", r"rét\s*khô", r"rét\s*tê\s*tái", r"sương\s*muối", r"băng\s*giá", r"đóng\s*băng", r"tuyết\s*rơi", r"tuyết\s*phủ",
+    r"rét\s*đậm\s*rét\s*hại", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
+    r"rét\s*buốt", r"mưa\s*tuyết",
+    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc", r"trắng\s*xóa\s*băng", r"đợt\s*rét\s*mạnh"
   ]),
 
   # 11) Động đất (Earthquake)
   ("earthquake", [
-    r"động\s*đất", r"rung\s*chấn", r"dư\s*chấn", r"richter", r"tâm\s*chấn", r"chấn\s*tiêu",
+    r"động\s*đất", r"địa\s*chấn", r"rung\s*chuyển", r"rung\s*lắc", r"tâm\s*chấn", r"dư\s*chấn", r"rung\s*chấn",
+    r"richter", r"chấn\s*tiêu",
     r"magnitude", r"rung\s*lắc\s*mạnh", r"\d+(?:[.,]\d+)?\s*độ\s*richter", r"viện\s*vật\s*lý\s*địa\s*cầu",
     r"sóng\s*địa\s*chấn", r"cấp\s*độ\s*Richter", r"rung\s*chấn\s*mạnh", r"chấn\s*phát"
   ]),
 
   # 12) Sóng thần (Tsunami)
   ("tsunami", [
-    r"sóng\s*thần", r"tsunami", r"cấp\s*báo\s*động\s*sóng\s*thần", r"tin\s*cảnh\s*báo\s*sóng\s*thần",
+    r"sóng\s*thần", r"tsunami", r"sóng\s*lớn", r"động\s*đất\s*dưới\s*biển",
+    r"cấp\s*báo\s*động\s*sóng\s*thần", r"tin\s*cảnh\s*báo\s*sóng\s*thần",
     r"sóng\s*cao\s*hàng\s*chục\s*mét", r"thảm\s*họa\s*sóng\s*thần", r"sóng\s*thần\s*tàn\s*phá"
   ]),
 
   # 13) Nước dâng (Storm Surge)
   ("storm_surge", [
-    r"nước\s*dâng", r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng", r"nước\s*dâng\s*do\s*gió\s*mạnh", r"sóng\s*tràn",
+    r"triều\s*cường", r"nước\s*dâng", r"sóng\s*tràn",
+    r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng", r"nước\s*dâng\s*do\s*gió\s*mạnh",
     r"triều\s*cường\s*vượt\s*mức", r"ngập\s*lụt\s*do\s*triều", r"sóng\s*biển\s*cao", r"sóng\s*đánh\s*vào\s*bờ"
   ]),
 
   # 14) Cháy rừng (Wildfire)
   ("wildfire", [
-    r"cháy\s*rừng", r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
+    r"cháy\s*rừng", r"cháy\s*tán", r"cháy\s*ngầm", r"cột\s*khói", r"dập\s*lửa",
+    r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
     r"PCCCR", r"cháy\s*thực\s*bì", r"lửa\s*rừng", r"cháy\s*lan\s*rộng",
     r"giặc\s*lửa", r"điểm\s*cháy", r"khói\s*mù", r"thiêu\s*rụi"
   ]),
 
-  # 15) Tin cảnh báo, dự báo (Warning/Forecast)
+  # 15) Xói lở (Erosion)
+  ("erosion", [
+    r"xói\s*lở", r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"hàm\s*ếch", r"mương\s*xói", r"rãnh\s*xói", r"xâm\s*thực", r"xói\s*mòn"
+  ]),
+
+  # 16) Tin cảnh báo, dự báo (Warning/Forecast)
   ("warning_forecast", [
     r"bản\s*tin\s*dự\s*báo", r"tin\s*cảnh\s*báo", r"dự\s*báo\s*thời\s*tiết", r"cảnh\s*báo\s*thiên\s*tai",
     r"bản\s*tin\s*khẩn\s*cấp", r"thông\s*báo\s*khẩn", r"đài\s*khí\s*tượng", r"cảnh\s*báo\s*cực\s*đoan"
   ]),
 
-  # 16) Khắc phục hậu quả (Recovery)
+  # 17) Khắc phục hậu quả (Recovery)
   ("recovery", [
     r"khắc\s*phục\s*hậu\s*quả", r"khắc\s*phục\s*sự\s*cố", r"khôi\s*phục\s*giao\s*thông", r"thống\s*kê\s*thiệt\s*hại",
     r"ủng\s*hộ\s*đồng\s*bào", r"cứu\s*trợ", r"tiếp\s*tế", r"viện\s*trợ", r"khôi\s*phục\s*sản\s*xuất", r"quỹ\s*phòng\s*chống"
@@ -792,6 +804,14 @@ HIGH_PRIORITY_KEYWORDS = [
     r"triều\s*cường\s*kỷ\s*lục"
 ]
 HIGH_PRIORITY_RE = [re.compile(p, re.IGNORECASE) for p in HIGH_PRIORITY_KEYWORDS]
+
+# Red Alert (High-danger warning) keywords
+DANGER_SIGS = [
+    r"khẩn\s*cấp", r"đặc\s*biệt\s*nguy\s*hiểm", r"cực\s*kỳ\s*nguy\s*hiểm",
+    r"siêu\s*bão", r"lũ\s*lịch\s*sử", r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*[345]",
+    r"đặc\s*biệt\s*lớn", r"nguy\s*hiểm\s*cao", r"báo\s*động\s*đỏ", r"cảnh\s*báo\s*đỏ"
+]
+DANGER_RE = [re.compile(p, re.IGNORECASE) for p in DANGER_SIGS]
 
 # Risk Level Patterns (Decision 18 Art 4)
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*([1-5I-V])", re.IGNORECASE)
@@ -2231,6 +2251,25 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     if title_rule_match:
         rule_score += 2.0 # Increased from 1.5
 
+    # Determine event stage EARLY to use in red alert detection
+    event_stage = determine_event_stage(search_text)
+
+    # Red Alert Detection (High-danger warnings)
+    is_red_alert = False
+    if event_stage == "FORECAST":
+        # Check title first (higher confidence)
+        if title:
+            for dr in DANGER_RE:
+                if dr.search(title):
+                    is_red_alert = True
+                    break
+        # Then check body
+        if not is_red_alert:
+            for dr in DANGER_RE:
+                if dr.search(text):
+                    is_red_alert = True
+                    break
+
     # 2. Impact Match - Deaths, missing, or significant damage/metrics
     # REFINED: Use extracted objects to determine impact_score
     raw_details = extract_impact_details(text)
@@ -2417,9 +2456,6 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     metrics = extract_disaster_metrics(text)
     impact_details = extract_impact_details(text)
 
-    # Determine event stage
-    event_stage = determine_event_stage(text)
-
     return {
         "rule_matches": rule_matches,
         "impact_hits": impact_found,
@@ -2440,7 +2476,8 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "is_province_match": best_prov != "unknown",
         "is_agency_match": agency_match is not None,
         "is_sensitive_location": len(sensitive_found) > 0,
-        "stage": event_stage # Add the detected stage
+        "stage": event_stage, # Add the detected stage
+        "is_red_alert": is_red_alert
     }
 
 def determine_event_stage(text: str) -> str:

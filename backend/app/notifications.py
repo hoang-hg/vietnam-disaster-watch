@@ -32,6 +32,7 @@ def notify_followers_of_article(db: Session, event: models.Event, article: model
         logger.error(f"Error notifying followers: {e}")
         db.rollback()
 
+
 def notify_users_of_event(db: Session, event: models.Event):
     """
     Thông báo sự kiện mới cho người dùng quan tâm đến tỉnh thành đó.
@@ -53,9 +54,3 @@ def notify_users_of_event(db: Session, event: models.Event):
     except Exception as e:
         logger.error(f"Error notifying users of new event: {e}")
         db.rollback()
-
-async def send_system_health_alert(status_message: str):
-    """
-    Thông báo tình trạng hệ thống.
-    """
-    pass

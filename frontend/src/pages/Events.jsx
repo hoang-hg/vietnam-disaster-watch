@@ -71,6 +71,8 @@ export default function Events() {
   const [user, setUser] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [exportYear, setExportYear] = useState(new Date().getFullYear());
+  const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
 
   // Modal states
   const [deleteId, setDeleteId] = useState(null);
@@ -139,62 +141,25 @@ export default function Events() {
   };
 
   const handleExportCSV = () => {
-    // Basic CSV Export
-    const headers = [
-        "Loại hình thiên tai", 
-        "Thời gian", 
-        "Ngày đăng tin", 
-        "Tuyến đường", 
-        "Vị trí thôn/bản", 
-        "Xã", 
-        "Tỉnh", 
-        "Nguyên nhân (mưa hay hoạt động nhân sinh)", 
-        "Mô tả đặc điểm trượt lở", 
-        "Mô tả thiệt hại",
-        "Hình ảnh",
-        "Nguồn"
-    ];
+    // [LOGIC REFINEMENT] Use server-side export for the full range instead of just current page
+    const token = localStorage.getItem("access_token");
+    let url = `${API_BASE}/api/admin/export/summary?token_query=${token}`;
     
-    // Map raw data to CSV rows
-    const rows = events.map(e => {
-        const dead = e.deaths || 0;
-        const missing = e.missing || 0;
-        const injured = e.injured || 0;
-        let damageStr = [];
-        if (dead > 0) damageStr.push(`${dead} chết`);
-        if (missing > 0) damageStr.push(`${missing} mất tích`);
-        if (injured > 0) damageStr.push(`${injured} bị thương`);
-        if (e.damage_billion_vnd > 0) damageStr.push(`${e.damage_billion_vnd} tỷ`);
-        const damageText = damageStr.length > 0 ? damageStr.join(", ") : "0";
+    if (startDate && endDate) {
+        url += `&start_date=${startDate}&end_date=${endDate}`;
+    } else if (startDate) {
+        url += `&start_date=${startDate}`;
+    }
+    
+    if (type) url += `&type=${type}`;
+    if (province) url += `&province=${province}`;
+    
+    window.open(url, '_blank');
+  };
 
-        return [
-            fmtType(e.disaster_type),
-            new Date(e.started_at).toLocaleDateString('vi-VN'),
-            new Date(e.last_updated_at || e.started_at).toLocaleDateString('vi-VN'),
-            e.route || "",
-            e.village || "",
-            e.commune || "",
-            e.province || "",
-            e.cause || "",
-            e.characteristics || "",
-            damageText,
-            e.image_url || "",
-            e.source_url || e.source || ""
-        ];
-    });
-    
-    let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
-    csvContent += headers.join(",") + "\n";
-    rows.forEach(row => {
-        csvContent += row.map(cell => `"${cell}"`).join(",") + "\n";
-    });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Bao_cao_ngay_${startDate || 'tong_hop'}.csv`);
-    link.click();
+  const handleExportMonthly = () => {
+    const token = localStorage.getItem("access_token");
+    window.open(`${API_BASE}/api/admin/export/summary?month=${exportMonth}&year=${exportYear}&token_query=${token}`, '_blank');
   };
 
   /* Helper to normalize string for search (remove tones and spaces) */
@@ -222,8 +187,8 @@ export default function Events() {
       if (q) params.append("q", q);
       
       if (startDate && endDate) {
-          params.append("start_date", endDate);
-          params.append("end_date", startDate);
+          params.append("start_date", startDate);
+          params.append("end_date", endDate);
       } else if (startDate) {
           params.append("date", startDate);
       }
@@ -373,6 +338,34 @@ export default function Events() {
                         <Download className="w-4 h-4" />
                         <span>Xuất Excel (CSV)</span>
                     </button>
+                    
+                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-sm ml-auto">
+                        <select 
+                            value={exportMonth} 
+                            onChange={(e) => setExportMonth(parseInt(e.target.value))}
+                            className="text-xs font-bold bg-transparent outline-none cursor-pointer"
+                        >
+                            {[...Array(12).keys()].map(i => <option key={i+1} value={i+1}>Tháng {i+1}</option>)}
+                        </select>
+                        <select 
+                            value={exportYear} 
+                            onChange={(e) => setExportYear(parseInt(e.target.value))}
+                            className="text-xs font-bold bg-transparent outline-none cursor-pointer"
+                        >
+                            {(() => {
+                                const currentYear = new Date().getFullYear();
+                                return [currentYear - 2, currentYear - 1, currentYear].map(y => <option key={y} value={y}>{y}</option>);
+                            })()}
+                        </select>
+                        <button 
+                            onClick={handleExportMonthly}
+                            className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-indigo-600 text-white rounded-lg text-[10px] font-black hover:bg-indigo-700 transition-all shadow-sm uppercase tracking-tighter"
+                            title="Xuất báo cáo tổng hợp thiệt hại theo tháng"
+                        >
+                            <Download className="w-3 h-3" />
+                            BC THÁNG
+                        </button>
+                    </div>
                   </>
               )}
           </div>
@@ -412,20 +405,21 @@ export default function Events() {
                     <option value="">Tất cả loại hình</option>
                     <option value="storm">Bão, ATNĐ</option>
                     <option value="flood">Lũ lụt</option>
-                    <option value="flash_flood">Lũ quét</option>
-                    <option value="landslide">Sạt lở đất</option>
-                    <option value="subsidence">Sụt lún</option>
+                    <option value="flash_flood">Lũ quét, Lũ ống</option>
+                    <option value="landslide">Sạt lở</option>
+                    <option value="subsidence">Sụt lún đất</option>
                     <option value="drought">Hạn hán</option>
                     <option value="salinity">Xâm nhập mặn</option>
-                    <option value="extreme_weather">Mưa lớn, Lốc, Đá</option>
+                    <option value="extreme_weather">Mưa lớn, Lốc, Sét, Mưa Đá</option>
                     <option value="heatwave">Nắng nóng</option>
-                    <option value="cold_surge">Rét hại, Băng giá</option>
+                    <option value="cold_surge">Rét hại, Sương muối</option>
                     <option value="earthquake">Động đất</option>
                     <option value="tsunami">Sóng thần</option>
                     <option value="storm_surge">Nước dâng</option>
                     <option value="wildfire">Cháy rừng</option>
-                    <option value="warning_forecast">Tin dự báo</option>
-                    <option value="recovery">Khắc phục</option>
+                    <option value="erosion">Xói lở</option>
+                    <option value="warning_forecast">Cảnh báo, dự báo</option>
+                    <option value="recovery">Khắc phục hậu quả</option>
                 </select>
             </div>
             {/* Province */}
@@ -514,7 +508,10 @@ export default function Events() {
                         {events.map((e) => (
                             <tr key={e.id} className="hover:bg-blue-50/30 transition-colors">
                                 <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(e.started_at).toLocaleDateString('vi-VN')}</td>
-                                <td className="px-4 py-3 text-xs font-bold text-blue-700">{fmtType(e.disaster_type)}</td>
+                                <td className="px-4 py-3 text-xs font-bold text-blue-700">
+                                    {fmtType(e.disaster_type)}
+                                    {e.is_red_alert && <div className="text-[8px] text-red-600 animate-pulse">CẢNH BÁO ĐỎ</div>}
+                                </td>
                                 <td className="px-4 py-3 text-xs font-bold">{e.province}</td>
                                 <td className="px-4 py-3 text-[11px] leading-tight">
                                     {e.commune && <div className="font-bold">Xã: {e.commune}</div>}
@@ -589,6 +586,11 @@ export default function Events() {
                             <Badge tone={TYPE_TONES[e.disaster_type] || "slate"} className="shadow-md">
                                 {fmtType(e.disaster_type)}
                             </Badge>
+                            {e.is_red_alert && (
+                                <Badge tone="red" className="shadow-md bg-red-600 text-white animate-pulse">
+                                    CẢNH BÁO ĐỎ
+                                </Badge>
+                            )}
                             {e.needs_verification === 1 && (e.deaths > 0 || e.missing > 0 || e.damage_billion_vnd >= 1) && (
                                 <div className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg border border-red-400/30">
                                     Cần kiểm chứng

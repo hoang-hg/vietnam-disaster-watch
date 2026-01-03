@@ -17,3 +17,10 @@ python-jose[cryptography]==3.3.0
 python-multipart==0.0.12
 redis==5.0.1
 pytest-asyncio==0.24.0
+playwright==1.49.1
+pandas==2.2.3
+openpyxl==3.1.5
+reportlab==4.2.5
+scikit-learn==1.6.1
+joblib==1.4.2
+gunicorn==23.0.0

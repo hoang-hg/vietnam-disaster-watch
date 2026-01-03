@@ -186,6 +186,7 @@ export default function MainLayout({ children }) {
 
   const adminNavigation = user?.role === "admin" ? [
     { name: "QUẢN TRỊ & DUYỆT TIN", href: "/admin/logs", current: location.pathname.startsWith("/admin/logs") },
+    { name: "SỨC KHỎE CRAWLER", href: "/admin/crawler", current: location.pathname === "/admin/crawler" },
     { name: "BÁO CÁO CỘNG ĐỒNG", href: "/admin/reports", current: location.pathname.startsWith("/admin/reports") },
   ] : [];
 

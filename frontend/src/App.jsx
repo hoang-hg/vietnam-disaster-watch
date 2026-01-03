@@ -11,6 +11,7 @@ import AdminReports from "./pages/AdminReports.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import RescuePage from "./pages/Rescue.jsx";
+import CrawlerDashboard from "./pages/CrawlerDashboard.jsx";
 import { Navigate } from "react-router-dom";
 
 function ProtectedRoute({ children, roleRequired }) {
@@ -49,6 +50,11 @@ export default function App() {
           <Route path="/admin/reports" element={
             <ProtectedRoute roleRequired="admin">
               <AdminReports />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/crawler" element={
+            <ProtectedRoute roleRequired="admin">
+              <CrawlerDashboard />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<LoginPage />} />

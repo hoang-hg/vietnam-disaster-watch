@@ -12,10 +12,10 @@ router = APIRouter(prefix="/api/user", tags=["user"])
 def submit_report(
     report: schemas.CrowdsourcedReportCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user)
+    current_user: models.User | None = Depends(auth.get_current_user_optional)
 ):
     db_report = models.CrowdsourcedReport(
-        user_id=current_user.id,
+        user_id=current_user.id if current_user else None,
         **report.model_dump()
     )
     db.add(db_report)

@@ -50,6 +50,7 @@ class Article(Base):
     
     # Unique identifier for content to prevent re-crawling rejected news
     news_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    is_red_alert: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     __table_args__ = (
         UniqueConstraint("domain", "url", name="uq_article_url"),
@@ -89,6 +90,7 @@ class Event(Base):
     sources_count: Mapped[int] = mapped_column(Integer, default=1)
     needs_verification: Mapped[bool] = mapped_column(Integer, default=0)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    is_red_alert: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     articles = relationship("Article", back_populates="event")
 
@@ -106,7 +108,6 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user", index=True) # "user", "admin"
     favorite_province: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 class Blacklist(Base):
@@ -121,13 +122,19 @@ class Blacklist(Base):
 class CrowdsourcedReport(Base):
     __tablename__ = "crowdsourced_reports"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     province: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     lat: Mapped[float] = mapped_column(Float)
     lon: Mapped[float] = mapped_column(Float)
     description: Mapped[str] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    # Contact info for guest/user
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True) # "pending", "approved", "rejected"
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     
@@ -165,6 +172,7 @@ class CrawlerStatus(Base):
     articles_scanned: Mapped[int] = mapped_column(Integer, default=0)
     articles_added: Mapped[int] = mapped_column(Integer, default=0)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    feed_used: Mapped[str | None] = mapped_column(String(255), nullable=True) # e.g. "primary_rss", "gnews", "html_scraper"
 
 class AiFeedback(Base):
     __tablename__ = "ai_feedback"

@@ -37,7 +37,7 @@ def filter_disaster_events(events):
         major_hazards = [
             "storm", "flood", "flash_flood", "landslide", "subsidence", 
             "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
-            "earthquake", "tsunami", "storm_surge", "wildfire",
+            "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
             "warning_forecast", "recovery"
         ]
         
@@ -278,6 +278,7 @@ DEFAULT_IMAGES = {
     "tsunami": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/droplet.svg",
     "storm_surge": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/ripple.svg",
     "wildfire": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/flame.svg",
+    "erosion": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/layers-difference.svg",
     "warning_forecast": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/alert-circle.svg",
     "recovery": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/tool.svg",
     "unknown": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/urgent.svg",
@@ -1049,17 +1050,21 @@ async def export_event_data(event_id: int, format: str = "excel", db: Session = 
     
     # Disaster type mapping for Vietnamese names
     TYPE_MAP = {
-        "storm": "Bão/ATND",
-        "flood": "Lũ, ngập lụt",
-        "landslide": "Sạt lở đất",
-        "flash_flood": "Lũ quét",
-        "wildfire": "Cháy rừng",
+        "storm": "Bão/ATNĐ",
+        "flood": "Lũ lụt",
+        "flash_flood": "Lũ quét/Lũ ống",
+        "landslide": "Sạt lở",
+        "subsidence": "Sụt lún đất",
         "drought": "Hạn hán",
         "salinity": "Xâm nhập mặn",
-        "quake_tsunami": "Động đất/Sóng thần",
         "extreme_weather": "Mưa lớn/Lốc/Sét",
-        "cold_surge": "Rét hại/Sương muối",
         "heatwave": "Nắng nóng",
+        "cold_surge": "Rét hại/Sương muối",
+        "earthquake": "Động đất",
+        "tsunami": "Sóng thần",
+        "storm_surge": "Nước dâng",
+        "wildfire": "Cháy rừng",
+        "erosion": "Xói lở",
     }
     
     data = []
@@ -1188,4 +1193,105 @@ async def export_daily_summary(date: str = None, db: Session = Depends(get_db), 
     output.seek(0)
     
     headers = {'Content-Disposition': f'attachment; filename="bao-cao-ngay-{date}.xlsx"'}
+    return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+@router.get("/admin/export/summary")
+async def export_events_summary(
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    month: int = Query(None),
+    year: int = Query(None),
+    type: str = Query(None),
+    province: str = Query(None),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    import pandas as pd
+    import calendar
+    
+    TYPE_MAP = {
+        "storm": "Bão, ATNĐ",
+        "flood": "Lũ lụt",
+        "flash_flood": "Lũ quét, Lũ ống",
+        "landslide": "Sạt lở",
+        "subsidence": "Sụt lún đất",
+        "drought": "Hạn hán",
+        "salinity": "Xâm nhập mặn",
+        "extreme_weather": "Mưa lớn, Lốc, Sét, Mưa Đá",
+        "heatwave": "Nắng nóng",
+        "cold_surge": "Rét hại, Sương muối",
+        "earthquake": "Động đất",
+        "tsunami": "Sóng thần",
+        "storm_surge": "Nước dâng",
+        "wildfire": "Cháy rừng",
+        "erosion": "Xói lở",
+        "warning_forecast": "Cảnh báo, dự báo",
+        "recovery": "Khắc phục hậu quả",
+        "unknown": "Chưa phân loại"
+    }
+
+    query = db.query(Event).filter(Event.sources_count > 0)
+    
+    # Range Logic
+    title_suffix = ""
+    if month and year:
+        start = datetime(year, month, 1)
+        last_day = calendar.monthrange(year, month)[1]
+        end = datetime(year, month, last_day, 23, 59, 59)
+        query = query.filter(Event.started_at >= start, Event.started_at <= end)
+        title_suffix = f"Tháng {month}-{year}"
+    elif start_date:
+        sd = datetime.strptime(start_date, "%Y-%m-%d")
+        if end_date:
+            ed = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            query = query.filter(Event.started_at >= sd, Event.started_at < ed)
+            title_suffix = f"Từ {start_date} Đến {end_date}"
+        else:
+            query = query.filter(Event.started_at >= sd, Event.started_at < sd + timedelta(days=1))
+            title_suffix = f"Ngày {start_date}"
+
+    if type: query = query.filter(Event.disaster_type == type)
+    if province: query = query.filter(Event.province == province)
+
+    events = query.order_by(Event.started_at.desc()).all()
+    
+    data = []
+    for ev in events:
+        data.append({
+            "Ngày Báo cáo": ev.started_at.strftime("%d/%m/%Y"),
+            "Tên sự kiện": ev.title,
+            "Loại hình thiên tai": TYPE_MAP.get(ev.disaster_type, ev.disaster_type),
+            "Tỉnh": ev.province,
+            "Tử vong": ev.deaths or 0,
+            "Mất tích": ev.missing or 0,
+            "Bị thương": ev.injured or 0,
+            "Thiệt hại (Tỷ VNĐ)": ev.damage_billion_vnd or 0,
+            "Số nguồn tin": ev.sources_count or 1,
+            "Trạng thái": "Đã duyệt" if ev.needs_verification == 0 else "Chờ xác minh"
+        })
+        
+    df = pd.DataFrame(data)
+    
+    if not df.empty:
+        summary_row = {
+            "Ngày Báo cáo": "TỔNG CỘNG",
+            "Tên sự kiện": title_suffix,
+            "Loại hình thiên tai": "",
+            "Tỉnh": "",
+            "Tử vong": df["Tử vong"].sum(),
+            "Mất tích": df["Mất tích"].sum(),
+            "Bị thương": df["Bị thương"].sum(),
+            "Thiệt hại (Tỷ VNĐ)": df["Thiệt hại (Tỷ VNĐ)"].sum(),
+            "Số nguồn tin": "",
+            "Trạng thái": ""
+        }
+        df = pd.concat([df, pd.DataFrame([summary_row])], ignore_index=True)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Tổng hợp')
+    output.seek(0)
+    
+    filename = f"bao-cao-thiet-hai-{title_suffix.replace(' ', '_')}.xlsx"
+    headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

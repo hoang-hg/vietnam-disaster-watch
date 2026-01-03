@@ -48,4 +48,8 @@ class Settings(BaseSettings):
     # Reduce timeout so slow sources don't block a whole crawl cycle too long
     request_timeout_seconds: int = 15
 
+    # Proxy list for rotation to avoid IP blacklisting
+    # Format: ["http://user:pass@host:port", "http://host:port", ...]
+    crawler_proxies: list[str] = Field(default=[], validation_alias="CRAWLER_PROXIES")
+
 settings = Settings()

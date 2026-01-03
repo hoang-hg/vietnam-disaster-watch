@@ -144,7 +144,7 @@ export function fmtType(t) {
     storm: "Bão, ATNĐ",
     flood: "Lũ lụt",
     flash_flood: "Lũ quét, Lũ ống",
-    landslide: "Sạt lở đất, đá",
+    landslide: "Sạt lở",
     subsidence: "Sụt lún đất",
     drought: "Hạn hán",
     salinity: "Xâm nhập mặn",
@@ -155,6 +155,7 @@ export function fmtType(t) {
     tsunami: "Sóng thần",
     storm_surge: "Nước dâng",
     wildfire: "Cháy rừng",
+    erosion: "Xói lở",
 
     // 2 Special Groups
     warning_forecast: "Cảnh báo, dự báo",

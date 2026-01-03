@@ -34,6 +34,7 @@ const LEGEND_ITEMS = [
     { key: "storm_surge", color: THEME_COLORS.storm_surge, label: "Nước dâng" },
     { key: "extreme_other", color: THEME_COLORS.extreme_weather, label: "Cực đoan khác" },
     { key: "wildfire", color: THEME_COLORS.wildfire, label: "Cháy rừng" },
+    { key: "erosion", color: THEME_COLORS.erosion, label: "Xói lở" },
     { key: "quake_tsunami", color: THEME_COLORS.earthquake, label: "Động đất" },
     { key: "warning_forecast", color: THEME_COLORS.warning_forecast, label: "Tin cảnh báo" },
     { key: "recovery", color: THEME_COLORS.recovery, label: "Khắc phục hậu quả" },
@@ -95,6 +96,7 @@ export default function MapPage() {
         storm_surge: ['storm_surge'],
         extreme_other: ['extreme_weather', 'unknown'],
         wildfire: ['wildfire'],
+        erosion: ['erosion'],
         quake_tsunami: ['earthquake', 'tsunami'],
         warning_forecast: ['warning_forecast'],
         recovery: ['recovery']

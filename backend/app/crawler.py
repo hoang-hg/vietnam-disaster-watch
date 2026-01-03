@@ -72,7 +72,7 @@ from .sources import SOURCES, build_gnews_rss, CONFIG
 from . import nlp
 from .dedup import find_duplicate_article, get_article_hash, normalize_url
 from .event_matcher import upsert_event_for_article
-from .html_scraper import HTMLScraper, fetch_article_full_text_async
+from .html_scraper import HTMLScraper, fetch_article_full_text_async, extract_metadata
 
 Base.metadata.create_all(bind=engine)
 
@@ -139,15 +139,11 @@ def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
         except Exception:
             pass
 
-    # 2. Check HTML soup (og:image)
+    # 2. Check HTML soup (standardized metadata extraction)
     if soup:
-        og_image = soup.find("meta", property="og:image")
-        if og_image and og_image.get("content"):
-            return og_image["content"]
-        
-        twitter_image = soup.find("meta", name="twitter:image")
-        if twitter_image and twitter_image.get("content"):
-            return twitter_image["content"]
+        meta = extract_metadata(soup)
+        if meta["image"]:
+            return meta["image"]
             
         # 3. Fallback: Find the first significant image in the body
         # Ignore common logos, icons, and small social buttons
@@ -225,10 +221,26 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
     # Allow insecure SSL (verify=False) to support gov sites with bad certs
     transport = httpx.AsyncHTTPTransport(retries=3, verify=False)
     
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, limits=limits, transport=transport) as client:
+    # Proxy rotation logic
+    client_kwargs = {
+        "timeout": timeout,
+        "follow_redirects": True,
+        "limits": limits,
+        "transport": transport
+    }
+    
+    if settings.crawler_proxies:
+        proxy_url = random.choice(settings.crawler_proxies)
+        client_kwargs["proxy"] = proxy_url
+        logger.debug(f"Using proxy for feed crawl: {proxy_url}")
+
+    async with httpx.AsyncClient(**client_kwargs) as client:
         tasks = {}
         for url in feed_urls:
             async def _get(u=url):
+                # INNER JITTER: Sleep for 0.5 - 3.0 seconds to avoid slamming servers at once
+                await asyncio.sleep(random.uniform(0.5, 3.0))
+                
                 start = time.perf_counter()
                 
                 # Retry loop
@@ -448,6 +460,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             existing.missing = _get_impact_value(impacts["missing"])
                             existing.injured = _get_impact_value(impacts["injured"])
                             existing.damage_billion_vnd = _get_impact_value(impacts["damage_billion_vnd"])
+                            existing.is_red_alert = diag["signals"].get("is_red_alert", False)
                             existing.summary = summary_raw[:1000] # Update summary if it's longer/better
                             
                             # Link to an event now that it's approved
@@ -544,6 +557,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     }.get(stage, "TIN MỚI")
                     
                     summary = f"[{stage_vn}] {summary_text}"
+                    is_red_alert = diag["signals"].get("is_red_alert", False)
 
                     article = Article(
                         source=src.name,
@@ -570,7 +584,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         summary=summary,
                         image_url=_extract_image_url(entry),
                         impact_details=nlp.extract_impact_details(text_for_nlp),
-                        needs_verification=int(nlp.validate_impacts(impacts))
+                        needs_verification=int(nlp.validate_impacts(impacts)),
+                        is_red_alert=is_red_alert
                     )
 
                     try:
@@ -886,6 +901,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 c_status.last_run_at = datetime.utcnow()
                 c_status.articles_added = src_info["articles_added"]
                 c_status.latency_ms = int((stat.get("elapsed") or 0.0) * 1000)
+                c_status.feed_used = stat.get("feed_used") # Add this line
                 
                 if stat.get("error"):
                     c_status.status = "error"
@@ -924,11 +940,6 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
         return {"new_articles": new_count, "timestamp": datetime.now(timezone.utc).isoformat(), "elapsed": total_elapsed, "per_source": per_source_stats}
     except Exception as e:
         print(f"[CRITICAL] crawler cycle failed: {e}")
-        try:
-            from .notifications import send_system_health_alert
-            asyncio.create_task(send_system_health_alert(f"Crawler cycle failed: {str(e)[:200]}"))
-        except:
-             pass
         raise e
     finally:
         db.close()

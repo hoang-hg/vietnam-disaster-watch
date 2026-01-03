@@ -24,6 +24,7 @@ class ArticleOut(BaseModel):
     full_text: str | None
     is_broken: int = 0
     image_url: str | None
+    is_red_alert: bool = False
     event_id: int | None
     needs_verification: int = 0
     status: str | None = None
@@ -59,6 +60,7 @@ class EventOut(BaseModel):
     articles_count: int = 0
     needs_verification: int = 0
     image_url: str | None = None
+    is_red_alert: bool = False
     source: str | None = None
     source_url: str | None = None
 
@@ -83,6 +85,7 @@ class EventUpdate(BaseModel):
     injured: int | None = None
     damage_billion_vnd: float | None = None
     needs_verification: int | None = None
+    is_red_alert: bool | None = None
 
 class CrowdsourcedReportOut(BaseModel):
     id: int
