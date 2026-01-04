@@ -38,7 +38,7 @@ def filter_disaster_events(events):
             "storm", "flood", "flash_flood", "landslide", "subsidence", 
             "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
             "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-            "warning_forecast", "recovery"
+            "warning_forecast", "recovery", "marine"
         ]
         
         if not is_impacting and ev.disaster_type not in major_hazards:
@@ -622,7 +622,7 @@ def stats_summary(
         "storm", "flood", "flash_flood", "landslide", "subsidence", 
         "drought", "salinity", "extreme_weather", "heatwave", "cold_surge",
         "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-        "warning_forecast", "recovery"
+        "warning_forecast", "recovery", "marine"
     ]
     type_counts = {t: 0 for t in official_types}
     type_counts["unknown"] = 0

@@ -10,56 +10,19 @@ import {
   fmtTimeAgo,
   fmtVndBillion,
   isJunkImage,
+  getDisasterMeta,
   API_BASE
 } from "../api.js";
+import { DISASTER_METADATA } from "../theme.js";
 import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle, ChevronRight } from "lucide-react";
 import { Helmet } from "react-helmet-async";
+import Badge from "../components/Badge.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
 import { useNavigate } from "react-router-dom";
 
-const TYPE_CLASSES = {
-  storm: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
-  flood: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20",
-  flash_flood: "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20",
-  landslide: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
-  subsidence: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20",
-  drought: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20",
-  salinity: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20",
-  extreme_weather: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
-  heatwave: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
-  cold_surge: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20",
-  earthquake: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20",
-  tsunami: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
-  storm_surge: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
-  wildfire: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20",
-  erosion: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-400 dark:border-pink-500/20",
-  warning_forecast: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20",
-  recovery: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
-  unknown: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20",
-};
-
-
-const HAZARD_TYPES = [
-  { id: "storm", label: "Bão, ATNĐ" },
-  { id: "flood", label: "Lũ lụt" },
-  { id: "flash_flood", label: "Lũ quét, Lũ ống" },
-  { id: "landslide", label: "Sạt lở đất, đá" },
-  { id: "subsidence", label: "Sụt lún đất" },
-  { id: "drought", label: "Hạn hán" },
-  { id: "salinity", label: "Xâm nhập mặn" },
-  { id: "extreme_weather", label: "Mưa lớn, Lốc, Sét, Mưa Đá" },
-  { id: "heatwave", label: "Nắng nóng" },
-  { id: "cold_surge", label: "Rét hại, Sương muối" },
-  { id: "earthquake", label: "Động đất" },
-  { id: "tsunami", label: "Sóng thần" },
-  { id: "storm_surge", label: "Nước dâng" },
-  { id: "wildfire", label: "Cháy rừng" },
-  { id: "erosion", label: "Xói lở" },
-  { id: "warning_forecast", label: "Cảnh báo, dự báo" },
-  { id: "recovery", label: "Khắc phục hậu quả" }
-];
+// Local metadata removed
 
 const isJunk_internal = (url) => isJunkImage(url);
 
@@ -494,14 +457,12 @@ export default function EventDetail() {
                 onChange={e => setEditForm({...editForm, disaster_type: e.target.value})}
                 className="border rounded px-2 py-1 bg-white text-sm font-bold shadow-sm"
               >
-                {HAZARD_TYPES.map(h => <option key={h.id} value={h.id}>{h.label}</option>)}
+                {Object.entries(DISASTER_METADATA).map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
               </select>
             ) : (
-              <span className={`px-3 py-1 font-black uppercase text-[10px] tracking-widest rounded-lg border shadow-sm flex items-center gap-1.5 ${
-                TYPE_CLASSES[ev.disaster_type] || TYPE_CLASSES.unknown
-              }`}>
+              <Badge tone={getDisasterMeta(ev.disaster_type).tone} className="px-3 py-1 font-black uppercase text-[10px] tracking-widest shadow-sm">
                 {fmtType(ev.disaster_type)}
-              </span>
+              </Badge>
             )}
             
             {isEditing ? (

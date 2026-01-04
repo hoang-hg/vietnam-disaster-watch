@@ -695,7 +695,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         article.characteristics = full_impacts.get("characteristics")
 
                                     if article.province in (None, "unknown"):
-                                        prov = nlp.extract_province(full_text)
+                                        prov = nlp.extract_province(full_text, title=title)
                                         if prov and prov != "unknown":
                                             article.province = prov
                                     

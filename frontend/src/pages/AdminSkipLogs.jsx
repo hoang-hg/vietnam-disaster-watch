@@ -22,6 +22,7 @@ import {
   Settings
 } from "lucide-react";
 import { VALID_PROVINCES } from "../provinces";
+import { DISASTER_METADATA } from "../theme.js";
 import Toast from "../components/Toast.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 
@@ -523,28 +524,17 @@ export default function AdminSkipLogs() {
                 <div className="p-6">
                     <p className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Chọn loại thiên tai chính xác:</p>
                     <div className="grid grid-cols-2 gap-2">
-                        {[
-                            {id: "storm", label: "Bão/Áp thấp"},
-                            {id: "flood", label: "Lũ lụt/Ngập lụt"},
-                            {id: "flash_flood", label: "Lũ quét"},
-                            {id: "landslide", label: "Sạt lở đất"},
-                            {id: "drought", label: "Hạn hán"},
-                            {id: "salinity", label: "Xâm nhập mặn"},
-                            {id: "extreme_weather", label: "Thời tiết cực đoan"},
-                            {id: "wildfire", label: "Cháy rừng"},
-                            {id: "earthquake", label: "Động đất"},
-                            {id: "other", label: "Khác/Tổng hợp"}
-                        ].map(type => (
+                        {Object.entries(DISASTER_METADATA).map(([id, meta]) => (
                             <button
-                                key={type.id}
-                                onClick={() => submitReclassification(type.id)}
+                                key={id}
+                                onClick={() => submitReclassification(id)}
                                 className={`px-4 py-3 rounded-xl border-2 transition-all font-bold text-sm text-left ${
-                                    isReclassifying.currentType === type.id 
+                                    isReclassifying.currentType === id 
                                     ? "bg-slate-800 text-white border-slate-800 shadow-lg" 
                                     : "border-slate-100 text-slate-600 hover:border-[#2fa1b3]/30 hover:bg-slate-50"
                                 }`}
                             >
-                                {type.label}
+                                {meta.label}
                             </button>
                         ))}
                     </div>

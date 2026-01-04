@@ -1,3 +1,5 @@
+import { DISASTER_METADATA } from "./theme.js";
+
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
@@ -154,31 +156,11 @@ export async function register(email, password, fullName) {
 }
 
 export function fmtType(t) {
-  const map = {
-    // 14 Official Disaster Types
-    storm: "Bão, ATNĐ",
-    flood: "Lũ lụt",
-    flash_flood: "Lũ quét, Lũ ống",
-    landslide: "Sạt lở",
-    subsidence: "Sụt lún đất",
-    drought: "Hạn hán",
-    salinity: "Xâm nhập mặn",
-    extreme_weather: "Mưa lớn, Lốc, Sét, Mưa Đá",
-    heatwave: "Nắng nóng",
-    cold_surge: "Rét hại, Sương muối",
-    earthquake: "Động đất",
-    tsunami: "Sóng thần",
-    storm_surge: "Nước dâng",
-    wildfire: "Cháy rừng",
-    erosion: "Xói lở",
+  return DISASTER_METADATA[t]?.label || t;
+}
 
-    // 2 Special Groups
-    warning_forecast: "Cảnh báo, dự báo",
-    recovery: "Khắc phục hậu quả",
-
-    unknown: "Chưa phân loại",
-  };
-  return map[t] || t;
+export function getDisasterMeta(t) {
+  return DISASTER_METADATA[t] || DISASTER_METADATA.unknown;
 }
 
 export function fmtVndBillion(x) {

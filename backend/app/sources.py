@@ -4,6 +4,7 @@ import urllib.parse
 import json
 from pathlib import Path
 import re
+import unicodedata
 Method = Literal["rss", "gnews"]
 
 # 14+2 Standardized Disaster Groups
@@ -32,17 +33,15 @@ DISASTER_GROUPS = {
         "cấp 8", "cấp 9", "cấp 10", "cấp 11", "cấp 12", "cấp 13", "cấp 14", "cấp 15", "cấp 16", "cấp 17",
         "cấp 6-7", "cấp 7-8", "cấp 8-9", "cấp 9-10", "cấp 10-11", "cấp 11-12", "cấp 12-13",
         "beaufort", "gió cấp 6", "gió cấp 7",
-        "đổi hướng", "đi lệch", "quỹ đạo", "đường đi của bão",
+        "đổi hướng", "đi lệch", "quỹ đạo bão", "đường đi của bão",
         "di chuyển nhanh", "di chuyển chậm", "di chuyển theo hướng",
-        "dịch chuyển", "tăng cấp", "mạnh thêm", "suy yếu", "suy yếu nhanh",
+        "dịch chuyển", "bão tăng cấp", "mạnh thêm", "bão suy yếu", "áp thấp suy yếu", "suy yếu nhanh",
         "mạnh lên thành bão", "mạnh lên thành áp thấp nhiệt đới",
         "đi vào đất liền", "đổ bộ vào", "đi sát bờ", "áp sát đất liền",
         "gây mưa lớn", "gây gió mạnh", "ảnh hưởng trực tiếp", "ít khả năng ảnh hưởng",
         "vùng ảnh hưởng", "hoàn lưu gây mưa", "mưa rất to", "mưa to đến rất to",
         "giữa biển đông", "bắc biển đông", "nam biển đông", "tây bắc biển đông",
-        "quần đảo hoàng sa", "quần đảo trường sa",
         "vịnh bắc bộ", "vịnh thái lan",
-        "biển đông", "ngoài khơi", "trên biển",
         "tên bão", "bão có tên", "bão quốc tế",
         "vùng tâm bão", "áp sát ven biển", "hoàn lưu sau bão", "gió xoáy", "phong ba"
     ],
@@ -167,7 +166,7 @@ DISASTER_GROUPS = {
         "hỗ trợ lai dắt", "tàu hỏng máy", "tàu phá nước", "ngư dân gặp nạn",
         "sự cố trên biển", "tai nạn đường thủy", "thuyền thúng lật", "ghe chìm",
         "mất liên lạc", "mất tín hiệu", "tàu mắc cạn", "va chạm trên biển",
-        "mất tích trên vùng biển"
+        "mất tích trên vùng biển", "tàu cá bị chìm", "chìm tàu cá", "tàu chìm", "ghe bị chìm"
     ]
 }
 
@@ -256,8 +255,8 @@ VIP_TERMS = [
     r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)\s*\d+",
 
     # Command / mobilization
-    r"công\s*điện\s*(?:khẩn|hỏa\s*tốc|của\s*thủ\s*tướng|của\s*phó\s*thủ\s*tướng|chỉ\s*đạo|ứng\s*phó)",
-    r"công\s*điện.*(?:bão|lũ|thiên\s*tai|ứng\s*phó|khẩn\s*cấp)",
+    r"công\s*điện\s*(?:khẩn|hỏa\s*tốc|của\s*thủ\s*tướng|của\s*phó\s*thủ\s*tướng)\s*về\s*(?:bão|lũ|thiên\s*tai|ứng\s*phó|ngập|sạt\s*lở)",
+    r"công\s*điện.*(?:bão|lũ|thiên\s*tai|ứng\s*phó|khẩn\s*cấp|tìm\s*kiếm\s*cứu\s*nạn)",
     r"chỉ\s*thị.*(?:bão|lũ|thiên\s*tai|ứng\s*phó|khẩn\s*cấp)",
     r"lệnh\s*(?:sơ\s*tán|di\s*dời)\s*(?:khẩn|khẩn\s*cấp)",
     r"sơ\s*tán\s*khẩn\s*cấp",
@@ -287,7 +286,6 @@ VIP_TERMS = [
     r"tàu\s*cá.*mất\s*liên\s*lạc",
     r"gặp\s*nạn\s*trên\s*biển",
     r"thương\s*vong\s*(?:lớn|nặng\s*nề|nghiêm\s*trọng)",
-    r"tai\s*nạn\s*(?:thảm\s*khốc|liên\s*hoàn\s*nghiêm\s*trọng)",
     r"đoàn\s*thiện\s*nguyện\s*gặp\s*nạn",
     r"xe\s*cứu\s*trợ\s*gặp\s*nạn",
     r"xe\s*chở\s*đoàn\s*.*gặp\s*nạn",
@@ -303,6 +301,170 @@ VIP_TERMS = [
 VIP_TERMS_RE = [
     re.compile(p.replace(" ", r"\s+"), re.IGNORECASE | re.VERBOSE) 
     for p in VIP_TERMS
+]
+
+
+# Red Alert (High-danger warning) keywords
+DANGER_SIGS = [
+    r"khẩn\s*cấp", r"đặc\s*biệt\s*nguy\s*hiểm", r"cực\s*kỳ\s*nguy\s*hiểm",
+    r"siêu\s*bão", r"lũ\s*lịch\s*sử", r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*[345]",
+    r"đặc\s*biệt\s*lớn", r"nguy\s*hiểm\s*cao", r"báo\s*động\s*đỏ", r"cảnh\s*báo\s*đỏ"
+]
+
+HAZARD_ANCHOR = r"(?:bão|áp\s*thấp|lũ|ngập|sạt\s*lở|nắng\s*nóng|hạn\s*hán|xâm\s*nhập\s*mặn|gió\s*mạnh|sương\s*mù|cháy\s*rừng|động\s*đất|sóng\s*thần|triều\s*cường|nước\s*dâng|mưa\s*lớn|chìm\s*tàu|tài\s*cá\s*gặp\s*nạn|thuyền\s*viên|mất\s*tích)"
+PCTT_ANCHOR   = r"(?:phòng\s*chống\s*thiên\s*tai|PCTT|TKCN|tìm\s*kiếm\s*cứu\s*nạn)"
+
+DISASTER_CONTEXT = [
+  r"rủi\s*ro\s*thiên\s*tai",
+  r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai(?:\s*cấp\s*\d+)?",
+  r"cảnh\s*báo\s*(?:thiên\s*tai|rủi\s*ro\s*thiên\s*tai)",
+  r"tình\s*huống\s*khẩn\s*cấp",
+  # B) Ứng phó khẩn cấp (đặc thù)
+  r"sơ\s*tán(?:\s*khẩn\s*cấp)?",
+  r"di\s*dời(?:\s*khẩn\s*cấp)?",
+  r"cứu\s*hộ", r"cứu\s*nạn",
+  r"tìm\s*kiếm\s*cứu\s*nạn",
+  r"neo\s*đậu\s*tránh\s*trú",
+  r"cấm\s*ra\s*khơi|cấm\s*biển",
+  r"đóng\s*đường|cấm\s*đường|cấm\s*lưu\s*thông|phân\s*luồng",
+  r"phong\s*tỏa\s*khu\s*vực\s*nguy\s*hiểm|cắm\s*biển\s*cảnh\s*báo",
+  r"lực\s*lượng\s*xung\s*kích|trực\s*ban",
+  # C) Tác động/thiệt hại (đặc thù)
+  r"thiệt\s*hại|tổn\s*thất",
+  r"thương\s*vong|tử\s*vong|thiệt\s*mạng",
+  r"mất\s*tích|mất\s*liên\s*lạc",
+  r"bị\s*thương|nhập\s*viện|cấp\s*cứu",
+  r"chia\s*cắt|cô\s*lập",
+  r"sập\s*cầu|đứt\s*đường|sạt\s*lở\s*đường",
+  r"vỡ\s*đê|tràn\s*đê|vỡ\s*đập",
+  r"cuốn\s*trôi|vùi\s*lấp",
+  r"hư\s*hỏng\s*nặng|tốc\s*mái\s*hoàn\s*toàn|sạt\s*lở\s*nghiêm\s*trọng",
+  r"thiệt\s*hại\s*về\s*người|thiệt\s*hại\s*tài\s*sản",
+  r"ước\s*tính\s*thiệt\s*hại",
+  r"tàu\s*gặp\s*nạn|thuyền\s*viên\s*mất\s*tích|hỗ\s*trợ\s*lai\s*dắt",
+  r"tín\s*hiệu\s*cầu\s*cứu|bị\s*sóng\s*đánh\s*chìm",
+  r"gia\s*cố\s*nhà\s*cửa|chằng\s*chống|cắt\s*tỉa\s*cây",
+  r"gia\s*cố\s*lồng\s*bè|đưa\s*tàu\s*thuyền\s*vào\s*bờ",
+  r"lệnh\s*cấm\s*biển",
+  r"mất\s*điện\s*diện\s*rộng|ngừng\s*cấp\s*điện",
+  r"ngừng\s*cấp\s*nước|gián\s*đoạn\s*cấp\s*nước",
+  # D) Chỉ báo thủy văn/khí tượng mang tính “bản tin thiên tai”
+  r"báo\s*động\s*(?:1|2|3|I|II|III)|vượt\s*báo\s*động",
+  r"mực\s*nước|đỉnh\s*lũ|lũ\s*lên|lũ\s*rút",
+  r"lượng\s*mưa|tổng\s*lượng\s*mưa|mưa\s*lớn\s*diện\s*rộng",
+  r"triều\s*cường|đỉnh\s*triều",
+  r"cấp\s*gió|gió\s*giật|beaufort",
+  r"độ\s*mặn|ranh\s*mặn|độ\s*mặn\s*\d+\s*(?:‰|%o|g\/l)",
+  # E) Từ khóa phục hồi sau thiên tai (recovery – đặc thù)
+  r"khắc\s*phục\s*hậu\s*quả|khẩn\s*trương\s*khắc\s*phục",
+  r"khôi\s*phục\s*(?:giao\s*thông|cấp\s*điện|cấp\s*nước|liên\s*lạc)",
+  r"thông\s*tuyến|khơi\s*thông|giải\s*tỏa|dọn\s*dẹp|thu\s*dọn|nạo\s*vét",
+  r"cứu\s*trợ|tiếp\s*tế|cấp\s*phát|phát\s*lương\s*thực|nhu\s*yếu\s*phẩm",
+  rf"(?:bản\s*tin|thông\s*báo|thông\s*cáo|cập\s*nhật|tin)(?:[^.\n]{{0,80}})({HAZARD_ANCHOR}|{PCTT_ANCHOR})",
+  rf"(?:tin\s*bão|tin\s*áp\s*thấp|bản\s*tin\s*dự\s*báo)(?:[^.\n]{{0,80}})({HAZARD_ANCHOR}|{PCTT_ANCHOR})",
+  rf"(?:công\s*điện|hỏa\s*tốc)(?:[^.\n]{{0,120}})({HAZARD_ANCHOR}|{PCTT_ANCHOR})",
+  rf"(?:chỉ\s*đạo|chỉ\s*đạo\s*khẩn|yêu\s*cầu|đề\s*nghị|hướng\s*dẫn|ban\s*hành|triển\s*khai|chỉ\s*thị)(?:[^.\n]{{0,120}})({HAZARD_ANCHOR}|{PCTT_ANCHOR})",
+  rf"(?:ubnd|ủy\s*ban\s*nhân\s*dân|sở|bộ)(?:[^.\n]{{0,120}})({HAZARD_ANCHOR}|{PCTT_ANCHOR})",
+  rf"(?:mất\s*sóng|mất\s*mạng|mất\s*internet|đứt\s*cáp\s*quang|cột\s*bts)(?:[^.\n]{{0,120}})({HAZARD_ANCHOR}|{PCTT_ANCHOR})",
+  rf"(?:người\s*dân|hộ\s*dân|nhân\s*khẩu)(?:[^.\n]{{0,80}})(?:sơ\s*tán|di\s*dời|thiệt\s*hại|mất\s*tích|bị\s*thương|{HAZARD_ANCHOR})",
+  r"\b(?:canh\s*bao|khuyen\s*cao|so\s*tan|di\s*doi|cuu\s*ho|cuu\s*nan|thiet\s*hai|thuong\s*vong|tu\s*vong|mat\s*tich|chia\s*cat|co\s*lap|mat\s*dien|mat\s*lien\s*lac)\b"
+]
+
+RECOVERY_ANCHOR = r"(?:hậu\s*quả|sau\s*(?:bão|lũ|mưa\s*lớn|ngập|sạt\s*lở|triều\s*cường|nước\s*dâng|cháy\s*rừng|động\s*đất|sóng\s*thần|rét\s*hại|mưa\s*đá|dông\s*lốc)|thiên\s*tai|bão|lũ|ngập|sạt\s*lở|hạn\s*hán|hạn\s*mặn|xâm\s*nhập\s*mặn)"
+
+FORECAST_SIGS = [
+    r"bản\s*tin(?:\s*dự\s*báo|\s*cảnh\s*báo)?", r"dự\s*báo", r"cảnh\s*báo",
+    r"trong\s*(?:24|48|72|120)\s*(?:giờ|h)\s*tới", r"tâm\s*bão\s*ở\s*khoảng",
+    r"vĩ\s*độ|kinh\s*độ", r"bán\s*kính\s*gió\s*mạnh", r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
+    r"tốc\s*độ\s*di\s*chuyển", r"hướng\s*di\s*chuyển", r"mm\s*/\s*24h", r"có\s*khả\s*năng\s*mạnh\s*lên",
+    r"mô\s*hình\s*dự\s*báo", r"đường\s*đi\s*của\s*bão", r"theo\s*dõi\s*chặt\s*chẽ"
+]
+
+INCIDENT_SIGS = [
+    r"xảy\s*ra", r"đã\s*(?:đổ\s*bộ|ập\s*xuống|xảy\s*ra|gây)", r"ghi\s*nhận", r"làm\s*(?:\d+|nhiều)\s*người",
+    r"khiến\s*(?:\d+|nhiều)\s*người", r"cuốn\s*trôi", r"sập\s*nhà", r"trục\s*vớt", r"cứu\s*hộ\s*khẩn\s*cấp",
+    r"di\s*dời\s*dân", r"sơ\s*tán\s*khẩn\s*cấp", r"tình\s*trạng\s*ẩn cấp", r"thiệt\s*mạng", r"số\s*liệu\s*thiệt\s*hại"
+]
+
+RECOVERY_KEYWORDS = [
+    r"khắc\s*phục\s*hậu\s*quả",
+    r"khắc\s*phục\s*sự\s*cố",
+    r"khẩn\s*trương\s*khắc\s*phục",
+    r"khôi\s*phục\s*(?:giao\s*thông|cấp\s*điện|cấp\s*nước|liên\s*lạc|thông\s*tin|sản\s*xuất|hoạt\s*động)",
+    r"cấp\s*điện\s*trở\s*lại|cấp\s*nước\s*trở\s*lại",
+    r"thông\s*tuyến|thông\s*xe",
+    r"khơi\s*thông\s*(?:cống\s*rãnh|kênh\s*mương|dòng\s*chảy)",
+    r"giải\s*tỏa\s*(?:ùn\s*tắc|đất\s*đá|điểm\s*sạt\s*lở)",
+    r"thu\s*dọn|dọn\s*dẹp|nạo\s*vét(?:\s*bùn|\s*kênh)?",
+    r"thu\s*gom\s*(?:rác|bùn\s*đất|cây\s*đổ)",
+    r"tiêu\s*độc|khử\s*trùng|tẩy\s*uế|phun\s*khử\s*khuẩn",
+    r"phòng\s*chống\s*dịch\s*bệnh\s*sau\s*thiên\s*tai",
+    r"(?:thống\s*kê|rà\s*soát|đánh\s*giá|xác\s*minh|kiểm\s*đếm)\s*thiệt\s*hại",
+    r"tổng\s*kết\s*thiệt\s*hại",
+    r"(?:giải\s*ngân|tạm\s*ứng|bố\s*trí|cấp)\s*kinh\s*phí",
+    r"bổ\s*sung\s*ngân\s*sách",
+    r"(?:bồi\s*thường|đền\s*bù|bồi\s*hoàn|chi\s*trả\s*bồi\s*thường)",
+    r"bảo\s*hiểm\s*chi\s*trả",
+    r"(?:dựng\s*lại|xây\s*dựng\s*lại|xây\s*mới)\s*nhà",
+    r"bàn\s*giao\s*(?:nhà|nhà\s*tình\s*nghĩa|nhà\s*đại\s*đoàn\s*kết)",
+    r"tái\s*định\s*cư(?:\s*tập\s*trung)?|bố\s*trí\s*tái\s*định\s*cư",
+    r"ổn\s*định\s*(?:dân\s*cư|đời\s*sống)|an\s*cư",
+    r"khôi\s*phục\s*sinh\s*kế|phục\s*hồi\s*sinh\s*kế",
+    r"(?:hỗ\s*trợ|cấp\s*phát)\s*giống",
+    r"trợ\s*giúp\s*xã\s*hội",
+    r"cứu\s*trợ\s*khẩn\s*cấp",
+    r"quỹ\s*(?:phòng\s*chống\s*thiên\s*tai|từ\s*thiện|cứu\s*trợ)",
+    r"ủng\s*hộ\s*đồng\s*bào",
+    r"lá\s*lành\s*đùm\s*lá\s*rách",
+    r"tái\s*đàn",
+    r"khôi\s*phục\s*(?:chăn\s*nuôi|nuôi\s*trồng|hoa\s*màu|diện\s*tích\s*sản\s*xuất)",
+    rf"(?:hỗ\s*trợ|cứu\s*trợ|ủng\s*hộ|quyên\s*góp|tiếp\s*nhận|trao\s*tặng|cấp\s*phát|tiếp\s*tế|phát\s*(?:quà|tiền|gạo))(?:[^.\n]{{0,120}}){RECOVERY_ANCHOR}",
+    rf"{RECOVERY_ANCHOR}(?:[^.\n]{{0,120}})(?:hỗ\s*trợ|cứu\s*trợ|ủng\s*hộ|quyên\s*góp|tiếp\s*nhận|trao\s*tặng|cấp\s*phát|tiếp\s*tế|phát\s*(?:quà|tiền|gạo))",
+    rf"(?:trợ\s*cấp|miễn\s*giảm|giãn\s*nợ|khoanh\s*nợ|gia\s*hạn\s*nợ|cho\s*vay\s*ưu\s*đãi|hỗ\s*trợ\s*tín\s*dụng)(?:[^.\n]{{0,120}}){RECOVERY_ANCHOR}",
+    rf"{RECOVERY_ANCHOR}(?:[^.\n]{{0,120}})(?:trợ\s*cấp|miễn\s*giảm|giãn\s*nợ|khoanh\s*nợ|gia\s*hạn\s*nợ|cho\s*vay\s*ưu\s*đãi|hỗ\s*trợ\s*tín\s*dụng)",
+    r"lập\s*danh\s*sách\s*(?:hỗ\s*trợ|cứu\s*trợ|thiệt\s*hại|hộ\s*bị\s*ảnh\s*hưởng|người\s*bị\s*ảnh\s*hưởng)",
+    r"xác\s*định\s*mức\s*hỗ\s*trợ(?:[^.\n]{0,60})?(?:thiệt\s*hại|hộ\s*bị\s*ảnh\s*hưởng|người\s*bị\s*ảnh\s*hưởng)",
+]
+
+# High-priority keywords that indicate severe events
+HIGH_PRIORITY_KEYWORDS = [
+    r"lũ\s*quét", r"lũ\s*ống", r"vỡ\s*đê", r"vỡ\s*đập", r"siêu\s*bão",
+    r"sạt\s*lở\s*đất", r"sóng\s*thần", r"động\s*đất\s*mạnh", r"nước\s*dâng\s*do\s*bão",
+    r"triều\s*cường\s*kỷ\s*lục", r"công\s*điện\s*(?:khẩn|hỏa\s*tốc|chỉ\s*đạo|ứng\s*phó|số)",
+    r"lệnh\s*sơ\s*tán", r"tình\s*trạng\s*khẩn\s*cấp", r"chỉ\s*thị\s*khẩn",
+    r"bị\s*cô\s*lập", r"bị\s*chia\s*cắt", r"phong\s*tỏa\s*khẩn\s*cấp",
+    r"(?:thủ\s*tướng|phó\s*thủ\s*tướng)\s*(?:chỉ\s*đạo|yêu\s*cầu|ký\s*công\s*điện)",
+    r"khẩn\s*trương\s*ứng\s*phó", r"bản\s*tin\s*dự\s*báo\s*thời\s*tiết",
+    # Added for Marine / Subsidence Boost
+    r"thuyền\s*viên\s*mất\s*tích", r"tàu\s*cá\s*mất\s*tích", r"chìm\s*tàu\s*trên\s*biển",
+    r"sụt\s*lún\s*nghiêm\s*trọng", r"nguy\s*cơ\s*mất\s*an\s*toàn",
+    # Evacuation & Isolation Boost
+    r"di\s*dời\s*khẩn\s*cấp", r"sơ\s*tán\s*dân", r"cô\s*lập\s*hoàn\s*toàn",
+    r"phong\s*tỏa\s*hiện\s*trường", r"chia\s*cắt\s*giao\s*thông",
+    r"huy\s*động\s*lực\s*lượng\s*cứu\s*hộ",
+    r"sạt\s*lở\s*nghiêm\s*trọng", r"lũ\s*lên\s*nhanh", r"ngập\s*sâu\s*diện\s*rộng",
+    r"nước\s*dâng\s*cao", r"khẩn\s*trương\s*khắc\s*phục",
+    r"hỗ\s*trợ\s*khẩn\s*cấp", r"khắc\s*phục\s*hậu\s*quả", r"cứu\s*trợ\s*khẩn\s*cấp",
+    r"hàng\s*cứu\s*trợ", r"xe\s*cứu\s*trợ", r"nhu\s*yếu\s*phẩm", r"dự\s*báo\s*bão",
+    r"cấm\s*đường", r"cấm\s*phương\s*tiện", r"ngừng\s*hoạt\s*động", r"tạm\s*dừng\s*hoạt\s*động",
+    r"kiểm\s*tra\s*công\s*tác", r"khẩn\s*trương\s*khắc\s*phục", r"chỉ\s*đạo\s*khẩn",
+    r"hội\s*chữ\s*thập\s*đỏ", r"mặt\s*trận\s*tổ\s*quốc", r"ban\s*chỉ\s*huy\s*pctt",
+    r"giải\s*cứu\s*thành\s*công", r"người\s*mắc\s*kẹt", r"nạn\s*nhân\s*mắc\s*kẹt", r"giải\s*cứu\s*nạn\s*nhân",
+    r"ủng\s*hộ\s*đồng\s*bào", r"thiệt\s*hại\s*do\s*bão", r"tình\s*nguyện\s*viên",
+    r"chằng\s*chống\s*nhà", r"gia\s*cố\s*nhà", r"điều\s*tiết\s*hồ", r"xả\s*lũ", r"mắc\s*cạn", r"tàu\s*gặp\s*nạn",
+    r"khắc\s*phục\s*hậu\s*quả\s*thiên\s*tai", r"tái\s*thiết.*(?:thiên\s*tai|bão|lũ)",
+    r"tìm\s*kiếm\s*nạn\s*nhân", r"sạt\s*lở\s*núi", r"sạt\s*lở\s*đất",
+    r"di\s*dời\s*dân", r"sơ\s*tán\s*dân", r"di\s*dời\s*khẩn\s*cấp",
+    r"dự\s*báo\s*bão", r"tin\s*bão", r"tin\s*lũ", r"tin\s*mưa\s*lớn", r"công\s*tác\s*khắc\s*phục",
+    r"mưa\s*lũ",
+    r"hỗ\s*trợ.*(?:bão|lũ|thiên\s*tai|ngập|sạt\s*lở|khắc\s*phục|thiệt\s*hại)",
+    r"(?:tàu|thuyền).*(?:chìm|phá\s*hủy|hư\s*hỏng|mắc\s*cạn|trôi\s*dạt)",
+    r"xé\s*đường", r"hàm\s*ếch", r"cứu\s*\d+\s*người",
+    r"rốn\s*lũ", r"dựng\s*lại\s*nhà", r"cứu\s*dân", r"cứu\s*người",
+    r"vùng\s*tâm\s*bão", r"cấm\s*biển", r"lệnh\s*cấm\s*biển", r"lưu\s*thông\s*trở\s*lại",
+    r"tình\s*huống\s*khẩn\s*cấp", r"công\s*bố\s*tình\s*huống", r"ban\s*bố\s*tình\s*huống",
+    r"cô\s*lập", r"chia\s*cắt", r"thông\s*tuyến|tìm\s*kiếm.*mất\s*tích", r"khắc\s*phục\s*hậu\s*quả",
+    r"khẩn\s*trương\s*khắc\s*phục", r"chỉ\s*đạo\s*khắc\s*phục", r"thăm\s*hỏi.*động\s*viên", r"hỗ\s*trợ.*khẩn\s*cấp",
 ]
 
 

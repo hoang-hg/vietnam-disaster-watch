@@ -9,10 +9,11 @@ import {
   cleanText,
   isJunkImage,
   normalizeStr,
+  getDisasterMeta,
   API_BASE
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
-import { THEME_COLORS } from "../theme.js";
+import { THEME_COLORS, DISASTER_METADATA } from "../theme.js";
 import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle, ArrowRight, Calendar, Trash2, Printer, Download } from "lucide-react";
 import logoIge from "../assets/logo_ige.png";
 import ConfirmModal from "../components/ConfirmModal.jsx";
@@ -20,26 +21,7 @@ import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-// Updated tones for 8 groups
-const TYPE_TONES = {
-  storm: "blue",
-  flood: "cyan",
-  flash_flood: "cyan",
-  landslide: "orange",
-  subsidence: "slate",
-  drought: "orange",
-  salinity: "blue",
-  extreme_weather: "yellow",
-  heatwave: "red",
-  cold_surge: "indigo",
-  earthquake: "slate",
-  tsunami: "blue",
-  storm_surge: "purple",
-  wildfire: "red",
-  warning_forecast: "yellow",
-  recovery: "emerald",
-  unknown: "slate",
-};
+// Local TYPE_TONES removed
 
 
 export default function Events() {
@@ -455,23 +437,9 @@ export default function Events() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
                 >
                     <option value="">Tất cả loại hình</option>
-                    <option value="storm">Bão, ATNĐ</option>
-                    <option value="flood">Lũ lụt</option>
-                    <option value="flash_flood">Lũ quét, Lũ ống</option>
-                    <option value="landslide">Sạt lở</option>
-                    <option value="subsidence">Sụt lún đất</option>
-                    <option value="drought">Hạn hán</option>
-                    <option value="salinity">Xâm nhập mặn</option>
-                    <option value="extreme_weather">Mưa lớn, Lốc, Sét, Mưa Đá</option>
-                    <option value="heatwave">Nắng nóng</option>
-                    <option value="cold_surge">Rét hại, Sương muối</option>
-                    <option value="earthquake">Động đất</option>
-                    <option value="tsunami">Sóng thần</option>
-                    <option value="storm_surge">Nước dâng</option>
-                    <option value="wildfire">Cháy rừng</option>
-                    <option value="erosion">Xói lở</option>
-                    <option value="warning_forecast">Cảnh báo, dự báo</option>
-                    <option value="recovery">Khắc phục hậu quả</option>
+                    {Object.entries(DISASTER_METADATA).map(([key, meta]) => (
+                        <option key={key} value={key}>{meta.label}</option>
+                    ))}
                 </select>
             </div>
             {/* Province */}
@@ -609,9 +577,9 @@ export default function Events() {
                     key={e.id}
                     href={`/events/${e.id}`}
                     className={`block group bg-white rounded-2xl border-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm ${e.disaster_type === 'warning_forecast' ? 'border-dashed' : 'border-solid'}`}
-                    style={{ borderColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}
+                    style={{ borderColor: getDisasterMeta(e.disaster_type).color }}
                     >
-                    <div className="h-1 w-full" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
+                    <div className="h-1 w-full" style={{ backgroundColor: getDisasterMeta(e.disaster_type).color }}></div>
                     <div className="w-full h-44 overflow-hidden relative flex items-center justify-center bg-slate-100/30">
                         {e.image_url && !isJunkImage(e.image_url) ? (
                             <img 
@@ -625,17 +593,17 @@ export default function Events() {
                             />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white relative overflow-hidden">
-                                <div className="absolute inset-0 opacity-5" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
-                                <img 
-                                    src={logoIge} 
-                                    alt="Logo IGE" 
-                                    className="w-36 h-36 object-contain opacity-90 group-hover:scale-110 transition-transform duration-700 grayscale group-hover:grayscale-0" 
-                                />
-                                <div className="mt-2 h-1 w-16 rounded-full opacity-50" style={{ backgroundColor: THEME_COLORS[e.disaster_type] || THEME_COLORS.unknown }}></div>
+                                 <div className="absolute inset-0 opacity-5" style={{ backgroundColor: getDisasterMeta(e.disaster_type).color }}></div>
+                                 <img 
+                                     src={logoIge} 
+                                     alt="Logo IGE" 
+                                     className="w-36 h-36 object-contain opacity-90 group-hover:scale-110 transition-transform duration-700 grayscale group-hover:grayscale-0" 
+                                 />
+                                 <div className="mt-2 h-1 w-16 rounded-full opacity-50" style={{ backgroundColor: getDisasterMeta(e.disaster_type).color }}></div>
                             </div>
                         )}
                         <div className="absolute top-4 left-4 flex flex-col items-start gap-2">
-                            <Badge tone={TYPE_TONES[e.disaster_type] || "slate"} className="shadow-md">
+                            <Badge tone={getDisasterMeta(e.disaster_type).tone} className="shadow-md">
                                 {fmtType(e.disaster_type)}
                             </Badge>
                             {e.is_red_alert && (

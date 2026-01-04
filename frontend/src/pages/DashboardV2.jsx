@@ -6,10 +6,10 @@ import {
   fmtDate, 
   fmtTimeAgo, 
   cleanText,
-  isJunkImage,
-  normalizeStr
+  normalizeStr,
+  getDisasterMeta
 } from "../api.js";
-import { THEME_COLORS } from "../theme.js";
+import { THEME_COLORS, DISASTER_METADATA } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
 import Badge from "../components/Badge.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
@@ -44,26 +44,7 @@ import {
 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
-const TYPE_TONES = {
-  storm: "blue",
-  flood: "sky",
-  flash_flood: "cyan",
-  landslide: "amber",
-  subsidence: "slate",
-  drought: "orange",
-  salinity: "indigo",
-  extreme_weather: "amber",
-  heatwave: "red",
-  cold_surge: "indigo",
-  earthquake: "slate",
-  tsunami: "blue",
-  storm_surge: "violet",
-  wildfire: "rose",
-  erosion: "pink",
-  warning_forecast: "yellow",
-  recovery: "emerald",
-  unknown: "slate",
-};
+// No local TYPE_TONES needed anymore
 
 export default function Dashboard() {
   const dateInputRef = useRef(null);
@@ -382,30 +363,16 @@ export default function Dashboard() {
            </div>
 
            <div className="relative">
-              <select
-                  value={hazardType}
-                  onChange={(e) => setHazardType(e.target.value)}
-                  className="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 cursor-pointer"
-              >
-                  <option value="all">Tất cả thông tin</option>
-                  <option value="storm">Bão, ATNĐ</option>
-                  <option value="flood">Lũ lụt</option>
-                  <option value="flash_flood">Lũ quét, Lũ ống</option>
-                  <option value="landslide">Sạt lở</option>
-                  <option value="subsidence">Sụt lún đất</option>
-                  <option value="drought">Hạn hán</option>
-                  <option value="salinity">Xâm nhập mặn</option>
-                  <option value="extreme_weather">Mưa lớn, Lốc, Sét, Mưa Đá</option>
-                  <option value="heatwave">Nắng nóng</option>
-                  <option value="cold_surge">Rét hại, Sương muối</option>
-                  <option value="earthquake">Động đất</option>
-                  <option value="tsunami">Sóng thần</option>
-                  <option value="storm_surge">Nước dâng</option>
-                  <option value="wildfire">Cháy rừng</option>
-                  <option value="erosion">Xói lở</option>
-                  <option value="warning_forecast">Cảnh báo, dự báo</option>
-                  <option value="recovery">Khắc phục hậu quả</option>
-              </select>
+               <select
+                   value={hazardType}
+                   onChange={(e) => setHazardType(e.target.value)}
+                   className="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 cursor-pointer"
+               >
+                   <option value="all">Tất cả thông tin</option>
+                   {Object.entries(DISASTER_METADATA).map(([key, meta]) => (
+                       <option key={key} value={key}>{meta.label}</option>
+                   ))}
+               </select>
               <Filter className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
@@ -502,7 +469,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                    {favoriteEvents.map(e => (
                      <Link key={e.id} to={`/events/${e.id}`} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-blue-200 dark:border-blue-900/40 shadow-sm hover:shadow-md transition-all flex flex-col group/fav">
-                        <Badge tone={TYPE_TONES[e.disaster_type] || "slate"} className="w-fit px-1.5 py-0.5 text-[8px] mb-2">
+                        <Badge tone={getDisasterMeta(e.disaster_type).tone} className="w-fit px-1.5 py-0.5 text-[8px] mb-2">
                            {fmtType(e.disaster_type)}
                         </Badge>
                         <h5 className="font-bold text-slate-900 dark:text-white text-[11px] leading-tight line-clamp-2 group-hover/fav:text-blue-600 transition-colors">{e.title}</h5>
@@ -524,7 +491,7 @@ export default function Dashboard() {
                 <div key={event.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group relative border-l-4 border-transparent hover:border-blue-500/30">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
-                      <Badge tone={TYPE_TONES[event.disaster_type] || "slate"} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
+                      <Badge tone={getDisasterMeta(event.disaster_type).tone} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
                         {fmtType(event.disaster_type)}
                       </Badge>
                       {event.is_red_alert && (

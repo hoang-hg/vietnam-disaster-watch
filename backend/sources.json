@@ -1248,7 +1248,7 @@
   "gnews_fallback": false,
   "gnews_context_terms": ["bão", "áp thấp", "lũ lụt", "mưa lớn", "nắng nóng", "xâm nhập mặn", "gió mạnh", "gió mùa", "dòng chảy", "mưa lũ", "lũ quét",
    "sạt lở", "hạn hán", "cháy rừng", "động đất", "lốc", "sóng thần", "triều cường", "nước dâng", "sét", "mưa đá", "thiên tai", "mưa dông", "sóng lớn", "thủy triều", "sụt lún",
-   "ngập úng", "ngập sâu", "sương mù", "lũ bùn", "mưa cực đoan", "rét đậm", "rét hại", "băng giá"],
+   "ngập úng", "ngập sâu", "sương mù", "lũ bùn", "mưa cực đoan", "rét đậm", "rét hại", "băng giá", "xói lở"],
   "gnews_min_articles": 2,
   "request_timeout": 30,
   "max_articles_per_source": 10
