@@ -22,8 +22,11 @@ export default function LoginPage() {
         const data = await apiLogin(formData.email, formData.password);
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        
+        // Dispatch event for same-tab components to see the login
+        window.dispatchEvent(new Event("storage"));
+        
         navigate("/");
-        window.location.reload(); 
     } catch (err) {
         setError(err.message);
     } finally {
@@ -129,7 +132,7 @@ export default function LoginPage() {
                   </>
               ) : (
                   <>
-                    ĐANG NHẬP
+                    ĐĂNG NHẬP
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </>
               )}

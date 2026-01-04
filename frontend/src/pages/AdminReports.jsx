@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { getJson, patchJson, API_BASE } from "../api";
 import { Check, X, FileDown, MapPin, Phone, User, Loader2 } from "lucide-react";
+import Toast from "../components/Toast.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 
 export default function AdminReports() {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
 
     const fetchReports = async () => {
         setLoading(true);
@@ -23,22 +27,22 @@ export default function AdminReports() {
     }, []);
 
     const handleApprove = async (id) => {
-        if (!confirm("Duyệt báo cáo này?")) return;
         try {
             await patchJson(`/api/user/admin/crowdsource/${id}/approve`, {});
             setReports(prev => prev.filter(r => r.id !== id));
+            setToast({ isVisible: true, message: "Đã duyệt báo cáo thành công", type: "success" });
         } catch (e) {
-            alert(e.message);
+            setToast({ isVisible: true, message: e.message, type: "error" });
         }
     };
 
     const handleReject = async (id) => {
-        if (!confirm("Từ chối báo cáo này?")) return;
         try {
             await patchJson(`/api/user/admin/crowdsource/${id}/reject`, {});
             setReports(prev => prev.filter(r => r.id !== id));
+            setToast({ isVisible: true, message: "Đã từ chối báo cáo", type: "info" });
         } catch (e) {
-            alert(e.message);
+            setToast({ isVisible: true, message: e.message, type: "error" });
         }
     };
 
@@ -56,12 +60,12 @@ export default function AdminReports() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bao_cao_hien_truong_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `bao_cao_hien_truong_${new Date().toISOString().split('T')[0]}.xlsx`;
             document.body.appendChild(a);
             a.click();
             a.remove();
         })
-        .catch(err => alert("Lỗi tải xuống: " + err.message));
+        .catch(err => setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: "error" }));
     };
 
     return (
@@ -78,7 +82,7 @@ export default function AdminReports() {
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm"
                 >
                     <FileDown className="w-4 h-4" />
-                    Xuất Excel (CSV)
+                    Xuất Excel (.xlsx)
                 </button>
             </div>
 
@@ -130,7 +134,7 @@ export default function AdminReports() {
                                             {r.address && <span className="text-xs text-slate-500">{r.address}</span>}
                                             <span className="text-[10px] text-slate-400 font-mono mt-1 flex items-center gap-1">
                                                 <MapPin className="w-3 h-3" />
-                                                {r.lat.toFixed(4)}, {r.lon.toFixed(4)}
+                                                {r.lat != null ? r.lat.toFixed(4) : "—"}, {r.lon != null ? r.lon.toFixed(4) : "—"}
                                             </span>
                                         </div>
                                     </td>
@@ -145,16 +149,16 @@ export default function AdminReports() {
                                     <td className="px-6 py-4 align-top text-slate-500 whitespace-nowrap">
                                         {new Date(r.created_at).toLocaleString('vi-VN')}
                                     </td>
-                                    <td className="px-6 py-4 align-top text-right space-x-2">
+                                     <td className="px-6 py-4 align-top text-right space-x-2">
                                         <button 
-                                            onClick={() => handleApprove(r.id)}
+                                            onClick={() => setConfirmModal({ isOpen: true, id: r.id, action: 'approve' })}
                                             className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-colors"
                                             title="Duyệt"
                                         >
                                             <Check className="w-4 h-4" />
                                         </button>
                                         <button 
-                                            onClick={() => handleReject(r.id)}
+                                            onClick={() => setConfirmModal({ isOpen: true, id: r.id, action: 'reject' })}
                                             className="p-2 bg-slate-100 text-slate-500 rounded-lg hover:bg-slate-200 transition-colors"
                                             title="Từ chối"
                                         >
@@ -167,6 +171,21 @@ export default function AdminReports() {
                     </table>
                 </div>
             </div>
+            <Toast 
+                {...toast} 
+                onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+            />
+            <ConfirmModal 
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ isOpen: false, id: null })}
+                onConfirm={() => {
+                    if (confirmModal.action === 'approve') handleApprove(confirmModal.id);
+                    if (confirmModal.action === 'reject') handleReject(confirmModal.id);
+                    setConfirmModal({ isOpen: false, id: null });
+                }}
+                title={confirmModal.action === 'approve' ? "Xác nhận duyệt" : "Xác nhận từ chối"}
+                message={confirmModal.action === 'approve' ? "Bạn có chắc chắn muốn duyệt báo cáo này và đưa nó lên hệ thống?" : "Bạn có chắc chắn muốn từ chối báo cáo này?"}
+            />
         </div>
     );
 }

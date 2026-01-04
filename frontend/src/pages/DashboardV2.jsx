@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { 
   getJson, 
   fmtType, 
   fmtDate, 
   fmtTimeAgo, 
-  cleanText 
+  cleanText,
+  isJunkImage,
+  normalizeStr
 } from "../api.js";
 import { THEME_COLORS } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
 import Badge from "../components/Badge.jsx";
+import { VALID_PROVINCES } from "../provinces.js";
 import {
   BarChart,
   Bar,
@@ -68,14 +71,16 @@ export default function Dashboard() {
   const [rawEvents, setRawEvents] = useState([]);
   const [articles, setArticles] = useState([]);
   
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
   
-  const [hazardType, setHazardType] = useState("all");
-  const [provQuery, setProvQuery] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [quickFilter, setQuickFilter] = useState(null);
-  const [page, setPage] = useState(0);
+  const [startDate, setStartDate] = useState(searchParams.get("start_date") || new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(searchParams.get("end_date") || "");
+  
+  const [hazardType, setHazardType] = useState(searchParams.get("type") || "all");
+  const [provQuery, setProvQuery] = useState(searchParams.get("province") || "");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [quickFilter, setQuickFilter] = useState(searchParams.get("quick") || null);
+  const [page, setPage] = useState(parseInt(searchParams.get("page")) || 0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
@@ -97,27 +102,23 @@ export default function Dashboard() {
     };
     handleStorage();
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+
+    // Theme observer for charts reactive to MainLayout toggle
+    const observer = new MutationObserver(() => {
+        setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+        window.removeEventListener("storage", handleStorage);
+        observer.disconnect();
+    };
   }, []);
+
+  const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
 
   const favoriteProvince = user?.favorite_province;
 
-  const VALID_PROVINCES = [
-    "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên",
-    "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh",
-    "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình",
-    "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế",
-    "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa",
-    "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp",
-    "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
-  ]; 
-  /* Helper to normalize string for search */
-  const normalizeStr = (str, removeSpaces = false) => {
-    if (!str) return "";
-    let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (removeSpaces) res = res.replace(/\s+/g, '');
-    return res;
-  }
 
   const events = useMemo(() => {
     let list = rawEvents;
@@ -154,35 +155,90 @@ export default function Dashboard() {
     setPage(0);
   }, [startDate, endDate, hazardType, provQuery, searchQuery, quickFilter]);
 
-  async function load() {
+  async function load(signal = null) {
     try {
       setLoading(true);
       setError(null);
       let queryParams = `?start_date=${startDate}`;
       if (endDate) queryParams += `&end_date=${endDate}`;
+      if (hazardType !== "all") queryParams += `&type=${hazardType}`;
+      if (provQuery) queryParams += `&province=${encodeURIComponent(provQuery)}`;
+
+      // Sidebar articles should ideally follow type/province filters too
+      let artParams = `?limit=20`;
+      if (hazardType !== "all") artParams += `&type=${hazardType}`;
+      if (provQuery) artParams += `&province=${encodeURIComponent(provQuery)}`;
 
       // Optimized: Fetch summary, recent events (limited), and latest articles in parallel
       const [s, evs, arts] = await Promise.all([
-        getJson(`/api/stats/summary${queryParams}`),
-        getJson(`/api/events${queryParams}&limit=100&hours=72`), 
-        getJson(`/api/articles/latest?limit=20`)
+        getJson(`/api/stats/summary${queryParams}`, { signal }),
+        getJson(`/api/events${queryParams}&limit=100&hours=72`, { signal }), 
+        getJson(`/api/articles/latest${artParams}`, { signal })
       ]);
+      
+      if (signal?.aborted) return;
+
       setStats(s);
       setRawEvents(evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type)));
       setArticles(arts);
       setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
+
+      // Sync to URL
+      const newParams = {};
+      if (startDate) newParams.start_date = startDate;
+      if (endDate) newParams.end_date = endDate;
+      if (hazardType !== "all") newParams.type = hazardType;
+      if (provQuery) newParams.province = provQuery;
+      if (searchQuery) newParams.q = searchQuery;
+      if (quickFilter) newParams.quick = quickFilter;
+      if (page > 0) newParams.page = page;
+
+      const currentParams = Object.fromEntries(searchParams.entries());
+      const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
+                        Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+      
+      if (isDifferent) {
+          setSearchParams(newParams, { replace: true });
+      }
+
     } catch (e) {
+      if (e.name === 'AbortError') return;
       setError(e.message || "Load failed");
     } finally {
       setLoading(false);
     }
   }
 
+  // Handle URL changes (Back button)
   useEffect(() => {
-    load();
-    const t = setInterval(load, 300_000); // Tự động cập nhật mỗi 5 phút
-    return () => clearInterval(t);
-  }, [startDate, endDate]);
+    const urlStart = searchParams.get("start_date") || new Date().toISOString().split('T')[0];
+    const urlEnd = searchParams.get("end_date") || "";
+    const urlType = searchParams.get("type") || "all";
+    const urlProv = searchParams.get("province") || "";
+    const urlQ = searchParams.get("q") || "";
+    const urlQuick = searchParams.get("quick") || null;
+    const urlPage = parseInt(searchParams.get("page")) || 0;
+
+    if (urlStart !== startDate) setStartDate(urlStart);
+    if (urlEnd !== endDate) setEndDate(urlEnd);
+    if (urlType !== hazardType) setHazardType(urlType);
+    if (urlProv !== provQuery) setProvQuery(urlProv);
+    if (urlQ !== searchQuery) setSearchQuery(urlQ);
+    if (urlQuick !== quickFilter) setQuickFilter(urlQuick);
+    if (urlPage !== page) setPage(urlPage);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    load(controller.signal);
+    
+    const t = setInterval(() => load(controller.signal), 300_000); // Tự động cập nhật mỗi 5 phút
+    
+    return () => {
+      controller.abort();
+      clearInterval(t);
+    };
+  }, [startDate, endDate, hazardType, provQuery]);
 
   const isToday = startDate === new Date().toISOString().split('T')[0] && !endDate;
 
@@ -201,7 +257,7 @@ export default function Dashboard() {
       id: e.id,
       title: e.title,
       lat: e.lat,
-      lng: e.lng || e.lon,
+      lon: e.lon ?? e.lng,
       disaster_type: e.disaster_type,
     })), [events]);
 
@@ -221,7 +277,7 @@ export default function Dashboard() {
     const agg = {
       storm: 0, flood: 0, flash_flood: 0, landslide: 0, subsidence: 0, 
       drought: 0, salinity: 0, extreme_weather: 0, heatwave: 0, cold_surge: 0,
-      earthquake: 0, tsunami: 0, storm_surge: 0, wildfire: 0,
+      earthquake: 0, tsunami: 0, storm_surge: 0, wildfire: 0, erosion: 0,
       warning_forecast: 0, recovery: 0
     };
     events.forEach((e) => {
@@ -239,7 +295,7 @@ export default function Dashboard() {
   const riskiestHotspots = useMemo(() => {
     // [OPTIMIZATION] Use server-side aggregated stats if available
     if (stats && stats.by_province) {
-        return stats.by_province;
+        return stats.by_province || [];
     }
 
     // Fallback
@@ -272,8 +328,6 @@ export default function Dashboard() {
     // Sort by date (naive string match works for display if data is chronological)
     return Object.values(daily).slice(-15); // Show last 15 days of data
   }, [events]);
-
-  const isDark = document.documentElement.classList.contains('dark');
 
   return (
     <div className="space-y-6">
@@ -486,8 +540,8 @@ export default function Dashboard() {
                     </h4>
                   </Link>
                   <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {event.province}</span>
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-400" /> {new Date(event.started_at).toLocaleDateString('vi-VN')}</span>
+                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {event.province || "Đang xác minh"}</span>
+                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-400" /> {event.started_at ? new Date(event.started_at).toLocaleDateString('vi-VN') : "—"}</span>
                   </div>
                 </div>
               ))}

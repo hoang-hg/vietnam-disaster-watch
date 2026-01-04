@@ -33,7 +33,7 @@ export default function VietnamMap({ points }) {
 
       {/* Dynamic Disaster Events - Clustering disabled as per request */}
       {points.map((p) => {
-        if (typeof p.lat !== 'number' || typeof (p.lon || p.lng) !== 'number') return null;
+        if (typeof p.lat !== 'number' || typeof (p.lon ?? p.lng) !== 'number') return null;
         
         const color = THEME_COLORS[p.disaster_type || p.type] || THEME_COLORS.unknown;
         
@@ -50,7 +50,7 @@ export default function VietnamMap({ points }) {
         });
 
         return (
-          <Marker key={p.id} position={[p.lat, p.lon || p.lng]} icon={icon}>
+          <Marker key={p.id} position={[p.lat, p.lon ?? p.lng]} icon={icon}>
             <Popup>
               <div className="min-w-[200px] font-sans">
                 <Link 

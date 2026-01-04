@@ -7,6 +7,9 @@ import {
   fmtTimeAgo,
   fmtVndBillion,
   cleanText,
+  isJunkImage,
+  normalizeStr,
+  API_BASE
 } from "../api.js";
 import Badge from "../components/Badge.jsx";
 import { THEME_COLORS } from "../theme.js";
@@ -14,7 +17,8 @@ import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, C
 import logoIge from "../assets/logo_ige.png";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
-import { useLocation, useNavigate } from "react-router-dom";
+import { VALID_PROVINCES } from "../provinces.js";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 // Updated tones for 8 groups
 const TYPE_TONES = {
@@ -37,16 +41,6 @@ const TYPE_TONES = {
   unknown: "slate",
 };
 
-// Extract provinces for dropdown
-// Must match PROVINCE_MAPPING keys in backend/app/nlp.py
-const PROVINCES = [
-  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", 
-  "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", 
-  "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", 
-  "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", 
-  "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", 
-  "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
-].sort();
 
 export default function Events() {
   const dateInputRef = useRef(null);
@@ -55,14 +49,17 @@ export default function Events() {
   const [loading, setLoading] = useState(true);
   
   // Filters
-  const [q, setQ] = useState("");
-  const [type, setType] = useState("");
-  const [province, setProvince] = useState("");
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Filters (init from URL)
+  const [q, setQ] = useState(searchParams.get("q") || "");
+  const [type, setType] = useState(searchParams.get("type") || "");
+  const [province, setProvince] = useState(searchParams.get("province") || "");
+  const [startDate, setStartDate] = useState(searchParams.get("start_date") || new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(searchParams.get("end_date") || "");
   
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page")) || 1);
   const itemsPerPage = 20; 
   const [totalEvents, setTotalEvents] = useState(0);
   
@@ -140,37 +137,63 @@ export default function Events() {
     }
   };
 
-  const handleExportCSV = () => {
-    // [LOGIC REFINEMENT] Use server-side export for the full range instead of just current page
+  const handleExportCSV = async () => {
+    // [LOGIC REFINEMENT] Use fetch binary download to keep token in headers (more secure than URL)
     const token = localStorage.getItem("access_token");
-    let url = `${API_BASE}/api/admin/export/summary?token_query=${token}`;
+    let query = `?token_query=${token}`; // Fallback for some endpoints, but let's try fetch first
     
     if (startDate && endDate) {
-        url += `&start_date=${startDate}&end_date=${endDate}`;
+        query += `&start_date=${startDate}&end_date=${endDate}`;
     } else if (startDate) {
-        url += `&start_date=${startDate}`;
+        query += `&start_date=${startDate}`;
     }
     
-    if (type) url += `&type=${type}`;
-    if (province) url += `&province=${province}`;
+    if (q) query += `&q=${encodeURIComponent(q)}`;
+    if (type) query += `&type=${type}`;
+    if (province) query += `&province=${province}`;
     
-    window.open(url, '_blank');
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/export/summary${query}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `thong_ke_thien_tai_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (err) {
+        setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
+    }
   };
 
-  const handleExportMonthly = () => {
+  const handleExportMonthly = async () => {
     const token = localStorage.getItem("access_token");
-    window.open(`${API_BASE}/api/admin/export/summary?month=${exportMonth}&year=${exportYear}&token_query=${token}`, '_blank');
+    let query = `?month=${exportMonth}&year=${exportYear}`;
+    if (type) query += `&type=${type}`;
+    if (province) query += `&province=${province}`;
+
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/export/summary${query}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bao_cao_thang_${exportMonth}_${exportYear}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (err) {
+        setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
+    }
   };
 
-  /* Helper to normalize string for search (remove tones and spaces) */
-  const normalizeStr = (str, removeSpaces = false) => {
-    if (!str) return "";
-    let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    if (removeSpaces) res = res.replace(/\s+/g, '');
-    return res;
-  }
 
-  const fetchEvents = async (isBackground = false, pageToFetch = 1) => {
+  const fetchEvents = async (isBackground = false, pageToFetch = 1, signal = null) => {
     try {
       if (!isBackground) setLoading(true);
       setError(null);
@@ -193,7 +216,8 @@ export default function Events() {
           params.append("date", startDate);
       }
       
-      const response = await getJson(`/api/events?${params.toString()}`);
+      const response = await getJson(`/api/events?${params.toString()}`, { signal });
+      if (signal?.aborted) return;
       
       let fetchedEvents = [];
       if (response && response.items) {
@@ -211,6 +235,7 @@ export default function Events() {
       setCurrentPage(pageToFetch);
       
     } catch (e) {
+      if (e.name === 'AbortError') return;
       console.error("Fetch error:", e);
       if (!isBackground) setError(e.message || "Load failed");
     } finally {
@@ -220,24 +245,66 @@ export default function Events() {
 
   // Handler for page change
   const handlePageChange = (newPage) => {
-      fetchEvents(false, newPage);
+      setCurrentPage(newPage);
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Initial load & Filter change
+  // Initial load & Filter change & Page change
   useEffect(() => {
-    fetchEvents(false, 1);
-  }, [q, type, province, startDate, endDate]);
+    const controller = new AbortController();
+    fetchEvents(false, currentPage, controller.signal);
+    
+    // Sync to URL
+    const newParams = {};
+    if (q) newParams.q = q;
+    if (type) newParams.type = type;
+    if (province) newParams.province = province;
+    if (startDate) newParams.start_date = startDate;
+    if (endDate) newParams.end_date = endDate;
+    if (currentPage > 1) newParams.page = currentPage;
+    
+    // Only update if something changed to avoid unnecessary re-renders
+    const currentParams = Object.fromEntries(searchParams.entries());
+    const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
+                      Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+    
+    if (isDifferent) {
+        setSearchParams(newParams, { replace: true });
+    }
+
+    return () => controller.abort();
+  }, [q, type, province, startDate, endDate, currentPage]);
+
+  // Handle URL changes (Back button)
+  useEffect(() => {
+    const urlQ = searchParams.get("q") || "";
+    const urlType = searchParams.get("type") || "";
+    const urlProv = searchParams.get("province") || "";
+    const urlStart = searchParams.get("start_date") || new Date().toISOString().split('T')[0];
+    const urlEnd = searchParams.get("end_date") || "";
+    const urlPage = parseInt(searchParams.get("page")) || 1;
+
+    if (urlQ !== q) setQ(urlQ);
+    if (urlType !== type) setType(urlType);
+    if (urlProv !== province) setProvince(urlProv);
+    if (urlStart !== startDate) setStartDate(urlStart);
+    if (urlEnd !== endDate) setEndDate(urlEnd);
+    if (urlPage !== currentPage) setCurrentPage(urlPage);
+  }, [searchParams]);
 
   // Auto-refresh every 5 minutes (only updates standard list if on page 1)
   useEffect(() => {
+    const controller = new AbortController();
     const interval = setInterval(() => {
       if (currentPage === 1) {
-          fetchEvents(true, 1);
+          fetchEvents(true, 1, controller.signal);
       }
     }, 300000); 
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [q, type, province, startDate, endDate, currentPage]);
 
   const clearFilters = () => {
@@ -246,6 +313,7 @@ export default function Events() {
     setProvince("");
     setStartDate(new Date().toISOString().split('T')[0]);
     setEndDate("");
+    setCurrentPage(1);
     // fetchEvents will be triggered by useEffect
   };
   // No client-side pagination logic
@@ -276,22 +344,6 @@ export default function Events() {
   }, [events]); // removed currentPage dependency
 
   const hasFilters = q || type || province || startDate || endDate;
-
-  // Check if image is a generic Google News logo or broken
-  const isJunkImage = (url) => {
-    if (!url) return true;
-    const junkPatterns = [
-        'googleusercontent.com', 
-        'gstatic.com', 
-        'news_logo', 
-        'default_image',
-        'placeholder',
-        'tabler-icons', // Treat backend default SVGs as junk/placeholder
-        'triangle.svg',
-        'droplet.svg'
-    ];
-    return junkPatterns.some(p => url.toLowerCase().includes(p));
-  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -336,7 +388,7 @@ export default function Events() {
                         className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-md"
                     >
                         <Download className="w-4 h-4" />
-                        <span>Xuất Excel (CSV)</span>
+                        <span>Xuất Excel (.xlsx)</span>
                     </button>
                     
                     <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-sm ml-auto">
@@ -390,7 +442,7 @@ export default function Events() {
             <div className="lg:col-span-1">
                 <input
                     value={q}
-                    onChange={(e) => setQ(e.target.value)}
+                    onChange={(e) => { setQ(e.target.value); setCurrentPage(1); }}
                     placeholder="Tìm kiếm từ khóa..."
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none"
                 />
@@ -399,7 +451,7 @@ export default function Events() {
             <div>
                 <select 
                     value={type}
-                    onChange={(e) => setType(e.target.value)}
+                    onChange={(e) => { setType(e.target.value); setCurrentPage(1); }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
                 >
                     <option value="">Tất cả loại hình</option>
@@ -426,11 +478,11 @@ export default function Events() {
             <div>
                 <select 
                     value={province}
-                    onChange={(e) => setProvince(e.target.value)}
+                    onChange={(e) => { setProvince(e.target.value); setCurrentPage(1); }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
                 >
                     <option value="">Tất cả tỉnh thành</option>
-                    {PROVINCES.map(p => (
+                    {VALID_PROVINCES.map(p => (
                         <option key={p} value={p}>{p}</option>
                     ))}
                 </select>

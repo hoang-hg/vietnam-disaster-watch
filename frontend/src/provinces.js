@@ -36,3 +36,5 @@ window.__PROVINCE_CENTROIDS__ = {
     "Cà Mau": [9.1833, 105.1500],
     "unknown": [16.0, 107.5]
 };
+
+export const VALID_PROVINCES = Object.keys(window.__PROVINCE_CENTROIDS__).filter(k => k !== "unknown").sort();

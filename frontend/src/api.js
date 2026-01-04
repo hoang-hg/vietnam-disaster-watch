@@ -1,14 +1,18 @@
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
-export async function getJson(path) {
+export async function getJson(path, options = {}) {
   const token = localStorage.getItem("access_token");
   const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-  const res = await fetch(API_BASE + path, { headers });
+  const res = await fetch(API_BASE + path, { 
+    ...options,
+    headers: { ...headers, ...options.headers }
+  });
   if (!res.ok) {
     if (res.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        window.dispatchEvent(new Event("storage"));
     }
     const err = new Error(`API error ${res.status}`);
     err.status = res.status;
@@ -17,14 +21,19 @@ export async function getJson(path) {
   return res.json();
 }
 
-export async function deleteJson(path) {
+export async function deleteJson(path, options = {}) {
   const token = localStorage.getItem("access_token");
   const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-  const res = await fetch(API_BASE + path, { method: "DELETE", headers });
+  const res = await fetch(API_BASE + path, { 
+    ...options,
+    method: "DELETE", 
+    headers: { ...headers, ...options.headers }
+  });
   if (!res.ok) {
     if (res.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        window.dispatchEvent(new Event("storage"));
     }
     let errorDetail = "";
     try {
@@ -39,21 +48,23 @@ export async function deleteJson(path) {
   return true;
 }
 
-export async function putJson(path, payload) {
+export async function putJson(path, payload, options = {}) {
   const token = localStorage.getItem("access_token");
   const headers = { 
     "Content-Type": "application/json",
     ...(token ? { "Authorization": `Bearer ${token}` } : {})
   };
   const res = await fetch(API_BASE + path, { 
+    ...options,
     method: "PUT", 
-    headers, 
+    headers: { ...headers, ...options.headers }, 
     body: JSON.stringify(payload) 
   });
   if (!res.ok) {
     if (res.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        window.dispatchEvent(new Event("storage"));
     }
     const errData = await res.json().catch(() => ({}));
     const err = new Error(errData.detail || `API error ${res.status}`);
@@ -63,21 +74,23 @@ export async function putJson(path, payload) {
   return res.json();
 }
 
-export async function postJson(path, payload) {
+export async function postJson(path, payload, options = {}) {
   const token = localStorage.getItem("access_token");
   const headers = { 
     "Content-Type": "application/json",
     ...(token ? { "Authorization": `Bearer ${token}` } : {})
   };
   const res = await fetch(API_BASE + path, { 
+    ...options,
     method: "POST", 
-    headers, 
+    headers: { ...headers, ...options.headers }, 
     body: JSON.stringify(payload) 
   });
   if (!res.ok) {
     if (res.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        window.dispatchEvent(new Event("storage"));
     }
     const errData = await res.json().catch(() => ({}));
     const err = new Error(errData.detail || `API error ${res.status}`);
@@ -87,21 +100,23 @@ export async function postJson(path, payload) {
   return res.json();
 }
 
-export async function patchJson(path, payload = {}) {
+export async function patchJson(path, payload = {}, options = {}) {
   const token = localStorage.getItem("access_token");
   const headers = { 
     "Content-Type": "application/json",
     ...(token ? { "Authorization": `Bearer ${token}` } : {})
   };
   const res = await fetch(API_BASE + path, { 
+    ...options,
     method: "PATCH", 
-    headers, 
+    headers: { ...headers, ...options.headers }, 
     body: JSON.stringify(payload) 
   });
   if (!res.ok) {
     if (res.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        window.dispatchEvent(new Event("storage"));
     }
     const errData = await res.json().catch(() => ({}));
     const err = new Error(errData.detail || `API error ${res.status}`);
@@ -167,9 +182,31 @@ export function fmtType(t) {
 }
 
 export function fmtVndBillion(x) {
-  if (x === null || x === undefined) return "—";
-  return `${x.toLocaleString("vi-VN")} tỷ`;
+  if (x === null || x === undefined || x === "") return "—";
+  const val = typeof x === "string" ? parseFloat(x) : x;
+  if (isNaN(val)) return "—";
+  return `${val.toLocaleString("vi-VN")} tỷ`;
 }
+
+/** 
+ * Checks if image is a generic placeholder or news logo 
+ */
+export const isJunkImage = (url) => {
+  if (!url) return true;
+  const junkPatterns = [
+      'googleusercontent.com', 
+      'gstatic.com', 
+      'news_logo', 
+      'default_image',
+      'placeholder',
+      'tabler-icons',
+      'triangle.svg',
+      'droplet.svg',
+      'fallback',
+      'no-image'
+  ];
+  return junkPatterns.some(p => url.toLowerCase().includes(p));
+};
 
 export function fmtDate(s) {
   const d = new Date(s);
@@ -187,10 +224,18 @@ export function cleanText(text) {
   return doc.documentElement.textContent;
 }
 
+/** Helper to normalize string for search (diacritics removed, lowercase) */
+export function normalizeStr(str, removeSpaces = false) {
+    if (!str) return "";
+    let res = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (removeSpaces) res = res.replace(/\s+/g, '');
+    return res;
+}
+
 export function fmtTimeAgo(s) {
   const d = new Date(s);
   const now = new Date();
-  const seconds = Math.floor((now - d) / 1000);
+  const seconds = Math.max(0, Math.floor((now - d) / 1000));
 
   if (seconds < 60) return "Vừa xong";
   const minutes = Math.floor(seconds / 60);

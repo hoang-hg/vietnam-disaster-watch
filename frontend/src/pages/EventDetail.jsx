@@ -9,38 +9,37 @@ import {
   fmtDate,
   fmtTimeAgo,
   fmtVndBillion,
+  isJunkImage,
+  API_BASE
 } from "../api.js";
 import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle, ChevronRight } from "lucide-react";
 import { Helmet } from "react-helmet-async";
-import { API_BASE } from "../api.js";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
+import { VALID_PROVINCES } from "../provinces.js";
 import { useNavigate } from "react-router-dom";
 
-const TYPE_TONES = {
-  storm: "blue",
-  flood: "sky",
-  flash_flood: "cyan",
-  landslide: "amber",
-  subsidence: "slate",
-  drought: "orange",
-  salinity: "indigo",
-  extreme_weather: "amber",
-  heatwave: "red",
-  cold_surge: "indigo",
-  earthquake: "slate",
-  tsunami: "blue",
-  storm_surge: "violet",
-  wildfire: "rose",
-  erosion: "pink",
-  warning_forecast: "yellow",
-  recovery: "emerald",
-  unknown: "slate",
+const TYPE_CLASSES = {
+  storm: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
+  flood: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20",
+  flash_flood: "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-400 dark:border-cyan-500/20",
+  landslide: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+  subsidence: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20",
+  drought: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-400 dark:border-orange-500/20",
+  salinity: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20",
+  extreme_weather: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20",
+  heatwave: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20",
+  cold_surge: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20",
+  earthquake: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20",
+  tsunami: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20",
+  storm_surge: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-400 dark:border-violet-500/20",
+  wildfire: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20",
+  erosion: "bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-500/10 dark:text-pink-400 dark:border-pink-500/20",
+  warning_forecast: "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-400 dark:border-yellow-500/20",
+  recovery: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+  unknown: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20",
 };
 
-const PROVINCES = [
-  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
-].sort();
 
 const HAZARD_TYPES = [
   { id: "storm", label: "Bão, ATNĐ" },
@@ -62,20 +61,7 @@ const HAZARD_TYPES = [
   { id: "recovery", label: "Khắc phục hậu quả" }
 ];
 
-const isJunkImage = (url) => {
-  if (!url) return true;
-  const junkPatterns = [
-      'googleusercontent.com', 
-      'gstatic.com', 
-      'news_logo', 
-      'default_image',
-      'placeholder',
-      'tabler-icons',
-      'triangle.svg',
-      'droplet.svg'
-  ];
-  return junkPatterns.some(p => url.toLowerCase().includes(p));
-};
+const isJunk_internal = (url) => isJunkImage(url);
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -207,19 +193,33 @@ export default function EventDetail() {
     try {
         await deleteJson(`/api/events/${ev.id}`);
         // Redirect with success parameter
-        window.location.href = "/events?deleted=true";
+        navigate("/events?deleted=true");
     } catch (err) {
         if (err.message.includes("404") || err.status === 404) {
-            window.location.href = "/events?deleted=true";
+            navigate("/events?deleted=true");
         } else {
             setToast({ isVisible: true, message: "Xóa sự kiện thất bại: " + err.message, type: 'error' });
         }
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     const token = localStorage.getItem("access_token");
-    window.open(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel&token_query=${token}`, '_blank');
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `su_kien_${ev.id}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (err) {
+        setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
+    }
   };
 
   const [isFollowing, setIsFollowing] = useState(false);
@@ -463,7 +463,7 @@ export default function EventDetail() {
                     onChange={e => setEditForm({...editForm, province: e.target.value})}
                     className="bg-transparent focus:outline-none cursor-pointer text-xs font-bold"
                   >
-                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    {VALID_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                   <input 
                     placeholder="Địa chỉ cụ thể..."
@@ -498,11 +498,7 @@ export default function EventDetail() {
               </select>
             ) : (
               <span className={`px-3 py-1 font-black uppercase text-[10px] tracking-widest rounded-lg border shadow-sm flex items-center gap-1.5 ${
-                ev.disaster_type === 'storm' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                ev.disaster_type === 'flood' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
-                ev.disaster_type === 'landslide' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                ev.disaster_type === 'wildfire' ? 'bg-red-50 text-red-700 border-red-200' :
-                'bg-slate-50 text-slate-700 border-slate-200'
+                TYPE_CLASSES[ev.disaster_type] || TYPE_CLASSES.unknown
               }`}>
                 {fmtType(ev.disaster_type)}
               </span>
@@ -561,19 +557,19 @@ export default function EventDetail() {
             <div className="flex flex-wrap gap-2 items-center bg-slate-50 p-3 rounded-xl border border-slate-200 w-full">
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Tử vong</span>
-                <input type="number" value={editForm.deaths || 0} onChange={e => setEditForm({...editForm, deaths: parseInt(e.target.value)})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-red-700" />
+                <input type="number" value={editForm.deaths || 0} onChange={e => setEditForm({...editForm, deaths: parseInt(e.target.value) || 0})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-red-700" />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Mất tích</span>
-                <input type="number" value={editForm.missing || 0} onChange={e => setEditForm({...editForm, missing: parseInt(e.target.value)})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-orange-700" />
+                <input type="number" value={editForm.missing || 0} onChange={e => setEditForm({...editForm, missing: parseInt(e.target.value) || 0})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-orange-700" />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Bị thương</span>
-                <input type="number" value={editForm.injured || 0} onChange={e => setEditForm({...editForm, injured: parseInt(e.target.value)})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-yellow-700" />
+                <input type="number" value={editForm.injured || 0} onChange={e => setEditForm({...editForm, injured: parseInt(e.target.value) || 0})} className="w-16 border rounded px-2 py-1 text-sm font-bold text-yellow-700" />
               </div>
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400">Thiệt hại (Tỷ)</span>
-                <input type="number" step="0.1" value={editForm.damage_billion_vnd || 0} onChange={e => setEditForm({...editForm, damage_billion_vnd: parseFloat(e.target.value)})} className="w-24 border rounded px-2 py-1 text-sm font-bold text-blue-700" />
+                <input type="number" step="0.1" value={editForm.damage_billion_vnd || 0} onChange={e => setEditForm({...editForm, damage_billion_vnd: parseFloat(e.target.value) || 0})} className="w-24 border rounded px-2 py-1 text-sm font-bold text-blue-700" />
               </div>
             </div>
            </>

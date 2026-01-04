@@ -24,17 +24,23 @@ export default function CrawlerDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 30000); // 30s auto refresh
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchStatus(controller.signal);
+    const interval = setInterval(() => fetchStatus(controller.signal), 30000); // 30s auto refresh
+    return () => {
+        controller.abort();
+        clearInterval(interval);
+    };
   }, []);
 
-  async function fetchStatus() {
+  async function fetchStatus(signal = null) {
     try {
       setLoading(true);
-      const data = await getJson("/api/admin/crawler-status");
+      const data = await getJson("/api/admin/crawler-status", { signal });
+      if (signal?.aborted) return;
       setStatusData(data || []);
     } catch (e) {
+      if (e.name === 'AbortError') return;
       setError(e.message);
     } finally {
       setLoading(false);

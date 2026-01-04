@@ -707,6 +707,21 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                     # SAVE FULL TEXT - This powers the "Archived at System" feature
                                     try:
                                         article.full_text = full_text[:100000] # Safety limit
+                                        
+                                        # IMPROVED SUMMARY: If original summary was generic or short, replace with better one from full text
+                                        if "Đang tổng hợp dữ liệu" in article.summary or len(article.summary) < 100:
+                                            # Determine stage if not already set correctly
+                                            stage = article.stage or nlp.determine_event_stage(full_text)
+                                            stage_vn = {
+                                                "FORECAST": "DỰ BÁO",
+                                                "INCIDENT": "DIỄN BIẾN",
+                                                "RECOVERY": "KHẮC PHỤC"
+                                            }.get(stage, "TIN MỚI")
+                                            
+                                            better_summary_text = nlp.summarize(full_text, title=article.title)
+                                            article.summary = f"[{stage_vn}] {better_summary_text}"
+                                            logger.debug(f"Updated summary for {article.title} from full text")
+                                            
                                     except Exception:
                                         pass
                             except Exception as e:

@@ -31,7 +31,7 @@ DISASTER_GROUPS = {
         "gió giật mạnh", "gió giật rất mạnh", "gió giật trên cấp",
         "cấp 8", "cấp 9", "cấp 10", "cấp 11", "cấp 12", "cấp 13", "cấp 14", "cấp 15", "cấp 16", "cấp 17",
         "cấp 6-7", "cấp 7-8", "cấp 8-9", "cấp 9-10", "cấp 10-11", "cấp 11-12", "cấp 12-13",
-        "beaufort", "hải lý", "km/h",
+        "beaufort", "gió cấp 6", "gió cấp 7",
         "đổi hướng", "đi lệch", "quỹ đạo", "đường đi của bão",
         "di chuyển nhanh", "di chuyển chậm", "di chuyển theo hướng",
         "dịch chuyển", "tăng cấp", "mạnh thêm", "suy yếu", "suy yếu nhanh",
@@ -65,10 +65,11 @@ DISASTER_GROUPS = {
 
     # 4) Sạt lở (Landslide)
     "landslide": [
-        "sạt lở đất", "trượt lở đất", "lở núi", "sập taluy", "đất đá vùi lấp",
+        "sạt lở", "sạt lở đất", "trượt lở đất", "lở núi", "sập taluy", "đất đá vùi lấp",
         "sạt lở bờ sông", "sạt lở bờ biển", "trượt mái đê", "đá lăn", "sạt lở núi",
         "đất đá sạt xuống", "trượt mái dốc",
-        "đứt gãy", "trượt sạt", "vết nứt núi", "sụp đổ địa chất", "sạt taluy dương", "sạt taluy âm"
+        "đứt gãy", "trượt sạt", "vết nứt núi", "nứt núi", "sụp đổ địa chất", "sạt taluy dương", "sạt taluy âm",
+        "sập cầu", "gãy cầu", "sập hầm"
     ],
 
     # 5) Sụt lún đất (Land Subsidence)
@@ -157,6 +158,16 @@ DISASTER_GROUPS = {
     "recovery": [
         "khắc phục hậu quả", "khắc phục sự cố", "khôi phục giao thông", "thống kê thiệt hại",
         "ủng hộ đồng bào", "cứu trợ", "tiếp tế", "dọn dẹp sau bão", "viện trợ", "hỗ trợ khẩn cấp"
+    ],
+
+    # 18) Tai nạn hàng hải (Marine Incidents)
+    "marine": [
+        "chìm tàu", "đắm tàu", "lật tàu", "trôi dạt", "mất tích trên biển",
+        "tàu cá gặp nạn", "thuyền viên mất tích", "cứu nạn hàng hải", "tàu gặp sự cố",
+        "hỗ trợ lai dắt", "tàu hỏng máy", "tàu phá nước", "ngư dân gặp nạn",
+        "sự cố trên biển", "tai nạn đường thủy", "thuyền thúng lật", "ghe chìm",
+        "mất liên lạc", "mất tín hiệu", "tàu mắc cạn", "va chạm trên biển",
+        "mất tích trên vùng biển"
     ]
 }
 
@@ -222,7 +233,8 @@ SENSITIVE_LOCATIONS = [
     "Đèo Măng Đen", "Đèo Keo Nưa", "Đèo Đá Đẽo", "Đèo Tam Điệp",
     # Islands & Disaster-prone Districts
     "Lý Sơn", "Phú Quý", "Bạch Long Vĩ", "Cồn Cỏ", "Thổ Chu", "Quần đảo Hoàng Sa", "Quần đảo Trường Sa",
-    "Mù Cang Chải", "Sa Pa", "Mường La", "Kỳ Sơn", "Nam Trà My", "Bắc Trà My"
+    "Mù Cang Chải", "Sa Pa", "Mường La", "Kỳ Sơn", "Nam Trà My", "Bắc Trà My",
+    "Mai Châu", "Ngọc Linh", "Đèo Thung Khe", "Hoàng Su Phì", "Bát Xát"
 ]
 # Pre-compile for Case-Insensitive and Verbose matching
 SENSITIVE_LOCATIONS_RE = [
@@ -244,8 +256,9 @@ VIP_TERMS = [
     r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)\s*\d+",
 
     # Command / mobilization
-    r"công\s*điện\s*(?:khẩn|hỏa\s*tốc)",
-    r"công\s*điện\s*số\s*\d+\/CĐ\-(?:TTg|[A-Z]+)",
+    r"công\s*điện\s*(?:khẩn|hỏa\s*tốc|của\s*thủ\s*tướng|của\s*phó\s*thủ\s*tướng|chỉ\s*đạo|ứng\s*phó)",
+    r"công\s*điện.*(?:bão|lũ|thiên\s*tai|ứng\s*phó|khẩn\s*cấp)",
+    r"chỉ\s*thị.*(?:bão|lũ|thiên\s*tai|ứng\s*phó|khẩn\s*cấp)",
     r"lệnh\s*(?:sơ\s*tán|di\s*dời)\s*(?:khẩn|khẩn\s*cấp)",
     r"sơ\s*tán\s*khẩn\s*cấp",
     r"cấm\s*biển\s*khẩn\s*cấp",
@@ -257,13 +270,31 @@ VIP_TERMS = [
     r"vỡ\s*(?:đê|đập)(?:\s*(?:nghiêm\s*trọng|khẩn\s*cấp))?",
     r"sự\s*cố\s*(?:đê\s*điều|hồ\s*đập|đập|kè)\s*(?:nghiêm\s*trọng|khẩn\s*cấp)",
     r"cảnh\s*báo\s*lũ\s*khẩn\s*cấp",
-    r"nguy\s*cơ\s*sạt\s*lở\s*rất\s*cao",
+    r"nguy\s*cơ\s*sạt\s*lở\s*(?:rất\s*cao|đặc\s*biệt\s*cao)",
+    r"phát\s*hiện\s*thi\s*thể.*(?:bão|lũ|sạt\s*lở|trôi|sông|suối)",
+    r"tìm\s*thấy\s*thi\s*thể.*(?:bão|lũ|sạt\s*lở|trôi|sông|suối)",
     r"cháy\s*rừng\s*(?:nghiêm\s*trọng|lan\s*rộng)|cấp\s*cháy\s*rừng\s*cấp\s*V",
     r"cảnh\s*báo\s*sóng\s*thần|báo\s*động\s*sóng\s*thần",
 
     # Aid / relief
     r"hỗ\s*trợ\s*khẩn\s*cấp\s*thiên\s*tai",
     r"viện\s*trợ.*thiên\s*tai",
+    r"ủng\s*hộ\s*đồng\s*bào.*(?:bão|lũ|thiên\s*tai)",
+    r"(?:tiếp\s*nhận|trao\s*tặng).*hỗ\s*trợ.*(?:bão|lũ|thiên\s*tai)",
+    r"khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|ngập|sạt\s*lở)",
+    r"sạt\s*lở\s*(?:nghiêm\s*trọng|gây\s*tắc|chia\s*cắt|núi)",
+    r"cấm\s*(?:đường|phương\s*tiện)\s*(?:do|vì)\s*(?:sạt\s*lở|mưa\s*lũ|bão)",
+    r"tàu\s*cá.*mất\s*liên\s*lạc",
+    r"gặp\s*nạn\s*trên\s*biển",
+    r"thương\s*vong\s*(?:lớn|nặng\s*nề|nghiêm\s*trọng)",
+    r"tai\s*nạn\s*(?:thảm\s*khốc|liên\s*hoàn\s*nghiêm\s*trọng)",
+    r"đoàn\s*thiện\s*nguyện\s*gặp\s*nạn",
+    r"xe\s*cứu\s*trợ\s*gặp\s*nạn",
+    r"xe\s*chở\s*đoàn\s*.*gặp\s*nạn",
+    r"khẩn\s*trương\s*cứu\s*hộ",
+    r"tàu\s*.*mắc\s*cạn",
+    r"tìm\s*kiếm\s*(?:ngư\s*dân|nạn\s*nhân|người|thi\s*thể).*mất\s*tích",
+    r"hỗ\s*trợ.*khắc\s*phục.*(?:thiên\s*tai|bão|lũ)",
 
     # Severe Risk & Priority
     r"rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)\s*[45IV]",

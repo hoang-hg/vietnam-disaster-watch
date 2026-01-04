@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Phone, MapPin, Shield, Info, ExternalLink, Search, Plus, Edit2, Trash2, X, Save, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { getJson, postJson, putJson, deleteJson } from '../api';
+import { VALID_PROVINCES } from '../provinces';
+import Toast from '../components/Toast.jsx';
+import ConfirmModal from '../components/ConfirmModal.jsx';
 
-const PROVINCES = [
-    "Toàn quốc",
-    "TP. Hà Nội", "TP. Huế", "Lai Châu", "Điện Biên", "Sơn La", "Lạng Sơn", "Quảng Ninh", 
-    "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Cao Bằng", "Tuyên Quang", "Lào Cai", "Thái Nguyên", 
-    "Phú Thọ", "Bắc Ninh", "Hưng Yên", "TP. Hải Phòng", "Ninh Bình", "Quảng Trị", "TP. Đà Nẵng", 
-    "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "TP. Hồ Chí Minh", "Đồng Nai", 
-    "Tây Ninh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
-].sort();
+const ALL_PROVINCES = ["Toàn quốc", ...VALID_PROVINCES];
 
 // Helper to get style for national hotlines
 const getNationalStyle = (phone) => {
@@ -21,55 +17,6 @@ const getNationalStyle = (phone) => {
     return { color: "slate", icon: Phone };
 };
 
-const Toast = ({ message, type, onClose }) => {
-    useEffect(() => {
-        const timer = setTimeout(onClose, 3000);
-        return () => clearTimeout(timer);
-    }, [onClose]);
-
-    return (
-        <div className={`fixed top-4 right-4 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-right-10 duration-300 ${
-            type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
-            {type === 'success' ? <CheckCircle className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
-            <span className="text-sm font-bold">{message}</span>
-            <button onClick={onClose} className="p-1 hover:bg-black/5 rounded-full ml-2">
-                <X className="w-4 h-4" />
-            </button>
-        </div>
-    );
-};
-
-const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, isLoading }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                <h3 className="text-lg font-black text-slate-900 mb-2">{title}</h3>
-                <p className="text-slate-600 mb-6 font-medium">{message}</p>
-                <div className="flex gap-3 justify-end">
-                    <button 
-                        type="button"
-                        onClick={onCancel}
-                        disabled={isLoading}
-                        className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors disabled:opacity-50"
-                    >
-                        Hủy
-                    </button>
-                    <button 
-                        type="button"
-                        onClick={onConfirm}
-                        disabled={isLoading}
-                        className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/20 disabled:opacity-50 flex items-center gap-2"
-                    >
-                        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {isLoading ? "Đang xóa..." : "Xác nhận xóa"}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 export default function RescuePage() {
     const [hotlines, setHotlines] = useState([]);
@@ -85,7 +32,7 @@ export default function RescuePage() {
     const [formData, setFormData] = useState({ province: "", agency: "", phone: "", address: "" });
 
     // Toast & Confirm State
-    const [toast, setToast] = useState(null);
+    const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -93,13 +40,23 @@ export default function RescuePage() {
     const ITEMS_per_PAGE = 12;
 
     useEffect(() => {
-        const u = localStorage.getItem("user");
-        if (u) setUser(JSON.parse(u));
-        // Default filter logic: if "Toàn quốc" is not preferred by default for the list, set something else? 
-        // Actually lets default to "Toàn quốc" in the dropdown but the list logic separates them.
+        const checkRole = () => {
+            const u = localStorage.getItem("user");
+            if (u) setUser(JSON.parse(u));
+            else setUser(null);
+        };
+        checkRole();
+        window.addEventListener("storage", checkRole);
+        
         setFilterProvince("Toàn quốc"); 
         fetchHotlines();
+        return () => window.removeEventListener("storage", checkRole);
     }, []);
+
+    // Reset pagination when filtering
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterProvince, search]);
 
     const fetchHotlines = async () => {
         setLoading(true);
@@ -114,7 +71,7 @@ export default function RescuePage() {
     };
 
     const showToast = (message, type = 'success') => {
-        setToast({ message, type });
+        setToast({ isVisible: true, message, type });
     };
 
     // Separate Data
@@ -209,15 +166,22 @@ export default function RescuePage() {
                 <meta name="description" content="Danh bạ số điện thoại cứu hộ, cứu nạn khẩn cấp khi có bão lũ, thiên tai tại các tỉnh thành Việt Nam." />
             </Helmet>
 
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+            {toast.isVisible && (
+                <Toast 
+                    message={toast.message} 
+                    type={toast.type} 
+                    isVisible={toast.isVisible}
+                    onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+                />
+            )}
             
             <ConfirmModal 
                 isOpen={confirmModal.isOpen} 
                 title="Xác nhận xóa" 
                 message="Bạn có chắc chắn muốn xóa thông tin liên hệ này không? Hành động này không thể hoàn tác."
                 onConfirm={handleDelete}
-                onCancel={() => setConfirmModal({ isOpen: false, id: null })}
-                isLoading={isDeleting}
+                onClose={() => setConfirmModal({ isOpen: false, id: null })}
+                confirmLabel={isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
             />
 
             <div className="mb-8 text-center">
@@ -275,7 +239,7 @@ export default function RescuePage() {
                                 onChange={(e) => { setFilterProvince(e.target.value); setCurrentPage(1); }}
                                 className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto"
                             >
-                                {PROVINCES.map(p => (
+                                {ALL_PROVINCES.map(p => (
                                     <option key={p} value={p}>{p}</option>
                                 ))}
                             </select>
@@ -402,7 +366,7 @@ export default function RescuePage() {
                                     className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100"
                                 >
                                     <option value="">Chọn tỉnh thành...</option>
-                                    {PROVINCES.map(p => (
+                                    {ALL_PROVINCES.map(p => (
                                         <option key={p} value={p}>{p}</option>
                                     ))}
                                 </select>

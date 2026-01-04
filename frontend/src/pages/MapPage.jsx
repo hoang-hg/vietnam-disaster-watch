@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getJson } from "../api";
 import VietnamMap from "../components/VietnamMap";
 import { Filter, Calendar, Layers } from "lucide-react";
@@ -27,6 +28,7 @@ const getProvCoords = (name) => {
 };
 
 const LEGEND_ITEMS = [
+    { key: "all", color: THEME_COLORS.brand, label: "Tất cả" },
     { key: "storm", color: THEME_COLORS.storm, label: "Bão / Áp thấp" },
     { key: "flood_landslide", color: THEME_COLORS.landslide, label: "Lũ / Sạt lở" },
     { key: "heat_drought", color: THEME_COLORS.drought, label: "Nắng nóng / Hạn" },
@@ -44,15 +46,26 @@ export default function MapPage() {
   const [dataEvents, setDataEvents] = useState([]); // Raw data from API
   const [loading, setLoading] = useState(true);
   
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   // Filters
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState('');
-  const [activeFilter, setActiveFilter] = useState("storm");
-  const row1 = LEGEND_ITEMS.slice(0, 5);
-  const row2 = LEGEND_ITEMS.slice(5);
+  const [startDate, setStartDate] = useState(() => {
+    return searchParams.get("start_date") || (() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        return d.toISOString().split('T')[0];
+    })();
+  });
+  const [endDate, setEndDate] = useState(searchParams.get("end_date") || '');
+  const [activeFilter, setActiveFilter] = useState(searchParams.get("type") || "all");
+  
+  const mid = Math.ceil(LEGEND_ITEMS.length / 2);
+  const row1 = LEGEND_ITEMS.slice(0, mid);
+  const row2 = LEGEND_ITEMS.slice(mid);
 
   // Fetch Data
   useEffect(() => {
+    const controller = new AbortController();
     (async () => {
         setLoading(true);
         try {
@@ -60,7 +73,8 @@ export default function MapPage() {
             if (startDate) query += `&start_date=${startDate}`;
             if (endDate) query += `&end_date=${endDate}`;
             
-            const evs = await getJson(query);
+            const evs = await getJson(query, { signal: controller.signal });
+            if (controller.signal.aborted) return;
             
             // Enrich events with coordinates from province if missing
             const enrichedEvents = evs.map(e => {
@@ -77,14 +91,46 @@ export default function MapPage() {
             });
 
             // Keep valid ones
-            setDataEvents(enrichedEvents.filter(e => e.lat && e.lon));
+            setDataEvents(enrichedEvents.filter(e => e.lat != null && e.lon != null));
+            
+            // Sync to URL
+            const newParams = {};
+            if (activeFilter !== "all") newParams.type = activeFilter;
+            if (startDate) newParams.start_date = startDate;
+            if (endDate) newParams.end_date = endDate;
+            
+            const currentParams = Object.fromEntries(searchParams.entries());
+            const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
+                              Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+            
+            if (isDifferent) {
+                setSearchParams(newParams, { replace: true });
+            }
         } catch (e) {
+            if (e.name === 'AbortError') return;
             console.error(e);
         } finally {
             setLoading(false);
         }
     })();
-  }, [startDate, endDate]);
+
+    return () => controller.abort();
+  }, [startDate, endDate, activeFilter]);
+
+  // Handle URL changes (Back button)
+  useEffect(() => {
+    const urlType = searchParams.get("type") || "all";
+    const urlStart = searchParams.get("start_date") || (() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        return d.toISOString().split('T')[0];
+    })();
+    const urlEnd = searchParams.get("end_date") || "";
+
+    if (urlType !== activeFilter) setActiveFilter(urlType);
+    if (urlStart !== startDate) setStartDate(urlStart);
+    if (urlEnd !== endDate) setEndDate(urlEnd);
+  }, [searchParams]);
 
   // Derived state for display
   const displayedEvents = useMemo(() => {
@@ -103,6 +149,7 @@ export default function MapPage() {
     };
 
     return dataEvents.filter(e => {
+        if (activeFilter === "all") return true;
         const matchTypes = MAPPING[activeFilter] || [activeFilter];
         return matchTypes.includes(e.disaster_type);
     });

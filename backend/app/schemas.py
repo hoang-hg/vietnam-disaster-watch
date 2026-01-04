@@ -92,8 +92,8 @@ class CrowdsourcedReportOut(BaseModel):
     user_id: int | None = None
     event_id: int | None = None
     province: str | None = None
-    lat: float
-    lon: float
+    lat: float | None = None
+    lon: float | None = None
     description: str
     image_url: str | None = None
     
@@ -110,8 +110,8 @@ class CrowdsourcedReportOut(BaseModel):
 class CrowdsourcedReportCreate(BaseModel):
     event_id: int | None = None
     province: str | None = None
-    lat: float
-    lon: float
+    lat: float | None = None
+    lon: float | None = None
     description: str
     image_url: str | None = None
     

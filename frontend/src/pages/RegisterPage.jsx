@@ -191,7 +191,7 @@ export default function RegisterPage() {
                   </>
               ) : (
                   <>
-                    ĐANG KÝ TÀI KHOẢN
+                    ĐĂNG KÝ TÀI KHOẢN
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </>
               )}

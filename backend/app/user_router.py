@@ -175,6 +175,37 @@ def reject_report(
     db.commit()
     return {"ok": True}
 
+@router.get("/admin/crowdsource/export")
+async def export_crowdsource_reports(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
+    import pandas as pd
+    import io
+    from fastapi.responses import StreamingResponse
+
+    reports = db.query(models.CrowdsourcedReport).all()
+    
+    data = []
+    for r in reports:
+        data.append({
+            "ID": r.id,
+            "Người gửi": r.name or "Khách",
+            "SĐT": r.phone or "",
+            "Tỉnh": r.province,
+            "Địa chỉ": r.address or "",
+            "Mô tả": r.description,
+            "Tọa độ": f"{r.lat}, {r.lon}" if r.lat and r.lon else "",
+            "Thời gian": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else "",
+            "Trạng thái": r.status
+        })
+        
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Báo cáo hiện trường')
+    output.seek(0)
+    
+    headers = {'Content-Disposition': 'attachment; filename="bao-cao-hien-truong.xlsx"'}
+    return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
 @router.get("/rescue/hotlines", response_model=List[schemas.RescueHotlineOut])
 def get_rescue_hotlines(
     limit: int = 1000,

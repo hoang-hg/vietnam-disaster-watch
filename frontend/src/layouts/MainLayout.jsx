@@ -24,9 +24,8 @@ import { putJson, API_BASE } from "../api.js";
 import NotificationDropdown from "../components/NotificationDropdown";
 import CrowdsourceModal from "../components/CrowdsourceModal";
 
-const PROVINCES = [
-  "Tuyên Quang", "Cao Bằng", "Lai Châu", "Lào Cai", "Thái Nguyên", "Điện Biên", "Lạng Sơn", "Sơn La", "Phú Thọ", "Bắc Ninh", "Quảng Ninh", "TP. Hà Nội", "TP. Hải Phòng", "Hưng Yên", "Ninh Bình", "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "TP. Huế", "TP. Đà Nẵng", "Quảng Ngãi", "Gia Lai", "Đắk Lắk", "Khánh Hòa", "Lâm Đồng", "Đồng Nai", "Tây Ninh", "TP. Hồ Chí Minh", "Đồng Tháp", "An Giang", "Vĩnh Long", "TP. Cần Thơ", "Cà Mau"
-].sort();
+import { VALID_PROVINCES as PROVINCES_LIST } from "../provinces.js";
+const PROVINCES = [...PROVINCES_LIST].sort();
 
 export default function MainLayout({ children }) {
   const [isDark, setIsDark] = useState(() => {
@@ -136,24 +135,34 @@ export default function MainLayout({ children }) {
   }, []);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        const parsed = JSON.parse(storedUser);
-        if (parsed && typeof parsed === 'object') {
-            setUser(parsed);
+    const checkSession = () => {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            const parsed = JSON.parse(storedUser);
+            if (parsed && typeof parsed === 'object') {
+                setUser(parsed);
+            }
+          } catch (e) {
+            console.error("Session corruption:", e);
+            localStorage.removeItem("user");
+            setUser(null);
+          }
+        } else {
+            setUser(null);
         }
-      } catch (e) {
-        console.error("Session corruption:", e);
-        localStorage.removeItem("user");
-      }
-    }
+    };
+
+    checkSession();
+    window.addEventListener("storage", checkSession);
+    return () => window.removeEventListener("storage", checkSession);
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("access_token");
     setUser(null);
+    window.dispatchEvent(new Event("storage"));
     navigate("/login");
   };
 
@@ -552,7 +561,7 @@ export default function MainLayout({ children }) {
                 {toast.title}
               </h4>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Khu vực: <span className="font-bold text-slate-700 dark:text-slate-200">{toast.province}</span>
+                Khu vực: <span className="font-bold text-slate-700 dark:text-slate-200">{toast.province || "Thông tin đang cập nhật..."}</span>
               </p>
               
               <Link 

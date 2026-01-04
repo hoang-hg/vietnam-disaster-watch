@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { getJson, API_BASE } from "../api";
+import { useState, useEffect } from "react";
+import { 
+  getJson, 
+  postJson, 
+  patchJson,
+  API_BASE 
+} from "../api";
 import { 
   CheckCircle, 
   XCircle, 
@@ -16,6 +21,9 @@ import {
   History,
   Settings
 } from "lucide-react";
+import { VALID_PROVINCES } from "../provinces";
+import Toast from "../components/Toast.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
 
 export default function AdminSkipLogs() {
   const [activeTab, setActiveTab] = useState("pending"); // "pending" | "skipped" | "reports" | "crawler"
@@ -27,31 +35,34 @@ export default function AdminSkipLogs() {
   const [error, setError] = useState(null);
   const [processingId, setProcessingId] = useState(null);
   const [isReclassifying, setIsReclassifying] = useState(null);
-  const [message, setMessage] = useState(null);
+  const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
   const [page, setPage] = useState(1);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, action: null });
   const ITEMS_PER_PAGE = 50;
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [activeTab, page]);
 
-  async function fetchData() {
+  async function fetchData(signal = null) {
     setLoading(true);
     setError(null);
     try {
       if (activeTab === "pending") {
         const skip = (page - 1) * ITEMS_PER_PAGE;
-        const data = await getJson(`/api/admin/pending-articles?skip=${skip}&limit=${ITEMS_PER_PAGE}`);
+        const data = await getJson(`/api/admin/pending-articles?skip=${skip}&limit=${ITEMS_PER_PAGE}`, { signal });
         setPendingItems(data || []);
       } else if (activeTab === "reports") {
-        const data = await getJson("/api/user/admin/crowdsource/pending");
+        const data = await getJson("/api/user/admin/crowdsource/pending", { signal });
         setCrowdReports(data || []);
       } else if (activeTab === "crawler") {
-        const data = await getJson("/api/admin/crawler-status");
+        const data = await getJson("/api/admin/crawler-status", { signal });
         setCrawlerStatus(data || []);
       } else {
-        const data = await getJson("/api/admin/skip-logs?limit=200");
-        setSkippedItems(Array.isArray(data) ? data.reverse() : []);
+        const data = await getJson(`/api/admin/skip-logs?limit=200`, { signal }); // API doesn't support skip/offset for this file-based log
+        setSkippedItems(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error(e);
@@ -64,7 +75,21 @@ export default function AdminSkipLogs() {
   async function handleExportDaily() {
     const token = localStorage.getItem("access_token");
     const date = new Date().toISOString().split('T')[0];
-    window.open(`${API_BASE}/api/admin/export/daily?date=${date}&token=${token}`, '_blank');
+    try {
+        const response = await fetch(`${API_BASE}/api/admin/export/daily?date=${date}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bao_cao_ngay_${date}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    } catch (err) {
+        setError("Lỗi tải báo cáo: " + err.message);
+    }
   }
 
   async function handleReclassify(id, currentType) {
@@ -75,7 +100,6 @@ export default function AdminSkipLogs() {
     if (!isReclassifying) return;
     setProcessingId(isReclassifying.id);
     try {
-        const { postJson } = await import('../api');
         await postJson("/api/admin/ai-feedback", {
             article_id: isReclassifying.id,
             corrected_type: correctedType,
@@ -94,13 +118,7 @@ export default function AdminSkipLogs() {
   async function handleApprove(id) {
     setProcessingId(id);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/approve-article/${id}`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
-        }
-      });
-      if (!res.ok) throw new Error("Duyệt tin thất bại");
+      await postJson(`/api/admin/approve-article/${id}`, {});
       setPendingItems(prev => prev.filter(item => item.id !== id));
       showToast("Đã duyệt tin và cập nhật sự kiện thành công!");
     } catch (e) {
@@ -113,8 +131,7 @@ export default function AdminSkipLogs() {
   async function handleApproveReport(id) {
     setProcessingId(id);
     try {
-        const { patchJson } = await import('../api');
-        await patchJson(`/api/user/admin/crowdsource/${id}/approve`);
+        await patchJson(`/api/user/admin/crowdsource/${id}/approve`, {});
         setCrowdReports(prev => prev.filter(r => r.id !== id));
         showToast("Đã duyệt báo cáo hiện trường!");
     } catch (e) {
@@ -127,8 +144,7 @@ export default function AdminSkipLogs() {
   async function handleRejectReport(id) {
     setProcessingId(id);
     try {
-        const { patchJson } = await import('../api');
-        await patchJson(`/api/user/admin/crowdsource/${id}/reject`);
+        await patchJson(`/api/user/admin/crowdsource/${id}/reject`, {});
         setCrowdReports(prev => prev.filter(r => r.id !== id));
         showToast("Đã từ chối báo cáo hiện trường.");
     } catch (e) {
@@ -141,13 +157,7 @@ export default function AdminSkipLogs() {
   async function handleReject(id) {
     setProcessingId(id);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/reject-article/${id}`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("access_token")}`
-        }
-      });
-      if (!res.ok) throw new Error("Từ chối tin thất bại");
+      await postJson(`/api/admin/reject-article/${id}`, {});
       setPendingItems(prev => prev.filter(item => item.id !== id));
       showToast("Đã từ chối và đưa tin vào danh sách đen.");
     } catch (e) {
@@ -157,9 +167,25 @@ export default function AdminSkipLogs() {
     }
   }
 
-  function showToast(msg) {
-    setMessage(msg);
-    setTimeout(() => setMessage(null), 3000);
+  const handleActionClick = (id, action, type = "article") => {
+    setConfirmModal({ isOpen: true, id, action, type });
+  };
+
+  const confirmAction = async () => {
+    const { id, action, type } = confirmModal;
+    setConfirmModal({ isOpen: false, id: null, action: null });
+    
+    if (type === "article") {
+        if (action === "approve") await handleApprove(id);
+        if (action === "reject") await handleReject(id);
+    } else if (type === "report") {
+        if (action === "approve") await handleApproveReport(id);
+        if (action === "reject") await handleRejectReport(id);
+    }
+  };
+
+  function showToast(message, type = "success") {
+    setToast({ isVisible: true, message, type });
   }
 
   return (
@@ -244,8 +270,8 @@ export default function AdminSkipLogs() {
           </div>
         )}
 
-        {loading && !pendingItems.length && !skippedItems.length && !crowdReports.length && !crawlerStatus.length && (
-          <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800/50 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="w-16 h-16 border-4 border-[#2fa1b3]/20 border-t-[#2fa1b3] rounded-full animate-spin mb-4"></div>
             <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Đang tải dữ liệu...</p>
           </div>
@@ -331,7 +357,7 @@ export default function AdminSkipLogs() {
                          <div className="flex-grow">
                             <div className="flex items-center gap-2 text-xs text-slate-400 font-bold mb-2">
                                 <Clock className="w-3.5 h-3.5" />
-                                {new Date(report.created_at).toLocaleString("vi-VN")}
+                                {report.created_at ? new Date(report.created_at).toLocaleString("vi-VN") : "—"}
                                 <span className="mx-1">•</span>
                                 <span className="text-red-500 uppercase flex items-center gap-1">
                                     <MapPin className="w-3 h-3" /> {report.province || "Không xác định"}
@@ -347,13 +373,13 @@ export default function AdminSkipLogs() {
 
                             <div className="text-[10px] text-slate-400 font-bold flex items-center gap-4">
                                 <span>USER_ID: {report.user_id}</span>
-                                <span>VỊ TRÍ: {report.lat.toFixed(4)}, {report.lon.toFixed(4)}</span>
+                                <span>VỊ TRÍ: {report.lat != null ? report.lat.toFixed(4) : "—"}, {report.lon != null ? report.lon.toFixed(4) : "—"}</span>
                             </div>
                          </div>
 
                          <div className="flex sm:flex-col justify-center gap-2 sm:w-32 flex-shrink-0">
                             <button
-                                onClick={() => handleApproveReport(report.id)}
+                                onClick={() => handleActionClick(report.id, "approve", "report")}
                                 disabled={processingId === report.id}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
                             >
@@ -361,7 +387,7 @@ export default function AdminSkipLogs() {
                                 DUYỆT
                             </button>
                             <button
-                                onClick={() => handleRejectReport(report.id)}
+                                onClick={() => handleActionClick(report.id, "reject", "report")}
                                 disabled={processingId === report.id}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-400 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
                             >
@@ -436,7 +462,7 @@ export default function AdminSkipLogs() {
                       PHÂN LOẠI LẠI
                     </button>
                     <button
-                      onClick={() => handleApprove(article.id)}
+                      onClick={() => handleActionClick(article.id, "approve", "article")}
                       disabled={processingId === article.id}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50"
                     >
@@ -444,7 +470,7 @@ export default function AdminSkipLogs() {
                       DUYỆT
                     </button>
                     <button
-                      onClick={() => handleReject(article.id)}
+                      onClick={() => handleActionClick(article.id, "reject", "article")}
                       disabled={processingId === article.id}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border-2 border-red-500 rounded-xl font-bold text-sm hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50"
                     >
@@ -458,8 +484,8 @@ export default function AdminSkipLogs() {
           ))}
         </div>
         
-        {/* Pagination Controls */}
-        {activeTab === "pending" && (pendingItems.length > 0 || page > 1) && (
+        {/* Pagination Controls - Only for Pending articles as skip/offset is supported */}
+        {activeTab === "pending" && pendingItems.length > 0 && (
           <div className="mt-8 flex justify-center items-center gap-4">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -473,7 +499,9 @@ export default function AdminSkipLogs() {
             </span>
             <button
                onClick={() => setPage(p => p + 1)}
-               disabled={pendingItems.length < ITEMS_PER_PAGE}
+               disabled={
+                 activeTab === "pending" ? pendingItems.length < ITEMS_PER_PAGE : skippedItems.length < ITEMS_PER_PAGE
+               }
                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
             >
                TRANG TIẾP
@@ -529,12 +557,21 @@ export default function AdminSkipLogs() {
       )}
 
       {/* Modern Toast Notification */}
-      {message && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 px-6 py-4 bg-slate-900/95 backdrop-blur-sm text-white rounded-2xl shadow-2xl border border-white/10 z-[100] animate-in slide-in-from-bottom-5 fade-in">
-          <CheckCircle className="w-5 h-5 text-green-400" />
-          <span className="font-bold text-sm tracking-wide">{message}</span>
-        </div>
-      )}
+      <Toast 
+        {...toast}
+        onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
+      />
+
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null, action: null })}
+        onConfirm={confirmAction}
+        title={confirmModal.action === "approve" ? "Xác nhận duyệt" : "Xác nhận loại bỏ"}
+        message={confirmModal.action === "approve" 
+            ? `Bạn có chắc chắn muốn DUYỆT ${confirmModal.type === "article" ? "tin tức" : "báo cáo"} này?`
+            : `Bạn có chắc chắn muốn LOẠI BỎ ${confirmModal.type === "article" ? "tin tức" : "báo cáo"} này khỏi hàng đợi?`
+        }
+      />
     </div>
   );
 }

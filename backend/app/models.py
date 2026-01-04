@@ -125,8 +125,8 @@ class CrowdsourcedReport(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
     province: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
-    lat: Mapped[float] = mapped_column(Float)
-    lon: Mapped[float] = mapped_column(Float)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     

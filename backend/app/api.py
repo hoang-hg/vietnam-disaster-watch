@@ -469,12 +469,14 @@ def stats_summary(
     date: str | None = Query(None), 
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
+    type: str | None = Query(None),
+    province: str | None = Query(None),
     response: Response = None,
     db: Session = Depends(get_db),
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
 ):
     is_admin = current_user and current_user.role == "admin"
-    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{is_admin}"
+    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{type}_{province}_{is_admin}"
     cached = cache.get(cache_key)
     if cached:
         if response: response.headers["Cache-Control"] = "public, max-age=120"
@@ -500,18 +502,22 @@ def stats_summary(
         end = datetime.utcnow()
 
     # 1. New articles count (total signals)
-    total_articles = db.query(func.count(Article.id)).filter(
-        Article.published_at >= start, 
         Article.published_at < end,
         Article.status == "approved"
-    ).scalar() or 0
+    )
+    if type: article_count_q = article_count_q.filter(Article.disaster_type == type)
+    if province: article_count_q = article_count_q.filter(Article.province == province)
+    total_articles = article_count_q.scalar() or 0
 
-    needs_verification_count = db.query(func.count(Article.id)).filter(
+    needs_verify_q = db.query(func.count(Article.id)).filter(
         Article.published_at >= start,
         Article.published_at < end,
         Article.status == "approved",
         Article.needs_verification == 1
-    ).scalar() or 0
+    )
+    if type: needs_verify_q = needs_verify_q.filter(Article.disaster_type == type)
+    if province: needs_verify_q = needs_verify_q.filter(Article.province == province)
+    needs_verification_count = needs_verify_q.scalar() or 0
 
     # 2. Events Aggregation
     events_q = db.query(Event).filter(
@@ -533,21 +539,20 @@ def stats_summary(
     
     # Counts by distinct provinces
     # SQLAlchemy doesn't support count(distinct) cleanly in all dialects without func, but usually fine
-    provinces_count = db.query(func.count(func.distinct(Event.province))).filter(
-        Event.started_at >= start, 
-        Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0,
         Event.province.in_(PROVINCES) # Only count valid provinces
     )
+    if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
+    if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
     if not is_admin:
         # Re-apply filter for public
         from sqlalchemy import or_
-        provinces_count = provinces_count.filter(or_(
+        provinces_count_q = provinces_count_q.filter(or_(
             Event.confidence >= 0.8,
             (Event.needs_verification == 0) & (Event.sources_count >= 2)
         ))
-    provinces_count = provinces_count.scalar() or 0
+    provinces_count = provinces_count_q.scalar() or 0
 
     # Events Count and Impacts
     # We aggregate: count, sum(deaths), sum(missing), sum(injured), count_human_impact, count_property_impact
@@ -580,6 +585,8 @@ def stats_summary(
         Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0
     )
+    if type: agg_q = agg_q.filter(Event.disaster_type == type)
+    if province: agg_q = agg_q.filter(Event.province == province)
     if not is_admin:
         from sqlalchemy import or_
         agg_q = agg_q.filter(or_(
@@ -597,12 +604,11 @@ def stats_summary(
     events_property_damage = agg_res[5] or 0
 
     # Type breakdown
-    type_counts_q = db.query(Event.disaster_type, func.count(Event.id)).filter(
-        Event.started_at >= start, 
-        Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0
     )
+    if type: type_counts_q = type_counts_q.filter(Event.disaster_type == type)
+    if province: type_counts_q = type_counts_q.filter(Event.province == province)
     if not is_admin:
         from sqlalchemy import or_
         type_counts_q = type_counts_q.filter(or_(
@@ -615,7 +621,7 @@ def stats_summary(
     official_types = [
         "storm", "flood", "flash_flood", "landslide", "subsidence", 
         "drought", "salinity", "extreme_weather", "heatwave", "cold_surge",
-        "earthquake", "tsunami", "storm_surge", "wildfire",
+        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
         "warning_forecast", "recovery"
     ]
     type_counts = {t: 0 for t in official_types}
@@ -629,13 +635,11 @@ def stats_summary(
             type_counts["unknown"] += cnt # Should be 0 since we filtered unknown
 
     # Top Provinces breakdown (for hotspots) (Limit to top 20)
-    prov_counts_q = db.query(Event.province, func.count(Event.id)).filter(
-        Event.started_at >= start, 
-        Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0,
         Event.province.in_(PROVINCES)
     )
+    if type: prov_counts_q = prov_counts_q.filter(Event.disaster_type == type)
+    if province: prov_counts_q = prov_counts_q.filter(Event.province == province)
     if not is_admin:
         from sqlalchemy import or_
         prov_counts_q = prov_counts_q.filter(or_(
