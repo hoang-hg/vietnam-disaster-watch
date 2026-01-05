@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from urllib.parse import urlparse, parse_qs
 from difflib import SequenceMatcher
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from .models import Article
 
 
@@ -32,6 +32,15 @@ def normalize_url(url: str) -> str:
         ) if cleaned_params else ''
         
         normalized = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+        
+        # [OPTIMIZATION] Strip common suffixes and trailing slashes
+        for suffix in ['/index.html', '/index.php', '/index.htm', '/default.aspx', '/index.aspx']:
+            if normalized.endswith(suffix):
+                normalized = normalized[:-len(suffix)]
+        
+        if normalized.endswith('/'):
+            normalized = normalized[:-1]
+
         if clean_query:
             normalized += f"?{clean_query}"
         
@@ -103,6 +112,9 @@ def find_duplicate_article(
         candidates = db.query(Article).filter(
             Article.published_at >= published_at - timedelta(hours=time_window_hours),
             Article.published_at <= published_at + timedelta(hours=2),
+        ).options(
+            defer(Article.full_text),
+            defer(Article.impact_details)
         ).all()
 
         # Strategy 1: exact normalized URL match against stored url or canonical_url

@@ -1733,7 +1733,7 @@ ABSOLUTE_VETO = [
     r"\b(?:dâng\s*hương|lễ\s*hội|khai\s*mạc|bế\s*mạc|kỷ\s*niệm\s*ngày|lễ\s*kỷ\s*niệm|tưởng\s*niệm)(?!.*(?:nạn\s*nhân|bão|lũ|thiên\s*tai))\b",
     r"\b(?:tuyển\s*sinh|điểm\s*chuẩn|học\s*phí|tự\s*chủ\s*đại\s*học|kỳ\s*thi\s*tốt\s*nghiệp|học\s*sinh\s*giỏi|đi\s*học\s*thêm|làm\s*thêm\s*dịp\s*hè|vào\s*lớp\s*1|nghỉ\s*học)(?!.*(?:bão|lũ|mưa|thiên\s*tai|ngập|sạt\s*lở|giông|phòng\s*tránh))\b",
     r"\b(?:nghỉ\s*hưu|lương\s*hưu|trợ\s*cấp\s*xã\s*hội|tinh\s*giản\s*biên\s*chế|sắp\s*xếp\s*tổ\s*chức|bảo\s*hiểm\s*xã\s*hội|lương\s*cơ\s*bản|chính\s*sách\s*đối\s*với)(?!.*(?:khắc\s*phục|hỗ\s*trợ\s*bão|lũ|thiên\s*tai))\b",
-    r"\b(?:gaza|hamas|israel|ukraine|nga|tên\s*lửa|xung\s*đột\s*vũ\s*trang|chính\s*phủ\s*mỹ|đóng\s*cửa|iran|trung\s*đông|beirut|lebanon|houthi)(?!.*(?:công\s*dân\s*việt\s*nam|người\s*việt|ảnh\s*hưởng\s*tới\s*việt\s*nam|(?:hỗ\s*trợ|cứu\s*trợ|viện\s*trợ)\s*.*việt\s*nam|sạt\s*lở|ngập\s*lụt|bão|lũ|thiên\s*tai))\b",
+    r"\b(?:gaza|hamas|israel|ukraine|nga|tên\s*lửa|xung\s*đột\s*vũ\s*trang|chính\s*phủ\s*mỹ|đóng\s*cửa|iran|trung\s*đông|beirut|lebanon|houthi)(?!.*(?:công\s*dân\s*việt\s*nam|người\s*việt|ảnh\s*hưởng\s*tới\s*việt\s*nam|(?:hỗ\s*trợ|cứu\s*trợ|viện\s*trợ)\s*.*việt\s*nam|sạt\s*lở|ngập\s*lụt|bão|lũ|thiên\s*tai|khẩn\s*cấp|tình\s*huống|thảm\s*họa))\b",
     r"\b(?:donald\s*trump|joe\s*biden|nhà\s*trắng|lầu\s*năm\s*góc|bầu\s*cử\s*mỹ|tổng\s*thống\s*mỹ|putin|zelensky)\b",
     r"\b(?:động\s*đất\s*tại\s*(?:nhật|đài|tư|trung|mỹ|indo|philip|nepal|thổ|maroc|nam\s*phi|lào(?!\s*cai)))\b",
     r"\b(?:giải\s*tứ\s*hùng|v-league|bóng\s*đá|thể\s*thao|lượt\s*trận|giải\s*đấu)\b",
@@ -1791,7 +1791,7 @@ ABSOLUTE_VETO = [
     r"\b(?:chim\s*hồng\s*hoàng|động\s*vật\s*quý\s*hiếm|sách\s*đỏ|thả\s*về\s*(?:rừng|biển|tự\s*nhiên)|cứu\s*hộ\s*động\s*vật|tê\s*tê|rùa\s*biển|cá\s*thể|voọc|khỉ\s*vàng)(?!.*(?:bão|lũ|lụt|sạt\s*lở))\b",
 
     # 15. ADMINISTRATIVE & POLITICAL NOISE
-    r"\b(?:báo\s*công|điển\s*hình\s*tiên\s*tiến|phong\s*trào\s*thi\s*đua|ba\s*nhất|dân\s*vận\s*khéo|đại\s*hội\s*đảng|tiếp\s*xúc\s*cử\s*tri|hđnd\s*các\s*cấp|nhập\s*ngũ|nghĩa\s*vụ\s*quân\s*sự|tuyển\s*quân|công\s*đoàn|người\s*lao\s*động|quân\s*nhân\s*vi\s*phạm|kỷ\s*luật|tiền\s*sự|án\s*tích|trách\s*nhiệm\s*hình\s*sự|giải\s*đáp\s*pháp\s*luật|nghị\s*quyết|quốc\s*hội|phiên\s*họp|thường\s*vụ|chủ\s*nhiệm|văn\s*phòng|bổ\s*nhiệm|nhận\s*nhiệm\s*vụ|giải\s*báo\s*chí|công\s*bố|lấy\s*ý\s*kiến|dự\s*thảo|thông\s*qua|ký\s*kết|biên\s*bản|tổng\s*kết\s*công\s*tác|triển\s*khai\s*nhiệm\s*vụ|huân\s*chương|huy\s*chương|kỷ\s*niệm\s*chương|chỉ\s*thị|công\s*điện)(?!.*(?:bão|lũ|thiên\s*tai|khắc\s*phục|hỗ\s*trợ|ứng\s*phó|cứu\s*nạn|chỉ\s*đạo|khẩn\s*cấp|hỏa\s*tốc|công\s*văn|sạt\s*lở|ngập\s*lụt|di\s*dời|sơ\s*tán|an\s*toàn|tìm\s*kiếm|học\s*sinh|nghỉ\s*học|xuất\s*quân|điều\s*động|cứu\s*nạn|cứu\s*hộ|tái\s*thiết|hồi\s*sinh|kiểm\s*tra|thăm\s*hỏi|tình\s*huống|sự\s*cố|thiệt\s*hại|vỡ\s*đê|hộ\s*đê|xử\s*lý\s*ngập|ngập\s*úng|vùi\s*lấp|tìm\s*thấy|thi\s*thể|tử\s*vong|mất\s*tích|chết))\b",
+    r"\b(?:báo\s*công|điển\s*hình\s*tiên\s*tiến|phong\s*trào\s*thi\s*đua|ba\s*nhất|dân\s*vận\s*khéo|đại\s*hội\s*đảng|tiếp\s*xúc\s*cử\s*tri|hđnd\s*các\s*cấp|nhập\s*ngũ|nghĩa\s*vụ\s*quân\s*sự|tuyển\s*quân|công\s*đoàn|người\s*lao\s*động|quân\s*nhân\s*vi\s*phạm|kỷ\s*luật|tiền\s*sự|án\s*tích|trách\s*nhiệm\s*hình\s*sự|giải\s*đáp\s*pháp\s*luật|nghị\s*quyết|quốc\s*hội|phiên\s*họp|thường\s*vụ|chủ\s*nhiệm|văn\s*phòng|bổ\s*nhiệm|nhận\s*nhiệm\s*vụ|giải\s*báo\s*chí|công\s*bố|lấy\s*ý\s*kiến|dự\s*thảo|thông\s*qua|ký\s*kết|biên\s*bản|tổng\s*kết\s*công\s*tác|triển\s*khai\s*nhiệm\s*vụ|huân\s*chương|huy\s*chương|kỷ\s*niệm\s*chương|chỉ\s*thị|công\s*điện)(?!.*(?:bão|lũ|thiên\s*tai|khắc\s*phục|hỗ\s*trợ|ứng\s*phó|cứu\s*nạn|chỉ\s*đạo|khẩn\s*cấp|hỏa\s*tốc|công\s*văn|sạt\s*lở|ngập\s*lụt|di\s*dời|sơ\s*tán|an\s*toàn|tìm\s*kiếm|học\s*sinh|nghỉ\s*học|xuất\s*quân|điều\s*động|cứu\s*nạn|cứu\s*hộ|tái\s*thiết|hồi\s*sinh|kiểm\s*tra|thăm\s*hỏi|tình\s*huống|sự\s*cố|thiệt\s*hại|vỡ\s*đê|hộ\s*đê|xử\s*lý\s*ngập|ngập\s*úng|vùi\s*lấp|tìm\s*thấy|thi\s*thể|tử\s*vong|mất\s*tích|chết|hư\s*hỏng))\b",
     r"\b(?:ốc\s*thanh\s*vân|showbiz|nghệ\s*sĩ|hoạt\s*động\s*nghệ\s*thuật|giải\s*trí|hoa\s*hậu|người\s*đẹp)\b",
     r"\b(?:bảo\s*hiểm\s*y\s*tế|bhyt|bảo\s*hiểm\s*xã\s*hội|bhxh|thủ\s*tục\s*hành\s*chính|dịch\s*vụ\s*công|chuyển\s*đổi\s*số|số\s*hóa|cổng\s*dịch\s*vụ\s*công|cải\s*cách\s*tư\s*pháp|thi\s*hành\s*án|tiếp\s*dân|khiếu\s*nại\s*tố\s*cáo)(?!.*(?:hỗ\s*trợ|bão|lũ|thiên\s*tai))\b",
     r"\b(?:chất\s*độc\s*da\s*cam|nạn\s*nhân\s*da\s*cam|dioxin)(?!.*(?:bão|lũ|sạt\s*lở))\b",
@@ -1800,7 +1800,7 @@ ABSOLUTE_VETO = [
     r"\b(?:trao\s*tặng|tặng\s*quà|khánh\s*thành\s*nhà|nhà\s*tình\s*nghĩa|nhà\s*đại\s*đoàn\s*kết|mái\s*ấm|bò\s*giống|quỹ\s*thiện\s*nguyện|nuôi\s*em|chương\s*trình\s*từ\s*thiện|xây\s*nhà\s*cho\s*người\s*nghèo)(?!.*(?:bão|lũ|lụt|sạt\s*lở|thiên\s*tai|khẩn\s*cấp|cứu\s*trợ|khắc\s*phục|hỗ\s*trợ|tái\s*thiết|bị\s*ảnh\s*hưởng|ngập|giông|lốc))\b",
 
     # 17. BUSINESS & FINANCE
-    r"\b(?:thị\s*trường|chứng\s*khoán|cổ\s*phiếu|vn-index|giá\s*vàng|tỷ\s*giá|lãi\s*suất|ngân\s*hàng|tín\s*dụng|vay\s*vốn|doanh\s*thu|lợi\s*nhuận|xuất\s*khẩu|nhập\s*khẩu|kim\s*ngạch|thương\s*mại|bất\s*động\s*sản|đấu\s*giá\s*đất|sổ\s*đỏ)(?!.*(?:bão|lũ|thiệt\s*hại|ủng\s*hộ|hỗ\s*trợ))\b",
+    r"\b(?:thị\s*trường|chứng\s*khoán|cổ\s*phiếu|vn-index|giá\s*vàng|tỷ\s*giá|lãi\s*suất|ngân\s*hàng|tín\s*dụng|vay\s*vốn|doanh\s*thu|lợi\s*nhuận|xuất\s*khẩu|nhập\s*khẩu|kim\s*ngạch|thương\s*mại|bất\s*động\s*sản|đấu\s*giá\s*đất|sổ\s*đỏ)(?!.*(?:bão|lũ|thiệt\s*hại|ủng\s*hộ|hỗ\s*trợ|ước\s*tính|khắc\s*phục|hư\s*hỏng))\b",
 
     # 18. HEALTH & MEDICAL (Routine)
     r"\b(?:khám\s*chữa\s*bệnh|bệnh\s*viện|bác\s*sĩ|phẫu\s*thuật|cấy\s*ghép|nội\s*soi|tư\s*vấn\s*sức\s*khỏe|dinh\s*dưỡng|làm\s*đẹp|thẩm\s*mỹ)(?!.*(?:cấp\s*cứu|tai\s*nạn|thương\s*vong|sập|cháy|nổ|bão|lũ))\b",
@@ -1821,7 +1821,7 @@ ABSOLUTE_VETO = [
 
     # --- ADDED: USER REQUESTED FILTERS (Jan 2026) ---
     # GENERAL RESPONSE NOISE (The "ứng phó" trap)
-    r"\b(?:ứng\s*phó|phòng\s*chống|giảm\s*thiểu)\s*(?:biến\s*đổi\s*khí\s*hậu|dịch\s*bệnh|covid|sốt\s*xuất\s*huyết|tay\s*chân\s*miệng|lạm\s*phát|suy\s*thoái|khủng\s*hoảng|bạo\s*lực|xâm\s*hại|tai\s*nạn|thương\s*mại|gian\s*lận|tội\s*phạm)(?!\s*(?:và|với)\s*(?:bão|lũ|thiên\s*tai))\b",
+    r"\b(?:ứng\s*phó|phòng\s*chống|giảm\s*thiểu)\s*(?:biến\s*đổi\s*khí\s*hậu|dịch\s*bệnh|covid|sốt\s*xuất\s*huyết|tay\s*chân\s*miệng|lạm\s*phát|suy\s*thoái|khủng\s*hoảng|bạo\s*lực|xâm\s*hại|tai\s*nạn|thương\s*mại|gian\s*lận|tội\s*phạm)(?!\s*(?:và|với)\s*(?:bão|lũ|thiên\s*tai|mưa|ngập))\b",
 
     # FINANCIAL & BANKING
     r"\b(?:chuyển\s*tiền\s*nhầm|nhận\s*lại\s*tiền|giao\s*dịch\s*viên|tài\s*khoản\s*ngân\s*hàng|sổ\s*tiết\s*kiệm|thẻ\s*tín\s*dụng|vay\s*vốn\s*ưu\s*đãi|đáo\s*hạn|sàn\s*giao\s*dịch\s*vàng|tín\s*dụng\s*đen|đòi\s*nợ\s*thuê)\b",
@@ -1940,7 +1940,7 @@ CONDITIONAL_VETO = [
 
     # TRAFFIC ACCIDENTS (General)
     # TRAFFIC ACCIDENTS (Veto unless caused by weather/disaster keywords)
-    r"(?:va\s*chạm\s*liên\s*hoàn|tai\s*nạn\s*giao\s*thông|lật\s*xe|tông\s*xe|xe\s*khách|xe\s*tải|xe\s*ben|lao\s*xuống\s*vực|lao\s*xuống\s*sông)(?!.*(?:do|vì|bởi|tại|xe|đoàn)\s*(?:bão|lũ|sạt\s*lở|mưa|đường\s*trơn|sương\s*mù|gió\s*mạnh|ngập|mưa\s*đá|thời\s*tiết|cứu\s*trợ|thiện\s*nguyện|hỗ\s*trợ))(?!.*(?:đoàn\s*thiện\s*nguyện|xe\s*cứu\s*trợ|hỗ\s*trợ\s*bão|cứu\s*nạn|không\s*qua\s*khỏi|ghe|thuyền|tàu|thủy\s*nạn|chia\s*cắt))",
+    r"(?:va\s*chạm\s*liên\s*hoàn|tai\s*nạn\s*giao\s*thông|lật\s*xe|tông\s*xe|xe\s*khách|xe\s*tải|xe\s*ben|lao\s*xuống\s*vực|lao\s*xuống\s*sông)(?!.*(?:do|vì|bởi|tại|xe|đoàn)\s*(?:bão|lũ|sạt\s*lở|mưa|đường\s*trơn|sương\s*mù|gió\s*mạnh|ngập|mưa\s*đá|thời\s*tiết|cứu\s*trợ|thiện\s*nguyện|hỗ\s*trợ))(?!.*(?:đoàn\s*thiện\s*nguyện|xe\s*cứu\s*trợ|hỗ\s*trợ\s*bão|cứu\s*nạn|không\s*qua\s*khỏi|ghe|thuyền|tàu|thủy\s*nạn|chia\s*cắt|tình\s*huống\s*khẩn\s*cấp|hư\s*hỏng\s*cầu|sập\s*cầu))",
     r"(?:xe\s*máy|ô\s*tô|xe\s*khách|xe\s*tải|xe\s*container|xe\s*đầu\s*kéo|xe\s*buýt|tàu\s*thủy|ca\s*nô|tàu\s*cá)\s*(?:lật|lao|tông|đâm|va\s*chạm|bốc\s*cháy|cháy)(?!.*(?:do|vì|bởi|tại|xe|đoàn)\s*(?:bão|lũ|sạt\s*lở|mưa|đường\s*trơn|sương\s*mù|gió\s*mạnh|ngập|mưa\s*đá|thời\s*tiết|cứu\s*trợ|thiện\s*nguyện|hỗ\s*trợ))(?!.*(?:đoàn\s*thiện\s*nguyện|xe\s*cứu\s*trợ|hỗ\s*trợ\s*bão|cứu\s*nạn|chia\s*cắt))",
     r"lò\s*sấy\s*(?:cà\s*phê|nông\s*sản)",
     r"(?:CSGT|cảnh\s*sát\s*giao\s*thông)\s*(?:khám\s*nghiệm|điều\s*tra|xử\s*lý|lập\s*biên\s*bản|làm\s*rõ)|(?:khám\s*nghiệm|điều\s*tra)\s*(?:nguyên\s*nhân|vụ\s*việc|hiện\s*trường)(?!.*(?:do|vì|liên\s*quan|đang|tại)\s*(?:bão|lũ|sạt\s*lở|cháy|nổ|hỏa\s*hoạn|tử\s*vong|chết\s*người|thiệt\s*mạng|khắc\s*phục|hỗ\s*trợ|phân\s*luồng|giúp\s*dân|ứng\s*phó|cứu\s*nạn|cứu\s*hộ|tìm\s*kiếm|xuất\s*quân|điều\s*động|chống\s*ngập|ngập\s*úng))",
@@ -2260,7 +2260,7 @@ def _build_impact_patterns():
                     r_no = risk_lookup.strip_accents(r_str)
                     patterns_no[impact_type].append(re.compile(v_safe(r_no), RE_FLAGS))
             except re.error as e:
-                print(f"Error compiling regex for {impact_type}: {r_str} -> {e}")
+                logger.error(f"Error compiling regex for {impact_type}: {r_str} -> {e}")
 
     return patterns_acc, patterns_no
 
@@ -2393,10 +2393,57 @@ def _to_int(num_str: str) -> int:
     s2 = s.replace(".", "").replace(",", "")
     if s2.isdigit(): return int(s2)
     return 0
-
-# Helper functions removed (using risk_lookup)
-
 # CORE LOGIC
+
+# Pre-compile regexes for performance
+# This ensures we don't re-compile thousands of patterns per article check
+try:
+    ABSOLUTE_VETO_RE = [re.compile(p, re.IGNORECASE) for p in ABSOLUTE_VETO]
+    CONDITIONAL_VETO_RE = [re.compile(p, re.IGNORECASE) for p in CONDITIONAL_VETO]
+    HARD_NEGATIVE_RE = [re.compile(p, re.IGNORECASE) for p in HARD_NEGATIVE]
+    
+    # DISASTER_PATTERNS is a dict of lists
+    DISASTER_PATTERNS_RE = {
+        k: [re.compile(p, re.IGNORECASE) for p in v] 
+        for k, v in DISASTER_PATTERNS.items()
+    }
+    
+    # DISASTER_RULES might be a list of tuples?
+    # Based on usage in compute_disaster_signals: (label, compiled_acc, compiled_no)
+    # If DISASTER_RULES is defined as raw strings, we need to compile.
+    # But usage shows it expects already compiled tuples? 
+    # Let's check DISASTER_RULES definition. 
+    # Assuming DISASTER_RULES_RE is usually built from DISASTER_RULES.
+    # We will assume DISASTER_RULES_RE is what we need to build if not existing.
+    
+    # Re-building DISASTER_RULES_RE for safety if it depends on regexes
+    # (Checking usage: for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):)
+    # If DISASTER_RULES exists as (label, pat_acc, pat_no), we compile it here.
+    if 'DISASTER_RULES' in globals():
+        DISASTER_RULES_RE = []
+        for label, p_acc, p_no in DISASTER_RULES:
+            # Handle list of patterns or single string
+            acc_list = [p_acc] if isinstance(p_acc, str) else p_acc
+            no_list = [p_no] if isinstance(p_no, str) else p_no
+            
+            c_acc = [re.compile(p, re.IGNORECASE) for p in acc_list]
+            c_no = [re.compile(p, re.IGNORECASE) for p in no_list] if no_list else []
+            DISASTER_RULES_RE.append((label, c_acc, c_no))
+
+    # Optimization for Absolute Veto No Accents
+    # We create a separate list if raw list ABSOLUTE_VETO_NO exists
+    if 'ABSOLUTE_VETO_NO' in globals():
+        ABSOLUTE_VETO_NO_RE = [(k, re.compile(p, re.IGNORECASE)) for k, p in ABSOLUTE_VETO_NO]
+        
+except Exception as e:
+    logger.error(f"Regex compilation error: {e}")
+    # Fallback to empty to prevent crash, though logic will fail
+    ABSOLUTE_VETO_RE = []
+    CONDITIONAL_VETO_RE = []
+    HARD_NEGATIVE_RE = []
+    DISASTER_PATTERNS_RE = {}
+    DISASTER_RULES_RE = []
+
 
 def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = None) -> List[dict]:
     """
@@ -2531,6 +2578,96 @@ def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = No
     # Return candidates that are in top 3
     return [h for h in candidates if h["name"] in top_3_names]
 
+def match_disaster_rules(t_acc: str, t_no: str, t_title_acc: str, t_title_no: str) -> tuple[list, dict, bool]:
+    """Helper: Matches disaster rules against text/title on both Accented/Unaccented channels."""
+    rule_matches = []
+    hazard_counts = {}
+    title_rule_match = False
+
+    for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):
+        count = 0
+        matched_label = False
+        # 1.1 Match Accented
+        for pat_re in compiled_acc:
+            if pat_re.search(t_acc):
+                count += 1
+                matched_label = True
+                if t_title_acc and pat_re.search(t_title_acc):
+                    title_rule_match = True
+
+        # 1.2 Match Unaccented
+        if not matched_label and compiled_no:
+            for pat_re in compiled_no:
+                if pat_re.search(t_no):
+                    count += 1
+                    matched_label = True
+                    if t_title_no and pat_re.search(t_title_no):
+                        title_rule_match = True
+
+        if matched_label:
+            rule_matches.append(label)
+            hazard_counts[label] = count
+            
+    return rule_matches, hazard_counts, title_rule_match
+
+def check_veto_status(t_acc: str, t_no: str, t_title_acc: str, t_title_no: str, has_hazard: bool) -> tuple[bool, bool, bool, list]:
+    """Helper: Checks Absolute, Conditional, and Soft vetoes."""
+    absolute_veto = False
+    conditional_veto = False
+    soft_negative = False
+    negative_matches = []
+
+    # 1. Absolute Veto
+    # Channel 1: Accented
+    for pat_re in ABSOLUTE_VETO_RE:
+        if pat_re.search(t_acc):
+            in_title = t_title_acc and pat_re.search(t_title_acc)
+            if in_title or not has_hazard:
+                absolute_veto = True
+                negative_matches.append(pat_re.pattern)
+                break
+    
+    # Channel 2: Unaccented
+    if not absolute_veto:
+        for _, pat_re in ABSOLUTE_VETO_NO_RE:
+            if pat_re.search(t_no):
+                in_title = t_title_no and pat_re.search(t_title_no)
+                if in_title or not has_hazard:
+                    absolute_veto = True
+                    negative_matches.append(pat_re.pattern)
+                    break
+    
+    if absolute_veto:
+        return True, False, False, negative_matches
+
+    # 2. Conditional Veto
+    for pat_re in CONDITIONAL_VETO_RE:
+         if pat_re.search(t_acc):
+             conditional_veto = True
+             negative_matches.append(pat_re.pattern)
+             break
+    if not conditional_veto:
+        for _, pat_re in CONDITIONAL_VETO_NO_RE:
+            if pat_re.search(t_no):
+                conditional_veto = True
+                negative_matches.append(pat_re.pattern)
+                break
+
+    # 3. Soft Negative
+    for pat_re in SOFT_NEGATIVE_RE:
+        if pat_re.search(t_acc):
+            soft_negative = True
+            negative_matches.append(pat_re.pattern)
+            break
+    if not soft_negative:
+        for _, pat_re in SOFT_NEGATIVE_NO_RE:
+            if pat_re.search(t_no):
+                soft_negative = True
+                negative_matches.append(pat_re.pattern)
+                break
+
+    return absolute_veto, conditional_veto, soft_negative, negative_matches
+
 def extract_province(text: str, title: str = "") -> str:
     """Legacy wrapper: returns the Single Best province found.
     Prioritizes specific Province over Region.
@@ -2587,36 +2724,10 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     # Combine title for search if not already in text
     search_text = f"{title}\n{text}" if title and title not in text else text
     t_acc, t_no = risk_lookup.canon(search_text or "")
-
-    rule_matches = []
-    hazard_counts = {}
-    # Check Rules using Two-Channel Strategy
-    title_rule_match = False
     t_title_acc, t_title_no = risk_lookup.canon(title or "")
 
-    for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):
-        count = 0
-        matched_label = False
-        # 1.1 Match Accented on t_acc (Always safe)
-        for pat_re in compiled_acc:
-            if pat_re.search(t_acc):
-                count += 1
-                matched_label = True
-                if title and pat_re.search(t_title_acc):
-                    title_rule_match = True
-
-        # 1.2 Match Unaccented on t_no (Only for pre-filtered safe patterns)
-        if not matched_label and compiled_no:
-            for pat_re in compiled_no:
-                if pat_re.search(t_no):
-                    count += 1
-                    matched_label = True
-                    if title and pat_re.search(t_title_no):
-                        title_rule_match = True
-
-        if matched_label:
-            rule_matches.append(label)
-            hazard_counts[label] = count
+    # Helper 1: Disaster Rules
+    rule_matches, hazard_counts, title_rule_match = match_disaster_rules(t_acc, t_no, t_title_acc, t_title_no)
 
     # VIP Term Detection (Immediate Pass Boost)
     is_vip = False
@@ -2625,58 +2736,10 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
             is_vip = True
             break
 
-    # 1. Negative Checks (Detection of absolute/conditional/soft vetoes)
-    absolute_veto = False
-    conditional_veto = False
-    soft_negative = False
-    negative_matches = []
-
-    # Channel 1: Accented
-    for pat_re in ABSOLUTE_VETO_RE:
-        if pat_re.search(t_acc):
-            # VETO CRITERIA: Match in Title OR (Match in Body AND No Disaster Rules Matched)
-            # This prevents sidebars/footers from killing genuine disaster news.
-            in_title = title and pat_re.search(t_title_acc)
-            if in_title or not rule_matches:
-                absolute_veto = True
-                negative_matches.append(pat_re.pattern)
-                break
-                
-    # Channel 2: Unaccented (Safe patterns only)
-    if not absolute_veto:
-        for _, pat_re in ABSOLUTE_VETO_NO_RE:
-            if pat_re.search(t_no):
-                in_title = title and pat_re.search(t_title_no)
-                if in_title or not rule_matches:
-                    absolute_veto = True
-                    negative_matches.append(pat_re.pattern)
-                    break
-
-    if not absolute_veto:
-        for pat_re in CONDITIONAL_VETO_RE:
-             if pat_re.search(t_acc):
-                 conditional_veto = True
-                 negative_matches.append(pat_re.pattern)
-                 break
-        if not conditional_veto:
-            for _, pat_re in CONDITIONAL_VETO_NO_RE:
-                if pat_re.search(t_no):
-                    conditional_veto = True
-                    negative_matches.append(pat_re.pattern)
-                    break
-
-    if not absolute_veto and not conditional_veto:
-        for pat_re in SOFT_NEGATIVE_RE:
-            if pat_re.search(t_acc):
-                soft_negative = True
-                negative_matches.append(pat_re.pattern)
-                break
-        if not soft_negative:
-            for _, pat_re in SOFT_NEGATIVE_NO_RE:
-                if pat_re.search(t_no):
-                    soft_negative = True
-                    negative_matches.append(pat_re.pattern)
-                    break
+    # Helper 2: Negative Checks (Absolute/Conditional/Soft Vetoes)
+    absolute_veto, conditional_veto, soft_negative, negative_matches = check_veto_status(
+        t_acc, t_no, t_title_acc, t_title_no, has_hazard=(len(rule_matches) > 0)
+    )
 
     # 2. Hazard (Rule) Match - Category identification
     hazard_found = len(rule_matches) > 0
@@ -3442,3 +3505,30 @@ def validate_impacts(impact_dict: dict) -> bool:
                     break
 
     return needs_verification
+
+def extract_all_metadata(text: str, summary_raw: str, title: str) -> dict:
+    """
+    Helper to run all extraction tasks in one go (useful for thread offloading).
+    """
+    disaster_info = classify_disaster(text)
+    province = extract_province(text)
+    impacts = extract_impacts(text)
+    summary_text = summarize(summary_raw.replace("&nbsp;", " "), title=title)
+    
+    # Optimized: If impacts (deaths/missing) are found, prioritize INCIDENT or RECOVERY
+    has_impacts = (impacts.get("deaths") or impacts.get("missing") or impacts.get("injured") or 0) > 0
+    stage = determine_event_stage(text, impact_detected=has_impacts)
+    
+    impact_details = extract_impact_details(text)
+    needs_verification = int(validate_impacts(impacts))
+    
+    return {
+        "disaster_type": disaster_info.get("primary_type", "unknown"),
+        "province": province,
+        "impacts": impacts,
+        "summary": summary_text,
+        "stage": stage,
+        "impact_details": impact_details,
+        "needs_verification": needs_verification,
+        "has_impacts": has_impacts
+    }

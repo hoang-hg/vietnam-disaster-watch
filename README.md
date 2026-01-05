@@ -1,135 +1,80 @@
 # 🇻🇳 VietNam Disaster Watch - Hệ thống Giám sát Thiên tai Việt Nam
 
-Hệ thống theo dõi, tổng hợp và phân tích tin tức thiên tai tự động từ 38 nguồn chính thống tại Việt Nam. Ứng dụng sử dụng kỹ thuật NLP để phân loại sự kiện theo quy định của Chính phủ (Quyết định 18/2021/QĐ-TTg) và đánh giá mức độ rủi ro theo thời gian thực.
+Hệ thống theo dõi, tổng hợp và phân tích tin tức thiên tai tự động từ 38 nguồn chính thống tại Việt Nam.
 
-## 🚀 Tính năng nổi bật
+Ứng dụng sử dụng công nghệ NLP (Xử lý Ngôn ngữ Tự nhiên) để phân loại sự kiện theo cơ sở dữ liệu quốc gia (Quyết định 18/2021/QĐ-TTg) và đánh giá mức độ rủi ro theo thời gian thực (Real-time).
 
--   **Đa nguồn tin cậy**: Tự động thu thập từ **38 nguồn** bao gồm các cơ quan chính phủ (NCHMF, MARD, Sở ban ngành) và các báo điện tử uy tín (VnExpress, Tuổi Trẻ, Thanh Niên...).
--   **Phân loại chuẩn hóa**: Nhận diện và phân loại tự động **8 nhóm thiên tai** theo quy định pháp luật:
-    1.  Bão / Áp thấp nhiệt đới
-    2.  Mưa lớn / Lũ lụt / Sạt lở
-    3.  Nắng nóng / Hạn hán / Xâm nhập mặn
-    4.  Gió mạnh / Sương mù
-    5.  Nước dâng
-    6.  Cháy rừng
-    7.  Động đất / Sóng thần
-    8.  Thiên tai cực đoan khác (Lốc, sét, mưa đá...)
--   **Đánh giá rủi ro**: Chấm điểm rủi ro (Risk Score) dựa trên từ khóa tác động (thương vong, thiệt hại vật chất) và quy mô sự kiện.
--   **Giao diện trực quan**:
-    -   **Dashboard**: Thống kê tổng quan, biểu đồ xu hướng.
-    -   **Bản đồ rủi ro**: Hiển thị vị trí sự kiện trên bản đồ tương tác (Leaflet).
-    -   **Tra cứu nâng cao**: Lọc theo loại hình, địa phương, thời gian và mức độ nghiêm trọng.
+---
 
-## � Cài đặt và Chạy bằng Docker (Khuyên dùng)
+## 🎯 Hệ thống hoạt động như thế nào?
 
-Đây là cách nhanh nhất và ổn định nhất để chạy dự án trên bất kỳ máy tính nào mà không cần cài đặt Python hay Node.js thủ công.
+Hệ thống hoạt động theo chu trình khép kín 4 bước tự động hóa hoàn toàn:
 
-### 1. Yêu cầu
--   **Docker Desktop** (đã cài đặt và đang chạy).
--   **Git** (để clone mã nguồn).
+1.  **Thu thập (Crawl):** Đều đặn quét tin tức mới nhất từ 38 nguồn báo chí (VnExpress, Tuổi Trẻ, Web Chính phủ, Đài Khí tượng...) qua RSS và Google News.
+2.  **Phân tích (Analyze):** Dùng AI đọc hiểu nội dung để:
+    *   Loại bỏ tin rác (xổ số, tai nạn giao thông đơn lẻ...).
+    *   Phân loại vào 8 nhóm thiên tai chính (Bão, Lũ, Sạt lở...).
+    *   Trích xuất địa điểm, thời gian và thống kê thiệt hại (Người/Tài sản).
+3.  **Lưu trữ & Ghép sự kiện (Event Matching):** Tự động gom các bài báo nói về cùng 1 sự kiện ở cùng 1 địa phương lại với nhau để tạo thành "Dòng sự kiện".
+4.  **Hiển thị (Dashboard):** Đưa dữ liệu lên bản đồ trực quan với cảnh báo nóng, thống kê thiệt hại và biểu đồ xu hướng.
 
-### 2. Các bước thực hiện
+---
 
-**Bước 1: Clone mã nguồn**
-Mở terminal (PowerShell, CMD hoặc Git Bash) và chạy lệnh:
-```bash
-git clone <đường-dẫn-repo-của-bạn>
-cd viet-disaster-watch
-```
+## 🚀 Hướng dẫn Cài đặt & Chạy (Quick Start)
 
-**Bước 2: Cấu hình biến môi trường**
-Copy file mẫu `.env.example` thành `.env`:
-```bash
-# Trên Windows
-copy .env.example .env
+Bạn có 2 cách để chạy hệ thống này. Hãy chọn cách phù hợp nhất với bạn:
 
-# Trên Mac/Linux
-cp .env.example .env
-```
-*Lưu ý: Mặc định file `.env` đã được cấu hình sẵn để chạy tốt với Docker (Database PostgreSQL).*
+### ✅ Cách 1: Sử dụng Docker (Khuyên dùng - Nhanh nhất)
+Cách này không yêu cầu bạn phải cài Python, Node.js hay Database thủ công. Mọi thứ đã được đóng gói sẵn.
 
-**Bước 3: Khởi chạy ứng dụng**
-Chạy lệnh sau để Docker tự động tải, build và chạy toàn bộ hệ thống (Frontend + Backend + Database):
+1.  **Cài đặt:** Tải và cài [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+2.  **Khởi động:** Mở terminal tại thư mục dự án và chạy:
+    ```bash
+    docker-compose up --build -d
+    ```
+3.  **Sử dụng:**
+    *   Web Dashboard: [http://localhost](http://localhost)
+    *   API Backend: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-```bash
-docker compose up --build -d
-```
-*(Lần đầu chạy có thể mất vài phút để tải Docker Images)*
+👉 *Xem chi tiết tại file [DEPLOY_GUIDE.md](DEPLOY_GUIDE.md#3-chạy-trên-server-thật-production)*.
 
-**Bước 4: Truy cập ứng dụng**
-Sau khi lệnh chạy xong, mở trình duyệt và truy cập:
--   **Ứng dụng Web (Frontend)**: [http://localhost:5173](http://localhost:5173)
--   **API Tài liệu (Backend Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
--   **Quản lý Database (pgAdmin - nếu cài thêm)**: Host: `localhost`, Port: `5432`, User: `postgres`, Pass: `password`
+---
 
-### 3. Các lệnh thường dùng
+### 🛠 Cách 2: Chạy Thủ công (Dành cho Lập trình viên Phát triển)
+Cách này giúp bạn tự do sửa code và debug chi tiết từng phần.
 
--   **Ngừng ứng dụng**: `docker compose stop`
--   **Tắt hẳn và xóa container**: `docker compose down`
--   **Xem log (Backend)**: `docker logs -f viet-disaster-watch-backend-1`
--   **Cập nhật code mới**: Sau khi `git pull`, chạy lại `docker compose up --build -d`
-
-## 🛠 Chạy Thủ công (Dành cho Dev/Debug)
-
-Nếu bạn muốn chạy từng phần riêng lẻ để phát triển:
-
-### Backend
-Yêu cầu: Python 3.10+
+**1. Backend (Python):**
 ```bash
 cd backend
-.\.venv\Scripts\activate
+python -m venv .venv
+.\.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend
-Yêu cầu: Node.js 18+
+**2. Frontend (Node.js):**
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Cách 1: Chạy trực tiếp bằng Python của Backend (Khuyên dùng)
-Trong thư mục D:\viet-disaster-watch\backend, bạn chạy lệnh này:
 
-powershell
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
-Cách 2: Kích hoạt lại môi trường ảo đúng của Backend
-Bạn thực hiện các lệnh sau:
+👉 *Xem hướng dẫn chi tiết từng bước tại file [LOCAL_DEV_GUIDE.md](LOCAL_DEV_GUIDE.md) (đang cập nhật)*.
 
-Huỷ kích hoạt môi trường cũ: deactivate
-Kích hoạt môi trường của backend: .\.venv\Scripts\Activate.ps1
-Sau đó chạy lại lệnh cũ: python -m uvicorn app.main:app --reload --port 8000
+---
 
-## 📂 Cấu trúc dự án
+## 🛠 Công nghệ sử dụng
+*   **Backend:** Python 3.10, FastAPI, SQLAlchemy, APScheduler (Cronjob).
+*   **Database:** PostgreSQL (Production) hoặc SQLite (Dev), Redis (Caching).
+*   **Frontend:** ReactJS, Vite, TailwindCSS, Chart.js/Recharts, Leaflet Map.
+*   **DevOps:** Docker, Nginx, GitHub Actions.
 
-```
-viet-disaster-watch/
-├── backend/
-│   ├── app/
-│   │   ├── nlp.py           # Logic xử lý ngôn ngữ & phân loại 8 nhóm thiên tai
-│   │   ├── crawler.py       # Bộ thu thập dữ liệu (kèm cơ chế DEDUP & Retry)
-│   │   ├── api.py           # API Endpoints
-│   │   └── sources.py       # Cấu hình nguồn tin
-│   ├── data/                # Dữ liệu SQLite (Dev mode)
-│   └── logs/                # Logs hệ thống crawl
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # UI Components (Map, Cards...)
-│   │   ├── pages/           # Dashboard, Events...
-│   │   └── api.js           # Kết nối Backend
-├── docker-compose.yml       # Cấu hình triển khai Docker
-└── README.md
-```
+## 📂 Ý nghĩa các thư mục chính
+*   `backend/`: Chứa mã nguồn xử lý logic, cào tin và API.
+*   `frontend/`: Chứa mã nguồn giao diện website.
+*   `docker-compose.yml`: File cấu hình chạy thử nghiệm (Dev).
+*   `docker-compose.prod.yml`: File cấu hình chạy thật (Production) có HTTPS.
+*   `nginx/`: Cấu hình máy chủ web chịu tải.
 
-## ⚖️ Lưu ý pháp lý
-Ứng dụng này là một công cụ tổng hợp tin tức (News Aggregator). Toàn bộ nội dung bài viết gốc thuộc bản quyền của các tòa soạn và cơ quan phát hành. Hệ thống chỉ trích xuất siêu dữ liệu (metadata), tóm tắt và dẫn link trực tiếp về nguồn gốc để tôn trọng quyền tác giả.
-
-## 📊 Kiến trúc xử lý dữ liệu (Simplified)
-Hệ thống hoạt động theo luồng:
-1. **Crawl**: Thu thập từ RSS/GNews (15-60 phút).
-2. **NLP Filter**: Lọc tin rác, phân loại 8 nhóm thiên tai, trích xuất thiệt hại & địa điểm.
-3. **Event Matcher**: Gom nhóm các bài báo cùng sự kiện, cùng tỉnh thành.
-4. **Auto-Recovery**: Cứu các tin "nghi ngờ" có điểm cao sau mỗi 60 phút.
-5. **Log Rotation**: Tự động dọn dẹp nhật ký để bảo vệ bộ nhớ máy chủ.
-
+---
+© 2024 - Dự án Cộng đồng giám sát Thiên tai Việt Nam.

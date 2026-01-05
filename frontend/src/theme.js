@@ -61,6 +61,15 @@ export const DISASTER_METADATA = {
     unknown: { label: "Chưa phân loại", tone: "slate", color: THEME_COLORS.unknown },
 };
 
+// Professional UI Tokens (Premium Aesthetics)
+export const UI_TOKENS = {
+  glass: "backdrop-blur-md bg-white/70 dark:bg-slate-900/70 border border-white/20 dark:border-slate-800/20",
+  glassDark: "backdrop-blur-xl bg-slate-900/80 border border-slate-700/30",
+  shadowPremium: "shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]",
+  shadowCard: "shadow-sm border border-slate-200 dark:border-slate-800",
+  radius: "rounded-2xl",
+};
+
 export const CHART_COLORS = [
   THEME_COLORS.storm,
   THEME_COLORS.flood,

@@ -24,30 +24,25 @@ from typing import Optional
 
 # stats_cache is now replaced by centralized 'cache' from .cache
 
-# Unified filtering rules for Dashboard/Stats
-def filter_disaster_events(events):
-    filtered = []
-    for ev in events:
-        # Exclusion: Skip unknown/other or events with NO articles/sources
-        if ev.disaster_type in ["unknown", "other", None] or (ev.sources_count or 0) == 0:
-            continue
-            
-        # Decision 18 Logic: Skip purely administrative news if no impact and not a major hazard
-        is_impacting = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.injured or 0) > 0 or (ev.damage_billion_vnd or 0) > 0
-        major_hazards = [
-            "storm", "flood", "flash_flood", "landslide", "subsidence", 
-            "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
-            "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-            "warning_forecast", "recovery"
-        ]
-        
-        if not is_impacting and ev.disaster_type not in major_hazards:
-             d = ev.details or {}
-             if not (d.get("homes") or d.get("agriculture") or d.get("infrastructure")):
-                # Likely administrative/routine news
-                continue
-        filtered.append(ev)
-    return filtered
+# Unified filtering rules for Dashboard/Stats (Decision 18/2021/QĐ-TTg)
+def apply_dashboard_filters(query, db: Session):
+    """Applies Decision 18 filters directly to a SQLAlchemy query."""
+    major_hazards = [
+        "storm", "flood", "flash_flood", "landslide", "subsidence", 
+        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
+        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
+        "warning_forecast", "recovery"
+    ]
+    
+    from sqlalchemy import or_
+    dec18_filter = or_(
+        Event.disaster_type.in_(major_hazards),
+        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
+         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
+    )
+    return query.filter(Event.disaster_type.notin_(["unknown", "other"]))\
+                .filter(Event.sources_count > 0)\
+                .filter(dec18_filter)
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -61,13 +56,16 @@ def latest_articles(
     type: str | None = Query(None),
     province: str | None = Query(None),
     exclude_unknown: bool = Query(False),
+    after_id: int | None = Query(None, description="Keyset pagination for better performance"),
     db: Session = Depends(get_db),
 ):
-    cache_key = f"articles_latest_{limit}_{type}_{province}_{exclude_unknown}"
+    cache_key = f"articles_latest_{limit}_{type}_{province}_{exclude_unknown}_{after_id}"
     cached = cache.get(cache_key)
     if cached: return cached
 
     q = db.query(Article).filter(Article.status == "approved").order_by(desc(Article.published_at))
+    if after_id is not None:
+        q = q.filter(Article.id < after_id)
     if type:
         q = q.filter(Article.disaster_type == type)
     if province:
@@ -96,6 +94,7 @@ def events(
     response: Response,
     limit: int = Query(50, ge=1, le=2000),
     offset: int = Query(0, ge=0),
+    after_id: int | None = Query(None, description="Keyset pagination for better performance on large datasets"),
     hours: int | None = Query(None, ge=1, le=720),
     type: str | None = Query(None),
     province: str | None = Query(None),
@@ -135,24 +134,7 @@ def events(
         ))
 
     # 2. Database-level filters (Decision 18/2021/QĐ-TTg Implementation)
-    query = query.filter(Event.disaster_type.notin_(["unknown", "other"]))
-    query = query.filter(Event.sources_count > 0)
-    
-    # Decision 18: Only show if it's a major hazard OR has recorded impact
-    major_hazards = [
-        "storm", "flood", "flash_flood", "landslide", "subsidence", 
-        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
-        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-        "warning_forecast", "recovery"
-    ]
-    
-    from sqlalchemy import or_
-    dec18_filter = or_(
-        Event.disaster_type.in_(major_hazards),
-        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
-         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
-    )
-    query = query.filter(dec18_filter)
+    query = apply_dashboard_filters(get_base_event_query(db), db)
 
     if date:
         try:
@@ -176,6 +158,10 @@ def events(
         try: query = query.filter(Event.started_at < datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1))
         except ValueError: pass
 
+    # Keyset Pagination: filter items older than after_id
+    if after_id is not None:
+        query = query.filter(Event.id < after_id)
+
     # Calculate total if wrapper is requested
     total_count = 0
     if wrapper:
@@ -185,18 +171,18 @@ def events(
     if sort == "latest":
         query = query.order_by(desc(Event.started_at), desc(Event.last_updated_at))
     else:
-        # Default or Impact sort
-        # Note: Complex Python sort (deaths+missing+injured) is harder in pure SQL, 
-        # but for pagination we need stable SQL sort. 
-        # We approximate 'impact' as deaths then damage then sources.
-        query = query.order_by(
-            desc(Event.deaths), 
-            desc(Event.damage_billion_vnd),
-            desc(Event.sources_count),
-            desc(Event.started_at)
-        )
+        # 4. [OPTIMIZATION] Efficient Fetching
+        if sort == "start":
+            query = query.order_by(desc(Event.started_at))
+        else:
+            # Sort by impact + confidence
+            query = query.order_by(
+                desc(Event.is_red_alert),
+                desc(func.coalesce(Event.deaths, 0) * 10 + func.coalesce(Event.missing, 0) * 8 + func.coalesce(Event.damage_billion_vnd, 0)),
+                desc(Event.confidence)
+            )
 
-    # 3. Fetch candidates (Use limit and offset directly)
+    # Use Limit/Offset (or consider Keyset if we add after_id parameter later)
     filtered = query.limit(limit).offset(offset).all()
     
     # Legacy Python Sort (Removed as it breaks pagination)
@@ -220,7 +206,6 @@ def events(
     counts_map = {row[0]: row[1] for row in count_q.group_by(Article.event_id).all()}
 
     # 6. [OPTIMIZATION] Fix N+1: Batch Fetch Images & Sources
-    # We use a subquery/distinct to get the latest article for each event in the batch
     # Prioritizing 'approved' status then latest publication date
     from sqlalchemy import and_
     subq = db.query(
@@ -313,34 +298,46 @@ SUB_IMAGES = {
 @router.get("/events/{event_id}", response_model=EventDetailOut)
 def event_detail(event_id: int, response: Response, db: Session = Depends(get_db)):
     # 1. Try Cache
-    cache_key = f"ev_detail_{event_id}"
+    cache_key = f"ev_detail_v2_{event_id}"
     cached = cache.get(cache_key)
     if cached:
         response.headers["X-Cache"] = "HIT"
-        response.headers["Cache-Control"] = "public, max-age=60" # 1 min cache for specific events
+        response.headers["Cache-Control"] = "public, max-age=60"
         return cached
 
-    # 2. Optimized Fetch (Fixes N+1 and lazy loading lag)
-    ev = db.query(Event).options(
-        joinedload(Event.articles)
-    ).filter(Event.id == event_id).first()
+    # 2. Optimized Fetch (Get Event only first)
+    ev = db.query(Event).filter(Event.id == event_id).first()
     
     if not ev:
         raise HTTPException(status_code=404, detail="Sự kiện không tồn tại.")
         
-    # 3. Filter and Sort Articles
-    # Only show relevant articles (approved/pending)
-    articles = [a for a in ev.articles if a.status in ("approved", "pending")]
-    articles.sort(key=lambda x: x.published_at, reverse=True)
+    # 3. [OPTIMIZATION] Database-side Article Filtering & Limited Fetch
+    # For large datasets, we should not load thousands of articles into a single response.
+    # We fetch the latest 300 articles (status approved/pending).
+    from sqlalchemy.orm import defer
+    limit_articles = 300
+    articles_q = db.query(Article).filter(
+        Article.event_id == event_id,
+        Article.status.in_(["approved", "pending"])
+    ).options(defer(Article.full_text)).order_by(desc(Article.published_at))
     
-    # We create a dictionary to avoid ORM lazy load issues after sorting
+    # Accurate counts via SQL aggregates
+    total_articles = articles_q.count()
+    sources_count_val = db.query(func.count(func.distinct(Article.source))).filter(
+        Article.event_id == event_id,
+        Article.status.in_(["approved", "pending"])
+    ).scalar() or 0
+    
+    # Fetch limited set
+    articles = articles_q.limit(limit_articles).all()
+    
+    # 4. Map to Schema
     ev_data = EventDetailOut.model_validate(ev)
     ev_data.articles = [ArticleOut.model_validate(a) for a in articles]
+    ev_data.articles_count = total_articles
+    ev_data.sources_count = sources_count_val
     
-    # Update count to match visible list
-    ev_data.sources_count = len(set(a.source for a in articles))
-    
-    # 4. Save to Cache
+    # 5. Save to Cache
     result = ev_data.model_dump()
     cache.set(cache_key, result, ttl=300)
     
@@ -569,30 +566,6 @@ def stats_summary(
     # Calculate Aggregates using SQL
     from sqlalchemy.sql import case
     
-    # Counts by distinct provinces
-    # SQLAlchemy doesn't support count(distinct) cleanly in all dialects without func, but usually fine
-    provinces_count_q = db.query(func.count(func.distinct(Event.province))).filter(
-        Event.started_at >= start,
-        Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
-        Event.sources_count > 0,
-        Event.province.in_(PROVINCES),
-        dec18_filter
-    )
-    if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
-    if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
-    if not is_admin:
-        # Re-apply filter for public
-        from sqlalchemy import or_
-        provinces_count_q = provinces_count_q.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
-    provinces_count = provinces_count_q.scalar() or 0
-
-    # Events Count and Impacts
-    # We aggregate: count, sum(deaths), sum(missing), sum(injured), count_human_impact, count_property_impact
-    
     # For counts with conditions, we use case
     human_damage_case = case(
         ( (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + func.coalesce(Event.injured, 0)) > 0, 1),
@@ -693,6 +666,24 @@ def stats_summary(
     
     prov_counts_rows = prov_counts_q.group_by(Event.province).order_by(func.count(Event.id).desc()).limit(20).all()
     by_province = [{"province": row[0], "events": row[1]} for row in prov_counts_rows]
+    
+    # Accurate count of ALL affected provinces
+    provinces_count_q = db.query(func.count(func.distinct(Event.province))).filter(
+        Event.started_at >= start,
+        Event.started_at < end,
+        Event.disaster_type.notin_(["unknown", "other"]),
+        Event.sources_count > 0,
+        Event.province.in_(PROVINCES)
+    )
+    if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
+    if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
+    if not is_admin:
+        from sqlalchemy import or_
+        provinces_count_q = provinces_count_q.filter(or_(
+            Event.confidence >= 0.8,
+            (Event.needs_verification == 0) & (Event.sources_count >= 2)
+        ))
+    provinces_count = provinces_count_q.scalar() or 0
 
     res = {
         "window_hours": hours if not date else 24,
@@ -942,7 +933,7 @@ def post_alert(payload: dict):
             f.write(json.dumps(record, ensure_ascii=False) + '\n')
         # publish to subscribers
         try:
-            asyncio.create_task(broadcast.publish_event({'type': 'alert', 'alert': payload}))
+            broadcast.publish_event_sync({'type': 'alert', 'alert': payload})
         except Exception:
             pass
     except Exception as e:
@@ -977,9 +968,9 @@ def stats_heatmap(
         start = datetime.utcnow() - timedelta(hours=hours)
         end = datetime.utcnow()
 
-    # Fetch and filter events using unified logic
-    events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
-    filtered_events = filter_disaster_events(events)
+    # Fetch and filter events using unified logic at SQL level
+    query = db.query(Event).filter(Event.started_at >= start, Event.started_at < end)
+    filtered_events = apply_dashboard_filters(query, db).all()
     
     prov_counts = {}
     for ev in filtered_events:

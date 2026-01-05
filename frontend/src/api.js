@@ -3,129 +3,58 @@ import { DISASTER_METADATA } from "./theme.js";
 export const API_BASE =
   import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
-export async function getJson(path, options = {}) {
+async function request(path, options = {}) {
   const token = localStorage.getItem("access_token");
-  const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-  const res = await fetch(API_BASE + path, { 
-    ...options,
-    headers: { ...headers, ...options.headers }
-  });
-  if (!res.ok) {
-    if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
-        window.dispatchEvent(new Event("storage"));
-    }
-    const err = new Error(`API error ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
-}
+  const headers = {
+    ...options.headers,
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+  };
 
-export async function deleteJson(path, options = {}) {
-  const token = localStorage.getItem("access_token");
-  const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-  const res = await fetch(API_BASE + path, { 
-    ...options,
-    method: "DELETE", 
-    headers: { ...headers, ...options.headers }
-  });
+  if (["POST", "PUT", "PATCH"].includes(options.method) && options.body && !(options.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const res = await fetch(API_BASE + path, { ...options, headers });
+
   if (!res.ok) {
     if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
-        window.dispatchEvent(new Event("storage"));
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      window.dispatchEvent(new Event("storage"));
     }
+    
     let errorDetail = "";
     try {
-        const errData = await res.json();
-        errorDetail = errData.detail || "";
-    } catch(e) {}
-    
+      const errData = await res.json();
+      errorDetail = errData.detail || "";
+    } catch (e) {}
+
     const err = new Error(errorDetail || `API error ${res.status}`);
     err.status = res.status;
     throw err;
   }
-  return true;
+
+  return res.status === 204 ? true : res.json();
+}
+
+export async function getJson(path, options = {}) {
+  return request(path, { ...options, method: "GET" });
+}
+
+export async function deleteJson(path, options = {}) {
+  return request(path, { ...options, method: "DELETE" });
 }
 
 export async function putJson(path, payload, options = {}) {
-  const token = localStorage.getItem("access_token");
-  const headers = { 
-    "Content-Type": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-  };
-  const res = await fetch(API_BASE + path, { 
-    ...options,
-    method: "PUT", 
-    headers: { ...headers, ...options.headers }, 
-    body: JSON.stringify(payload) 
-  });
-  if (!res.ok) {
-    if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
-        window.dispatchEvent(new Event("storage"));
-    }
-    const errData = await res.json().catch(() => ({}));
-    const err = new Error(errData.detail || `API error ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
+  return request(path, { ...options, method: "PUT", body: JSON.stringify(payload) });
 }
 
 export async function postJson(path, payload, options = {}) {
-  const token = localStorage.getItem("access_token");
-  const headers = { 
-    "Content-Type": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-  };
-  const res = await fetch(API_BASE + path, { 
-    ...options,
-    method: "POST", 
-    headers: { ...headers, ...options.headers }, 
-    body: JSON.stringify(payload) 
-  });
-  if (!res.ok) {
-    if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
-        window.dispatchEvent(new Event("storage"));
-    }
-    const errData = await res.json().catch(() => ({}));
-    const err = new Error(errData.detail || `API error ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
+  return request(path, { ...options, method: "POST", body: (payload instanceof FormData) ? payload : JSON.stringify(payload) });
 }
 
 export async function patchJson(path, payload = {}, options = {}) {
-  const token = localStorage.getItem("access_token");
-  const headers = { 
-    "Content-Type": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-  };
-  const res = await fetch(API_BASE + path, { 
-    ...options,
-    method: "PATCH", 
-    headers: { ...headers, ...options.headers }, 
-    body: JSON.stringify(payload) 
-  });
-  if (!res.ok) {
-    if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
-        window.dispatchEvent(new Event("storage"));
-    }
-    const errData = await res.json().catch(() => ({}));
-    const err = new Error(errData.detail || `API error ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  return res.json();
+  return request(path, { ...options, method: "PATCH", body: JSON.stringify(payload) });
 }
 
 export async function login(username, password) {

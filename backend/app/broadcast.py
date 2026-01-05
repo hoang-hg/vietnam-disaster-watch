@@ -66,10 +66,41 @@ async def publish_event(data: dict) -> None:
         except Exception:
             continue
 
+# Reference to the main event loop for cross-thread scheduling
+_main_loop: asyncio.AbstractEventLoop | None = None
+
+def set_main_loop(loop: asyncio.AbstractEventLoop):
+    global _main_loop
+    _main_loop = loop
+
+def publish_event_sync(data: dict) -> None:
+    """Thread-safe and sync-safe way to publish events."""
+    msg = _make_message(data)
+    _append_to_buffer(msg)
+    
+    # Use the stored main loop if available (reliable for cross-thread from Crawler)
+    if _main_loop and not _main_loop.is_closed():
+        for q in list(_subscribers):
+            _main_loop.call_soon_threadsafe(q.put_nowait, msg)
+        return
+
+    # Fallback logic (only works if on same loop)
+    try:
+        loop = asyncio.get_running_loop()
+        for q in list(_subscribers):
+            loop.call_soon_threadsafe(q.put_nowait, msg)
+    except RuntimeError:
+        pass
+
 async def event_generator(q: asyncio.Queue) -> AsyncGenerator[str, None]:
     try:
         while True:
-            msg = await q.get()
-            yield msg
+            try:
+                # [OPTIMIZATION] Wait with timeout to send heartbeats
+                msg = await asyncio.wait_for(q.get(), timeout=20.0)
+                yield msg
+            except asyncio.TimeoutError:
+                # Heartbeat to keep connection alive
+                yield ": heartbeat\n\n"
     finally:
         return

@@ -199,7 +199,7 @@ class HTMLScraper:
         
         html_content = await self._get_with_retry("https://tuoitre.vn/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "tuoitre.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "tuoitre.vn", max_items=15)
 
     async def scrape_vnexpress(self) -> List[dict]:
         """Scrape VnExpress news listing - fallback only."""
@@ -207,7 +207,7 @@ class HTMLScraper:
         
         html_content = await self._get_with_retry("https://vnexpress.net/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vnexpress.net", max_items=15)
+        return await self._extract_generic_links(html_content, "vnexpress.net", max_items=15)
 
     async def scrape_dantri(self) -> List[dict]:
         """Scrape Dân Trí news listing - fallback only."""
@@ -215,7 +215,7 @@ class HTMLScraper:
         
         html_content = await self._get_with_retry("https://dantri.com.vn/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "dantri.com.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "dantri.com.vn", max_items=15)
 
     async def scrape_nld(self) -> List[dict]:
         """Scrape Người Lao Động news listing - fallback only."""
@@ -223,7 +223,7 @@ class HTMLScraper:
         
         html_content = await self._get_with_retry("https://nld.com.vn/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "nld.com.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "nld.com.vn", max_items=15)
 
     async def scrape_sggp(self) -> List[dict]:
         """Scrape SGGP news listing - fallback only."""
@@ -231,112 +231,112 @@ class HTMLScraper:
         
         html_content = await self._get_with_retry("https://sggp.org.vn/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "sggp.org.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "sggp.org.vn", max_items=15)
 
     async def scrape_thanhnien(self) -> List[dict]:
         """Scrape Thanh Niên news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://thanhnien.vn/thoi-su.htm")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "thanhnien.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "thanhnien.vn", max_items=15)
 
     async def scrape_vietnamnet(self) -> List[dict]:
         """Scrape VietNamNet news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://vietnamnet.vn/thoi-su")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vietnamnet.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "vietnamnet.vn", max_items=15)
 
     async def scrape_laodong(self) -> List[dict]:
         """Scrape Lao Động news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://laodong.vn/thoi-su")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "laodong.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "laodong.vn", max_items=15)
 
     async def scrape_nhandan(self) -> List[dict]:
         """Scrape Nhân Dân news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://nhandan.vn/xa-hoi")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "nhandan.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "nhandan.vn", max_items=15)
 
     async def scrape_tienphong(self) -> List[dict]:
         """Scrape Tiền Phong news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://tienphong.vn/xa-hoi")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "tienphong.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "tienphong.vn", max_items=15)
 
     async def scrape_baotintuc(self) -> List[dict]:
         """Scrape Báo Tin Tức news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://baotintuc.vn/thoi-su.htm")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "baotintuc.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "baotintuc.vn", max_items=15)
 
     async def scrape_vtv(self) -> List[dict]:
         """Scrape VTV News news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://vtv.vn/xa-hoi.htm")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vtv.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "vtv.vn", max_items=15)
 
     async def scrape_vov(self) -> List[dict]:
         """Scrape VOV (Voice of Vietnam) news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://vov.vn/xa-hoi")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vov.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "vov.vn", max_items=15)
 
     async def scrape_vietnamplus(self) -> List[dict]:
         """Scrape VietnamPlus news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://www.vietnamplus.vn/xa-hoi/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vietnamplus.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "vietnamplus.vn", max_items=15)
 
     async def scrape_vietnamvn(self) -> List[dict]:
         """Scrape Vietnam.vn (Official Portal)."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://www.vietnam.vn/category/xa-hoi/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vietnam.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "vietnam.vn", max_items=15)
 
     async def scrape_vtcnews(self) -> List[dict]:
         """Scrape VTC News news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://vtcnews.vn/thoi-su")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "vtcnews.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "vtcnews.vn", max_items=15)
 
     async def scrape_bnews(self) -> List[dict]:
         """Scrape Bnews (VNA branch) news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://bnews.vn/thoi-su/50.html")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "bnews.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "bnews.vn", max_items=15)
 
     async def scrape_suckhoedoisong(self) -> List[dict]:
         """Scrape Báo Sức khỏe & Đời sống news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://suckhoedoisong.vn/thoi-su.htm")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "suckhoedoisong.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "suckhoedoisong.vn", max_items=15)
 
     async def scrape_monre_news(self) -> List[dict]:
         """Scrape Báo Tài nguyên & Môi trường news listing."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry("https://baotainguyenmoitruong.vn/thoi-su")
         if not html_content: return []
-        return self._extract_generic_links(html_content, "baotainguyenmoitruong.vn", max_items=15)
+        return await self._extract_generic_links(html_content, "baotainguyenmoitruong.vn", max_items=15)
 
     async def scrape_generic(self, domain: str) -> List[dict]:
         """Generic fallback scraper for any domain."""
         if not _HAS_BS4: return []
         html_content = await self._get_with_retry(f"https://{domain}/")
         if not html_content: return []
-        return self._extract_generic_links(html_content, domain, max_items=15)
+        return await self._extract_generic_links(html_content, domain, max_items=15)
 
     async def scrape_kttv_portal(self, domain: str) -> List[dict]:
         """Scrape any KTTV portal (National or Provincial) - Targeted Scrape."""
@@ -367,7 +367,7 @@ class HTMLScraper:
 
         articles = []
         try:
-            soup = BeautifulSoup(html_content, "html.parser")
+            soup = await asyncio.to_thread(BeautifulSoup, html_content, "html.parser")
             # Provincial sites often have news in these containers
             content_containers = soup.find_all(['ul', 'div'], class_=re.compile(r'list-news|uk-list|news-list|tin-tuc|lastest-news', re.I))
             
@@ -512,11 +512,11 @@ class HTMLScraper:
         """Check if text contains disaster-related keywords."""
         return contains_disaster_keywords(text)
 
-    def _extract_generic_links(self, html: str, domain: str, max_items: int = 15) -> List[dict]:
+    async def _extract_generic_links(self, html: str, domain: str, max_items: int = 15) -> List[dict]:
         """Extract links from generic HTML using minimal assumptions."""
         articles = []
         try:
-            soup = BeautifulSoup(html, "html.parser")
+            soup = await asyncio.to_thread(BeautifulSoup, html, "html.parser")
             all_links = soup.find_all('a', href=True)
             
             seen_titles = set()
@@ -772,7 +772,7 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
         return None
 
     try:
-        soup = BeautifulSoup(html_content, "html.parser")
+        soup = await asyncio.to_thread(BeautifulSoup, html_content, "html.parser")
         meta = extract_metadata(soup)
         
         # 1. Image Extraction
@@ -839,20 +839,19 @@ def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
 async def test_scraper():
     """Test the HTML scraper."""
     scraper = HTMLScraper()
-    print("Testing HTML scraper... (Results in logs if console encoding fails)")
+    """Test the HTML scraper."""
+    scraper = HTMLScraper()
+    logger.info("Testing HTML scraper... (Results in logs)")
     
     try:
         results = await scraper.scrape_all_available()
         for source, articles in results.items():
-            msg = f"\n{source}: {len(articles)} articles found"
-            print(msg)
+            msg = f"{source}: {len(articles)} articles found"
+            logger.info(msg)
             for article in articles[:3]:
-                try:
-                    print(f"  - {article['title'][:70]}...")
-                except UnicodeEncodeError:
-                    print(f"  - {article['title'][:70].encode('ascii', 'replace').decode()}...")
+                logger.info(f"  - {article['title'][:70]}...")
     except Exception as e:
-        print(f"Test failed: {e}")
+        logger.error(f"Test failed: {e}")
 
 if __name__ == "__main__":
     asyncio.run(test_scraper())

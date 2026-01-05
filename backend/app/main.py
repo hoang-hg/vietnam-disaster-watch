@@ -108,8 +108,15 @@ async def on_startup():
     from .database import engine, Base
     from . import models # ensure models are registered
     Base.metadata.create_all(bind=engine)
+    
+    # 0.1 Capture Main Loop for Broadcast (Cross-thread SSE)
+    import asyncio
+    from . import broadcast
+    try:
+        broadcast.set_main_loop(asyncio.get_running_loop())
+    except RuntimeError:
+        pass
 
-    # 1. Initial full crawl on startup
     # 1. Initial full crawl on startup
     # Use scheduler to run in background thread to avoid blocking main loop (WebSocket handshake)
     from datetime import datetime, timedelta
@@ -146,31 +153,31 @@ async def on_startup():
             "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
         ]
 
-    # Job 1: Group 1 (Critical Official Sources) - Frequency: 3 HOURS (180 mins)
+    # Job 1: Group 1 (Critical Official Sources) - Frequency: 15 MINUTES
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier1_sources()),
-        trigger=IntervalTrigger(minutes=180, jitter=10),
+        trigger=IntervalTrigger(minutes=15, jitter=10),
         id="crawl_group1_critical",
         replace_existing=True,
         misfire_grace_time=300
     )
 
-    # Job 2: Group 2 (Major National News) - Frequency: 6 HOURS (360 mins)
+    # Job 2: Group 2 (Major National News) - Frequency: 30 MINUTES
     # Coverage: VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí, VTV, VOV...
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier2_sources()),
-        trigger=IntervalTrigger(minutes=360, jitter=20),
+        trigger=IntervalTrigger(minutes=30, jitter=20),
         id="crawl_group2_major",
         replace_existing=True,
         misfire_grace_time=600
     )
 
-    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 9 HOURS (540 mins)
+    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 60 MINUTES
     # Performs a complete scan of all sources in sources.json.
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=540, jitter=120),
+        trigger=IntervalTrigger(minutes=60, jitter=120),
         id="crawl_group3_full",
         replace_existing=True,
         misfire_grace_time=1200

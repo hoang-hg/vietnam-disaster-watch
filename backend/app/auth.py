@@ -35,7 +35,7 @@ def get_db():
     finally:
         db.close()
 
-async def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)):
+def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)):
     # Fallback to query param if header is missing (common for window.open downloads)
     if not token:
         token = request.query_params.get("token_query")
@@ -61,7 +61,7 @@ async def get_current_user(request: Request, token: Optional[str] = Depends(oaut
         raise credentials_exception
     return user
 
-async def get_current_admin(current_user: models.User = Depends(get_current_user)):
+def get_current_admin(current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -69,7 +69,7 @@ async def get_current_admin(current_user: models.User = Depends(get_current_user
         )
     return current_user
 
-async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[models.User]:
+def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[models.User]:
     if not token:
         return None
     try:

@@ -22,48 +22,39 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 import socket
-# Set a global timeout for all socket operations (affects feedparser/urllib)
-# This prevents hanging forever on slow Vietnamese government or news servers.
+import ssl
+# Set a global timeout for all socket operations
 socket.setdefaulttimeout(30)
 
+logger = logging.getLogger(__name__)
+
 # GLOBAL SSL PATCh: Allow Legacy Renegotiation
-# Many VN sites (doisongphapluat, gov.vn) use older SSL config that OpenSSL 3 rejects.
-# This forces Python to use a relaxed SSL context for urllib (used by feedparser).
-import ssl
 try:
     _ctx = ssl.create_default_context()
     _ctx.check_hostname = False
     _ctx.verify_mode = ssl.CERT_NONE
-    # OP_LEGACY_SERVER_CONNECT = 0x4 (Allows connecting to legacy servers)
     if hasattr(ssl, 'OP_LEGACY_SERVER_CONNECT'):
          _ctx.options |= ssl.OP_LEGACY_SERVER_CONNECT
     else:
-         # Fallback for some python versions where attribute might be missing but bit works
          _ctx.options |= 0x4
     
-    # 2. Allow Unsafe Legacy Renegotiation (Fix for baotintuc.vn)
-    # This is often needed for older OpenSSL 3+ systems connecting to ancient servers
     try:
-        # constant might not be exposed in all python versions, value is 0x40000 
         _ctx.options |= getattr(ssl, "OP_legacy_server_connect", 0x4)
-        # Some OS/Distros need system configuration, but in python we can try to set the option manually:
-        # Note: In strict OpenSSL 3 environments, this might still fail if global conf forbids it.
-        # Check if we can lower security level (only works on some systems)
         if hasattr(_ctx, 'set_ciphers'):
             _ctx.set_ciphers('DEFAULT@SECLEVEL=1')
     except Exception:
         pass
-
-    # Apply globally to urllib (which feedparser uses)
     ssl._create_default_https_context = lambda: _ctx
 except Exception as e:
-    print(f"[WARN] Failed to apply SSL patch: {e}")
+    logger.warning(f"Failed to apply SSL patch: {e}")
+
 try:
     from bs4 import BeautifulSoup
     _HAS_BS4 = True
 except Exception:
     BeautifulSoup = None
     _HAS_BS4 = False
+
 from sqlalchemy.orm import Session
 from .settings import settings
 from .database import SessionLocal, engine, Base
@@ -75,8 +66,6 @@ from .event_matcher import upsert_event_for_article
 from .html_scraper import HTMLScraper, fetch_article_full_text_async, extract_metadata
 
 Base.metadata.create_all(bind=engine)
-
-logger = logging.getLogger(__name__)
 
 # User Requirement: Skip any news before 2025-01-01
 CRAWL_MIN_DATE = datetime(2025, 1, 1)
@@ -148,7 +137,6 @@ def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
         # 3. Fallback: Find the first significant image in the body
         # Ignore common logos, icons, and small social buttons
         from urllib.parse import urljoin
-        junk_patterns = ["logo", "icon", "avatar", "social", "banner", "btn", "loading", "placeholder"]
         
         images = soup.find_all("img")
         for img in images:
@@ -158,10 +146,14 @@ def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
             # Resolve relative URLs
             if base_url: src = urljoin(base_url, src)
             
-            # Filter by junk keywords in URL
-            if any(p in src.lower() for p in junk_patterns):
-                continue
+            # [OPTIMIZATION] Junk image filtering logic
+            low_src = src.lower()
+            junk_found = any(p in low_src for p in ["logo", "icon", "avatar", "social", "banner", "btn", "loading", "placeholder", "fallback", "default"])
+            if junk_found: continue
             
+            # Skip common static assets
+            if any(low_src.endswith(ext) for ext in [".svg", ".gif"]): continue
+
             # Try to check attributes that suggest size
             width = img.get("width")
             height = img.get("height")
@@ -276,7 +268,6 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
                                 h["last_modified"] = r.headers.get("last-modified")
                             if h:
                                 feed_state[u] = {**feed_state.get(u, {}), **h, "fetched_at": datetime.now(timezone.utc).isoformat()}
-                                _save_feed_state(feed_state)
                         except Exception:
                             pass
 
@@ -299,6 +290,10 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
         for u, t in tasks.items():
             u_ret, data = await t
             results[u_ret] = data
+
+    # Batch save state at the end to prevent I/O blocking in the loop
+    if feed_state:
+        _save_feed_state(feed_state)
 
     return results
 
@@ -357,7 +352,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
         try:
             fetched = await _fetch_all_feeds(all_feed_urls, headers, settings.request_timeout_seconds, force_update=force_update)
         except Exception as e:
-            print(f"[WARN] concurrent fetch failed: {e}")
+            logger.warning(f"concurrent fetch failed: {e}")
             fetched = {}
 
         # Try fallback chain per source: primary → backup → gnews
@@ -374,7 +369,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 if info is None or "error" in info:
                     elapsed = info.get("elapsed", 0) if info else 0
                     err = info.get("error", "no response") if info else "no response"
-                    print(f"[WARN] {src.name} {feed_type} failed ({elapsed:.2f}s): {err}")
+                    logger.warning(f"{src.name} {feed_type} failed ({elapsed:.2f}s): {err}")
                     continue
 
                 # If feed did not change since last fetch (HTTP 304), treat as a successful feed with no new entries
@@ -383,7 +378,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     stat["feed_used"] = f"{stat['feed_used']}, {feed_type}" if stat["feed_used"] else feed_type
                     stat["elapsed"] = (stat["elapsed"] or 0) + elapsed
                     feed_worked = True
-                    print(f"[OK] {src.name} using {feed_type} (not modified, {elapsed:.2f}s)")
+                    logger.info(f"{src.name} using {feed_type} (not modified, {elapsed:.2f}s)")
                     # DO NOT BREAK: Continue to check next feed (e.g. backup/secondary)
                     continue
                 
@@ -392,7 +387,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 feed = feedparser.parse(info.get("text", ""))
                 
                 if not feed.entries:
-                    print(f"[WARN] {src.name} {feed_type} returned 0 entries")
+                    logger.warning(f"{src.name} {feed_type} returned 0 entries")
                     continue
                 
                 # Success! Use this feed
@@ -400,7 +395,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 stat["elapsed"] = (stat["elapsed"] or 0) + elapsed
                 feed_worked = True
                 
-                print(f"[OK] {src.name} using {feed_type} ({len(feed.entries)} entries, {elapsed:.2f}s)")
+                logger.info(f"{src.name} using {feed_type} ({len(feed.entries)} entries, {elapsed:.2f}s)")
                 
                 # Process articles from this feed
                 # Differentiated limit: Higher for direct RSS, lower for noisy GNews search
@@ -423,7 +418,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     summary_raw = re.sub(r"\s+", " ", summary_raw)
                     
                     text_for_nlp = title + " " + summary_raw
-                    
+                    if len(text_for_nlp) > 5000:
+                        text_for_nlp = text_for_nlp[:5000] # [OPTIMIZATION] Safety limit
+
                     # ---------------------------------------------------------
                     # 0. PRE-CHECK: Blacklist & Hash Deduplication
                     # ---------------------------------------------------------
@@ -439,19 +436,19 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     # ---------------------------------------------------------
                     # 1. TIERED FILTERING: 3-Tier Scoring System (User Adjusted)
                     # ---------------------------------------------------------
-                    diag = nlp.diagnose(text_for_nlp, title=title, authority_level=src.authority_level)
+                    diag = await asyncio.to_thread(nlp.diagnose, text_for_nlp, title=title, authority_level=src.authority_level)
                     score = diag["score"]
 
                     # Logic for upgrading Pending -> Approved
                     if existing:
                         if existing.status == "approved":
                             # We already have this and it's approved
-                            print(f"[DEDUP] {src.name}: {title[:100]}... (already approved)")
+                            logger.info(f"[DEDUP] {src.name}: {title[:100]}... (already approved)")
                             continue
                         
                         # If it was pending but giờ có điểm cao đủ để duyệt tự động, ta nâng cấp lên approved
                         if existing.status == "pending" and score >= 15.0:
-                            print(f"[INFO] Nâng cấp bài viết lên Approved: {title} (Điểm mới: {score})")
+                            logger.info(f"[INFO] Nâng cấp bài viết lên Approved: {title} (Điểm mới: {score})")
                             existing.status = "approved"
                             existing.score = score
                             # Update impacts with new info if available
@@ -464,7 +461,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             existing.summary = summary_raw[:1000] # Update summary if it's longer/better
                             
                             # Link to an event now that it's approved
-                            upsert_event_for_article(db, existing)
+                            await asyncio.to_thread(upsert_event_for_article, db, existing)
                             db.commit()
                             new_count += 1
                         continue # Skip to next article in feed
@@ -542,16 +539,15 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
 
                     # If we reach here, it's either 'approved' or 'pending'
                     
-                    disaster_info = nlp.classify_disaster(text_for_nlp)
-                    disaster_type = disaster_info.get("primary_type", "unknown")
-                    province = nlp.extract_province(text_for_nlp)
-
-                    impacts = nlp.extract_impacts(text_for_nlp)
-                    summary_text = nlp.summarize(summary_raw.replace("&nbsp;", " "), title=title)
+                    # Offload heavy NLP extraction to thread
+                    meta = await asyncio.to_thread(nlp.extract_all_metadata, text_for_nlp, summary_raw, title)
                     
-                    # Optimized: If impacts (deaths/missing) are found, prioritize INCIDENT or RECOVERY
-                    has_impacts = (impacts.get("deaths") or impacts.get("missing") or impacts.get("injured") or 0) > 0
-                    stage = nlp.determine_event_stage(text_for_nlp, impact_detected=has_impacts)
+                    disaster_type = meta["disaster_type"]
+                    province = meta["province"]
+                    impacts = meta["impacts"]
+                    summary_text = meta["summary"]
+                    has_impacts = meta["has_impacts"]
+                    stage = meta["stage"]
                     
                     stage_vn = {
                         "FORECAST": "DỰ BÁO",
@@ -587,8 +583,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         agency=impacts["agency"][:255] if impacts["agency"] else None,
                         summary=summary,
                         image_url=_extract_image_url(entry),
-                        impact_details=nlp.extract_impact_details(text_for_nlp),
-                        needs_verification=int(nlp.validate_impacts(impacts)),
+                        impact_details=meta["impact_details"],
+                        needs_verification=meta["needs_verification"],
                         is_red_alert=is_red_alert
                     )
 
@@ -599,18 +595,18 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         # Process event matching for both Approved and Pending articles
                         # This allows "pending" articles to contribute to event metadata (multi-source count)
                         if status in ("approved", "pending"):
-                            upsert_event_for_article(db, article)
+                            await asyncio.to_thread(upsert_event_for_article, db, article)
 
                         if status == "approved":
-                            print(f"   [ADDED] {src.name}: {title[:70]}...")
+                            logger.info(f"   [ADDED] {src.name}: {title[:70]}...")
                         else:
-                            print(f"   [PENDING] {src.name}: {title[:70]}... (Score: {score:.1f})")
+                            logger.info(f"   [PENDING] {src.name}: {title[:70]}... (Score: {score:.1f})")
                             
                         new_count += 1
                         src_info["articles_added"] += 1
                     except Exception as e:
                         db.rollback()
-                        print(f"   [ERROR_DB] {src.name}: {e}")
+                        logger.error(f"   [ERROR_DB] {src.name}: {e}")
                         continue
 
                     # Log accepted/inserted candidate (for review)
@@ -750,9 +746,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 # Try HTML scraper
                 try:
                     if force_html_scrape:
-                         print(f"[INFO] {src.name} - forcing HTML scraper execution...")
+                         logger.info(f"{src.name} - forcing HTML scraper execution...")
                     else:
-                         print(f"[INFO] {src.name} - attempting HTML scraper fallback...")
+                         logger.info(f"{src.name} - attempting HTML scraper fallback...")
 
                     scraper = HTMLScraper(timeout=settings.request_timeout_seconds)
                     scraped_articles = await scraper.scrape_source(src.domain)
@@ -761,7 +757,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         stat["feed_used"] = f"{stat['feed_used']}, html_scraper" if stat["feed_used"] else "html_scraper"
                         # Reset elapsed since this is async/parallel to feed
                         # stat["elapsed"] += ... 
-                        print(f"[OK] {src.name} using html_scraper ({len(scraped_articles)} articles)")
+                        logger.info(f"{src.name} using html_scraper ({len(scraped_articles)} articles)")
                         
                         # Process scraped articles
                         for scraped in scraped_articles[:50]:
@@ -784,7 +780,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             if not nlp.contains_disaster_keywords(summary_raw_scraper, title=title, trusted_source=src.trusted, authority_level=src.authority_level):
                                 article_hash = get_article_hash(title, src.domain)
                                 diag = nlp.diagnose(summary_raw_scraper, title=title, authority_level=src.authority_level)
-                                print(f"[SKIP] {src.name} #{article_hash}: nlp-rejected score={diag['score']:.1f} reason={diag['reason']}")
+                                logger.info(f"{src.name} #{article_hash}: nlp-rejected score={diag['score']:.1f} reason={diag['reason']}")
                                 continue
                             
                             
@@ -807,7 +803,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             
                             if duplicate:
                                 article_hash = get_article_hash(title, src.domain)
-                                print(f"[DEDUP] {src.name} #{article_hash}: duplicate (skipped)")
+                                logger.info(f"{src.name} #{article_hash}: duplicate (skipped)")
                                 continue
                             
                             article = Article(
@@ -838,7 +834,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 db.flush()
                                 new_count += 1
                                 src_info["articles_added"] += 1
-                                print(f"   [ADDED_SCRAPE] {src.name}: {title[:70]}...")
+                                logger.info(f"   [ADDED_SCRAPE] {src.name}: {title[:70]}...")
                                 try:
                                     upsert_event_for_article(db, article)
                                 except Exception as e:
@@ -892,20 +888,20 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
 
                             except Exception as e:
                                 db.rollback()
-                                print(f"   [ERROR_DB_SCRAPE] {src.name}: {e}")
+                                logger.error(f"   [ERROR_DB_SCRAPE] {src.name}: {e}")
                                 continue
                         
                         feed_worked = True
                     else:
                         stat["error"] = "all feeds and scraper failed"
-                        print(f"[ERROR] {src.name} - html scraper returned no articles")
+                        logger.debug(f"[INFO] {src.name} - html scraper returned no articles")
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
-                    print(f"[ERROR] {src.name} - html scraper failed: {e}")
+                    logger.error(f"[ERROR] {src.name} - html scraper failed: {e}")
                 
                 if not feed_worked:
                     stat["error"] = "all feeds and scraper failed"
-                    print(f"[ERROR] {src.name} - all feed sources and scraper failed")
+                    logger.error(f"[ERROR] {src.name} - all feed sources and scraper failed")
             
             stat["articles_added"] = src_info["articles_added"]
             per_source_stats.append(stat)
@@ -934,11 +930,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 
                 db.commit()
             except Exception as e:
-                print(f"[WARN] Failed to update CrawlerStatus for {src.name}: {e}")
+                logger.warning(f"[WARN] Failed to update CrawlerStatus for {src.name}: {e}")
                 db.rollback()
             
         total_elapsed = time.perf_counter() - start_total
-        print(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
+        logger.info(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
 
         # Log crawl results
         try:
@@ -954,12 +950,15 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             with log_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(record, ensure_ascii=False) + "\n")
         except Exception as e:
-            print(f"[WARN] failed writing crawl log: {e}")
+            logger.warning(f"[WARN] failed writing crawl log: {e}")
 
-        return {"new_articles": new_count, "timestamp": datetime.now(timezone.utc).isoformat(), "elapsed": total_elapsed, "per_source": per_source_stats}
+        if new_count > 0:
+            logger.info(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
+
+        return {"status": "success", "new_articles": new_count, "sources_processed": len(per_source_stats)}
     except Exception as e:
-        print(f"[CRITICAL] crawler cycle failed: {e}")
-        raise e
+        logger.critical(f"[CRITICAL] crawler cycle failed: {e}")
+        return {"status": "error", "error": str(e)}
     finally:
         db.close()
 
@@ -986,12 +985,12 @@ def cleanup_old_pending_articles():
         ).delete(synchronize_session=False)
         db.commit()
         if deleted > 0:
-            print(f"[INFO] Cleaned up {deleted} old pending articles (older than 30 days).")
+            logger.info(f"Cleaned up {deleted} old pending articles (older than 30 days).")
         else:
-            print("[INFO] No old pending articles to clean up.")
+            logger.info("No old pending articles to clean up.")
     except Exception as e:
         db.rollback()
-        print(f"[ERROR] Failed to cleanup old pending articles: {e}")
+        logger.error(f"Failed to cleanup old pending articles: {e}")
     finally:
         db.close()
 
@@ -1001,9 +1000,10 @@ def main():
     parser.add_argument("--force", action="store_true", help="Ignore feed cache and force re-crawl")
     args = parser.parse_args()
     if args.once:
-        print(process_once(force=args.force))
+        import pprint
+        pprint.pprint(process_once(force=args.force))
     else:
-        print("Use --once; scheduling is handled by backend server.")
+        logger.info("Use --once; scheduling is handled by backend server.")
 
 
 if __name__ == "__main__":

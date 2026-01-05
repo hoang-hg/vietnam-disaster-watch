@@ -185,18 +185,15 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
                 "province": ev.province,
                 "started_at": ev.started_at.isoformat() if ev.started_at else None,
             }
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(broadcast.publish_event(data))
-                
-                # Also Push via WebSocket
-                from .ws import manager
-                loop.create_task(manager.broadcast({"type": "EVENT_UPSERT", "data": data}))
-            except RuntimeError:
-                # No running loop (likely running from a script or background worker outside FastAPI loop)
-                # We still append to buffer as publish_event does internally (but publish_event is async)
-                msg = broadcast._make_message(data)
-                broadcast._append_to_buffer(msg)
+        # Broadcast update
+        broadcast.publish_event_sync(data)
+        
+        # Also Push via WebSocket
+        try:
+            from .ws import manager
+            manager.broadcast_sync({"type": "EVENT_UPSERT", "data": data})
+        except ImportError:
+            pass
         except Exception:
             pass
 
@@ -267,7 +264,13 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     if article.commune and not ev.commune: ev.commune = article.commune
     if article.village and not ev.village: ev.village = article.village
     if article.route and not ev.route: ev.route = article.route
-    if article.location_description and not ev.location_description: ev.location_description = article.location_description
+    
+    # [OPTIMIZATION] Update to the most detailed location description (longest string)
+    new_loc = article.location_description or ""
+    old_loc = ev.location_description or ""
+    if len(new_loc) > len(old_loc):
+        ev.location_description = new_loc
+        
     if article.cause and not ev.cause: ev.cause = article.cause
     if article.characteristics and not ev.characteristics: ev.characteristics = article.characteristics
 
@@ -425,20 +428,20 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             "missing": ev.missing,
             "injured": ev.injured,
             "damage": ev.damage_billion_vnd,
+            "location_description": ev.location_description,
             "confidence": ev.confidence,
             "sources_count": ev.sources_count,
             "needs_verification": getattr(ev, 'needs_verification', 1),
             "is_red_alert": ev.is_red_alert,
             "last_updated": ev.last_updated_at.isoformat() if ev.last_updated_at else None
         }
-        asyncio.create_task(broadcast.publish_event(data))
+        broadcast.publish_event_sync(data)
         
         # Also Push via WebSocket
         try:
             from .ws import manager
-            loop = asyncio.get_running_loop()
-            loop.create_task(manager.broadcast({"type": "EVENT_UPSERT", "data": data}))
-        except (RuntimeError, ImportError):
+            manager.broadcast_sync({"type": "EVENT_UPSERT", "data": data})
+        except ImportError:
             pass
     except Exception:
         pass

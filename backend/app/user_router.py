@@ -176,7 +176,7 @@ def reject_report(
     return {"ok": True}
 
 @router.get("/admin/crowdsource/export")
-async def export_crowdsource_reports(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
+def export_crowdsource_reports(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     import pandas as pd
     import io
     from fastapi.responses import StreamingResponse

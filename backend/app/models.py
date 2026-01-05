@@ -100,6 +100,8 @@ class Event(Base):
         Index("ix_event_type_date", disaster_type, started_at),
         Index("ix_event_province_date", province, started_at),
         Index("ix_event_prov_type_date", province, disaster_type, started_at),
+        # Speed up public visibility filters
+        Index("ix_event_public_filter", confidence, needs_verification, sources_count),
     )
 
 class User(Base):

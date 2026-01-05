@@ -331,10 +331,14 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight animate-in fade-in slide-in-from-left duration-700">Tổng quan</h1>
           <p className="text-slate-500 text-xs mt-1 flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             Dữ liệu cập nhật: {lastUpdated} 
-            <span className="bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-100 uppercase tracking-tighter">
-              Tự động (5 ph)
+            <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-100 dark:border-emerald-500/20 uppercase tracking-tighter">
+              TRỰC TUYẾN
             </span>
           </p>
         </div>
