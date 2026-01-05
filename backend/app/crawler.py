@@ -449,9 +449,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             print(f"[DEDUP] {src.name}: {title[:100]}... (already approved)")
                             continue
                         
-                        # If it was pending but now is approved, we upgrade it
-                        if existing.status == "pending" and score > 13.0:
-                            print(f"[INFO] Upgrading article to Approved: {title} (Score: {score})")
+                        # If it was pending but giờ có điểm cao đủ để duyệt tự động, ta nâng cấp lên approved
+                        if existing.status == "pending" and score >= 15.0:
+                            print(f"[INFO] Nâng cấp bài viết lên Approved: {title} (Điểm mới: {score})")
                             existing.status = "approved"
                             existing.score = score
                             # Update impacts with new info if available
@@ -470,7 +470,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         continue # Skip to next article in feed
 
                     status = None
-                    if score > 15:
+                    if score >= 15.0:
                         status = "approved"
                     elif score >= 10.0:
                         status = "pending"
@@ -546,10 +546,13 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     disaster_type = disaster_info.get("primary_type", "unknown")
                     province = nlp.extract_province(text_for_nlp)
 
-                    impacts = nlp.extract_impacts(summary_raw or title)
+                    impacts = nlp.extract_impacts(text_for_nlp)
                     summary_text = nlp.summarize(summary_raw.replace("&nbsp;", " "), title=title)
                     
-                    stage = nlp.determine_event_stage(text_for_nlp)
+                    # Optimized: If impacts (deaths/missing) are found, prioritize INCIDENT or RECOVERY
+                    has_impacts = (impacts.get("deaths") or impacts.get("missing") or impacts.get("injured") or 0) > 0
+                    stage = nlp.determine_event_stage(text_for_nlp, impact_detected=has_impacts)
+                    
                     stage_vn = {
                         "FORECAST": "DỰ BÁO",
                         "INCIDENT": "DIỄN BIẾN",
@@ -573,6 +576,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         commune=impacts.get("commune"),
                         village=impacts.get("village"),
                         route=impacts.get("route"),
+                        location_description=impacts.get("location_description"),
                         cause=impacts.get("cause"),
                         characteristics=impacts.get("characteristics"),
                         stage=stage,

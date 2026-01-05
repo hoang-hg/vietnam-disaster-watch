@@ -86,6 +86,7 @@ def get_base_event_query(db: Session):
     return db.query(Event).options(
         defer(Event.cause),
         defer(Event.characteristics),
+        defer(Event.location_description),
         defer(Event.details)
     )
 
@@ -133,11 +134,25 @@ def events(
             (Event.needs_verification == 0) & (Event.sources_count >= 2)
         ))
 
-    # 2. Database-level filters (The "Easy" part of filter_disaster_events)
-    # We always exclude unknown/other at the DB level for performance
+    # 2. Database-level filters (Decision 18/2021/QĐ-TTg Implementation)
     query = query.filter(Event.disaster_type.notin_(["unknown", "other"]))
-    # Optimization: Filter empty sources in DB
     query = query.filter(Event.sources_count > 0)
+    
+    # Decision 18: Only show if it's a major hazard OR has recorded impact
+    major_hazards = [
+        "storm", "flood", "flash_flood", "landslide", "subsidence", 
+        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
+        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
+        "warning_forecast", "recovery"
+    ]
+    
+    from sqlalchemy import or_
+    dec18_filter = or_(
+        Event.disaster_type.in_(major_hazards),
+        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
+         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
+    )
+    query = query.filter(dec18_filter)
 
     if date:
         try:
@@ -521,12 +536,27 @@ def stats_summary(
     if province: needs_verify_q = needs_verify_q.filter(Article.province == province)
     needs_verification_count = needs_verify_q.scalar() or 0
 
-    # 2. Events Aggregation
+    # 2. Events Aggregation (With Decision 18 Filtering)
+    major_hazards = [
+        "storm", "flood", "flash_flood", "landslide", "subsidence", 
+        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
+        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
+        "warning_forecast", "recovery"
+    ]
+    
+    from sqlalchemy import or_
+    dec18_filter = or_(
+        Event.disaster_type.in_(major_hazards),
+        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
+         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
+    )
+
     events_q = db.query(Event).filter(
         Event.started_at >= start, 
         Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
-        Event.sources_count > 0
+        Event.sources_count > 0,
+        dec18_filter
     )
     
     if not is_admin:
@@ -546,7 +576,8 @@ def stats_summary(
         Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0,
-        Event.province.in_(PROVINCES) # Only count valid provinces
+        Event.province.in_(PROVINCES),
+        dec18_filter
     )
     if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
     if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
@@ -588,7 +619,8 @@ def stats_summary(
         Event.started_at >= start, 
         Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
-        Event.sources_count > 0
+        Event.sources_count > 0,
+        dec18_filter
     )
     if type: agg_q = agg_q.filter(Event.disaster_type == type)
     if province: agg_q = agg_q.filter(Event.province == province)

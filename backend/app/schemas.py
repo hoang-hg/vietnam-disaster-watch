@@ -15,6 +15,7 @@ class ArticleOut(BaseModel):
     route: str | None = None
     cause: str | None = None
     characteristics: str | None = None
+    location_description: str | None = None
     deaths: int | None
     missing: int | None
     injured: int | None

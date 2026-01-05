@@ -106,8 +106,6 @@ IMPACT_KEYWORDS = {
             "tìm kiếm", "truy tìm", "rà soát", "tổ chức tìm kiếm", "mở rộng phạm vi tìm kiếm",
             "tìm kiếm cứu nạn", "tìm kiếm cứu hộ", "cứu hộ cứu nạn", "lực lượng cứu nạn",
             "tìm kiếm xuyên đêm", "tiếp tục tìm kiếm", "đang tìm kiếm", 
-            "mat tich", "mat lien lac", "khong ro tung tich", "chua tim thay",
-            "troi dat", "chim tau", "lat thuyen", "roi xuong bien",
         ],
         "regex": [
             r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|công nhân|thuyền viên|ngư dân|nhân khẩu)(?:[^0-9]{0,20})?\s*(bị|đã)?\s*(mất tích|mất liên lạc|chưa tìm thấy|chưa liên lạc được|không rõ tung tích|cuốn trôi|lũ cuốn|nước cuốn|vùi lấp|mắc kẹt)\b",
@@ -140,8 +138,7 @@ IMPACT_KEYWORDS = {
             "bỏng nặng", "bỏng nhẹ", "bị bỏng", "ngạt khói", "sặc khói",
             "ngộ độc khí", "ngộ độc", "khó thở", "hôn mê", "bất tỉnh",
             "người dân", "ngư dân", "thuyền viên", "hành khách", "tài xế", "lái xe",
-            "du khách", "cư dân", "học sinh", "công nhân", "chiến sĩ",
-            "bi thuong", "nhap vien", "cap cuu", "chan thuong", "da chan thuong", "bong", "gay xuong",
+            "du khách", "cư dân", "học sinh", "công nhân", "chiến sĩ"
         ],
         "regex": [
             r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:\s*[–-]\s*\d+)?)\s*(?P<unit>người|nạn nhân|em|cháu|ca)\s*(bị thương|trọng thương|nhập viện|cấp cứu|đa chấn thương|thương tích|xây xát|bị bỏng|bất tỉnh|gãy xương|chấn thương)\b",
@@ -259,8 +256,6 @@ IMPACT_KEYWORDS = {
             "mất nước", "gián đoạn cấp nước", "ngừng cấp nước",
             "mất sóng", "mất mạng", "mất internet", "mất 3G", "mất 4G", "mất 5G",
             "gián đoạn thông tin", "gián đoạn viễn thông", "đứt cáp quang",
-            "so tan", "di doi", "di tan", "cam duong", "dong duong", "phan luong",
-            "cam bien", "cam ra khoi", "neo dau", "mat dien", "mat nuoc", "mat song", "dut cap quang",
         ],
         "regex": [
             r"\b(cấm|đóng|tạm dừng|tạm ngưng)\s*(?P<unit>đường|lưu thông)\b",
@@ -322,10 +317,6 @@ IMPACT_KEYWORDS = {
             "nuôi trồng thủy sản", "thủy sản", "tôm", "cá",
             "ao nuôi", "đầm nuôi", "bè", "lồng", "lồng bè", "lồng nuôi", "bè cá",
             "trôi lồng bè", "vỡ ao", "tràn ao", "thất thoát thủy sản", "cá chết", "tôm chết",
-            "hoa mau", "cay trong", "lua", "ngo", "bap", "mia", "san", "rau mau",
-            "gia suc", "gia cam", "trau", "bo", "lon", "heo", "ga", "vit",
-            "thuy san", "tom", "ca", "ao nuoi", "dam nuoi", "long be", "be ca",
-            "mat trang", "mat mua", "ngap ung", "hu hai", "thiet hai",
         ],
         "regex": [
             r"\b(?P<num>\d+(?:[.,]\d+)?)\s*(?P<unit>ha|hecta|héc\s*ta|sào)\s*(?P<crop>lúa|hoa\s*màu|cây\s*trồng|ruộng|mía|ngô|bắp|rau|cà\s*phê|tiêu|điều)\b(?:[^.\n]{0,30})?\b(?P<status>bị\s*ngập|ngập\s*úng|hư\s*hại|thiệt\s*hại|mất\s*trắng|đổ\s*ngã|dập\s*nát)\b",
@@ -753,13 +744,7 @@ DISASTER_RULES = [
 # High-priority keywords are now centralized in sources.py
 HIGH_PRIORITY_RE = [re.compile(p, re.IGNORECASE) for p in sources.HIGH_PRIORITY_KEYWORDS]
 
-# Red Alert (High-danger warning) keywords
-DANGER_SIGS = [
-    r"khẩn\s*cấp", r"đặc\s*biệt\s*nguy\s*hiểm", r"cực\s*kỳ\s*nguy\s*hiểm",
-    r"siêu\s*bão", r"lũ\s*lịch\s*sử", r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*[345]",
-    r"đặc\s*biệt\s*lớn", r"nguy\s*hiểm\s*cao", r"báo\s*động\s*đỏ", r"cảnh\s*báo\s*đỏ"
-]
-DANGER_RE = [re.compile(p, re.IGNORECASE) for p in DANGER_SIGS]
+DANGER_RE = [re.compile(p, re.IGNORECASE) for p in sources.DANGER_SIGS]
 
 # Risk Level Patterns (Decision 18 Art 4)
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*([1-5I-V])", re.IGNORECASE)
@@ -2728,24 +2713,20 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     if title_rule_match:
         rule_score += 2.0 # Increased from 1.5
 
-    # Determine event stage EARLY to use in red alert detection
-    event_stage = determine_event_stage(search_text)
-
     # Red Alert Detection (High-danger warnings)
     is_red_alert = False
-    if event_stage == "FORECAST":
-        # Check title first (higher confidence)
-        if title:
-            for dr in DANGER_RE:
-                if dr.search(title):
-                    is_red_alert = True
-                    break
-        # Then check body
-        if not is_red_alert:
-            for dr in DANGER_RE:
-                if dr.search(text):
-                    is_red_alert = True
-                    break
+    # Check title first (higher confidence)
+    if title:
+        for dr in DANGER_RE:
+            if dr.search(title):
+                is_red_alert = True
+                break
+    # Then check body
+    if not is_red_alert:
+        for dr in DANGER_RE:
+            if dr.search(text):
+                is_red_alert = True
+                break
 
     # 2. Impact Match - Deaths, missing, or significant damage/metrics
     # REFINED: Use extracted objects to determine impact_score
@@ -2759,6 +2740,9 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
 
     # Impact score is fixed if ANY major impact sign is found after negation-filtering
     impact_score = WEIGHT_IMPACT if (impact_found or real_metrics_found) else 0.0
+
+    # Determine event stage using impact signals for priority
+    event_stage = determine_event_stage(search_text, impact_detected=impact_found)
 
     # [OPTIMIZATION] Magnitude Scaling: Bonus for extreme values
     extreme_bonus = 0.0
@@ -2921,7 +2905,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "is_red_alert": is_red_alert
     }
 
-def determine_event_stage(text: str) -> str:
+def determine_event_stage(text: str, impact_detected: bool = False) -> str:
     """
     Classify event stage: FORECAST, INCIDENT, or RECOVERY.
     Uses keyword density/scoring for robustness.
@@ -2941,10 +2925,12 @@ def determine_event_stage(text: str) -> str:
     for kw in INCIDENT_SIGS:
         if re.search(kw, t_lower): scores["INCIDENT"] += 2
 
-    # Tie-break logic:
-    # If it's a "Bản tin dự báo" but mentions "đã gây thiệt hại", it's likely still a FORECAST
-    # bulletin analyzing past impact, but for filtering we treat INCIDENT as higher priority
-    # IF impact data is present.
+    # [OPTIMIZATION] Impact Priority: If real impact (deaths/missing) is mentioned,
+    # it's almost certainly an INCIDENT or RECOVERY, even if the article title says "Forecast".
+    if impact_detected:
+        if scores["RECOVERY"] > 0:
+            return "RECOVERY"
+        return "INCIDENT"
 
     # Selection
     max_score = max(scores.values())
@@ -3089,55 +3075,71 @@ def extract_impacts(text: str) -> dict:
         "village": None,
         "route": None,
         "cause": None,
-        "characteristics": None
+        "characteristics": None,
+        "location_description": None
     }
     
-    # 1. Human casualties
+    # 1. Human casualties (using max value from detailed extraction)
     for k in ["deaths", "missing", "injured"]:
-        if k in details:
-            res[k] = details[k]
+        if k in details and details[k]:
+            res[k] = max([item["max"] for item in details[k]])
 
-    # 2. Financial Damage
+    # 2. Financial Damage (Using max value reported to avoid duplicate sums)
     if "damage" in details:
-        total_billion = 0.0
+        max_billion = 0.0
         for item in details["damage"]:
-            val = item.get("num", 0)
+            val = item.get("max", 0)
             u = item.get("unit", "").lower()
-            if "tỷ" in u or "ty" in u: total_billion += val
-            elif "triệu" in u or "trieu" in u: total_billion += val / 1000.0
-        if total_billion > 0:
-            res["damage_billion_vnd"] = total_billion
+            val_converted = 0.0
+            if "tỷ" in u or "ty" in u or "tỉ" in u: val_converted = val
+            elif "triệu" in u or "trieu" in u: val_converted = val / 1000.0
+            
+            if val_converted > max_billion:
+                max_billion = val_converted
+        res["damage_billion_vnd"] = max_billion
             
     # 3. Agency
     m_agency = RE_AGENCY.search(text)
     if m_agency: res["agency"] = m_agency.group(1)
 
     # 4. Location Details (Commune, Village, Route)
-    # Commune (Xã/Phường)
-    # Matches words starting with uppercase letters after keywords
     m_commune = re.search(r"(?:xã|phường|thị\s*trấn|thị\s*tứ)\s+([A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)", text)
     if m_commune: res["commune"] = m_commune.group(1).strip()
 
-    # Village (Thôn/Bản/Ngõ/Hẻm)
-    # Added Ngõ, Hẻm, Ngách as per user request
     m_village = re.search(r"(?:thôn|bản|ấp|xóm|khối|tổ|khu\s*phố|ngõ|ngách|hẻm|số\s*nhà)\s+([A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*(?:\s+[A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*)*)", text)
     if m_village: res["village"] = m_village.group(1).strip()
 
-    # Route (Tuyến đường/Quốc lộ)
-    # Handles alphanumeric routes like QL1A, ĐT602
     m_route = re.search(r"(?:tuyến|quốc\s*lộ|tỉnh\s*lộ|đường|cao\s*tốc)\s+([A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*(\s+[A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*)*)", text)
     if m_route: res["route"] = m_route.group(1).strip()
 
-    # 5. Cause (Nguyên nhân)
+    # 5. Cause
     if "mưa" in t_lower: res["cause"] = "Mưa lớn"
     elif any(kw in t_lower for kw in ["nhân sinh", "xây dựng", "đào đắp", "xẻ núi"]): res["cause"] = "Hoạt động nhân sinh"
     
-    # 6. Characteristics (Mô tả đặc điểm)
-    # Extract sentences containing time duration or scale
+    # 6. Characteristics
     m_char = re.search(r"([^.?!]*(?:kéo dài|diễn ra|khối lượng|diện tích)[^.?!]*[.?!])", text, re.IGNORECASE)
     if m_char: res["characteristics"] = m_char.group(1).strip()
 
+    # 7. Auto-generated Location Description
+    res["location_description"] = format_location_description(res, extract_province(text))
+
     return res
+
+def format_location_description(impacts: dict, province: str) -> str:
+    """
+    Format a readable location string from components.
+    """
+    parts = []
+    if impacts.get("village"): parts.append(impacts["village"])
+    if impacts.get("commune"): parts.append(impacts["commune"])
+    if impacts.get("route"): parts.append(impacts["route"])
+    
+    loc = ", ".join(parts)
+    if loc and province and province != "unknown":
+        return f"{loc}, {province}"
+    elif loc:
+        return loc
+    return province if province != "unknown" else ""
 
 def extract_event_time(published_at: datetime, text: str) -> datetime | None:
     """
@@ -3259,7 +3261,8 @@ def classify_disaster(text: str, title: str = "") -> dict:
     PRIO = [
         "tsunami", "earthquake", "storm", "flash_flood", "landslide", 
         "flood", "subsidence", "storm_surge", "wildfire", "salinity",
-        "drought", "heatwave", "cold_surge", "extreme_weather"
+        "drought", "heatwave", "cold_surge", "extreme_weather", "erosion",
+        "warning_forecast", "recovery"
     ]
 
     primary = "unknown"
@@ -3267,7 +3270,7 @@ def classify_disaster(text: str, title: str = "") -> dict:
         # Sort by weight, then by priority index
         sorted_hazards = sorted(
             hazard_weights.items(),
-            key=lambda item: (-item[1], PRIO.index(item[0]) if item[0] in PRIO else 99)
+            key=lambda item: (-item[1], DISASTER_PRIORITY.index(item[0]) if item[0] in DISASTER_PRIORITY else 99)
         )
         if sorted_hazards[0][1] > 0:
             primary = sorted_hazards[0][0]
@@ -3394,37 +3397,6 @@ def extract_impact_details(text: str) -> dict:
         results[f["type"]].append(f)
         
     return results
-
-def extract_impacts(text: str) -> dict:
-    """
-    Wrapper for extract_impact_details for backward compatibility.
-    """
-    details = extract_impact_details(text)
-    res = {
-        "deaths": None,
-        "missing": None,
-        "injured": None,
-        "damage_billion_vnd": 0.0,
-        "agency": None
-    }
-    
-    for k in ["deaths", "missing", "injured"]:
-        if k in details and details[k]:
-            res[k] = [item["max"] for item in details[k]]
-            
-    # damage_billion_vnd calculation
-    damage_items = details.get("damage", [])
-    total_billion = 0.0
-    for item in damage_items:
-        v = float(item["max"])
-        u = (item.get("unit") or "").lower()
-        if "tỷ" in u or "tỉ" in u:
-            total_billion += v
-        elif "triệu" in u or "trieu" in u:
-            total_billion += v / 1000.0
-            
-    res["damage_billion_vnd"] = total_billion
-    return res
 
 # DATA INTEGRITY: OUTLIER DETECTION
 

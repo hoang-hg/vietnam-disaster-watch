@@ -1,8 +1,20 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from .models import Article, Event
-from . import broadcast
+from . import broadcast, nlp
 import re
+
+# Clusters of related disaster types to allow cross-matching (e.g. Storm causes Flood)
+DISASTER_CLUSTERS = {
+    "storm": ["storm", "extreme_weather", "storm_surge", "flood"],
+    "flood": ["flood", "flash_flood", "landslide", "storm", "extreme_weather"],
+    "flash_flood": ["flash_flood", "landslide", "flood"],
+    "landslide": ["landslide", "flash_flood", "subsidence", "erosion"],
+    "drought": ["drought", "salinity", "heatwave"],
+    "salinity": ["salinity", "drought"],
+    "earthquake": ["earthquake", "tsunami"],
+    "tsunami": ["tsunami", "earthquake"],
+}
 
 # Vietnamese stop words to improve similarity accuracy
 STOPWORDS = {
@@ -81,8 +93,12 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     
     impact_bucket = _get_impact_bucket(article)
     
+    # 1. Broad Candidate Search (24h window + Disaster Cluster)
+    # We look for events in the same cluster to handle terminology variations (e.g. 'storm' vs 'flood')
+    cluster = DISASTER_CLUSTERS.get(article.disaster_type, [article.disaster_type])
+    
     candidates = db.query(Event).filter(
-        Event.disaster_type == article.disaster_type,
+        Event.disaster_type.in_(cluster),
         Event.province == article.province,
         Event.last_updated_at >= window_start,
         Event.last_updated_at <= window_end
@@ -148,6 +164,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             commune=article.commune,
             village=article.village,
             route=article.route,
+            location_description=article.location_description,
             cause=article.cause,
             characteristics=article.characteristics,
             details={"impact_bucket": impact_bucket},
@@ -213,6 +230,14 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             ev.details = {}
         ev.details["impact_bucket"] = impact_bucket
 
+    # Update Type (Upgrade to more severe type if prioritized)
+    # Use global DISASTER_PRIORITY from nlp.py
+    if article.disaster_type != ev.disaster_type:
+        prio = nlp.DISASTER_PRIORITY
+        if article.disaster_type in prio and ev.disaster_type in prio:
+            if prio.index(article.disaster_type) < prio.index(ev.disaster_type):
+                ev.disaster_type = article.disaster_type
+
     # Update Stage (Recovery > Incident > Forecast)
     stage_priority = {"FORECAST": 1, "INCIDENT": 2, "RECOVERY": 3}
     if stage_priority.get(article.stage, 0) > stage_priority.get(ev.stage, 0):
@@ -242,6 +267,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     if article.commune and not ev.commune: ev.commune = article.commune
     if article.village and not ev.village: ev.village = article.village
     if article.route and not ev.route: ev.route = article.route
+    if article.location_description and not ev.location_description: ev.location_description = article.location_description
     if article.cause and not ev.cause: ev.cause = article.cause
     if article.characteristics and not ev.characteristics: ev.characteristics = article.characteristics
 
