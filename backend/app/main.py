@@ -146,31 +146,31 @@ async def on_startup():
             "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
         ]
 
-    # Job 1: Group 1 (Critical Official Sources) - Frequency: 2 HOURS (120 mins)
+    # Job 1: Group 1 (Critical Official Sources) - Frequency: 3 HOURS (180 mins)
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier1_sources()),
-        trigger=IntervalTrigger(minutes=120, jitter=10),
+        trigger=IntervalTrigger(minutes=180, jitter=10),
         id="crawl_group1_critical",
         replace_existing=True,
         misfire_grace_time=300
     )
 
-    # Job 2: Group 2 (Major National News) - Frequency: 4 HOURS (240 mins)
+    # Job 2: Group 2 (Major National News) - Frequency: 6 HOURS (360 mins)
     # Coverage: VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí, VTV, VOV...
     scheduler.add_job(
         lambda: process_once(only_sources=get_tier2_sources()),
-        trigger=IntervalTrigger(minutes=240, jitter=20),
+        trigger=IntervalTrigger(minutes=360, jitter=20),
         id="crawl_group2_major",
         replace_existing=True,
         misfire_grace_time=600
     )
 
-    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 8 HOURS (480 mins)
+    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 9 HOURS (540 mins)
     # Performs a complete scan of all sources in sources.json.
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=480, jitter=120),
+        trigger=IntervalTrigger(minutes=540, jitter=120),
         id="crawl_group3_full",
         replace_existing=True,
         misfire_grace_time=1200
@@ -215,3 +215,6 @@ async def on_startup():
 @app.on_event("shutdown")
 def on_shutdown():
     scheduler.shutdown(wait=False)
+
+
+

@@ -38,12 +38,12 @@ def filter_disaster_events(events):
             "storm", "flood", "flash_flood", "landslide", "subsidence", 
             "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
             "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-            "warning_forecast", "recovery", "marine"
+            "warning_forecast", "recovery"
         ]
         
         if not is_impacting and ev.disaster_type not in major_hazards:
              d = ev.details or {}
-             if not (d.get("homes") or d.get("agriculture") or d.get("infrastructure") or d.get("marine")):
+             if not (d.get("homes") or d.get("agriculture") or d.get("infrastructure")):
                 # Likely administrative/routine news
                 continue
         filtered.append(ev)
@@ -502,6 +502,8 @@ def stats_summary(
         end = datetime.utcnow()
 
     # 1. New articles count (total signals)
+    article_count_q = db.query(func.count(Article.id)).filter(
+        Article.published_at >= start,
         Article.published_at < end,
         Article.status == "approved"
     )
@@ -539,6 +541,9 @@ def stats_summary(
     
     # Counts by distinct provinces
     # SQLAlchemy doesn't support count(distinct) cleanly in all dialects without func, but usually fine
+    provinces_count_q = db.query(func.count(func.distinct(Event.province))).filter(
+        Event.started_at >= start,
+        Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0,
         Event.province.in_(PROVINCES) # Only count valid provinces
@@ -604,6 +609,9 @@ def stats_summary(
     events_property_damage = agg_res[5] or 0
 
     # Type breakdown
+    type_counts_q = db.query(Event.disaster_type, func.count(Event.id)).filter(
+        Event.started_at >= start,
+        Event.started_at < end,
         Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0
     )
@@ -622,7 +630,7 @@ def stats_summary(
         "storm", "flood", "flash_flood", "landslide", "subsidence", 
         "drought", "salinity", "extreme_weather", "heatwave", "cold_surge",
         "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-        "warning_forecast", "recovery", "marine"
+        "warning_forecast", "recovery"
     ]
     type_counts = {t: 0 for t in official_types}
     type_counts["unknown"] = 0
@@ -635,6 +643,10 @@ def stats_summary(
             type_counts["unknown"] += cnt # Should be 0 since we filtered unknown
 
     # Top Provinces breakdown (for hotspots) (Limit to top 20)
+    prov_counts_q = db.query(Event.province, func.count(Event.id)).filter(
+        Event.started_at >= start,
+        Event.started_at < end,
+        Event.disaster_type.notin_(["unknown", "other"]),
         Event.sources_count > 0,
         Event.province.in_(PROVINCES)
     )
@@ -1018,6 +1030,33 @@ def sources_health():
 @router.get("/admin/crawler-status")
 def get_crawler_status(db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     return db.query(CrawlerStatus).all()
+
+@router.post("/admin/crawler/run")
+async def trigger_crawler(db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+    """Manually triggers a full crawl job."""
+    from .crawler import _process_once_async
+    # Run in background to not block the request
+    asyncio.create_task(_process_once_async())
+    return {"ok": True, "message": "Crawler started in background."}
+
+@router.post("/admin/system/clear-cache")
+async def clear_system_cache(admin: models.User = Depends(get_current_admin)):
+    """Clears all cached API responses."""
+    from .cache import cache
+    if hasattr(cache, 'clear'):
+        cache.clear()
+    return {"ok": True, "message": "Cache cleared."}
+
+@router.post("/admin/system/restart")
+async def restart_system(admin: models.User = Depends(get_current_admin)):
+    """Triggers a backend restart by touching a source file (requires --reload)."""
+    main_file = Path(__file__).resolve().parent / "main.py"
+    if main_file.exists():
+        # Append a newline to trigger uvicorn reload
+        with open(main_file, "a") as f:
+            f.write("\n")
+        return {"ok": True, "message": "Backend restart triggered (reloader)."}
+    return {"ok": False, "message": "Main file not found, restart failed."}
 
 @router.post("/admin/ai-feedback")
 async def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):

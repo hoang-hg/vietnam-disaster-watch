@@ -20,10 +20,10 @@ export default function Toast({
   if (!isVisible) return null;
 
   const styles = {
-    success: 'bg-emerald-50 border-emerald-200 text-emerald-800 shadow-emerald-100',
-    error: 'bg-red-50 border-red-200 text-red-800 shadow-red-100',
-    warning: 'bg-amber-50 border-amber-200 text-amber-800 shadow-amber-100',
-    info: 'bg-blue-50 border-blue-200 text-blue-800 shadow-blue-100'
+    success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-400',
+    error: 'bg-red-500/10 border-red-500/20 text-red-900 dark:text-red-400',
+    warning: 'bg-amber-500/10 border-amber-500/20 text-amber-900 dark:text-amber-400',
+    info: 'bg-blue-500/10 border-blue-500/20 text-blue-900 dark:text-blue-400'
   }[type];
 
   const icons = {
@@ -34,20 +34,24 @@ export default function Toast({
   }[type];
 
   return (
-    <div className="fixed top-6 right-6 z-[300] animate-in slide-in-from-right-full duration-300 no-print">
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-xl ${styles} min-w-[300px]`}>
-        <div className="shrink-0">
+    <div className="fixed top-6 right-6 z-[300] animate-in slide-in-from-right-full fade-in duration-500 no-print">
+      <div className={`flex items-center gap-4 px-5 py-4 rounded-2xl border backdrop-blur-md shadow-2xl ${styles} min-w-[320px] relative overflow-hidden`}>
+        <div className="shrink-0 scale-110">
           {icons}
         </div>
-        <div className="flex-1 text-sm font-bold leading-tight">
+        <div className="flex-1 text-sm font-black uppercase tracking-tight leading-tight">
           {message}
         </div>
         <button 
           onClick={onClose}
-          className="p-1 hover:bg-black/5 rounded-lg transition-colors text-current/50"
+          className="p-1.5 hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-colors text-current/40 hover:text-current"
         >
           <X className="w-4 h-4" />
         </button>
+
+        {/* Action Progress Bar */}
+        <div className="absolute bottom-0 left-0 h-1 bg-current opacity-20 w-full animate-toast-progress origin-left" 
+             style={{ animationDuration: `${duration}ms` }} />
       </div>
     </div>
   );

@@ -66,6 +66,7 @@ export default function AdminSkipLogs() {
         setSkippedItems(Array.isArray(data) ? data : []);
       }
     } catch (e) {
+      if (e.name === 'AbortError') return;
       console.error(e);
       setError("Không thể tải dữ liệu: " + (e.message || String(e)));
     } finally {
@@ -168,6 +169,42 @@ export default function AdminSkipLogs() {
     }
   }
 
+  async function handleTriggerCrawl() {
+    setLoading(true);
+    try {
+        await postJson("/api/admin/crawler/run", {});
+        showToast("Đã kích hoạt Crawler chạy ngầm!");
+        // Refresh status after a bit
+        setTimeout(() => fetchData(), 2000);
+    } catch (e) {
+        setError("Lỗi kích hoạt Crawler: " + e.message);
+    } finally {
+        setLoading(false);
+    }
+  }
+
+  async function handleRestartSystem() {
+    setConfirmModal({ 
+        isOpen: true, 
+        id: 'system', 
+        action: 'restart', 
+        type: 'system' 
+    });
+  }
+
+  async function executeRestart() {
+    setLoading(true);
+    try {
+        await postJson("/api/admin/system/restart", {});
+        showToast("Đang gửi lệnh khởi động lại...", "warning");
+        setTimeout(() => window.location.reload(), 3000);
+    } catch (e) {
+        setError("Lỗi khởi động lại: " + e.message);
+    } finally {
+        setLoading(false);
+    }
+  }
+
   const handleActionClick = (id, action, type = "article") => {
     setConfirmModal({ isOpen: true, id, action, type });
   };
@@ -182,6 +219,8 @@ export default function AdminSkipLogs() {
     } else if (type === "report") {
         if (action === "approve") await handleApproveReport(id);
         if (action === "reject") await handleRejectReport(id);
+    } else if (type === "system") {
+        if (action === "restart") await executeRestart();
     }
   };
 
@@ -279,7 +318,31 @@ export default function AdminSkipLogs() {
         )}
 
         {!loading && activeTab === "crawler" && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="space-y-6">
+            <div className="flex flex-wrap gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm items-center justify-between">
+                <div>
+                    <h3 className="text-lg font-black text-slate-800 uppercase">Trạng thái vận hành</h3>
+                    <p className="text-xs text-slate-400 font-medium tracking-tight">Điều khiển và giám sát tiến trình Crawler</p>
+                </div>
+                <div className="flex gap-3">
+                    <button 
+                        onClick={handleTriggerCrawl}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#2fa1b3] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#258a9b] transition-all shadow-lg shadow-[#2fa1b3]/20"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Cập nhật ngay
+                    </button>
+                    <button 
+                        onClick={handleRestartSystem}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Restart Backend
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -325,7 +388,8 @@ export default function AdminSkipLogs() {
               </table>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         {!loading && activeTab !== "crawler" && (activeTab === "pending" ? pendingItems : (activeTab === "reports" ? crowdReports : skippedItems)).length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-dashed border-slate-300 shadow-sm text-center px-6">
@@ -380,7 +444,7 @@ export default function AdminSkipLogs() {
 
                          <div className="flex sm:flex-col justify-center gap-2 sm:w-32 flex-shrink-0">
                             <button
-                                onClick={() => handleActionClick(report.id, "approve", "report")}
+                                onClick={() => handleApproveReport(report.id)}
                                 disabled={processingId === report.id}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
                             >
@@ -388,7 +452,7 @@ export default function AdminSkipLogs() {
                                 DUYỆT
                             </button>
                             <button
-                                onClick={() => handleActionClick(report.id, "reject", "report")}
+                                onClick={() => handleRejectReport(report.id)}
                                 disabled={processingId === report.id}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-slate-400 border border-slate-200 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50"
                             >
@@ -425,6 +489,13 @@ export default function AdminSkipLogs() {
                     {new Date(article.published_at || article.timestamp).toLocaleString("vi-VN")}
                     <span className="mx-1">•</span>
                     <span className="text-[#2fa1b3] uppercase">{article.source}</span>
+                    <span className="mx-1">•</span>
+                    <span 
+                      className="px-2 py-0.5 rounded text-[10px] font-black uppercase text-white shadow-sm"
+                      style={{ backgroundColor: DISASTER_METADATA[article.disaster_type || article.diagnose?.disaster_type]?.color || '#94a3b8' }}
+                    >
+                      {DISASTER_METADATA[article.disaster_type || article.diagnose?.disaster_type]?.label || (article.disaster_type || article.diagnose?.disaster_type || "Không xác định")}
+                    </span>
                   </div>
                   <h3 className="text-lg font-bold text-slate-800 leading-tight mb-2 pr-4">{article.title}</h3>
                   <div className="flex items-center gap-4 text-xs">
@@ -463,7 +534,7 @@ export default function AdminSkipLogs() {
                       PHÂN LOẠI LẠI
                     </button>
                     <button
-                      onClick={() => handleActionClick(article.id, "approve", "article")}
+                      onClick={() => handleApprove(article.id)}
                       disabled={processingId === article.id}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50"
                     >
@@ -471,7 +542,7 @@ export default function AdminSkipLogs() {
                       DUYỆT
                     </button>
                     <button
-                      onClick={() => handleActionClick(article.id, "reject", "article")}
+                      onClick={() => handleReject(article.id)}
                       disabled={processingId === article.id}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-red-600 border-2 border-red-500 rounded-xl font-bold text-sm hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50"
                     >
@@ -556,11 +627,16 @@ export default function AdminSkipLogs() {
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ isOpen: false, id: null, action: null })}
         onConfirm={confirmAction}
-        title={confirmModal.action === "approve" ? "Xác nhận duyệt" : "Xác nhận loại bỏ"}
-        message={confirmModal.action === "approve" 
-            ? `Bạn có chắc chắn muốn DUYỆT ${confirmModal.type === "article" ? "tin tức" : "báo cáo"} này?`
-            : `Bạn có chắc chắn muốn LOẠI BỎ ${confirmModal.type === "article" ? "tin tức" : "báo cáo"} này khỏi hàng đợi?`
+        title={confirmModal.action === "restart" ? "Khởi động lại Backend" : (confirmModal.action === "approve" ? "Xác nhận duyệt" : "Xác nhận loại bỏ")}
+        message={confirmModal.action === "restart"
+            ? "Bạn có chắc chắn muốn khởi động lại Backend? Hệ thống sẽ tạm ngưng trong vài giây (yêu cầu server chạy chế độ --reload)."
+            : (confirmModal.action === "approve" 
+                ? `Bạn có chắc chắn muốn DUYỆT ${confirmModal.type === "article" ? "tin tức" : "báo cáo"} này?`
+                : `Bạn có chắc chắn muốn LOẠI BỎ ${confirmModal.type === "article" ? "tin tức" : "báo cáo"} này khỏi hàng đợi?`
+              )
         }
+        confirmLabel={confirmModal.action === "restart" ? "Khởi động lại ngay" : "Thực hiện"}
+        variant={confirmModal.action === "restart" ? "warning" : "danger"}
       />
     </div>
   );

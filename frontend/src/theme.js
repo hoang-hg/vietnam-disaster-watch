@@ -33,7 +33,6 @@ export const THEME_COLORS = {
   storm_surge: "#8b5cf6",     // Violet 500
   wildfire: "#b91c1c",        // Red 700
   erosion: "#db2777",         // Pink 600
-  marine: "#0ea5e9",          // Sky 500 (Anchor blue)
   
   warning_forecast: "#fde047", // Yellow 300
   recovery: "#10b981",         // Emerald 500
@@ -57,7 +56,6 @@ export const DISASTER_METADATA = {
     storm_surge: { label: "Nước dâng", tone: "violet", color: THEME_COLORS.storm_surge },
     wildfire: { label: "Cháy rừng", tone: "rose", color: THEME_COLORS.wildfire },
     erosion: { label: "Xói lở", tone: "pink", color: THEME_COLORS.erosion },
-    marine: { label: "Tai nạn hàng hải", tone: "sky", color: THEME_COLORS.marine },
     warning_forecast: { label: "Cảnh báo, dự báo", tone: "yellow", color: THEME_COLORS.warning_forecast },
     recovery: { label: "Khắc phục hậu quả", tone: "emerald", color: THEME_COLORS.recovery },
     unknown: { label: "Chưa phân loại", tone: "slate", color: THEME_COLORS.unknown },

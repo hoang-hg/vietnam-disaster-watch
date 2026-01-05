@@ -673,23 +673,6 @@ export default function EventDetail() {
                       </div>
                   )}
 
-                  {/* Marine Details */}
-                  {ev.details.marine?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                          <div className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                               Tàu thuyền & Thủy sản
-                          </div>
-                          <div className="space-y-2">
-                              {ev.details.marine.map((m, i) => (
-                                  <div key={i} className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 truncate mr-2">{m.vessel || 'Phương tiện'}</span>
-                                      <span className="font-bold text-slate-900 whitespace-nowrap">{m.num} {m.unit}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
 
                   {/* Disruption Details */}
                   {ev.details.disruption?.length > 0 && (

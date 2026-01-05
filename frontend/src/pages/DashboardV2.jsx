@@ -40,7 +40,8 @@ import {
   ChevronRight,
   Search,
   FileText,
-  Bell
+  Bell,
+  History
 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 
@@ -122,7 +123,6 @@ export default function Dashboard() {
                    (det.homes?.length > 0) || 
                    (det.agriculture?.length > 0) || 
                    (det.infrastructure?.length > 0) || 
-                   (det.marine?.length > 0) || 
                    (det.disruption?.length > 0) || 
                    (det.damage?.length > 0);
         });
@@ -396,13 +396,21 @@ export default function Dashboard() {
               />
             </div>
 
-           <button 
-             onClick={handleReset}
-             title="Đặt lại tất cả bộ lọc"
-             className="p-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-500 transition-all shadow-sm group"
-           >
-             <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} />
-           </button>
+            <button 
+              onClick={() => load()}
+              title="Làm mới dữ liệu"
+              className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-[#2fa1b3] transition-all shadow-sm group"
+            >
+              <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-700 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+
+            <button 
+              onClick={handleReset}
+              title="Đặt lại tất cả bộ lọc"
+              className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 transition-all shadow-sm group"
+            >
+              <History className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500`} />
+            </button>
         </div>
       </div>
 

@@ -681,10 +681,6 @@ export default function Events() {
                                 const best = details.agriculture.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.agriculture[0]);
                                 prioritized.push({ type: 'agriculture', label: `${best.num} ${best.unit || 'ha'}`, priority: 50, color: 'green', icon: Filter });
                             }
-                            if (details.marine && details.marine.length > 0) {
-                                const best = details.marine.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.marine[0]);
-                                prioritized.push({ type: 'marine', label: `${best.num} ${best.unit || 'tàu'}`, priority: 45, color: 'cyan', icon: Activity });
-                            }
                             
                             prioritized.sort((a, b) => b.priority - a.priority);
                             

@@ -1,69 +1,69 @@
 {
   "https://dantri.com.vn/rss/home.rss": {
-    "etag": "\"ed7fbf1c2c77dc1:0\"",
-    "last_modified": "Sat, 27 Dec 2025 12:27:05 GMT",
-    "fetched_at": "2025-12-27T12:52:10.602551+00:00"
+    "etag": "\"8ee38addf7ddc1:0\"",
+    "last_modified": "Mon, 05 Jan 2026 01:07:35 GMT",
+    "fetched_at": "2026-01-05T02:45:01.647434+00:00"
   },
   "https://dantri.com.vn/rss/thoi-su.rss": {
-    "etag": "\"62bdeaf3077dc1:0\"",
-    "last_modified": "Sat, 27 Dec 2025 12:59:49 GMT",
-    "fetched_at": "2025-12-27T13:05:48.664798+00:00"
+    "etag": "\"78afd4ef17ddc1:0\"",
+    "last_modified": "Mon, 05 Jan 2026 03:13:48 GMT",
+    "fetched_at": "2026-01-05T03:38:04.794643+00:00"
   },
   "https://tienphong.vn/rss/xa-hoi-2.rss": {
-    "etag": "90d12894314905dcec615bc55b95ae68",
-    "fetched_at": "2025-12-27T16:49:54.799883+00:00"
+    "etag": "019b245414974d04383332c599d30dac",
+    "fetched_at": "2026-01-05T03:38:06.602154+00:00"
   },
   "https://www.vietnamplus.vn/rss/xa-hoi.rss": {
-    "etag": "32e3c682e2202e79ca029502df924ade",
-    "fetched_at": "2025-12-27T16:49:54.484383+00:00"
+    "etag": "29578901ff66d1be122f0c373101e7e5",
+    "fetched_at": "2026-01-05T03:38:05.283048+00:00"
   },
   "https://nhandan.vn/rss/xa-hoi-1361.rss": {
-    "etag": "ead8f643ea10c91e14a6240da85738c0",
-    "fetched_at": "2025-12-27T16:49:54.670869+00:00"
+    "etag": "45a9932a9c8636b523bf501111a954c1",
+    "fetched_at": "2026-01-05T03:38:04.900455+00:00"
   },
   "https://baohatinh.vn/rss/index.rss": {
-    "etag": "4c6a15f72c05d882038bd7e8dfba1f95",
-    "fetched_at": "2025-12-27T16:49:54.783684+00:00"
+    "etag": "03af2fa7af5a1fed5ba4d4145bc46e0b",
+    "fetched_at": "2026-01-05T03:38:05.596620+00:00"
   },
   "https://baosonla.vn/rss/xa-hoi.rss": {
-    "etag": "W/\"cfc4-fa1eRoWjSyFhl6mflyjp1g+9ncA\"",
-    "fetched_at": "2025-12-27T06:45:35.174357+00:00"
+    "etag": "W/\"cdd0-gJtSls3Yn4BURawNuYIxmtiVWLQ\"",
+    "fetched_at": "2026-01-05T02:54:13.896189+00:00"
   },
   "https://www.vietnamplus.vn/rss/thoi-su.rss": {
-    "etag": "32e3c682e2202e79ca029502df924ade",
-    "fetched_at": "2025-12-27T16:49:54.469643+00:00"
+    "etag": "5a32f76c2cfd84d15f2d731a061a4085",
+    "fetched_at": "2026-01-05T03:38:05.281628+00:00"
   },
   "https://baolaocai.vn/rss/home.rss": {
-    "etag": "ab4343803d52ecb5665477879ef68bb1",
-    "fetched_at": "2025-12-27T16:49:54.801726+00:00"
+    "etag": "febf8215f940fee3a290922b2c8eea36",
+    "fetched_at": "2026-01-05T03:38:07.738544+00:00"
   },
   "https://baolaocai.vn/rss/index.rss": {
-    "etag": "ab4343803d52ecb5665477879ef68bb1",
-    "fetched_at": "2025-12-27T16:49:54.805344+00:00"
+    "etag": "f0f67434b258b22a5f54c4029a9df886",
+    "fetched_at": "2026-01-05T03:38:06.878542+00:00"
   },
   "https://baogialai.com.vn/rss/index.rss": {
-    "etag": "ecfed5030d86dd7454ccaadb25939342",
-    "fetched_at": "2025-12-27T16:49:54.803334+00:00"
+    "etag": "b5b30704ec6bbba9179bbb10eb712eba",
+    "fetched_at": "2026-01-05T03:38:04.765206+00:00"
   },
   "https://baogialai.com.vn/rss/home.rss": {
-    "etag": "cfa6d936b36b2a389d4678e5aa50a4ea",
-    "fetched_at": "2025-12-27T16:49:54.788615+00:00"
+    "etag": "0c551bcaf0592af9fbf8e5b9c371f197",
+    "fetched_at": "2026-01-05T03:38:05.745237+00:00"
   },
   "https://baohatinh.vn/rss/home.rss": {
-    "etag": "48611e67166522951fc57623d6c509b9",
-    "fetched_at": "2025-12-27T16:54:53.181499+00:00"
+    "etag": "635e60ffb6b00e7d490f268a652cfba5",
+    "fetched_at": "2026-01-05T03:38:05.916909+00:00"
   },
   "https://znews.vn/rss/thoi-su.rss": {
     "last_modified": "Fri, 14 Nov 2025 07:12:20 GMT",
     "fetched_at": "2025-12-20T15:24:35.419318+00:00"
   },
   "https://nhandan.vn/rss/home.rss": {
-    "etag": "b95357029d9d4fb7db1975d2234075fa",
-    "fetched_at": "2025-12-27T16:49:54.625611+00:00"
+    "etag": "273d51c1204ec7c7b854770c4a24ddd4",
+    "fetched_at": "2026-01-05T03:41:23.383409+00:00"
   },
   "https://vietnamnet.vn/rss/thoi-su.rss": {
-    "etag": "W/\"134113280597897227\"",
-    "fetched_at": "2025-12-27T16:54:54.667778+00:00"
+    "etag": "W/\"134120578903892337\"",
+    "fetched_at": "2026-01-05T03:41:26.901429+00:00"
   },
   "https://znews.vn/rss/xa-hoi.rss": {
     "last_modified": "Mon, 22 Dec 2025 06:25:09 GMT",
@@ -75,11 +75,15 @@
     "fetched_at": "2025-12-22T13:47:30.110895+00:00"
   },
   "https://giaoducthoidai.vn/rss/thoi-su.rss": {
-    "etag": "039b331b101e2122a35867d09e0109b3",
-    "fetched_at": "2025-12-27T16:49:55.656986+00:00"
+    "etag": "f76c8c0cbf558380790f8a6b84dbeb5e",
+    "fetched_at": "2026-01-05T03:41:26.889045+00:00"
   },
   "https://danviet.vn/rss/tin-tuc-1001.rss": {
-    "last_modified": "Sat, 27 Dec 2025 13:25:22 GMT",
-    "fetched_at": "2025-12-27T13:25:20.343673+00:00"
+    "last_modified": "Wed, 31 Dec 2025 07:21:33 GMT",
+    "fetched_at": "2026-01-05T00:39:33.809234+00:00"
+  },
+  "https://vtcnews.vn/rss/thoi-su.rss": {
+    "last_modified": "Monday, 05-Jan-2026 03:29:32 GMT",
+    "fetched_at": "2026-01-05T03:41:23.222784+00:00"
   }
 }

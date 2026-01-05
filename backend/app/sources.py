@@ -43,7 +43,8 @@ DISASTER_GROUPS = {
         "giữa biển đông", "bắc biển đông", "nam biển đông", "tây bắc biển đông",
         "vịnh bắc bộ", "vịnh thái lan",
         "tên bão", "bão có tên", "bão quốc tế",
-        "vùng tâm bão", "áp sát ven biển", "hoàn lưu sau bão", "gió xoáy", "phong ba"
+        "vùng tâm bão", "áp sát ven biển", "hoàn lưu sau bão", "gió xoáy", "phong ba",
+        "chống bão", "ứng phó bão", "phòng chống bão", "chạy bão", "tránh trú bão"
     ],
 
     # 2) Lũ lụt (Flood)
@@ -52,7 +53,13 @@ DISASTER_GROUPS = {
         "vỡ đê", "tràn đê", "xả lũ", "hồ chứa", "thủy điện", "xả tràn", "nước sông dâng",
         "ngập sâu", "ngập nhà", "ngập phố", "chia cắt", "cô lập", "vỡ đập", "sự cố đập",
         "vượt báo động", "đạt đỉnh", "nước lụt", "triều cường kết hợp", "ngập triều cường",
-        "mực nước trên báo động", "lũ báo động 3", "lũ lịch sử", "ngập lụt cục bộ", "vùng trũng thấp"
+        "mực nước trên báo động", "lũ báo động 3", "lũ lịch sử", "ngập lụt cục bộ", "vùng trũng thấp",
+        "nước dâng", "triều cường", "ngập lụt", "ngập úng", "vỡ đê", "tràn đê", "xả lũ",
+        "lũ quét", "lũ ống", "sạt lở", "sụt lún", "trượt lở", "nước lũ", "lũ lớn", "lũ dữ", "lũ cao", "rốn lũ",
+        "lật ghe", "chìm ghe", "lật thuyền", "chìm thuyền", "chìm tàu", "trôi dạt",
+        "di dời", "sơ tán", "phong tỏa", "cô lập", "uy hiếp",
+        "lật ghe", "chìm ghe", "lật tàu", "chìm tàu", "sập bờ kè", "sập cầu", "trôi dạt", "cuốn trôi",
+        "mạch đùn", "mạch sủi"
     ],
 
     # 3) Lũ quét/Lũ ống (Flash Flood)
@@ -95,7 +102,8 @@ DISASTER_GROUPS = {
     "extreme_weather": [
         "mưa lớn", "mưa xối xả", "mưa trắng trời", "mưa đá", "lốc", "sét", "phóng điện", "dông", "giông", "lốc xoáy", "gió mạnh", "quật đổ", "tốc mái", "vòi rồng",
         "mưa rất to", "dông lốc", "tố lốc", "sét đánh", "giông sét", "lượng mưa kỷ lục", "mưa trút xuống", "mưa như trút",
-        "mưa diện rộng", "mưa cục bộ", "gió giật mạnh", "giông tố", "giông cực mạnh", "gió rít", "trắng trời"
+        "mưa diện rộng", "mưa cục bộ", "gió giật mạnh", "giông tố", "giông cực mạnh", "gió rít", "trắng trời",
+        "tốc mái"
     ],
 
     # 9) Nắng nóng (Heatwave)
@@ -150,23 +158,22 @@ DISASTER_GROUPS = {
         "bản tin dự báo", "tin cảnh báo", "dự báo thời tiết", "cảnh báo thiên tai",
         "tin cuối cùng", "tin phát đi", "bản tin cập nhật", "dự báo khí tượng",
         "trung tâm dự báo", "bản tin khẩn cấp",
-        "thông báo khẩn", "điểm tin thiên tai", "đài khí tượng", "dự báo khí hậu", "cảnh báo cực đoan"
+        "thông báo khẩn", "điểm tin thiên tai", "đài khí tượng", "dự báo khí hậu", "cảnh báo cực đoan",
+        "cảnh báo lũ", "cảnh báo sạt lở", "cảnh báo ngập lụt", "tin bão khẩn cấp",
+        "lệnh cấm biển", "cấm biển", "cấm đường", "cấm phương tiện", "tiến sát đất liền", "đề phòng"
     ],
 
-    # 17) Khắc phục hậu quả (Recovery)
     "recovery": [
         "khắc phục hậu quả", "khắc phục sự cố", "khôi phục giao thông", "thống kê thiệt hại",
-        "ủng hộ đồng bào", "cứu trợ", "tiếp tế", "dọn dẹp sau bão", "viện trợ", "hỗ trợ khẩn cấp"
-    ],
-
-    # 18) Tai nạn hàng hải (Marine Incidents)
-    "marine": [
-        "chìm tàu", "đắm tàu", "lật tàu", "trôi dạt", "mất tích trên biển",
-        "tàu cá gặp nạn", "thuyền viên mất tích", "cứu nạn hàng hải", "tàu gặp sự cố",
-        "hỗ trợ lai dắt", "tàu hỏng máy", "tàu phá nước", "ngư dân gặp nạn",
-        "sự cố trên biển", "tai nạn đường thủy", "thuyền thúng lật", "ghe chìm",
-        "mất liên lạc", "mất tín hiệu", "tàu mắc cạn", "va chạm trên biển",
-        "mất tích trên vùng biển", "tàu cá bị chìm", "chìm tàu cá", "tàu chìm", "ghe bị chìm"
+        "ủng hộ đồng bào", "cứu trợ", "tiếp tế", "dọn dẹp sau bão", "viện trợ", "hỗ trợ khẩn cấp",
+        "ổn định đời sống", "khôi phục sản xuất", "tái thiết", "hỗ trợ dân sinh", "bình ổn thị trường", "hồi sinh",
+        "xử lý môi trường", "vệ sinh sau bão", "nước rút",
+        "huy động lực lượng", "xuyên đêm", "trắng đêm", "căng mình",
+        "tiếp tế", "khẩn trương", "thị sát", "phân luồng", "thông xe",
+        "nghỉ học", "cho học sinh nghỉ", "dừng học",
+        "tình trạng khẩn cấp", "công bố khẩn cấp", "lệnh khẩn cấp",
+        "tìm kiếm", "cứu nạn", "cứu hộ", "mất tích", "xuất quân", "điều động", "tái định cư",
+        "giải cứu", "mắc kẹt", "huy động", "hàng cứu trợ"
     ]
 }
 
@@ -465,6 +472,19 @@ HIGH_PRIORITY_KEYWORDS = [
     r"tình\s*huống\s*khẩn\s*cấp", r"công\s*bố\s*tình\s*huống", r"ban\s*bố\s*tình\s*huống",
     r"cô\s*lập", r"chia\s*cắt", r"thông\s*tuyến|tìm\s*kiếm.*mất\s*tích", r"khắc\s*phục\s*hậu\s*quả",
     r"khẩn\s*trương\s*khắc\s*phục", r"chỉ\s*đạo\s*khắc\s*phục", r"thăm\s*hỏi.*động\s*viên", r"hỗ\s*trợ.*khẩn\s*cấp",
+    r"tái\s*thiết", r"hồi\s*sinh", r"ngập\s*lụt\s*đặc\s*biệt\s*nguy\s*hiểm",
+    r"nhà\s*tình\s*nghĩa", r"nhà\s*đại\s*đoàn\s*kết", r"hỗ\s*trợ\s*xây\s*nhà",
+    r"hàng\s*cứu\s*trợ", r"tiếp\s*tế", r"viện\s*trợ", r"cứu\s*trợ\s*khẩn\s*cấp",
+    r"sạt\s*lở\s*đất", r"sụt\s*lún", r"vết\s*nứt", r"đứt\s*gãy", r"chia\s*cắt\s*giao\s*thông",
+    r"công\s*bố\s*tình\s*huống", r"khẩn\s*cấp",
+    r"sập\s*(?:nhà|cầu|cống|đê|kè|tường)", r"tốc\s*mái", r"vùi\s*lấp", r"cuốn\s*trôi", r"mất\s*tích",
+    r"cô\s*lập", r"lệnh\s*cấm\s*biển", r"di\s*dời\s*khẩn\s*cấp",
+    r"cứu\s*người", r"cứu\s*nạn", r"cứu\s*hộ", r"cứu\s*dân",
+    r"người\s*chết", r"tử\s*vong", r"mất\s*tích", r"gặp\s*nạn",
+    r"ngập\s*úng", r"chia\s*cắt", r"hư\s*hỏng\s*nặng",
+    r"thiệt\s*hại\s*nặng", r"sạt\s*lở\s*nghiêm\s*trọng",
+    r"sơ\s*tán", r"di\s*dời", r"họp\s*khẩn", r"chỉ\s*đạo\s*khẩn",
+    r"công\s*bố\s*tình\s*huống", r"ban\s*bố\s*tình\s*trạng\s*khẩn\s*cấp"
 ]
 
 
