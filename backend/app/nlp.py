@@ -3223,9 +3223,8 @@ def title_contains_disaster_keyword(title: str) -> bool:
     # Negative veto first
     # [OPTIMIZED] Only use ABSOLUTE_VETO for titles. 
     # Do NOT use Soft/Conditional veto here because titles like "Khởi công hồ chứa" (Soft Neg) might be relevant.
-    for pat_re in ABSOLUTE_VETO_RE:
-        if pat_re.search(t):
-            return False
+    if ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t):
+        return False
             
     # Positive check
     for kw in SOURCE_DISASTER_KEYWORDS:

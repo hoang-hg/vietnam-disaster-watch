@@ -20,10 +20,10 @@ export default function Toast({
   if (!isVisible) return null;
 
   const styles = {
-    success: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-400',
-    error: 'bg-red-500/10 border-red-500/20 text-red-900 dark:text-red-400',
-    warning: 'bg-amber-500/10 border-amber-500/20 text-amber-900 dark:text-amber-400',
-    info: 'bg-blue-500/10 border-blue-500/20 text-blue-900 dark:text-blue-400'
+    success: 'bg-white dark:bg-slate-900 border-2 border-emerald-500 text-emerald-800 dark:text-emerald-300',
+    error: 'bg-white dark:bg-slate-900 border-2 border-red-500 text-red-800 dark:text-red-300',
+    warning: 'bg-white dark:bg-slate-900 border-2 border-amber-500 text-amber-800 dark:text-amber-300',
+    info: 'bg-white dark:bg-slate-900 border-2 border-blue-500 text-blue-800 dark:text-blue-300'
   }[type];
 
   const icons = {
@@ -35,7 +35,7 @@ export default function Toast({
 
   return (
     <div className="fixed top-6 right-6 z-[300] animate-in slide-in-from-right-full fade-in duration-500 no-print">
-      <div className={`flex items-center gap-4 px-5 py-4 rounded-2xl border backdrop-blur-md shadow-2xl ${styles} min-w-[320px] relative overflow-hidden`}>
+      <div className={`flex items-center gap-4 px-5 py-4 rounded-2xl shadow-2xl ${styles} min-w-[320px] relative overflow-hidden`}>
         <div className="shrink-0 scale-110">
           {icons}
         </div>

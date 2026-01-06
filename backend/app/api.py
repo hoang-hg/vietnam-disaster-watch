@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc, func, or_, and_
+from sqlalchemy import desc, func, or_, and_, case
 from sqlalchemy.orm import Session, joinedload, defer
 from sqlalchemy.sql import text
 from .database import get_db, engine
@@ -628,9 +628,7 @@ def stats_summary(
          func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
     )
 
-
     # Calculate Aggregates using SQL
-    from sqlalchemy.sql import case
     
     # For counts with conditions, we use case
     human_damage_case = case(
