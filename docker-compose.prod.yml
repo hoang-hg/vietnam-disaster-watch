@@ -34,11 +34,21 @@ services:
       - POSTGRES_DB=${DB_NAME:-viet_disaster}
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: viet_disaster_redis
     restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   backend:
     build: 
@@ -54,14 +64,22 @@ services:
       - backend_data:/app/data
       - backend_logs:/app/logs
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   frontend:
     build:
       context: ./frontend
       args:
-        - VITE_API_BASE=${VITE_API_BASE:-/api} # Use relative path since Nginx maps /api
+        - VITE_API_BASE= # Empty - API paths in code already have /api prefix
     container_name: viet_disaster_frontend
     restart: always
     depends_on:

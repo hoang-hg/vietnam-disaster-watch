@@ -1,7 +1,7 @@
 {
   "https://nhandan.vn/rss/xa-hoi-1361.rss": {
-    "etag": "df09585511149dfc4a7e208e09d88547",
-    "fetched_at": "2026-01-06T14:44:32.705462+00:00"
+    "etag": "d3f8b6d0cc3a51ace65b3abef4d34c28",
+    "fetched_at": "2026-01-06T15:39:28.445361+00:00"
   },
   "https://dantri.com.vn/rss/thoi-su.rss": {
     "etag": "\"93dccf8187fdc1:0\"",
@@ -14,12 +14,12 @@
     "fetched_at": "2026-01-06T13:39:27.620488+00:00"
   },
   "https://nhandan.vn/rss/home.rss": {
-    "etag": "20a38a8bd76a45cde1eb1b0420196959",
-    "fetched_at": "2026-01-06T14:50:16.625266+00:00"
+    "etag": "6c769f242d9b017386194061b051d605",
+    "fetched_at": "2026-01-06T15:39:28.390726+00:00"
   },
   "https://tienphong.vn/rss/xa-hoi-2.rss": {
-    "etag": "dc01522c583eedf97e422d03aa544369",
-    "fetched_at": "2026-01-06T14:50:16.167871+00:00"
+    "etag": "da9ae1b3c4f3ae9fa3ca362b1d822a09",
+    "fetched_at": "2026-01-06T15:39:26.134942+00:00"
   },
   "https://znews.vn/rss/xa-hoi.rss": {
     "last_modified": "Tue, 23 Dec 2025 00:58:09 GMT",
@@ -30,55 +30,55 @@
     "fetched_at": "2025-12-20T15:56:08.386302+00:00"
   },
   "https://baolaocai.vn/rss/index.rss": {
-    "etag": "a94bdaccb4a5954f124f90f80fc271a9",
-    "fetched_at": "2026-01-06T14:44:32.736766+00:00"
+    "etag": "8b0e64722f6a288a53da3aafd92f6c20",
+    "fetched_at": "2026-01-06T15:39:28.820819+00:00"
   },
   "https://baolaocai.vn/rss/home.rss": {
-    "etag": "4aadb53f218196d8582dec27be830852",
-    "fetched_at": "2026-01-06T14:50:16.469280+00:00"
+    "etag": "30c083bd1d4c5948e6ff64236dc3f295",
+    "fetched_at": "2026-01-06T15:39:27.464130+00:00"
   },
   "https://baosonla.vn/rss/xa-hoi.rss": {
     "etag": "W/\"cedc-1OHM1mk/kIuG50sLI4pXuq85UxU\"",
     "fetched_at": "2026-01-06T13:39:24.480314+00:00"
   },
   "https://baogialai.com.vn/rss/index.rss": {
-    "etag": "0f003285bdb193440a3c1ac720a7953a",
-    "fetched_at": "2026-01-06T14:44:29.701717+00:00"
+    "etag": "b3b8509c22f3f0031e4c014d8cf3e371",
+    "fetched_at": "2026-01-06T15:39:30.340802+00:00"
   },
   "https://www.vietnamplus.vn/rss/xa-hoi.rss": {
-    "etag": "c3980dc95befeeab5269a899428a2eea",
-    "fetched_at": "2026-01-06T14:44:28.846890+00:00"
+    "etag": "6d6846f9471e63b770823562f7abe576",
+    "fetched_at": "2026-01-06T15:39:26.935160+00:00"
   },
   "https://baogialai.com.vn/rss/home.rss": {
-    "etag": "0f003285bdb193440a3c1ac720a7953a",
-    "fetched_at": "2026-01-06T14:50:16.966074+00:00"
+    "etag": "08b1b17f97bed7345557733a9e52da90",
+    "fetched_at": "2026-01-06T15:39:30.393809+00:00"
   },
   "https://baohatinh.vn/rss/home.rss": {
-    "etag": "eb975932c3deca73adc0b7ef9c01fdc3",
-    "fetched_at": "2026-01-06T14:50:15.628373+00:00"
+    "etag": "2309acf5b926e738aeba56c84873b0fd",
+    "fetched_at": "2026-01-06T15:39:27.076881+00:00"
   },
   "https://www.vietnamplus.vn/rss/thoi-su.rss": {
-    "etag": "c3980dc95befeeab5269a899428a2eea",
-    "fetched_at": "2026-01-06T14:44:28.704052+00:00"
+    "etag": "ef967fce33ce3b2cad0d2d779f4be56a",
+    "fetched_at": "2026-01-06T15:39:28.707124+00:00"
   },
   "https://vietnamnet.vn/rss/thoi-su.rss": {
-    "etag": "W/\"134121844691041813\"",
-    "fetched_at": "2026-01-06T14:50:16.124465+00:00"
+    "etag": "W/\"134121874797577738\"",
+    "fetched_at": "2026-01-06T15:39:31.558098+00:00"
   },
   "https://baohatinh.vn/rss/index.rss": {
-    "etag": "6b88ee8bc06fa590b70a21307e095e89",
-    "fetched_at": "2026-01-06T14:44:29.299990+00:00"
+    "etag": "19212f7cf795b9f83e5a09ec28d75297",
+    "fetched_at": "2026-01-06T15:39:28.965186+00:00"
   },
   "https://giaoducthoidai.vn/rss/thoi-su.rss": {
-    "etag": "0a734e8d8a05b9c87af0489d4120ad4f",
-    "fetched_at": "2026-01-06T14:44:28.910533+00:00"
+    "etag": "9d59ac40d2d9950027277c1c5af03305",
+    "fetched_at": "2026-01-06T15:39:26.552796+00:00"
   },
   "https://danviet.vn/rss/tin-tuc-1001.rss": {
     "last_modified": "Tue, 06 Jan 2026 13:10:02 GMT",
     "fetched_at": "2026-01-06T13:39:28.508696+00:00"
   },
   "https://vtcnews.vn/rss/thoi-su.rss": {
-    "last_modified": "Tuesday, 06-Jan-2026 14:33:36 GMT",
-    "fetched_at": "2026-01-06T14:50:16.627797+00:00"
+    "last_modified": "Tuesday, 06-Jan-2026 15:33:21 GMT",
+    "fetched_at": "2026-01-06T15:39:27.641372+00:00"
   }
 }

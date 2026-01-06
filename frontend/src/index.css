@@ -9,6 +9,7 @@
     @apply bg-slate-50 text-slate-900 transition-colors duration-500 overflow-x-hidden;
     @apply dark:bg-[#0b1120] dark:text-slate-100;
     font-family: 'Be Vietnam Pro', sans-serif;
+    zoom: 0.8; /* Default zoom at 80% for more compact display */
   }
 }
 

@@ -6,11 +6,10 @@ services:
     container_name: viet_disaster_db
     restart: always
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=12102004
-      - POSTGRES_DB=postgres
-    ports:
-      - "5432:5432"
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-12102004}
+      - POSTGRES_DB=${DB_NAME:-postgres}
+    # No ports exposed - only accessible within Docker network
     volumes:
       - ./db_data:/var/lib/postgresql/data
 
@@ -18,8 +17,7 @@ services:
     image: redis:7-alpine
     container_name: viet_disaster_redis
     restart: always
-    ports:
-      - "6379:6379"
+    # No ports exposed - only accessible within Docker network
 
   backend:
     build: 
@@ -33,7 +31,7 @@ services:
       - ./backend_data:/app/data
       - ./backend/logs:/app/logs
     environment:
-      - APP_DB_URL=postgresql://postgres:12102004@db:5432/postgres
+      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-12102004}@db:5432/${DB_NAME:-postgres}
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -46,7 +44,7 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_BASE=http://localhost:8000
+        - VITE_API_BASE=
     container_name: viet_disaster_frontend
     restart: always
     ports:

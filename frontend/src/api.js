@@ -1,7 +1,11 @@
 import { DISASTER_METADATA } from "./theme.js";
 
+// For Docker: VITE_API_BASE is set to empty string, use relative paths
+// For local dev: VITE_API_BASE is undefined, use localhost:8000
 export const API_BASE =
-  import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+  import.meta.env.VITE_API_BASE !== undefined 
+    ? import.meta.env.VITE_API_BASE 
+    : "http://127.0.0.1:8000";
 
 async function request(path, options = {}) {
   const token = localStorage.getItem("access_token");

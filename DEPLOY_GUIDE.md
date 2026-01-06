@@ -130,5 +130,50 @@ A:
 **Q: Dashboard không hiện dữ liệu dù Backend có tin?**
 A: Kiểm tra file `frontend/.env` (hoặc biến `VITE_API_BASE`). Frontend cần biết địa chỉ Backend (thường là `http://localhost:8000`).
 
+**Q: Lỗi "Failed to fetch" hoặc "ERR_EMPTY_RESPONSE" khi chạy Docker?**
+A: Đây là lỗi phổ biến về network trong Docker. Nguyên nhân và cách khắc phục:
+
+**Nguyên nhân:**
+- Frontend được build với `VITE_API_BASE=http://localhost:8000`
+- Khi chạy trong browser, `localhost:8000` trỏ đến máy người dùng, KHÔNG PHẢI backend container
+- Backend chạy trong Docker network riêng, không thể truy cập qua `localhost` từ browser
+
+**Cách khắc phục:**
+1. **Kiểm tra `docker-compose.yml`:**
+   ```yaml
+   frontend:
+     build:
+       context: ./frontend
+       args:
+         - VITE_API_BASE=/api  # PHẢI là /api, KHÔNG PHẢI http://localhost:8000
+   ```
+
+2. **Kiểm tra `frontend/nginx.conf` có proxy cấu hình:**
+   ```nginx
+   # Proxy API requests to backend
+   location /api {
+       proxy_pass http://backend:8000;
+       # ... các header khác
+   }
+   
+   # Proxy WebSocket connections
+   location /ws {
+       proxy_pass http://backend:8000;
+       # ... các header khác
+   }
+   ```
+
+3. **Rebuild frontend container:**
+   ```bash
+   docker-compose down
+   docker-compose build --no-cache frontend
+   docker-compose up -d
+   ```
+
+**Giải thích:**
+- Frontend gọi API với URL tương đối `/api/...`
+- Nginx trong frontend container nhận request và proxy sang `http://backend:8000`
+- `backend` là tên service trong Docker network, các container có thể gọi nhau qua tên service
+
 ---
 **Chúc bạn vận hành hệ thống thành công!** 🚀

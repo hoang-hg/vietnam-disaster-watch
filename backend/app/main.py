@@ -107,6 +107,12 @@ app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(user_router)
 
+# Health check endpoint for Docker/monitoring
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration"""
+    return {"status": "healthy", "service": "viet-disaster-watch"}
+
 from .ws import manager
 from fastapi import WebSocket
 
@@ -186,7 +192,7 @@ async def on_startup():
     # Job 1: Group 1 (Critical Official Sources) - Frequency: 15 MINUTES
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=15, jitter=10),
+        trigger=IntervalTrigger(minutes=120, jitter=10),
         kwargs={"only_sources": tier1_sources},
         id="crawl_group1_critical",
         replace_existing=True,
@@ -196,7 +202,7 @@ async def on_startup():
     # Job 2: Group 2 (Major National News) - Frequency: 30 MINUTES
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=30, jitter=20),
+        trigger=IntervalTrigger(minutes=240, jitter=20),
         kwargs={"only_sources": tier2_sources},
         id="crawl_group2_major",
         replace_existing=True,
@@ -207,7 +213,7 @@ async def on_startup():
     # Performs a complete scan of all sources in sources.json.
     scheduler.add_job(
         process_once,
-        trigger=IntervalTrigger(minutes=60, jitter=120),
+        trigger=IntervalTrigger(minutes=480, jitter=120),
         id="crawl_group3_full",
         replace_existing=True,
         misfire_grace_time=1200
