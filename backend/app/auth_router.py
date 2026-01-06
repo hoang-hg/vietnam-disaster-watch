@@ -88,7 +88,7 @@ class UserUpdate(BaseModel):
     favorite_province: str | None = None
 
 @router.put("/me/preferences", response_model=UserOut)
-async def update_user_preferences(
+def update_user_preferences(
     update_in: UserUpdate,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(auth.get_db)

@@ -28,6 +28,9 @@ ALIASES = [
     (r"\bkontum\b", "kon tum"),
 ]
 
+# Pre-compile alias regexes
+ALIASES_RE = [(re.compile(pat), repl) for pat, repl in ALIASES]
+
 def canon(text: str) -> Tuple[str, str]:
     """
     Returns (t, t0):
@@ -43,21 +46,22 @@ def canon(text: str) -> Tuple[str, str]:
     t0 = re.sub(r"[^a-zA-Z0-9.,\s]", " ", t0)
     t0 = re.sub(r"\s+", " ", t0).strip()
 
-    # alias expansion (on t0)
-    for pat, repl in ALIASES:
-        t0 = re.sub(pat, repl, t0)
+    # alias expansion (on t0) using pre-compiled regexes
+    for pat_re, repl in ALIASES_RE:
+        t0 = pat_re.sub(repl, t0)
     t0 = re.sub(r"\s+", " ", t0).strip()
 
     return t, t0
 
+# Beaufort scale thresholds (km/h) - Module level constant
+BEAUFORT_THRESHOLDS = [
+    (184, 16), (167, 15), (150, 14), (134, 13), (118, 12),
+    (103, 11), (89, 10), (75, 9), (62, 8), (50, 7),
+    (39, 6), (29, 5), (20, 4), (12, 3), (6, 2), (1, 1),
+]
+
 def kmh_to_beaufort(kmh: float) -> int:
-    # Beaufort scale thresholds (km/h)
-    thresholds = [
-        (184, 16), (167, 15), (150, 14), (134, 13), (118, 12),
-        (103, 11), (89, 10), (75, 9), (62, 8), (50, 7),
-        (39, 6), (29, 5), (20, 4), (12, 3), (6, 2), (1, 1),
-    ]
-    for th, b in thresholds:
+    for th, b in BEAUFORT_THRESHOLDS:
         if kmh >= th:
             return b
     return 0

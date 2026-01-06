@@ -10,18 +10,19 @@ def truncate_jsonl(file_path: Path, max_lines: int = 5000):
         return
 
     try:
-        # Read all lines
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
-        if len(lines) <= max_lines:
-            return
-
-        # Write back only the last N lines
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.writelines(lines[-max_lines:])
+        from collections import deque
         
-        logger.info(f"Truncated {file_path.name} to {max_lines} lines.")
+        # Read only the last max_lines using deque efficiently
+        # This keeps memory usage low even if the file is gigabytes in size
+        with open(file_path, "r", encoding="utf-8") as f:
+            last_lines = deque(f, maxlen=max_lines)
+
+        # Write back only if we have lines
+        if last_lines:
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.writelines(last_lines)
+        
+        logger.info(f"Truncated {file_path.name} to last {len(last_lines)} lines.")
     except Exception as e:
         logger.error(f"Failed to truncate {file_path}: {e}")
 

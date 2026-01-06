@@ -538,8 +538,21 @@ def load_sources_from_json(file_path: str) -> List[Source]:
     return sources
 
 CONFIG_FILE = Path(__file__).parent.parent / "sources.json"
-SOURCES = load_sources_from_json(str(CONFIG_FILE))
 CONFIG = {}
+SOURCES = []
+
 if CONFIG_FILE.exists():
     with open(CONFIG_FILE, "r", encoding="utf-8") as f:
         CONFIG = json.load(f)
+    
+    # Generate Source objects from the loaded dict
+    for s in CONFIG.get("sources", []):
+        SOURCES.append(Source(
+            name=s["name"],
+            domain=s["domain"],
+            primary_rss=s.get("primary_rss"),
+            backup_rss=s.get("backup_rss"),
+            note=s.get("note"),
+            trusted=s.get("trusted", False),
+            authority_level=s.get("authority_level", 2 if s.get("trusted") else 1)
+        ))

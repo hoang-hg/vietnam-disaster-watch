@@ -111,9 +111,11 @@ async def on_startup():
     
     # 0.1 Capture Main Loop for Broadcast (Cross-thread SSE)
     import asyncio
-    from . import broadcast
+    from . import broadcast, ws
     try:
-        broadcast.set_main_loop(asyncio.get_running_loop())
+        loop = asyncio.get_running_loop()
+        broadcast.set_main_loop(loop)
+        ws.manager.set_main_loop(loop)
     except RuntimeError:
         pass
 
@@ -129,13 +131,11 @@ async def on_startup():
 
     # Tier 1: Critical Official Sources (High Frequency: 15 mins)
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
+    # Tier 1: Critical Official Sources (High Frequency: 15 mins)
+    # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     def get_tier1_sources():
-        from .sources import load_sources_from_json
-        from pathlib import Path
-        # sources.json is in backend root (parent of app package)
-        root_dir = Path(__file__).resolve().parent.parent
-        srcs = load_sources_from_json(str(root_dir / "sources.json"))
-        return [s.name for s in srcs if any(kw in s.name for kw in ["KTTV Quốc gia", "KTTV Ninh Bình", 
+        from .sources import SOURCES
+        return [s.name for s in SOURCES if any(kw in s.name for kw in ["KTTV Quốc gia", "KTTV Ninh Bình", 
         "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", 
         "KTTV An Giang", "KTTV Hưng Yên", "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
         "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"])]

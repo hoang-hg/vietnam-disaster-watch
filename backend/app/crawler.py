@@ -791,8 +791,9 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             impacts = nlp.extract_impacts(summary_raw_scraper or title)
                             summary = nlp.summarize(summary_raw_scraper, title=title)
                             
-                            # Check for duplicates
-                            duplicate = find_duplicate_article(
+                            # Check for duplicates (DB I/O offloaded)
+                            duplicate = await asyncio.to_thread(
+                                find_duplicate_article,
                                 db,
                                 src.domain,
                                 url,
@@ -836,7 +837,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                 src_info["articles_added"] += 1
                                 logger.info(f"   [ADDED_SCRAPE] {src.name}: {title[:70]}...")
                                 try:
-                                    upsert_event_for_article(db, article)
+                                    await asyncio.to_thread(upsert_event_for_article, db, article)
                                 except Exception as e:
                                     logger.error(f"Failed to upsert event for {article.title} (Scrape): {e}")
                                     db.rollback()
@@ -847,7 +848,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
 
                                 if full_info and full_info.get("text"):
                                     full_text = full_info["text"]
-                                    full_impacts = nlp.extract_impacts(full_text)
+                                    
+                                    # Offload heavy NLP to thread
+                                    meta = await asyncio.to_thread(nlp.extract_all_metadata, full_text, full_text if len(full_text) < 2000 else full_text[:2000], title)
+                                    full_impacts = meta["impacts"]
                                     
                                     # Save full text and image
                                     article.full_text = full_text[:100000]
@@ -877,11 +881,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         article.characteristics = full_impacts.get("characteristics")
                                         
                                     if article.province in (None, "unknown"):
-                                        prov = nlp.extract_province(full_text)
-                                        if prov and prov != "unknown":
-                                            article.province = prov
+                                        if meta["province"] and meta["province"] != "unknown":
+                                            article.province = meta["province"]
                                             
-                                    if nlp.validate_impacts(full_impacts):
+                                    if meta["needs_verification"]:
                                         article.needs_verification = 1
                                     
                                 db.commit()

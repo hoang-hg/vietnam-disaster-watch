@@ -789,6 +789,8 @@ async def stream_events(request: Request):
 
     async def event_publisher():
         try:
+            # Send initial connection confirmation
+            yield f"data: {{\"type\": \"connected\", \"timestamp\": \"{datetime.utcnow().isoformat()}\"}}\n\n"
             while True:
                 if await request.is_disconnected():
                     break
@@ -1106,7 +1108,7 @@ async def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin
     return {"ok": True, "message": "Feedback saved and classification updated."}
 
 @router.get("/admin/export/event/{event_id}")
-async def export_event_data(event_id: int, format: str = "excel", db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def export_event_data(event_id: int, format: str = "excel", db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     import pandas as pd
     ev = db.query(Event).filter(Event.id == event_id).first()
     if not ev:
@@ -1226,7 +1228,7 @@ async def export_event_data(event_id: int, format: str = "excel", db: Session = 
         return StreamingResponse(buffer, headers=headers, media_type='application/pdf')
 
 @router.get("/admin/export/daily")
-async def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     import pandas as pd
     if not date:
         date = datetime.utcnow().strftime("%Y-%m-%d")
@@ -1262,7 +1264,7 @@ async def export_daily_summary(date: str = None, db: Session = Depends(get_db), 
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @router.get("/admin/export/summary")
-async def export_events_summary(
+def export_events_summary(
     start_date: str = Query(None),
     end_date: str = Query(None),
     month: int = Query(None),

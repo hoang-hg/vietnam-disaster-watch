@@ -4,6 +4,10 @@ from .models import Article, Event
 from . import broadcast, nlp
 import re
 
+from .sources import SOURCES
+import logging
+import asyncio
+
 # Clusters of related disaster types to allow cross-matching (e.g. Storm causes Flood)
 DISASTER_CLUSTERS = {
     "storm": ["storm", "extreme_weather", "storm_surge", "flood"],
@@ -15,6 +19,9 @@ DISASTER_CLUSTERS = {
     "earthquake": ["earthquake", "tsunami"],
     "tsunami": ["tsunami", "earthquake"],
 }
+
+# [OPTIMIZATION] Cache trusted map
+TRUSTED_MAP = {s.name: (s.trusted or False) for s in SOURCES}
 
 # Vietnamese stop words to improve similarity accuracy
 STOPWORDS = {
@@ -175,8 +182,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         article.event_id = ev.id
         
         # publish new event to subscribers
+        # publish new event to subscribers
         try:
-            import asyncio
             data = {
                 "type": "new_event",
                 "event_id": ev.id,
@@ -212,11 +219,9 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
 
     # UPDATE LEADER: If this article is from a trusted source or is more detailed, update title
     # We compare using a length-weighted trusted score
-    from .sources import SOURCES
-    trusted_map = {s.name: (s.trusted or False) for s in SOURCES}
     
-    current_lead_is_trusted = trusted_map.get(ev.articles[0].source, False) if ev.articles else False
-    new_is_trusted = trusted_map.get(article.source, False)
+    current_lead_is_trusted = TRUSTED_MAP.get(ev.articles[0].source, False) if ev.articles else False
+    new_is_trusted = TRUSTED_MAP.get(article.source, False)
     
     # Swap criteria: (Trusted wins over non-trusted) OR (Longer titles if both equal trust)
     if (new_is_trusted and not current_lead_is_trusted) or \
@@ -309,7 +314,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         ev.details = current_details
 
     # Update source count and smart confidence
-    from .sources import SOURCES, VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
+    # Update source count and smart confidence
+    from .sources import VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
     from . import nlp
     
     # [OPTIMIZATION 3] Multi-Source Consolidation & Auto-Promotion
@@ -334,8 +340,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             # sends an EVENT_UPSERT notification at the end of the process.
     
     # 1. Check for Strong Signals across all articles in this event
-    trusted_map = {s.name: (s.trusted or False) for s in SOURCES}
-    has_trusted_source = any(trusted_map.get(a.source, False) for a in all_articles)
+    # 1. Check for Strong Signals across all articles in this event
+    has_trusted_source = any(TRUSTED_MAP.get(a.source, False) for a in all_articles)
     
     # Check for Red Alert, VIP, Sensitive Locations, and Metrics
     has_red_alert = any(a.is_red_alert for a in all_articles)
@@ -374,7 +380,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
                 best_title = a.title; break
     elif has_trusted_source:
         # If we have trusted sources, prefer their titles (take the longest one for detail)
-        trusted_titles = [a.title for a in all_articles if trusted_map.get(a.source, False)]
+        trusted_titles = [a.title for a in all_articles if TRUSTED_MAP.get(a.source, False)]
         if trusted_titles:
             best_title = max(trusted_titles, key=len)
     
@@ -416,8 +422,8 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         logging.getLogger(__name__).error(f"Follower notification error: {e}")
     
     # Real-time Broadcast: Notify subscribers of event updates
+    # Real-time Broadcast: Notify subscribers of event updates
     try:
-        import asyncio
         data = {
             "type": "event_updated",
             "event_id": ev.id,

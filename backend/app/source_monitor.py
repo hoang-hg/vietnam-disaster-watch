@@ -20,22 +20,20 @@ class SourceMonitor:
         self.results_path = Path(sources_json_path).parent / "logs" / "source_status.json"
         self.results_path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def check_connectivity(self, url: str, timeout: int = 10) -> Dict[str, Any]:
-        """Check if a URL is accessible."""
+    async def check_connectivity(self, client: httpx.AsyncClient, url: str) -> Dict[str, Any]:
+        """Check if a URL is accessible using a shared client."""
         if not url:
             return {"status": "skipped", "error": "No URL provided"}
         
         try:
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, verify=False) as client:
-                start_time = datetime.now(timezone.utc)
-                resp = await client.get(url, headers=headers)
-                elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
-                
-                if resp.status_code == 200:
-                    return {"status": "ok", "code": resp.status_code, "elapsed": elapsed}
-                else:
-                    return {"status": "error", "code": resp.status_code, "error": f"HTTP {resp.status_code}", "elapsed": elapsed}
+            start_time = datetime.now(timezone.utc)
+            resp = await client.get(url)
+            elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+            
+            if resp.status_code == 200:
+                return {"status": "ok", "code": resp.status_code, "elapsed": elapsed}
+            else:
+                return {"status": "error", "code": resp.status_code, "error": f"HTTP {resp.status_code}", "elapsed": elapsed}
         except httpx.TimeoutException:
             return {"status": "timeout", "error": "Request timed out"}
         except Exception as e:
@@ -74,16 +72,18 @@ class SourceMonitor:
             tasks = []
             source_map = [] # Track which tasks belong to which source/feed
             
-            for src in sources:
-                if src.primary_rss:
-                    tasks.append(self.check_connectivity(src.primary_rss))
-                    source_map.append((src.name, "primary"))
-                if src.backup_rss:
-                    tasks.append(self.check_connectivity(src.backup_rss))
-                    source_map.append((src.name, "backup"))
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+            async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=False, headers=headers) as client:
+                for src in sources:
+                    if src.primary_rss:
+                        tasks.append(self.check_connectivity(client, src.primary_rss))
+                        source_map.append((src.name, "primary"))
+                    if src.backup_rss:
+                        tasks.append(self.check_connectivity(client, src.backup_rss))
+                        source_map.append((src.name, "backup"))
 
-            # Run checks concurrently
-            results = await asyncio.gather(*tasks)
+                # Run checks concurrently
+                results = await asyncio.gather(*tasks)
             
             # Organize results
             connectivity_results = {}
