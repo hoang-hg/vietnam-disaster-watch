@@ -108,19 +108,9 @@ def extract_metadata(soup: BeautifulSoup) -> dict:
     return meta_data
 
 def contains_disaster_keywords(text: str) -> bool:
-    """Check if text contains disaster keywords using regex patterns."""
-    t = text.lower()
-    
-    # First check negative veto
-    for p in DISASTER_NEGATIVE:
-        if re.search(p, t, flags=re.IGNORECASE):
-            return False
-            
-    for label, patterns in DISASTER_RULES:
-        for p in patterns:
-            if re.search(p, t, flags=re.IGNORECASE):
-                return True
-    return False
+    """Check if text contains disaster keywords using centralized NLP logic."""
+    from . import nlp
+    return nlp.contains_disaster_keywords(text)
 
 class HTMLScraper:
     """Scrapes news articles from websites without RSS feeds."""
@@ -837,8 +827,6 @@ def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
 
 # Simple test function
 async def test_scraper():
-    """Test the HTML scraper."""
-    scraper = HTMLScraper()
     """Test the HTML scraper."""
     scraper = HTMLScraper()
     logger.info("Testing HTML scraper... (Results in logs)")

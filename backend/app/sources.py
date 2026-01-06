@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 import re
 import unicodedata
-Method = Literal["rss", "gnews"]
 
 # 14+2 Standardized Disaster Groups
 DISASTER_GROUPS = {
@@ -382,59 +381,11 @@ DISASTER_CONTEXT = [
 
 RECOVERY_ANCHOR = r"(?:hậu\s*quả|sau\s*(?:bão|lũ|mưa\s*lớn|ngập|sạt\s*lở|triều\s*cường|nước\s*dâng|cháy\s*rừng|động\s*đất|sóng\s*thần|rét\s*hại|mưa\s*đá|dông\s*lốc)|thiên\s*tai|bão|lũ|ngập|sạt\s*lở|hạn\s*hán|hạn\s*mặn|xâm\s*nhập\s*mặn)"
 
-FORECAST_SIGS = [
-    r"bản\s*tin(?:\s*dự\s*báo|\s*cảnh\s*báo)?", r"dự\s*báo", r"cảnh\s*báo",
-    r"trong\s*(?:24|48|72|120)\s*(?:giờ|h)\s*tới", r"tâm\s*bão\s*ở\s*khoảng",
-    r"vĩ\s*độ|kinh\s*độ", r"bán\s*kính\s*gió\s*mạnh", r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai",
-    r"tốc\s*độ\s*di\s*chuyển", r"hướng\s*di\s*chuyển", r"mm\s*/\s*24h", r"có\s*khả\s*năng\s*mạnh\s*lên",
-    r"mô\s*hình\s*dự\s*báo", r"đường\s*đi\s*của\s*bão", r"theo\s*dõi\s*chặt\s*chẽ"
-]
-
-INCIDENT_SIGS = [
-    r"xảy\s*ra", r"đã\s*(?:đổ\s*bộ|ập\s*xuống|xảy\s*ra|gây)", r"ghi\s*nhận", r"làm\s*(?:\d+|nhiều)\s*người",
-    r"khiến\s*(?:\d+|nhiều)\s*người", r"cuốn\s*trôi", r"sập\s*nhà", r"trục\s*vớt", r"cứu\s*hộ\s*khẩn\s*cấp",
-    r"di\s*dời\s*dân", r"sơ\s*tán\s*khẩn\s*cấp", r"tình\s*trạng\s*ẩn cấp", r"thiệt\s*mạng", r"số\s*liệu\s*thiệt\s*hại"
-]
-
-RECOVERY_KEYWORDS = [
-    r"khắc\s*phục\s*hậu\s*quả",
-    r"khắc\s*phục\s*sự\s*cố",
-    r"khẩn\s*trương\s*khắc\s*phục",
-    r"khôi\s*phục\s*(?:giao\s*thông|cấp\s*điện|cấp\s*nước|liên\s*lạc|thông\s*tin|sản\s*xuất|hoạt\s*động)",
-    r"cấp\s*điện\s*trở\s*lại|cấp\s*nước\s*trở\s*lại",
-    r"thông\s*tuyến|thông\s*xe",
-    r"khơi\s*thông\s*(?:cống\s*rãnh|kênh\s*mương|dòng\s*chảy)",
-    r"giải\s*tỏa\s*(?:ùn\s*tắc|đất\s*đá|điểm\s*sạt\s*lở)",
-    r"thu\s*dọn|dọn\s*dẹp|nạo\s*vét(?:\s*bùn|\s*kênh)?",
-    r"thu\s*gom\s*(?:rác|bùn\s*đất|cây\s*đổ)",
-    r"tiêu\s*độc|khử\s*trùng|tẩy\s*uế|phun\s*khử\s*khuẩn",
-    r"phòng\s*chống\s*dịch\s*bệnh\s*sau\s*thiên\s*tai",
-    r"(?:thống\s*kê|rà\s*soát|đánh\s*giá|xác\s*minh|kiểm\s*đếm)\s*thiệt\s*hại",
-    r"tổng\s*kết\s*thiệt\s*hại",
-    r"(?:giải\s*ngân|tạm\s*ứng|bố\s*trí|cấp)\s*kinh\s*phí",
-    r"bổ\s*sung\s*ngân\s*sách",
-    r"(?:bồi\s*thường|đền\s*bù|bồi\s*hoàn|chi\s*trả\s*bồi\s*thường)",
-    r"bảo\s*hiểm\s*chi\s*trả",
-    r"(?:dựng\s*lại|xây\s*dựng\s*lại|xây\s*mới)\s*nhà",
-    r"bàn\s*giao\s*(?:nhà|nhà\s*tình\s*nghĩa|nhà\s*đại\s*đoàn\s*kết)",
-    r"tái\s*định\s*cư(?:\s*tập\s*trung)?|bố\s*trí\s*tái\s*định\s*cư",
-    r"ổn\s*định\s*(?:dân\s*cư|đời\s*sống)|an\s*cư",
-    r"khôi\s*phục\s*sinh\s*kế|phục\s*hồi\s*sinh\s*kế",
-    r"(?:hỗ\s*trợ|cấp\s*phát)\s*giống",
-    r"trợ\s*giúp\s*xã\s*hội",
-    r"cứu\s*trợ\s*khẩn\s*cấp",
-    r"quỹ\s*(?:phòng\s*chống\s*thiên\s*tai|từ\s*thiện|cứu\s*trợ)",
-    r"ủng\s*hộ\s*đồng\s*bào",
-    r"lá\s*lành\s*đùm\s*lá\s*rách",
-    r"tái\s*đàn",
-    r"khôi\s*phục\s*(?:chăn\s*nuôi|nuôi\s*trồng|hoa\s*màu|diện\s*tích\s*sản\s*xuất)",
-    rf"(?:hỗ\s*trợ|cứu\s*trợ|ủng\s*hộ|quyên\s*góp|tiếp\s*nhận|trao\s*tặng|cấp\s*phát|tiếp\s*tế|phát\s*(?:quà|tiền|gạo))(?:[^.\n]{{0,120}}){RECOVERY_ANCHOR}",
-    rf"{RECOVERY_ANCHOR}(?:[^.\n]{{0,120}})(?:hỗ\s*trợ|cứu\s*trợ|ủng\s*hộ|quyên\s*góp|tiếp\s*nhận|trao\s*tặng|cấp\s*phát|tiếp\s*tế|phát\s*(?:quà|tiền|gạo))",
-    rf"(?:trợ\s*cấp|miễn\s*giảm|giãn\s*nợ|khoanh\s*nợ|gia\s*hạn\s*nợ|cho\s*vay\s*ưu\s*đãi|hỗ\s*trợ\s*tín\s*dụng)(?:[^.\n]{{0,120}}){RECOVERY_ANCHOR}",
-    rf"{RECOVERY_ANCHOR}(?:[^.\n]{{0,120}})(?:trợ\s*cấp|miễn\s*giảm|giãn\s*nợ|khoanh\s*nợ|gia\s*hạn\s*nợ|cho\s*vay\s*ưu\s*đãi|hỗ\s*trợ\s*tín\s*dụng)",
-    r"lập\s*danh\s*sách\s*(?:hỗ\s*trợ|cứu\s*trợ|thiệt\s*hại|hộ\s*bị\s*ảnh\s*hưởng|người\s*bị\s*ảnh\s*hưởng)",
-    r"xác\s*định\s*mức\s*hỗ\s*trợ(?:[^.\n]{0,60})?(?:thiệt\s*hại|hộ\s*bị\s*ảnh\s*hưởng|người\s*bị\s*ảnh\s*hưởng)",
-]
+# === PRE-COMPILED STAGE DETECTORS ===
+# Join patterns into a single mega-regex for performance
+RE_FORECAST = re.compile("|".join(rf"(?:{p})" for p in FORECAST_SIGS), re.IGNORECASE)
+RE_INCIDENT = re.compile("|".join(rf"(?:{p})" for p in INCIDENT_SIGS), re.IGNORECASE)
+RE_RECOVERY = re.compile("|".join(rf"(?:{p})" for p in RECOVERY_KEYWORDS), re.IGNORECASE)
 
 # High-priority keywords that indicate severe events
 HIGH_PRIORITY_KEYWORDS = [
@@ -501,6 +452,8 @@ def build_gnews_rss(domain: str, hazard_terms: List[str] | None = None, context_
 
     import random
     
+    # [OPTIMIZATION] Deterministic sampling for consistent testing if needed, or stick to random.
+    # Sticking to random for variability but adding check for empty list
     hazards = _quote(hazards)
     if len(hazards) > 15:
         hazards = random.sample(hazards, 15)
@@ -523,13 +476,19 @@ def load_sources_from_json(file_path: str) -> List[Source]:
     path = Path(file_path)
     if not path.exists():
         return []
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    
+    # [OPTIMIZATION] Better error handling for JSON decoding
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return []
+
     sources = []
     for s in data.get("sources", []):
         sources.append(Source(
-            name=s["name"],
-            domain=s["domain"],
+            name=s.get("name", "Unknown"),
+            domain=s.get("domain", ""),
             primary_rss=s.get("primary_rss"),
             backup_rss=s.get("backup_rss"),
             note=s.get("note"),
@@ -539,21 +498,4 @@ def load_sources_from_json(file_path: str) -> List[Source]:
     return sources
 
 CONFIG_FILE = Path(__file__).parent.parent / "sources.json"
-CONFIG = {}
-SOURCES = []
-
-if CONFIG_FILE.exists():
-    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-        CONFIG = json.load(f)
-    
-    # Generate Source objects from the loaded dict
-    for s in CONFIG.get("sources", []):
-        SOURCES.append(Source(
-            name=s["name"],
-            domain=s["domain"],
-            primary_rss=s.get("primary_rss"),
-            backup_rss=s.get("backup_rss"),
-            note=s.get("note"),
-            trusted=s.get("trusted", False),
-            authority_level=s.get("authority_level", 2 if s.get("trusted") else 1)
-        ))
+SOURCES = load_sources_from_json(str(CONFIG_FILE))

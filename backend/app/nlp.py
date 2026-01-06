@@ -61,6 +61,19 @@ DISASTER_PRIORITY = [
     "warning_forecast", "recovery"
 ]
 
+# Priority map for O(1) lookup during classification sorting
+DISASTER_PRIORITY_MAP = {k: i for i, k in enumerate(DISASTER_PRIORITY)}
+
+# Pre-compiled patterns for location and metadata extraction
+RE_SENTENCE_SPLIT = re.compile(r'(?<=[\.?!;])\s+', re.UNICODE)
+RE_COMMUNE = re.compile(r"(?:xã|phường|thị\s*trấn|thị\s*tứ)\s+([A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)")
+RE_VILLAGE = re.compile(r"(?:thôn|bản|ấp|xóm|khối|tổ|khu\s*phố|ngõ|ngách|hẻm|số\s*nhà)\s+([A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*(?:\s+[A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*)*)")
+RE_ROUTE = re.compile(r"(?:tuyến|quốc\s*lộ|tỉnh\s*lộ|đường|cao\s*tốc)\s+([A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*(\s+[A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*)*)")
+RE_LANDMARK = re.compile(r"((?:sông|suối|núi|cầu|hồ|đập|đèo|kè|cống|vịnh|biển|mương|rạch|kênh)\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)")
+
+RE_WARNING_TITLE = re.compile(r"bản\s*tin(?:\s*dự\s*báo|\s*cảnh\s*báo)|dự\s*báo\s*thiên\s*tai|tin\s*cảnh\s*báo|cảnh\s*báo\s*thiên\s*tai", re.IGNORECASE)
+RE_RECOVERY_TITLE = re.compile(r"khắc\s*phục\s*hậu\s*quả|sau\s*thiên\s*tai|thống\s*kê\s*thiệt\s*hại|rà\s*soát\s*thiệt\s*hại", re.IGNORECASE)
+
 # Impact keywords
 IMPACT_KEYWORDS = {
     "deaths": {
@@ -628,107 +641,110 @@ DISASTER_RULES = [
     r"vùng\s*tâm\s*bão", r"áp\s*sát\s*ven\s*biển", r"hoàn\s*lưu\s*sau\s*bão", r"gió\s*xoáy", r"phong\s*ba"
   ]),
 
-  # 2) Lũ lụt (Flood)
+  # 2) Lũ lụt (Flood) - User Cat 2
   ("flood", [
-    r"lũ\s*lụt", r"ngập\s*lụt", r"ngập\s*úng", r"ngập\s*sâu", r"ngập\s*(?:nhà|đường|phố)",
-    r"mưa\s*lũ", r"mưa\s*bão", r"sau\s*bão", r"vỡ\s*đê", r"tràn\s*đê", r"xả\s+lũ", r"hồ\s+chứa\s+thủy\s+điện",
+    r"lũ\s*lụt", r"ngập\s*lụt", r"ngập\s*úng", r"xả\s*lũ",
+    r"lũ\s*lên", r"lũ\s*xuống", r"lũ\s*về", r"nước\s*lũ",
     r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lưu\s*lượng\s*về\s*hồ",
-    r"lũ\s*trên\s*các\s*sông", r"vỡ\s*đập", r"xả\s*tràn", r"tin\s*lũ", r"báo\s*động\s*(?:1|2|3|I|II|III)",
+    r"lũ\s*trên\s*các\s*sông", r"vỡ\s*đê", r"tràn\s*đê", r"vỡ\s*đập", r"xả\s*tràn",
+    r"tin\s*lũ", r"báo\s*động\s*(?:1|2|3|I|II|III)",
     r"mực\s*nước\s*trên\s*báo\s*động", r"lũ\s*báo\s*động\s*3", r"lũ\s*lịch\s*sử", r"ngập\s*lụt\s*cục\s*bộ", r"vùng\s*trũng\s*thấp"
   ]),
 
-  # 3) Lũ quét/Lũ ống (Flash Flood)
+  # 3) Lũ quét/Lũ ống (Flash Flood) - User Cat 3
   ("flash_flood", [
-    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn(?:\s*đá)?", r"lũ\s*đá", r"nghẽn\s*dòng", r"lũ\s*nhanh",
+    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn(?:\s*đá)?", r"lũ\s*đá", r"nghẽn\s*dòng",
     r"tin\s*cảnh\s*báo\s*lũ\s*quét", r"nguy\s*cơ\s*lũ\s*quét", r"lũ\s*dữ",
     r"lũ\s*cuồn\s*cuộn", r"dòng\s*lũ\s*chảy\s*xiết", r"đất\s*đá\s*đổ\s*về", r"trôi\s*cầu"
   ]),
 
-  # 4) Sạt lở (Landslide)
+  # 4) Sạt lở (Landslide) - User Cat 4
   ("landslide", [
-    r"sạt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))", r"trượt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))", r"lở\s*núi", r"sập\s*taluy", r"đất\s*đá\s*vùi\s*lấp",
-    r"đá\s*lăn", r"đá\s*đổ", r"đá\s*rơi", r"sụt\s*trượt", r"vết\s*nứt(?!\s*(?:tường|nhà))",
-    r"đứt\s*gãy", r"trượt\s*sạt", r"vết\s*nứt\s*núi", r"sụp\s*đổ\s*địa\s*chất", r"sạt\s*taluy\s*dương", r"sạt\s*taluy\s*âm"
+    r"sạt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))", r"trượt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))", r"lở\s*núi", r"sập\s*taluy",
+    r"đá\s*đổ", r"đá\s*lăn", r"đá\s*rơi", r"sụt\s*trượt", r"vết\s*nứt(?!\s*(?:tường|nhà))",
+    r"đất\s*đá\s*vùi\s*lấp", r"đứt\s*gãy", r"sụp\s*đổ\s*địa\s*chất", r"sạt\s*taluy"
   ]),
 
-  # 5) Sụt lún đất (Land Subsidence)
+  # 5) Sụt lún đất (Land Subsidence) - User Cat 5
   ("subsidence", [
-    r"sụt\s*lún(?:\s*đất)?", r"sụp\s*lún", r"hố\s*tử\s*thần", r"nứt\s*toác", r"hố\s*sụt",
-    r"nghiêng\s*lún", r"sập\s*đổ",
-    r"sụt\s*lún\s*hạ\s*tầng", r"biến\s*dạng\s*mặt\s*đường", r"lún\s*xụt"
+    r"sụt\s*lún(?:\s*đất)?", r"sụp\s*lún", r"hố\s*sụt", r"hố\s*tử\s*thần", r"nghiêng\s*lún", r"sập\s*đổ",
+    r"nứt\s*toác", r"sụt\s*lún\s*hạ\s*tầng", r"biến\s*dạng\s*mặt\s*đường", r"lún\s*xụt"
   ]),
 
-  # 6) Hạn hán (Drought)
+  # 6) Hạn hán (Drought) - User Cat 6
   ("drought", [
-    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước(?:\s*sinh\s*hoạt)?", r"nứt\s*nẻ", r"khô\s*cằn", r"cạn\s*hồ", r"cạn\s*trơ", r"cây\s*héo",
-    r"thiếu\s*hụt\s*nguồn\s*nước", r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn", r"hạn\s*mặn",
-    r"vùng\s*hạn", r"chống\s*hạn", r"thiếu\s*hụt\s*mưa", r"mực\s*nước\s*chết", r"nứt\s*nẻ\s*ruộng\s*đồng"
+    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước(?:\s*sinh\s*hoạt)?", r"đất\s*nứt\s*nẻ", r"khô\s*cằn", r"cạn\s*trơ", r"cây\s*héo",
+    r"hạn\s*mặn", r"thiếu\s*hụt\s*nguồn\s*nước", r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn",
+    r"vùng\s*hạn", r"chống\s*hạn", r"thiếu\s*hụt\s*mưa", r"mực\s*nước\s*chết"
   ]),
 
-  # 7) Xâm nhập mặn (Salinity Intrusion)
+  # 7) Xâm nhập mặn (Salinity Intrusion) - User Cat 7
   ("salinity", [
-    r"xâm\s*nhập\s*mặn", r"nhiễm\s*phèn", r"nhiễm\s*mặn", r"độ\s*mặn(?:\s*cao)?", r"ranh\s*mặn", r"mặn\s*xâm\s*nhập\s*sâu",
-    r"cống\s*ngăn\s*mặn", r"ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn", r"\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b",
-    r"nước\s*lợ", r"độ\s*mặn\s*vượt\s*ngưỡng", r"mặn\s*bủa\s*vây", r"ranh\s*mặn\s*4\s*g\/l", r"nhiễm\s*mặn\s*sâu"
+    r"xâm\s*nhập\s*mặn", r"nhiễm\s*phèn", r"nhiễm\s*mặn", r"ngăn\s*mặn", r"ranh\s*mặn", r"độ\s*mặn\s*cao", r"hạn\s*mặn",
+    r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn", r"\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b",
+    r"nước\s*lợ", r"độ\s*mặn\s*vượt\s*ngưỡng", r"mặn\s*bủa\s*vây"
   ]),
 
-  # 8) Mưa lớn/Mưa đá/Lốc/Sét (Extreme Weather)
+  # 8) Mưa lớn/Mưa đá/Lốc/Sét (Rain/Hail/Tornado/Lightning) - User Cat 8
+  # Renamed back to 'extreme_weather' to match Frontend theme.js
   ("extreme_weather", [
-    r"mưa\s*lớn", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"mưa\s*kỷ\s*lục", r"mưa\s*xối\s*xả", r"mưa\s*trắng\s*trời",
-    r"mưa\s*đá", r"lốc(?!\s*xoáy)", r"sét", r"phóng\s*điện", r"dông", r"giông", r"lốc\s*xoáy", r"vòi\s*rồng", r"gió\s*mạnh", r"quật\s*đổ", r"tốc\s*mái",
-    r"tố\s*lốc", r"sét\s*đánh", r"giông\s*sét", r"hạt\s*mưa\s*đá", r"tia\s*sét",
-    r"giông\s*cực\s*mạnh", r"gió\s*rít", r"trắng\s*trời"
+    # Rain
+    r"mưa\s*lớn", r"mưa\s*xối\s*xả", r"mưa\s*trắng\s*trời", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"mưa\s*kỷ\s*lục",
+    # Hail/Tornado/Lightning/Wind
+    r"mưa\s*đá", r"lốc(?!\s*xoáy)", r"sét", r"phóng\s*điện", r"dông", r"giông", r"lốc\s*xoáy", r"gió\s*mạnh", r"quật\s*đổ", r"tốc\s*mái", r"vòi\s*rồng",
+    r"tố\s*lốc", r"sét\s*đánh", r"giông\s*sét", r"tia\s*sét",
+    r"giông\s*cực\s*mạnh", r"gió\s*rít", r"gió\s*giật", r"gió\s*lốc"
   ]),
 
-  # 9) Nắng nóng (Heatwave)
+  # 9) Nắng nóng (Heatwave) - User Cat 9
   ("heatwave", [
     r"nắng\s*nóng", r"thiêu\s*đốt", r"nhiệt\s*độ\s*cao", r"sốc\s*nhiệt", r"trú\s*nóng",
     r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
     r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"đợt\s*nắng\s*nóng", r"nhiệt\s*độ\s*cao\s*nhất",
-    r"nắng\s*cháy\s*da", r"nóng\s*rát", r"nắng\s*hạn", r"nóng\s*như\s*thiêu\s*như\s*đốt"
+    r"nắng\s*cháy\s*da", r"nóng\s*rát", r"nắng\s*hạn"
   ]),
 
-  # 10) Rét hại/Sương muối (Cold/Frost)
+  # 10) Rét hại/Sương muối (Cold/Frost) - User Cat 10
   ("cold_surge", [
     r"trời\s*rét", r"rét\s*hại", r"rét\s*đậm", r"rét\s*khô", r"rét\s*tê\s*tái", r"sương\s*muối", r"băng\s*giá", r"đóng\s*băng", r"tuyết\s*rơi", r"tuyết\s*phủ",
     r"rét\s*đậm\s*rét\s*hại", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
     r"rét\s*buốt", r"mưa\s*tuyết",
-    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc", r"trắng\s*xóa\s*băng", r"đợt\s*rét\s*mạnh"
+    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc"
   ]),
 
-  # 11) Động đất (Earthquake)
+  # 11) Động đất (Earthquake) - User Cat 11
   ("earthquake", [
-    r"động\s*đất", r"địa\s*chấn", r"rung\s*chuyển", r"rung\s*lắc", r"tâm\s*chấn", r"dư\s*chấn", r"rung\s*chấn",
-    r"richter", r"chấn\s*tiêu",
-    r"magnitude", r"rung\s*lắc\s*mạnh", r"\d+(?:[.,]\d+)?\s*độ\s*richter", r"viện\s*vật\s*lý\s*địa\s*cầu",
-    r"sóng\s*địa\s*chấn", r"cấp\s*độ\s*Richter", r"rung\s*chấn\s*mạnh", r"chấn\s*phát"
+    r"động\s*đất", r"địa\s*chấn", r"rung\s*chuyển", r"rung\s*lắc", r"tâm\s*chấn", r"dư\s*chấn",
+    r"rung\s*chấn", r"chấn\s*tiêu", r"richter",
+    r"magnitude", r"viện\s*vật\s*lý\s*địa\s*cầu",
+    r"sóng\s*địa\s*chấn", r"cấp\s*độ\s*Richter"
   ]),
 
-  # 12) Sóng thần (Tsunami)
+  # 12) Sóng thần (Tsunami) - User Cat 12
   ("tsunami", [
-    r"sóng\s*thần", r"tsunami", r"sóng\s*lớn", r"động\s*đất\s*dưới\s*biển",
-    r"cấp\s*báo\s*động\s*sóng\s*thần", r"tin\s*cảnh\s*báo\s*sóng\s*thần",
-    r"sóng\s*cao\s*hàng\s*chục\s*mét", r"thảm\s*họa\s*sóng\s*thần", r"sóng\s*thần\s*tàn\s*phá"
+    r"sóng\s*thần", r"sóng\s*lớn", r"động\s*đất\s*dưới\s*biển",
+    r"tsunami", r"cấp\s*báo\s*động\s*sóng\s*thần", r"tin\s*cảnh\s*báo\s*sóng\s*thần",
+    r"sóng\s*cao\s*hàng\s*chục\s*mét", r"thảm\s*họa\s*sóng\s*thần"
   ]),
 
-  # 13) Nước dâng (Storm Surge)
+  # 13) Nước dâng (Storm Surge) - User Cat 13
   ("storm_surge", [
     r"triều\s*cường", r"nước\s*dâng", r"sóng\s*tràn",
-    r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng", r"nước\s*dâng\s*do\s*gió\s*mạnh",
-    r"triều\s*cường\s*vượt\s*mức", r"ngập\s*lụt\s*do\s*triều", r"sóng\s*biển\s*cao", r"sóng\s*đánh\s*vào\s*bờ"
+    r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng", r"ngập\s*lụt\s*do\s*triều"
   ]),
 
-  # 14) Cháy rừng (Wildfire)
+  # 14) Cháy rừng (Wildfire) - User Cat 14
   ("wildfire", [
     r"cháy\s*rừng", r"cháy\s*tán", r"cháy\s*ngầm", r"cột\s*khói", r"dập\s*lửa",
     r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng",
     r"PCCCR", r"cháy\s*thực\s*bì", r"lửa\s*rừng", r"cháy\s*lan\s*rộng",
-    r"giặc\s*lửa", r"điểm\s*cháy", r"khói\s*mù", r"thiêu\s*rụi"
+    r"giặc\s*lửa", r"điểm\s*cháy"
   ]),
 
-  # 15) Xói lở (Erosion)
+  # 15) Xói lở (Erosion) - User Cat 15
   ("erosion", [
-    r"xói\s*lở", r"sạt\s*lở\s*bờ\s*(?:sông|biển|kè)", r"sập\s*bờ\s*kè", r"vỡ\s*bờ\s*kè", r"vỡ\s*kè", r"hàm\s*ếch", r"mương\s*xói", r"rãnh\s*xói", r"xâm\s*thực", r"xói\s*mòn"
+    r"xói\s*lở", r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"hàm\s*ếch", r"mương\s*xói", r"rãnh\s*xói", r"xâm\s*thực", r"xói\s*mòn",
+    r"sập\s*bờ\s*kè", r"vỡ\s*bờ\s*kè", r"vỡ\s*kè"
   ]),
 
   # 16) Tin cảnh báo, dự báo (Warning/Forecast)
@@ -750,9 +766,9 @@ DISASTER_RULES = [
 ]
 
 # High-priority keywords are now centralized in sources.py
-HIGH_PRIORITY_RE = [re.compile(p, re.IGNORECASE) for p in sources.HIGH_PRIORITY_KEYWORDS]
+HIGH_PRIORITY_RE = [re.compile(p, re.IGNORECASE) for p in sources.HIGH_PRIORITY_KEYWORDS + ["lũ lịch sử", "lũ ống", "lũ quét", "ngập sâu", "ngập úng", "sạt lở đất", "áp thấp nhiệt đới", "bão số", "siêu bão", "hố tử thần", "cháy rừng cấp"]]
 
-DANGER_RE = [re.compile(p, re.IGNORECASE) for p in sources.DANGER_SIGS]
+DANGER_RE = [re.compile(p, re.IGNORECASE) for p in sources.DANGER_SIGS + ["lũ lịch sử", "áp thấp nhiệt đới", "khẩn cấp"]]
 
 # Risk Level Patterns (Decision 18 Art 4)
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*([1-5I-V])", re.IGNORECASE)
@@ -1928,6 +1944,24 @@ ABSOLUTE_VETO = [
     # 7. HUMAN TRAFFICKING & MIGRATION (Jan 2026 Fix)
     r"\b(?:mua\s*bán\s*người|buôn\s*bán\s*người|nạn\s*nhân\s*mua\s*bán|lừa\s*bán|việc\s*nhẹ\s*lương\s*cao|nạn\s*nhân\s*bị\s*lừa|giải\s*cứu\s*nạn\s*nhân\s*trafficking)\b",
     r"\b(?:di\s*cư\s*trái\s*phép|vượt\s*biên|nhập\s*cảnh\s*trái\s*phép|lao\s*động\s*chui|trục\s*xuất)(?!.*(?:do|vì|bởi)\s*(?:thiên\s*tai|bão|lũ))\b",
+
+    # --- ADDED FEB 2026: METAPHORS, DRAMA & INFRASTRUCTURE ---
+    # Metaphorical "Storms" & "Seismic" events (Social/Politics/Sports)
+    r"\b(?:cơn)\s*(?:địa\s*chấn|sóng\s*thần)\s*(?:chính\s*trị|tài\s*chính|ngôn\s*ngữ|mạng|sân\s*cỏ|điện\s*ảnh|showbiz)\b",
+    r"\b(?:thảm\s*họa)\s*(?:thẩm\s*mỹ|thời\s*trang|âm\s*nhạc|dao\s*kéo|mc|trang\s*điểm|nấu\s*ăn|nhan\s*sắc)\b",
+    r"\b(?:bão)\s*(?:sao\s*kê|drama|tẩy\s*chay|chỉ\s*trích|ném\s*đá|đòi\s*nợ|kiện\s*tụng|ly\s*hôn)\b",
+    r"\b(?:sóng\s*gió)\s*(?:cuộc\s*đời|tình\s*yêu|hôn\s*nhân|gia\s*tộc|thương\s*trường|hậu\s*trường)\b",
+
+    # Charity Scandals (Social Drama)
+    r"\b(?:ăn\s*chặn|biển\s*thủ|trục\s*lợi|sao\s*kê|minh\s*bạch)\s*(?:từ\s*thiện|tiền\s*cứu\s*trợ|quỹ|tài\s*khoản)(?!\s*(?:cho|về|người)\s*(?:vùng\s*lũ|bão))\b",
+    r"\b(?:lùm\s*xùm|tranh\s*cãi|tố\s*cáo|bóc\s*phốt)\s*(?:kêu\s*gọi|quyên\s*góp|từ\s*thiện|nghệ\s*sĩ)\b",
+
+    # Railway & Heavy Infra Planning (Specific Technical Terms)
+    r"\b(?:quy\s*hoạch|đề\s*án|chủ\s*trương|phê\s*duyệt|nghiên\s*cứu|đề\s*xuất)\s*(?:đường\s*sắt|sân\s*bay|cảng\s*biển|cao\s*tốc|metro|tàu\s*điện)(?!.*(?:sạt\s*lở|lũ|bão|ngập|thiên\s*tai|hư\s*hỏng|sự\s*cố))\b",
+    r"\b(?:vận\s*hành\s*thương\s*mại|chạy\s*thử|đóng\s*điện|thông\s*xe|khởi\s*công|động\s*thổ)(?!\s*(?:khắc\s*phục|sửa\s*chữa|cầu\s*tạm))\b",
+    
+    # Traffic Statistics (Admin Reports)
+    r"\b(?:thống\s*kê|báo\s*cáo|tổng\s*kết)\s*(?:tình\s*hình|số\s*liệu)\s*(?:tai\s*nạn|giao\s*thông|an\s*ninh\s*trật\s*tự)(?!\s*(?:do|vì|trong)\s*(?:bão|lũ|thiên\s*tai|mưa))\b",
 ]
 
 # 2. CONDITIONAL VETO: Noise that can co-exist with disaster (Economy, Accident, etc.)
@@ -2024,7 +2058,7 @@ CONDITIONAL_VETO = [
     r"\b(?:phòng\s*thi|sức\s*nóng\s*mùa\s*thi|sĩ\s*tử|vượt\s*vũ\s*môn|đề\s*thi|nộp\s*hồ\s*sơ|điểm\s*chuẩn|nguyện\s*vọng|tuyển\s*sinh)\b",
     
     # HISTORICAL NOSTALGIA & DOCUMENTARIES (Past events)
-    r"\b(?:ký\s*ức|hồi\s*tưởng|nhìn\s*lại|phim\s*tài\s*liệu|lịch\s*sử|năm\s*xưa|chuyện\s*cũ|tư\s*liệu\s*quý)\b",
+    r"\b(?:ký\s*ức|hồi\s*tưởng|nhìn\s*lại|phim\s*tài\s*liệu|năm\s*xưa|chuyện\s*cũ|tư\s*liệu\s*quý)\b",
     
     # RECRUITMENT & JOB MARKET
     r"\b(?:thị\s*trường\s*lao\s*động|nhu\s*cầu\s*tuyển\s*dụng|cơ\s*hội\s*việc\s*làm|làn\s*sóng\s*nhảy\s*việc|nộp\s*c\s*v|phỏng\s*vấn\s*tuyển\s*dụng)\b",
@@ -2071,7 +2105,10 @@ CONDITIONAL_VETO = [
     r"\b(?:nghỉ\s*tết|lịch\s*nghỉ|quay\s*lại\s*làm\s*việc|ngày\s*làm\s*việc|công\s*sở|nghỉ\s*bù|đi\s*làm\s*trở\s*lại)(?!\s*(?:sau\s*bão|khắc\s*phục))\b",
     r"\b(?:nhập\s*cư|thị\s*thực|visa|hộ\s*chiếu|xuất\s*nhập\s*cảnh|di\s*trú|lãnh\s*sự|đại\s*sứ\s*quán)\b",
     r"\b(?:cây\s*ATM|rút\s*tiền|thẻ\s*ngân\s*hàng|mã\s*PIN|sổ\s*tiết\s*kiệm|đáo\s*hạn|chi\s*trả\s*lương|tiền\s*thưởng)\b",
-    r"\b(?:đổi\s*tên\s*trường|thành\s*lập\s*trường|sáp\s*nhập\s*trường|công\s*bố\s*quyết\s*định|trao\s*quyết\s*định)(?!\s*(?:thành\s*lập|kiện\s*toàn)\s*(?:ban\s*chỉ\s*huy|đội|lực\s*lượng))\b"
+    r"\b(?:đổi\s*tên\s*trường|thành\s*lập\s*trường|sáp\s*nhập\s*trường|công\s*bố\s*quyết\s*định|trao\s*quyết\s*định)(?!\s*(?:thành\s*lập|kiện\s*toàn)\s*(?:ban\s*chỉ\s*huy|đội|lực\s*lượng))\b",
+
+    # Traffic Accidents (Specific Refinements)
+    r"\b(?:va\s*chạm|đâm\s*nhau|tự\s*gây|mất\s*lái)\s*(?:xe\s*máy|ô\s*tô|xe\s*tải)(?!\s*(?:do|vì|bởi)\s*(?:bão|lũ|mưa|gió|sạt\s*lở|trơn|ngập))",
 ]
 
 # 3. SOFT NEGATIVE: Potential False Positive (Politics, Admin, Economy)
@@ -2175,38 +2212,50 @@ def v_safe(p: str) -> str:
 # Pre-compute accented and unaccented patterns for high-performance matching
 DISASTER_RULES_RE = []
 for label, pats in DISASTER_RULES:
-    # 1. Accented/Strict channel
     pats_v = [v_safe(p) for p in pats]
+    # Create accented compiled list
     compiled_acc = [re.compile(p, RE_FLAGS) for p in pats_v]
+    # Attempt to also create a mega-regex for this label if possible
     try:
         mega_acc = re.compile("|".join(f"(?:{p})" for p in pats_v), RE_FLAGS)
         compiled_acc = [mega_acc]
     except: pass
-
-    # 2. Unaccented channel
-    # EXCLUDE 'bão' derived patterns from unaccented channel to prevent 'bao' (Báo/Bảo/Bao) confusion
-    safe_pats = [p for p in pats if safe_no_accent(p) and len(p) > 15 and "bão" not in p]
-    compiled_no = []
-    if safe_pats:
-        safe_pats_v = [v_safe(risk_lookup.strip_accents(p)) for p in safe_pats]
-        try:
-            mega_no = re.compile("|".join(f"(?:{p})" for p in safe_pats_v), RE_FLAGS)
-            compiled_no = [mega_no]
-        except:
-            compiled_no = [re.compile(p, RE_FLAGS) for p in safe_pats_v]
-
+    
+    # Create unaccented compiled list (only for safe patterns)
+    compiled_no = [re.compile(v_safe(risk_lookup.strip_accents(p)), RE_FLAGS) 
+                   for p in pats if safe_no_accent(p)]
+    try:
+        mega_no = re.compile("|".join(f"(?:{v_safe(risk_lookup.strip_accents(p))})" for p in pats if safe_no_accent(p)), RE_FLAGS)
+        compiled_no = [mega_no]
+    except: pass
+        
     DISASTER_RULES_RE.append((label, compiled_acc, compiled_no))
+
+RE_DANGER = re.compile("|".join(f"(?:{v_safe(p)})" for p in DANGER_SIGS), RE_FLAGS)
+RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp\s*)?([1-5|I-V|V])", re.IGNORECASE)
 
 def build_two_channel_re(pats: List[str]):
     """
-    Build accented and safe-unaccented regex lists.
-    The unaccented list stores (original_index, compiled_re) for safe patterns.
+    Build accented and safe-unaccented mega-regexes.
+    Returns (mega_acc, mega_no).
     """
-    re_acc = [re.compile(v_safe(p), RE_FLAGS) for p in pats]
-    re_no = [(i, re.compile(v_safe(risk_lookup.strip_accents(p)), RE_FLAGS)) 
-             for i, p in enumerate(pats) if safe_no_accent(p)]
-    return re_acc, re_no
+    if not pats: return None, None
+    pats_v = [v_safe(p) for p in pats]
+    
+    # Channel 1: Accented Mega-Regex
+    mega_acc = re.compile("|".join(f"(?:{p})" for p in pats_v), RE_FLAGS)
+    
+    # Channel 2: Unaccented Mega-Regex (Only for safe patterns to avoid false positives)
+    pats_no = [v_safe(risk_lookup.strip_accents(p)) for p in pats if safe_no_accent(p)]
+    mega_no = None
+    if pats_no:
+        try:
+            mega_no = re.compile("|".join(f"(?:{p})" for p in pats_no), RE_FLAGS)
+        except: pass
+    
+    return mega_acc, mega_no
 
+# Define Veto Regexes as Mega-Regexes
 ABSOLUTE_VETO_RE, ABSOLUTE_VETO_NO_RE = build_two_channel_re(ABSOLUTE_VETO)
 CONDITIONAL_VETO_RE, CONDITIONAL_VETO_NO_RE = build_two_channel_re(CONDITIONAL_VETO)
 SOFT_NEGATIVE_RE, SOFT_NEGATIVE_NO_RE = build_two_channel_re(SOFT_NEGATIVE)
@@ -2408,7 +2457,7 @@ def _to_int(num_str: str) -> int:
 
 
 
-def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = None) -> List[dict]:
+def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = None, t_acc: str = None, t_no: str = None, t_title_acc: str = None, t_title_no: str = None) -> List[dict]:
     """
     EXTRACT FOCUS PROVINCES (Heuristic Logic)
     1. If impacts exist, prioritize provinces in ±1 sentence window.
@@ -2416,10 +2465,35 @@ def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = No
     """
     if not text: return []
 
-    # Unicode Normalization
-    t_orig = unicodedata.normalize('NFC', text)
-    t_title_orig = unicodedata.normalize('NFC', title)
-    t, t0 = risk_lookup.canon(t_orig)
+    # Unicode Normalization (Only done if not passed in)
+    if t_acc is None or t_no is None:
+        t_acc, t_no = risk_lookup.canon(text or "")
+        
+    t = t_acc
+    t0 = t_no
+    # [FIX] Align t_orig with t_acc (NFC + Whitespace Collapsing) to ensure indices match for casing check
+    # We perform same steps as canon() but skip .lower() to preserve case
+    if text:
+        t_orig = unicodedata.normalize("NFC", text)
+        t_orig = t_orig.replace("–", "-").replace("—", "-").replace("−", "-")
+        t_orig = re.sub(r"\s+", " ", t_orig).strip()
+    else:
+        t_orig = ""
+    
+    # We need t_orig for casing/proper noun check
+    # risk_lookup.canon returns lowercase. We need original text for IsUpper check.
+    # We will assume `text` passed in is the original raw text.
+    
+    # Pre-process Title
+    t_title_orig = title
+    t_tit_acc = t_title_acc
+    t_tit_no = t_title_no
+    
+    if (t_tit_acc is None or t_tit_no is None) and title:
+        t_tit_acc, t_tit_no = risk_lookup.canon(title)
+        
+    if t_tit_acc is None: t_tit_acc = ""
+    if t_tit_no is None: t_tit_no = ""
 
     # 1. Raw Extraction
     raw_hits = []
@@ -2442,7 +2516,7 @@ def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = No
 
     # 2. Heuristic: Sentence Splitting
     # Split text into sentences and map spans to sentence index
-    sentences = re.split(r'(?<=[.?!;])\s+', t_orig)
+    sentences = RE_SENTENCE_SPLIT.split(t_orig)
     sentence_spans = []
     curr = 0
     for s in sentences:
@@ -2475,10 +2549,9 @@ def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = No
     # H2: Title Match (Strategic Positioning)
     title_locations = set()
     title_items = []
-    if t_title_orig:
-        t_tit, t_tit0 = risk_lookup.canon(t_title_orig)
+    if title:
         for item in PROVINCE_REGEXES:
-             if item["re_acc"].search(t_tit) or item["re_no"].search(t_tit0):
+             if item["re_acc"].search(t_tit_acc) or item["re_no"].search(t_tit_no):
                  title_locations.add(item["name"])
                  title_items.append(item)
 
@@ -2544,98 +2617,103 @@ def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = No
 def match_disaster_rules(t_acc: str, t_no: str, t_title_acc: str, t_title_no: str) -> tuple[list, dict, bool]:
     """Helper: Matches disaster rules against text/title on both Accented/Unaccented channels."""
     rule_matches = []
-    hazard_counts = {}
+    hazard_counts = {} # Raw count
+    hazard_weights = {} # Weighted score (Title=3, Body=1)
     title_rule_match = False
 
     for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):
         count = 0
+        weight = 0
         matched_label = False
+        
         # 1.1 Match Accented
         for pat_re in compiled_acc:
-            if pat_re.search(t_acc):
-                count += 1
+            # Check Title First (Weight 3)
+            if t_title_acc and pat_re.search(t_title_acc):
+                weight += 3
+                title_rule_match = True
+            
+            # Check Body (Weight 1)
+            # Find all matches in body to get accurate count
+            matches = list(pat_re.finditer(t_acc))
+            if matches:
+                count += len(matches)
+                weight += len(matches) 
                 matched_label = True
-                if t_title_acc and pat_re.search(t_title_acc):
-                    title_rule_match = True
 
-        # 1.2 Match Unaccented
-        if not matched_label and compiled_no:
+        # 1.2 Match Unaccented (Fallback/Supplement)
+        if compiled_no:
+             # Only check unaccented if no accented match OR to find more occurrences?
+             # Strategy: Add unaccented matches to count, but be careful of duplication if checking same text
+             # Here we assume channels are distinct enough or we just want aggregate signal
             for pat_re in compiled_no:
-                if pat_re.search(t_no):
-                    count += 1
+                # Check Title
+                if t_title_no and pat_re.search(t_title_no):
+                    # Only add weight if not already matched in title via accented (avoid double counting same phrase)
+                    # But simpler to just add for signal strength
+                    weight += 3
+                    title_rule_match = True
+                
+                matches = list(pat_re.finditer(t_no))
+                if matches:
+                    count += len(matches)
+                    weight += len(matches)
                     matched_label = True
-                    if t_title_no and pat_re.search(t_title_no):
-                        title_rule_match = True
 
-        if matched_label:
+        if matched_label or weight > 0:
             rule_matches.append(label)
             hazard_counts[label] = count
+            hazard_weights[label] = weight
             
-    return rule_matches, hazard_counts, title_rule_match
+    return rule_matches, hazard_counts, hazard_weights, title_rule_match
 
 def check_veto_status(t_acc: str, t_no: str, t_title_acc: str, t_title_no: str, has_hazard: bool) -> tuple[bool, bool, bool, list]:
-    """Helper: Checks Absolute, Conditional, and Soft vetoes."""
+    """Helper: Checks Absolute, Conditional, and Soft vetoes using Mega-Regexes."""
     absolute_veto = False
     conditional_veto = False
     soft_negative = False
     negative_matches = []
 
     # 1. Absolute Veto
-    # Channel 1: Accented
-    for pat_re in ABSOLUTE_VETO_RE:
-        if pat_re.search(t_acc):
-            in_title = t_title_acc and pat_re.search(t_title_acc)
-            if in_title or not has_hazard:
-                absolute_veto = True
-                negative_matches.append(pat_re.pattern)
-                break
-    
-    # Channel 2: Unaccented
-    if not absolute_veto:
-        for _, pat_re in ABSOLUTE_VETO_NO_RE:
-            if pat_re.search(t_no):
-                in_title = t_title_no and pat_re.search(t_title_no)
-                if in_title or not has_hazard:
-                    absolute_veto = True
-                    negative_matches.append(pat_re.pattern)
-                    break
+    if ABSOLUTE_VETO_RE.search(t_acc):
+        in_title = t_title_acc and ABSOLUTE_VETO_RE.search(t_title_acc)
+        if in_title or not has_hazard:
+            absolute_veto = True
+            negative_matches.append("ABSOLUTE_VETO_MATCH")
+    elif ABSOLUTE_VETO_NO_RE and ABSOLUTE_VETO_NO_RE.search(t_no):
+        in_title = t_title_no and ABSOLUTE_VETO_NO_RE.search(t_title_no)
+        if in_title or not has_hazard:
+            absolute_veto = True
+            negative_matches.append("ABSOLUTE_VETO_NO_ACCENT_MATCH")
     
     if absolute_veto:
         return True, False, False, negative_matches
 
     # 2. Conditional Veto
-    for pat_re in CONDITIONAL_VETO_RE:
-         if pat_re.search(t_acc):
-             conditional_veto = True
-             negative_matches.append(pat_re.pattern)
-             break
-    if not conditional_veto:
-        for _, pat_re in CONDITIONAL_VETO_NO_RE:
-            if pat_re.search(t_no):
-                conditional_veto = True
-                negative_matches.append(pat_re.pattern)
-                break
+    if CONDITIONAL_VETO_RE.search(t_acc):
+        conditional_veto = True
+        negative_matches.append("CONDITIONAL_VETO_MATCH")
+    elif CONDITIONAL_VETO_NO_RE and CONDITIONAL_VETO_NO_RE.search(t_no):
+        conditional_veto = True
+        negative_matches.append("CONDITIONAL_VETO_NO_ACCENT_MATCH")
 
     # 3. Soft Negative
-    for pat_re in SOFT_NEGATIVE_RE:
-        if pat_re.search(t_acc):
-            soft_negative = True
-            negative_matches.append(pat_re.pattern)
-            break
-    if not soft_negative:
-        for _, pat_re in SOFT_NEGATIVE_NO_RE:
-            if pat_re.search(t_no):
-                soft_negative = True
-                negative_matches.append(pat_re.pattern)
-                break
+    if SOFT_NEGATIVE_RE.search(t_acc):
+        soft_negative = True
+        negative_matches.append("SOFT_NEGATIVE_MATCH")
+    elif SOFT_NEGATIVE_NO_RE and SOFT_NEGATIVE_NO_RE.search(t_no):
+        soft_negative = True
+        negative_matches.append("SOFT_NEGATIVE_NO_ACCENT_MATCH")
 
     return absolute_veto, conditional_veto, soft_negative, negative_matches
 
-def extract_province(text: str, title: str = "") -> str:
+def extract_province(text: str, title: str = "", t_acc: str = None, t_no: str = None) -> str:
     """Legacy wrapper: returns the Single Best province found.
     Prioritizes specific Province over Region.
     """
-    all_hits = extract_provinces(text, title=title)
+    # Note: Legacy wrapper doesn't pass t_title_acc/no, so it will re-calc if title present.
+    # We could update it, but it's simpler to rely on extract_provinces internal check.
+    all_hits = extract_provinces(text, title=title, t_acc=t_acc, t_no=t_no)
 
     # 1. Return first specific province
     for h in all_hits:
@@ -2649,48 +2727,131 @@ def extract_province(text: str, title: str = "") -> str:
 
     return "unknown"
 
-def extract_disaster_metrics(text: str) -> dict:
+def extract_disaster_metrics(text: str, t_acc: str = None, t_no: str = None) -> dict:
+    """
+    Extracts numerical metrics (wind speed, rainfall, quake mag) directly using regex.
+    Optimized to use pre-normalized text inputs.
+    """
     metrics = {}
+    if t_acc is None or t_no is None:
+        t_acc, t_no = risk_lookup.canon(text or "")
+        
+    t = t_acc # Lowercase normalized
+    t0 = t_no # Stripped normalized
 
-    # 1. Rainfall (mm)
-    val = risk_lookup.extract_max_mm(text)
-    if val: metrics["rainfall_mm"] = val
+    # 1. Rainfall (mm) - Inlined from risk_lookup
+    cand_mm = []
+    # range mm: 100-200mm
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*mm\b", t, flags=re.IGNORECASE):
+        cand_mm.append(float(m.group(2).replace(",", ".")))
+    # single mm: 150mm
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*mm\b", t, flags=re.IGNORECASE):
+        cand_mm.append(float(m.group(1).replace(",", ".")))
+    # L/m2
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*(?:l|lit|lít)\s*/\s*m\s*(?:2|\^2)\b", t, flags=re.IGNORECASE):
+        cand_mm.append(float(m.group(1).replace(",", ".")))
+        
+    if cand_mm: metrics["rainfall_mm"] = max(cand_mm)
 
     # 2. Temperature (C)
-    val = risk_lookup.extract_max_temp(text)
-    if val: metrics["temperature_c"] = val
+    cand_temp = []
+    UNIT_T = r"(?:°\s*c)"
+    UNIT_T0 = r"(?:do\s*c|\bc\b)"
+    # Try with t for °C
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+         cand_temp.append(float(m.group(2).replace(",", ".")))
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+         cand_temp.append(float(m.group(1).replace(",", ".")))
+    # Try with t0 for "do C"
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
+         cand_temp.append(float(m.group(2).replace(",", ".")))
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
+         cand_temp.append(float(m.group(1).replace(",", ".")))
+         
+    if cand_temp: metrics["temperature_c"] = max(cand_temp)
 
     # 3. Salinity (per mille)
-    val = risk_lookup.extract_max_salinity(text)
-    if val: metrics["salinity_per_mille"] = val
+    cand_salt = []
+    UNIT_S = r"(?:‰|psu|ppt)"
+    UNIT_S0 = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin)"
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_S, t, re.IGNORECASE):
+         cand_salt.append(float(m.group(1).replace(",", ".")))
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_S0, t0, re.IGNORECASE):
+         cand_salt.append(float(m.group(1).replace(",", ".")))
+    if cand_salt: metrics["salinity_per_mille"] = max(cand_salt)
 
-    # 4. Wind (Beaufort) - includes conversion from km/h, m/s
-    val = risk_lookup.extract_beaufort_max(text)
-    if val: metrics["wind_level"] = val
+    # 4. Wind (Beaufort) - Inlined & Simplified
+    vals_wind = []
+    vals_gust = []
+    
+    # cấp/cap X (exclude 'khẩn cấp' and 'giật')
+    for m in re.finditer(r"(?<!khan\s)(?<!khẩn\s)(?<!giat\s)(?<!giật\s)(?:cấp|cap)\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+        a = int(m.group(1))
+        b = int(m.group(2)) if m.group(2) else a
+        vals_wind.append(max(a, b))
+        
+    # Roman numerals (sustained)
+    for m in re.finditer(r"(?:cấp|cap)\s*([ivx]{1,5})\b", t0, flags=re.IGNORECASE):
+        r = risk_lookup._roman_to_int(m.group(1))
+        if r is not None: vals_wind.append(r)
+        
+    # giật cấp ...
+    for m in re.finditer(r"giat\s*(?:cap|cấp)?\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+        a = int(m.group(1))
+        b = int(m.group(2)) if m.group(2) else a
+        vals_gust.append(max(a, b))
+        
+    # m/s -> Beaufort (sustained)
+    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*m\s*/\s*s\b", t, flags=re.IGNORECASE):
+        ms = float(m.group(1).replace(",", "."))
+        vals_wind.append(risk_lookup.kmh_to_beaufort(ms * 3.6))
+
+    if ("siêu bão" in t) or ("sieu bao" in t0): vals_wind.append(16)
+    
+    if vals_wind: metrics["wind_level"] = max(vals_wind)
+    if vals_gust: metrics["wind_gust"] = max(vals_gust)
 
     # 5. Water Level (m)
-    val = risk_lookup.extract_water_level(text)
-    if val: metrics["water_level_m"] = val
+    # Logic: Search for keywords + number + unit m/cm
+    CTX_WL = r"(?:muc\s*nuoc|nuoc\s*dang|ngap|do\s*sau|dinh\s*lu|bao\s*dong)"
+    m_wl = re.search(CTX_WL + r"[^0-9]{0,50}\s+(\d+(?:[.,]\d+)?)(?:\s*(?:-|den)\s*(\d+(?:[.,]\d+)?))?\s*(m|mét|met|cm)\b(?!\s*/)", t0, re.IGNORECASE)
+    if m_wl:
+        v1 = float(m_wl.group(1).replace(",", "."))
+        v2 = float(m_wl.group(2).replace(",", ".")) if m_wl.group(2) else v1
+        val_wl = max(v1, v2)
+        if "cm" in m_wl.group(3).lower(): val_wl /= 100.0
+        metrics["water_level_m"] = val_wl
 
-    # 6. Duration (days)
-    val = risk_lookup.extract_duration_days_count(text)
-    if val > 0: metrics["duration_days"] = float(val)
+    # 6. Duration
+    # Quick heuristics from risk_lookup
+    m_dur = re.search(r"trong\s*(\d{1,2})\s*ngay", t0)
+    if m_dur: metrics["duration_days"] = float(m_dur.group(1))
+    elif "nhieu ngay" in t0 or "dai ngay" in t0: metrics["duration_days"] = 3.0
 
     # 7. Earthquake (Magnitude)
-    val = risk_lookup.extract_quake_mag(text)
-    if val: metrics["earthquake_magnitude"] = val
+    m_quake = re.search(r"\b(?:mw|ml|m)\s*(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
+    if m_quake: 
+        metrics["earthquake_magnitude"] = float(m_quake.group(1).replace(",", "."))
+    elif re.search(r"(?:dong\s*dat|chan\s*dong|dia\s*chan)", t0):
+        # Support "5.2 do richter" or "5.2 richter" or "5,2 do"
+        m_q2 = re.search(r"\b(\d+(?:[.,]\d+)?)\s*(?:do|độ)?\s*(?:richter|m|mw|ml)\b", t0, re.IGNORECASE)
+        if m_q2: metrics["earthquake_magnitude"] = float(m_q2.group(1).replace(",", "."))
 
     return metrics
 
-def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = False, authority_level: int = 1) -> dict:
+def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = False, authority_level: int = 1, t_acc: str = None, t_no: str = None) -> dict:
     # 1. Standardize Normalization using risk_lookup.canon (Provides Two Channels)
     # Combine title for search if not already in text
     search_text = f"{title}\n{text}" if title and title not in text else text
-    t_acc, t_no = risk_lookup.canon(search_text or "")
+    
+    if t_acc is None or t_no is None:
+        t_acc, t_no = risk_lookup.canon(search_text or "")
+        
+    # We also need title separate for rule matching weights
     t_title_acc, t_title_no = risk_lookup.canon(title or "")
 
     # Helper 1: Disaster Rules
-    rule_matches, hazard_counts, title_rule_match = match_disaster_rules(t_acc, t_no, t_title_acc, t_title_no)
+    rule_matches, hazard_counts, hazard_weights, title_rule_match = match_disaster_rules(t_acc, t_no, t_title_acc, t_title_no)
 
     # VIP Term Detection (Immediate Pass Boost)
     is_vip = False
@@ -2742,26 +2903,23 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     # Red Alert Detection (High-danger warnings)
     is_red_alert = False
     # Check title first (higher confidence)
-    if title:
-        for dr in DANGER_RE:
-            if dr.search(title):
-                is_red_alert = True
-                break
+    if title and RE_DANGER.search(title):
+        is_red_alert = True
     # Then check body
-    if not is_red_alert:
-        for dr in DANGER_RE:
-            if dr.search(text):
-                is_red_alert = True
-                break
+    if not is_red_alert and RE_DANGER.search(text):
+        is_red_alert = True
+    
+    if is_red_alert:
+        rule_score += 5.0 # Boost for danger signals (Lũ lịch sử, Khẩn cấp)
 
     # 2. Impact Match - Deaths, missing, or significant damage/metrics
     # REFINED: Use extracted objects to determine impact_score
-    raw_details = extract_impact_details(text)
+    raw_details = extract_impact_details(text, t_acc=t_acc, t_no=t_no)
 
     # We define impact_found if any typed list in raw_details is non-empty
     impact_found = any(len(lst) > 0 for lst in raw_details.values())
 
-    metrics = extract_disaster_metrics(text)
+    metrics = extract_disaster_metrics(text, t_acc=t_acc, t_no=t_no)
     real_metrics_found = any(k != "duration_days" for k in metrics.keys())
 
     # Impact score is fixed if ANY major impact sign is found after negation-filtering
@@ -2772,7 +2930,8 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
 
     # [OPTIMIZATION] Magnitude Scaling: Bonus for extreme values
     extreme_bonus = 0.0
-    if metrics.get("rainfall_mm", 0) >= 300: extreme_bonus += 1.5
+    if metrics.get("rainfall_mm", 0) >= 150: extreme_bonus += 1.5 # Lowered from 300
+    if metrics.get("rainfall_mm", 0) >= 300: extreme_bonus += 1.0 # Extra bonus
     if metrics.get("wind_level", 0) >= 12: extreme_bonus += 2.0
     if metrics.get("earthquake_magnitude", 0) >= 6.0: extreme_bonus += 2.5
     
@@ -2794,7 +2953,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         for item in typed_impacts:
             all_impact_spans.append(item["span"])
 
-    prov_hits = extract_provinces(text, title=title, impact_spans=all_impact_spans)
+    prov_hits = extract_provinces(text, title=title, impact_spans=all_impact_spans, t_acc=t_acc, t_no=t_no, t_title_acc=t_title_acc, t_title_no=t_title_no)
 
     # Location Score: 2.0 base + 0.5 bonus if it's a Proper Noun (Uppercase)
     location_found = len(prov_hits) > 0
@@ -2904,7 +3063,6 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     context_score = len(context_hits)
 
 
-    metrics = extract_disaster_metrics(text)
     impact_details = raw_details # Re-use already extracted details
 
     return {
@@ -2915,6 +3073,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "score": score,
         "hazard_score": rule_score,
         "hazard_counts": hazard_counts,
+        "hazard_weights": hazard_weights,
         "context_score": context_score,
         "sensitive_locations": sensitive_found,
         "absolute_veto": absolute_veto,
@@ -2931,25 +3090,22 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "is_red_alert": is_red_alert
     }
 
-def determine_event_stage(text: str, impact_detected: bool = False) -> str:
+def determine_event_stage(text: str, impact_detected: bool = False, t_acc: str = None) -> str:
     """
     Classify event stage: FORECAST, INCIDENT, or RECOVERY.
     Uses keyword density/scoring for robustness.
     """
-    t_lower = (text or "").lower()
+    t_lower = t_acc if t_acc else (text or "").lower()
     scores = {"FORECAST": 0, "INCIDENT": 0, "RECOVERY": 0}
 
     # 1. Check Recovery (High weight for specific terms)
-    for kw in RECOVERY_KEYWORDS:
-        if re.search(kw, t_lower): scores["RECOVERY"] += 2
+    if sources.RE_RECOVERY.search(t_lower): scores["RECOVERY"] += 2
 
     # 2. Check Forecast/Warning
-    for kw in FORECAST_SIGS:
-        if re.search(kw, t_lower): scores["FORECAST"] += 2
+    if sources.RE_FORECAST.search(t_lower): scores["FORECAST"] += 2
 
     # 3. Check Incident (Happening/Happened)
-    for kw in INCIDENT_SIGS:
-        if re.search(kw, t_lower): scores["INCIDENT"] += 2
+    if sources.RE_INCIDENT.search(t_lower): scores["INCIDENT"] += 2
 
     # [OPTIMIZATION] Impact Priority: If real impact (deaths/missing) is mentioned,
     # it's almost certainly an INCIDENT or RECOVERY, even if the article title says "Forecast".
@@ -3083,13 +3239,16 @@ def title_contains_disaster_keyword(title: str) -> bool:
                 return True
     return False
 
-def extract_impacts(text: str) -> dict:
+def extract_impacts(text: str, t_acc: str = None, t_no: str = None, pre_calculated_details: dict = None) -> dict:
     """
     Enhanced extraction to match user's professional report format.
     Fields: commune, village, route, cause, characteristics, along with casualties.
     """
-    details = extract_impact_details(text)
-    t_lower = text.lower()
+    if pre_calculated_details:
+        details = pre_calculated_details
+    else:
+        details = extract_impact_details(text, t_acc=t_acc, t_no=t_no)
+    t_lower = t_acc if t_acc else text.lower()
     
     res = {
         "deaths": None,
@@ -3130,16 +3289,16 @@ def extract_impacts(text: str) -> dict:
     if m_agency: res["agency"] = m_agency.group(1)
 
     # 4. Location Details (Commune, Village, Route)
-    m_commune = re.search(r"(?:xã|phường|thị\s*trấn|thị\s*tứ)\s+([A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)", text)
+    m_commune = RE_COMMUNE.search(text)
     if m_commune: res["commune"] = m_commune.group(1).strip()
 
-    m_village = re.search(r"(?:thôn|bản|ấp|xóm|khối|tổ|khu\s*phố|ngõ|ngách|hẻm|số\s*nhà)\s+([A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*(?:\s+[A-Z0-9\xC0-\xDFĐ][a-z0-9\xE0-\xFFà-ỹ]*)*)", text)
+    m_village = RE_VILLAGE.search(text)
     if m_village: res["village"] = m_village.group(1).strip()
 
-    m_route = re.search(r"(?:tuyến|quốc\s*lộ|tỉnh\s*lộ|đường|cao\s*tốc)\s+([A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*(\s+[A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*)*)", text)
+    m_route = RE_ROUTE.search(text)
     if m_route: res["route"] = m_route.group(1).strip()
 
-    m_landmark = re.search(r"((?:sông|suối|núi|cầu|hồ|đập|đèo|kè|cống|vịnh|biển|mương|rạch|kênh)\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)", text)
+    m_landmark = RE_LANDMARK.search(text)
     if m_landmark: res["landmark"] = m_landmark.group(1).strip()
 
     # 5. Cause
@@ -3151,7 +3310,8 @@ def extract_impacts(text: str) -> dict:
     if m_char: res["characteristics"] = m_char.group(1).strip()
 
     # 7. Auto-generated Location Description
-    res["location_description"] = format_location_description(res, extract_province(text))
+    # 7. Auto-generated Location Description
+    res["location_description"] = format_location_description(res, extract_province(text, t_acc=t_acc, t_no=t_no))
 
     return res
 
@@ -3251,7 +3411,7 @@ def extract_event_time(published_at: datetime, text: str) -> datetime | None:
     
     return None
 
-def classify_disaster(text: str, title: str = "") -> dict:
+def classify_disaster(text: str, title: str = "", hazard_weights: dict = None, t_title_in: str = None, t_body_in: str = None) -> dict:
     """
     Classify disaster type based on 14 specific types and 2 special groups:
     1. storm, 2. flood, 3. flash_flood, 4. landslide, 5. subsidence, 6. drought, 7. salinity,
@@ -3259,22 +3419,22 @@ def classify_disaster(text: str, title: str = "") -> dict:
     + warning_forecast, recovery
     """
     full_text = f"{title}\n{text}" if title else text
-    t_title, _ = risk_lookup.canon(title or "")
-    t_body, _ = risk_lookup.canon(text or "")
     
-    hazard_weights = {}
-    for label, compiled_acc, _ in DISASTER_RULES_RE:
-        weight = 0
-        # Title matches (Priority 3)
-        for pat in compiled_acc:
-            if pat.search(t_title):
-                weight += 3
-        # Body matches (Priority 1)
-        for pat in compiled_acc:
-            if pat.search(t_body):
-                weight += 1
-        if weight > 0:
-            hazard_weights[label] = weight
+    t_title = t_title_in
+    if t_title is None:
+         t_title, _ = risk_lookup.canon(title or "")
+
+    t_body = t_body_in
+    if t_body is None:
+         t_body, _ = risk_lookup.canon(text or "")
+
+    # Optimization: If hazard_weights passed from compute_disaster_signals, use them directly
+    if hazard_weights is None:
+        # Use match_disaster_rules to get consistent weights (Includes Two-Channel check)
+        # We need unaccented versions for this robust check
+        _, t_title_no = risk_lookup.canon(title or "")
+        _, t_body_no = risk_lookup.canon(text or "")
+        _, _, hazard_weights, _ = match_disaster_rules(t_body, t_body_no, t_title, t_title_no)
 
     # ROOT CAUSE BOOSTING & TIE-BREAKING
     if "storm" in hazard_weights:
@@ -3286,35 +3446,33 @@ def classify_disaster(text: str, title: str = "") -> dict:
 
     if "wildfire" in hazard_weights:
         forest_indicators = ["rừng", "thực bì", "khoảnh", "tiểu khu", "lâm phần", "lâm nghiệp", "diện tích", "thảm thực vật"]
-        if not any(fi in full_text.lower() for fi in forest_indicators):
+        # Check both title and body (normalized)
+        if not any(fi in t_title for fi in forest_indicators) and not any(fi in t_body for fi in forest_indicators):
             hazard_weights["wildfire"] -= 10
 
     primary = "unknown"
     if hazard_weights:
-        # Sort by weight, then by priority index
+        # Sort by weight, then by priority index (Using pre-mapped dictionary for O(1) lookup)
         sorted_hazards = sorted(
             hazard_weights.items(),
-            key=lambda item: (-item[1], DISASTER_PRIORITY.index(item[0]) if item[0] in DISASTER_PRIORITY else 99)
+            key=lambda item: (-item[1], DISASTER_PRIORITY_MAP.get(item[0], 99))
         )
         if sorted_hazards[0][1] > 0:
             primary = sorted_hazards[0][0]
 
-    # Special Classification: Warning/Forecast & Recovery Groups
-    # If the title is specifically about forecast or recovery, classify as such
-    warning_title_sigs = [r"bản\s*tin(?:\s*dự\s*báo|\s*cảnh\s*báo)", r"dự\s*báo\s*thiên\s*tai", r"tin\s*cảnh\s*báo", r"cảnh\s*báo\s*thiên\s*tai"]
-    recovery_title_sigs = [r"khắc\s*phục\s*hậu\s*quả", r"sau\s*thiên\s*tai", r"thống\s*kê\s*thiệt\s*hại", r"rà\s*soát\s*thiệt\s*hại"]
-    
-    if any(re.search(pat, t_title, re.IGNORECASE) for pat in warning_title_sigs):
+    # Special Classification: Warning/Forecast & Recovery Groups using pre-compiled patterns
+    if RE_WARNING_TITLE.search(t_title):
         primary = "warning_forecast"
-    elif any(re.search(pat, t_title, re.IGNORECASE) for pat in recovery_title_sigs):
+    elif RE_RECOVERY_TITLE.search(t_title):
         primary = "recovery"
     elif primary == "unknown":
-        # Fallback to content-based detection for these groups
-        if any(re.search(sig, full_text, re.IGNORECASE) for sig in FORECAST_SIGS):
+        # Fallback to content-based detection for these groups using pre-compiled mega-regexes
+        if sources.RE_FORECAST.search(t_title) or sources.RE_FORECAST.search(t_body):
             primary = "warning_forecast"
-        elif any(re.search(kw, full_text, re.IGNORECASE) for kw in RECOVERY_KEYWORDS):
+        elif sources.RE_RECOVERY.search(t_title) or sources.RE_RECOVERY.search(t_body):
             primary = "recovery"
-        elif any(vip_re.search(full_text.lower()) for vip_re in sources.VIP_TERMS_RE):
+        elif any(vip_re.search(t_title) for vip_re in sources.VIP_TERMS_RE) or \
+             any(vip_re.search(t_body) for vip_re in sources.VIP_TERMS_RE):
              primary = "recovery"
 
     return {
@@ -3340,18 +3498,22 @@ def summarize(text: str, max_len: int = 220, title: str = "") -> str:
 # IMPACT EXTRACTION LOGIC
 
 
-def extract_impact_details(text: str) -> dict:
+def extract_impact_details(text: str, t_acc: str = None, t_no: str = None) -> dict:
     """
     UNIFIED IMPACT EXTRACTION (Fusion Strategy)
     Extracts, standardizes, and de-conflicts disaster impact metrics.
     """
     results = {k: [] for k in IMPACT_KEYWORDS.keys()}
-    t_acc, t_no = risk_lookup.canon(text or "")
+    if t_acc is None or t_no is None:
+        t_acc, t_no = risk_lookup.canon(text or "")
     
     # 1. Collect all raw candidates
     candidates = []
     
     for impact_type in IMPACT_KEYWORDS.keys():
+        # [OPTIMIZATION] Build negation list once per type
+        negs = NEGATION_TERMS.get(impact_type, []) + NEGATION_TERMS.get("general", [])
+
         passes = [
             (t_acc, IMPACT_PATTERNS.get(impact_type, [])),
             (t_no, IMPACT_PATTERNS_NO.get(impact_type, []))
@@ -3367,8 +3529,6 @@ def extract_impact_details(text: str) -> dict:
                     win_end = min(len(search_text), end + 40)
                     context_win = search_text[win_start:win_end]
                     
-                    # Specific typed negations + only the most critical general negs
-                    negs = NEGATION_TERMS.get(impact_type, []) + NEGATION_TERMS.get("general", [])
                     if any(n in context_win for n in negs):
                         continue
                         
@@ -3467,20 +3627,66 @@ def validate_impacts(impact_dict: dict) -> bool:
 
     return needs_verification
 
-def extract_all_metadata(text: str, summary_raw: str, title: str) -> dict:
+def extract_all_metadata(text: str, summary_raw: str, title: str, existing_signals: dict = None) -> dict:
     """
     Helper to run all extraction tasks in one go (useful for thread offloading).
+    OPTIMIZED v3: Normalized once, shared between signals and extraction. Reuses existing signals if provided.
     """
-    disaster_info = classify_disaster(text)
-    province = extract_province(text)
-    impacts = extract_impacts(text)
+    # 1. Normalize Separately to allow specific targeting
+    t_title_acc, t_title_no = risk_lookup.canon(title or "")
+    t_body_acc, t_body_no = risk_lookup.canon(text or "")
+    
+    # Construct Full Text Normalized (for Signal detection & Global Search)
+    # If title is already in text, body is effectively full text. Otherwise combine.
+    if title and title not in text:
+        t_acc = f"{t_title_acc} {t_body_acc}".strip()
+        t_no = f"{t_title_no} {t_body_no}".strip()
+    else:
+        t_acc = t_body_acc
+        t_no = t_body_no
+    
+    # 2. Compute Signals (includes scoring, Veto, and Hazard matching)
+    # [OPTIMIZATION] reuse existing signals if passed (from diagnose step)
+    if existing_signals:
+         signals = existing_signals
+    else:
+         signals = compute_disaster_signals(text, title=title, t_acc=t_acc, t_no=t_no)
+    
+    # [OPTIMIZATION] Reuse Impact Details calculated in compute_disaster_signals
+    impact_details_raw = signals.get("impact_details", {})
+    if not impact_details_raw:
+        # Fallback if for some reason it's missing (shouldn't be)
+        impact_details_raw = extract_impact_details(text, t_acc=t_acc, t_no=t_no)
+    
+    # 3. Classify Type
+    # [OPTIMIZATION] Pass hazard_weights and normalized title/body separately
+    # Use t_body_acc (Body Only) to avoid double-weighting title keywords in Classify logic
+    disaster_info = classify_disaster(text, title=title, hazard_weights=signals.get("hazard_weights"), t_title_in=t_title_acc, t_body_in=t_body_acc)
+    
+    # 4. Extract Location
+    # Optimized: Call extract_provinces directly to get best province logic
+    all_provs = extract_provinces(text, title=title, t_acc=t_acc, t_no=t_no, t_title_acc=t_title_acc, t_title_no=t_title_no)
+    
+    best_prov = "unknown"
+    for h in all_provs:
+        if h["type"] == "province": best_prov = h["name"]; break
+    if best_prov == "unknown":
+        for h in all_provs:
+            if h["type"] == "region": best_prov = h["name"]; break
+            
+    province = best_prov
+    
+    # 5. Extract Impacts (Detailed)
+    # Optimized: Use pre-calculated details
+    impacts = extract_impacts(text, t_acc=t_acc, t_no=t_no, pre_calculated_details=impact_details_raw) 
+    
+    # 6. Summary
     summary_text = summarize(summary_raw.replace("&nbsp;", " "), title=title)
     
     # Optimized: If impacts (deaths/missing) are found, prioritize INCIDENT or RECOVERY
     has_impacts = (impacts.get("deaths") or impacts.get("missing") or impacts.get("injured") or 0) > 0
-    stage = determine_event_stage(text, impact_detected=has_impacts)
+    stage = determine_event_stage(text, impact_detected=has_impacts, t_acc=t_acc)
     
-    impact_details = extract_impact_details(text)
     needs_verification = int(validate_impacts(impacts))
     
     return {
@@ -3489,8 +3695,9 @@ def extract_all_metadata(text: str, summary_raw: str, title: str) -> dict:
         "impacts": impacts,
         "summary": summary_text,
         "stage": stage,
-        "impact_details": impact_details,
+        "impact_details": impact_details_raw,
         "needs_verification": needs_verification,
         "has_impacts": has_impacts,
-        "landmark": impacts.get("landmark")
+        "landmark": impacts.get("landmark"),
+        "is_red_alert": signals.get("is_red_alert", False)
     }

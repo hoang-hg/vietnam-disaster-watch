@@ -30,38 +30,38 @@ def test_filtering():
 
         # 2. Mưa lớn / Lũ lụt
         ('Mưa lớn kéo dài 3 ngày, lượng mưa phổ biến 150-200mm, gây ngập úng cục bộ', 
-         True, 'flood_landslide', 'Heavy Rain with quantitative mm'),
+         True, 'extreme_weather', 'Heavy Rain with quantitative mm'),
          
         ('Lũ lịch sử tại Hà Tĩnh, mực nước sông Ngàn Sâu vượt báo động 3', 
-         True, 'flood_landslide', 'Historic Flood'),
+         True, 'flood', 'Historic Flood'),
          
         ('Thủy điện xả lũ, hạ du nguy cơ ngập lụt diện rộng', 
-         True, 'flood_landslide', 'Dam release & flooding'),
+         True, 'flood', 'Dam release & flooding'),
 
         # 3. Sạt lở / Sụt lún
         ('Sạt lở đất kinh hoàng tại Hòa Bình vùi lấp 3 hộ dân', 
-         True, 'flood_landslide', 'Landslide with impact'),
+         True, 'landslide', 'Landslide with impact'),
          
         ('Hố tử thần xuất hiện giữa đường phố Sài Gòn sau mưa lớn', 
-         True, 'flood_landslide', 'Sinkhole (Hố tử thần)'),
+         True, 'subsidence', 'Sinkhole (Hố tử thần)'),
 
         # 4. Hạn hán / Mặn
         ('Xâm nhập mặn sâu vào nội đồng, độ mặn đạt 4‰ tại Bến Tre', 
-         True, 'heat_drought', 'Salinity intrusion'),
+         True, 'salinity', 'Salinity intrusion'),
          
         ('Nắng nóng gay gắt 40 độ C, nguy cơ cháy rừng cấp 5', 
-         True, 'heat_drought', 'Extreme Heat & Wildfire Risk'),
+         True, 'heatwave', 'Extreme Heat & Wildfire Risk'),
 
         # 5. Động đất / Sóng thần
         ('Động đất 5.2 độ richter rung chuyển Cao Bằng', 
-         True, 'quake_tsunami', 'Earthquake M>3.5'),
+         True, 'earthquake', 'Earthquake M>3.5'),
          
         ('Cảnh báo sóng thần sau động đất lớn ngoài khơi Philippines', 
-         True, 'quake_tsunami', 'Tsunami Warning'),
+         True, 'tsunami', 'Tsunami Warning'),
 
         # 6. Gió mạnh / Biển
         ('Cảnh báo gió mạnh cấp 6-7 trên vùng biển Cà Mau', 
-         True, 'wind_fog', 'Strong wind at sea'),
+         True, 'extreme_weather', 'Strong wind at sea'),
 
         # --- NEGATIVE CASES (False) - "Bẫy" ngữ nghĩa ---
         
@@ -95,6 +95,22 @@ def test_filtering():
          
         ('Quy hoạch đô thị ven sông Hồng được phê duyệt', 
          False, None, 'Policy/Planning'),
+
+        # --- NEW NEGATIVE CASES (Feb 2026 Refinements) ---
+        ('Thảm họa thời trang tại tuần lễ thời trang Paris', 
+         False, None, 'Metaphor: Thảm họa thời trang'),
+         
+        ('Bão sao kê càn quét showbiz Việt', 
+         False, None, 'Metaphor: Bão sao kê'),
+         
+        ('Cuộc sống sóng gió của nghệ sĩ A', 
+         False, None, 'Metaphor: Sóng gió'),
+
+        ('Quy hoạch đường sắt cao tốc Bắc Nam được phê duyệt', 
+         False, None, 'Infra: Railway Planning'),
+
+        ('Thống kê tai nạn giao thông dịp Tết', 
+         False, None, 'Admin: Traffic Stats'),
     ]
     
     print('Testing Disaster Keyword Filtering & Classification')

@@ -1,7 +1,6 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-from pydantic import Field
+from pydantic import Field, AliasChoices
 
 # Build absolute path to data/app.db
 # This file is in backend/app/settings.py -> parent.parent is backend/
@@ -14,7 +13,7 @@ class Settings(BaseSettings):
     # Alias validation to read from APP_DB_URL or DATABASE_URL
     app_db_url: str = Field(
         default="sqlite:///" + str(DB_PATH), 
-        validation_alias="APP_DB_URL"
+        validation_alias=AliasChoices("APP_DB_URL", "DATABASE_URL")
     )
 
     redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")

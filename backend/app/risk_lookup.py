@@ -37,7 +37,10 @@ def canon(text: str) -> Tuple[str, str]:
       - t  : normalized lowercase text 
       - t0 : accent-stripped, punctuation-normalized, space-collapsed
     """
+    if not text: return "", ""
     t = normalize_text(text)
+    # Ensure NFC normalization for 't' (Accented channel) to match standard Python Regex inputs
+    t = unicodedata.normalize("NFC", t)
     t0 = strip_accents(t)
 
     # normalize punctuation -> space, but PRESERVE decimals (e.g. 2.5)
@@ -71,6 +74,41 @@ ROMAN = {
     "x": 10, "xi": 11, "xii": 12, "xiii": 13, "xiv": 14, "xv": 15, "xvi": 16
 }
 
+# --- PRE-COMPILED REGEX FOR METRICS ---
+RE_BEAUFORT = re.compile(r"(?<!khan\s)(?<!khẩn\s)(?:cấp|cap)\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", re.IGNORECASE)
+RE_BEAUFORT_ROMAN = re.compile(r"(?:cấp|cap)\s*([ivx]{1,5})\b", re.IGNORECASE)
+RE_BEAUFORT_GUST = re.compile(r"giat\s*(?:cap|cấp)?\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", re.IGNORECASE)
+RE_KMH = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:km\s*/\s*h|km\s*h|kmh)\b", re.IGNORECASE)
+RE_MS = re.compile(r"(\d+(?:[.,]\d+)?)\s*m\s*/\s*s\b", re.IGNORECASE)
+
+RE_MM_RANGE = re.compile(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*mm\b", re.IGNORECASE)
+RE_MM_SINGLE = re.compile(r"(\d+(?:[.,]\d+)?)\s*mm\b", re.IGNORECASE)
+RE_MM_LM2 = re.compile(r"(\d+(?:[.,]\d+)?)\s*(?:l|lit|lít)\s*/\s*m\s*(?:2|\^2)\b", re.IGNORECASE)
+
+UNIT_T = r"(?:°\s*c)"
+UNIT_T0 = r"(?:do\s*c|\bc\b)"
+RE_TEMP_RANGE_T = re.compile(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T, re.IGNORECASE)
+RE_TEMP_SINGLE_T = re.compile(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T, re.IGNORECASE)
+RE_TEMP_RANGE_T0 = re.compile(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, re.IGNORECASE)
+RE_TEMP_SINGLE_T0 = re.compile(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, re.IGNORECASE)
+
+UNIT_S_T = r"(?:‰|psu|ppt)"
+UNIT_S_T0 = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin)"
+RE_SALINITY_T = re.compile(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_S_T, re.IGNORECASE)
+RE_SALINITY_T0 = re.compile(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_S_T0, re.IGNORECASE)
+
+CTX_WATER = r"(?:muc\s*nuoc|nuoc\s*dang|ngap|do\s*sau|dinh\s*lu|bao\s*dong)"
+RE_WATER_LEVEL = re.compile(CTX_WATER + r"[^0-9]{0,50}\s+(\d+(?:[.,]\d+)?)(?:\s*(?:-|den)\s*(\d+(?:[.,]\d+)?))?\s*(m|mét|met|cm)\b(?!\s*/)", re.IGNORECASE)
+
+RE_DURATION_NGAY = re.compile(r"trong\s*(\d{1,2})\s*ngay", re.IGNORECASE)
+RE_DURATION_NGAY_TOI = re.compile(r"(\d{1,2})\s*ngay\s*toi", re.IGNORECASE)
+RE_DURATION_KEO_DAI = re.compile(r"keo\s*dai\s*(\d{1,2})\s*ngay", re.IGNORECASE)
+
+RE_QUAKE_MW_ML = re.compile(r"\b(?:mw|ml)\s*(\d+(?:[.,]\d+)?)\b", re.IGNORECASE)
+RE_QUAKE_ANCHOR = re.compile(r"(?:dong\s*dat|chan\s*dong|dia\s*chan)", re.IGNORECASE)
+RE_QUAKE_M = re.compile(r"\bm\s*(\d+(?:[.,]\d+)?)\b", re.IGNORECASE)
+RE_QUAKE_RICHTER = re.compile(r"(\d+(?:[.,]\d+)?)\s*do\s*(?:richter)?\b|do\s*lon[^0-9]{0,10}(\d+(?:[.,]\d+)?)\b", re.IGNORECASE)
+
 def _roman_to_int(s: str) -> Optional[int]:
     s = s.lower().strip()
     return ROMAN.get(s)
@@ -82,30 +120,30 @@ def extract_beaufort_max(text: str) -> Optional[int]:
     vals: list[int] = []
 
     # cấp/cap X (exclude 'khẩn cấp')
-    for m in re.finditer(r"(?<!khan\s)(?<!khẩn\s)(?:cấp|cap)\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+    for m in RE_BEAUFORT.finditer(t0):
         a = int(m.group(1))
         b = int(m.group(2)) if m.group(2) else a
         vals.append(max(a, b))
 
     # Roman numerals
-    for m in re.finditer(r"(?:cấp|cap)\s*([ivx]{1,5})\b", t0, flags=re.IGNORECASE):
+    for m in RE_BEAUFORT_ROMAN.finditer(t0):
         r = _roman_to_int(m.group(1))
         if r is not None:
             vals.append(r)
 
     # giật cấp ...
-    for m in re.finditer(r"giat\s*(?:cap|cấp)?\s*(\d{1,2})(?:\s*(?:-|,|den|toi)\s*(\d{1,2}))?", t0):
+    for m in RE_BEAUFORT_GUST.finditer(t0):
         a = int(m.group(1))
         b = int(m.group(2)) if m.group(2) else a
         vals.append(max(a, b))
 
     # km/h
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*(?:km\s*/\s*h|km\s*h|kmh)\b", t, flags=re.IGNORECASE):
+    for m in RE_KMH.finditer(t):
         kmh = float(m.group(1).replace(",", "."))
         vals.append(kmh_to_beaufort(kmh))
 
     # m/s (1 m/s = 3.6 km/h)
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*m\s*/\s*s\b", t, flags=re.IGNORECASE):
+    for m in RE_MS.finditer(t):
         ms = float(m.group(1).replace(",", "."))
         vals.append(kmh_to_beaufort(ms * 3.6))
 
@@ -119,15 +157,15 @@ def extract_max_mm(text: str) -> Optional[float]:
     cand: list[float] = []
 
     # range mm
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*mm\b", t, flags=re.IGNORECASE):
+    for m in RE_MM_RANGE.finditer(t):
         cand.append(float(m.group(2).replace(",", ".")))
 
     # single mm
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*mm\b", t, flags=re.IGNORECASE):
+    for m in RE_MM_SINGLE.finditer(t):
         cand.append(float(m.group(1).replace(",", ".")))
 
     # L/m2 (== mm)
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*(?:l|lit|lít)\s*/\s*m\s*(?:2|\^2)\b", t, flags=re.IGNORECASE):
+    for m in RE_MM_LM2.finditer(t):
         cand.append(float(m.group(1).replace(",", ".")))
 
     return max(cand) if cand else None
@@ -135,41 +173,30 @@ def extract_max_mm(text: str) -> Optional[float]:
 def extract_max_temp(text: str) -> Optional[float]:
     t, t0 = canon(text)
     # Check both t and t0 to handle both °C and "do C"
-    # ° and other symbols are stripped in t0, so we use t for those
-    UNIT_T = r"(?:°\s*c)"
-    UNIT_T0 = r"(?:do\s*c|\bc\b)"
-    vals = []
     # Try with t for °C
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+    for m in RE_TEMP_RANGE_T.finditer(t):
          vals.append(float(m.group(2).replace(",", ".")))
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+    for m in RE_TEMP_SINGLE_T.finditer(t):
          vals.append(float(m.group(1).replace(",", ".")))
     # Try with t0 for "do C"
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
+    for m in RE_TEMP_RANGE_T0.finditer(t0):
          vals.append(float(m.group(2).replace(",", ".")))
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
+    for m in RE_TEMP_SINGLE_T0.finditer(t0):
          vals.append(float(m.group(1).replace(",", ".")))
     return max(vals) if vals else None
 
 def extract_max_salinity(text: str) -> Optional[float]:
     t, t0 = canon(text)
     # Symbols in t, text keywords in t0
-    UNIT_T = r"(?:‰|psu|ppt)"
-    UNIT_T0 = r"(?:g\s*/\s*l|g\s*l|phan\s*nghin)"
-    vals = []
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T, t, re.IGNORECASE):
+    for m in RE_SALINITY_T.finditer(t):
          vals.append(float(m.group(1).replace(",", ".")))
-    for m in re.finditer(r"(\d+(?:[.,]\d+)?)\s*" + UNIT_T0, t0, re.IGNORECASE):
+    for m in RE_SALINITY_T0.finditer(t0):
          vals.append(float(m.group(1).replace(",", ".")))
     return max(vals) if vals else None
 
 def extract_water_level(text: str) -> Optional[float]:
     _, t0 = canon(text)
-    CTX = r"(?:muc\s*nuoc|nuoc\s*dang|ngap|do\s*sau|dinh\s*lu|bao\s*dong)"
-    m = re.search(
-        CTX + r"[^0-9]{0,50}\s+(\d+(?:[.,]\d+)?)(?:\s*(?:-|den)\s*(\d+(?:[.,]\d+)?))?\s*(m|mét|met|cm)\b(?!\s*/)", 
-        t0, re.IGNORECASE
-    )
+    m = RE_WATER_LEVEL.search(t0)
     if m:
         v1 = float(m.group(1).replace(",", "."))
         v2 = float(m.group(2).replace(",", ".")) if m.group(2) else v1
@@ -181,11 +208,11 @@ def extract_water_level(text: str) -> Optional[float]:
 
 def extract_duration_days_count(text: str) -> int:
     _, t0 = canon(text)
-    m = re.search(r"trong\s*(\d{1,2})\s*ngay", t0)
+    m = RE_DURATION_NGAY.search(t0)
     if m: return int(m.group(1))
-    m = re.search(r"(\d{1,2})\s*ngay\s*toi", t0)
+    m = RE_DURATION_NGAY_TOI.search(t0)
     if m: return int(m.group(1))
-    m = re.search(r"keo\s*dai\s*(\d{1,2})\s*ngay", t0)
+    m = RE_DURATION_KEO_DAI.search(t0)
     if m: return int(m.group(1))
     
     if "nhieu ngay" in t0 or "dai ngay" in t0:
@@ -194,13 +221,13 @@ def extract_duration_days_count(text: str) -> int:
 
 def extract_quake_mag(text: str) -> Optional[float]:
     _, t0 = canon(text)
-    m = re.search(r"\b(?:mw|ml)\s*(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
+    m = RE_QUAKE_MW_ML.search(t0)
     if m: return float(m.group(1).replace(",", "."))
     # For single 'm', require it to be 'm 5.0' appearing after 'dong dat' or 'chan dong'
-    if re.search(r"(?:dong\s*dat|chan\s*dong|dia\s*chan)", t0):
-        m = re.search(r"\bm\s*(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
+    if RE_QUAKE_ANCHOR.search(t0):
+        m = RE_QUAKE_M.search(t0)
         if m: return float(m.group(1).replace(",", "."))
-    m = re.search(r"(\d+(?:[.,]\d+)?)\s*do\s*(?:richter)?\b|do\s*lon[^0-9]{0,10}(\d+(?:[.,]\d+)?)\b", t0, re.IGNORECASE)
+    m = RE_QUAKE_RICHTER.search(t0)
     if m:
         g = m.group(1) or m.group(2)
         return float(g.replace(",", ".")) if g else None

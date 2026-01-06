@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_, and_
+from sqlalchemy.orm import Session, joinedload, defer
 from sqlalchemy.sql import text
 from .database import get_db, engine
 from . import models
 from .models import Article, Event, Blacklist, CrawlerStatus, AiFeedback
 from .schemas import ArticleOut, EventOut, EventDetailOut, EventUpdate
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Response, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
 from .event_matcher import upsert_event_for_article
@@ -20,9 +20,9 @@ from . import broadcast, auth
 from .cache import cache
 import time
 import io
-from typing import Optional
+from typing import Optional, List
 
-# stats_cache is now replaced by centralized 'cache' from .cache
+
 
 # Unified filtering rules for Dashboard/Stats (Decision 18/2021/QĐ-TTg)
 def apply_dashboard_filters(query, db: Session):
@@ -34,7 +34,7 @@ def apply_dashboard_filters(query, db: Session):
         "warning_forecast", "recovery"
     ]
     
-    from sqlalchemy import or_
+
     dec18_filter = or_(
         Event.disaster_type.in_(major_hazards),
         (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
@@ -43,6 +43,69 @@ def apply_dashboard_filters(query, db: Session):
     return query.filter(Event.disaster_type.notin_(["unknown", "other"]))\
                 .filter(Event.sources_count > 0)\
                 .filter(dec18_filter)
+
+# --- HELPER FUNCTIONS & CONSTANTS ---
+
+from sqlalchemy import or_
+
+TYPE_MAP = {
+    "storm": "Bão, ATNĐ",
+    "flood": "Lũ lụt",
+    "flash_flood": "Lũ quét, Lũ ống",
+    "landslide": "Sạt lở",
+    "subsidence": "Sụt lún đất",
+    "drought": "Hạn hán",
+    "salinity": "Xâm nhập mặn",
+    "extreme_weather": "Mưa lớn, Lốc, Sét, Mưa Đá",
+    "heatwave": "Nắng nóng",
+    "cold_surge": "Rét hại, Sương muối",
+    "earthquake": "Động đất",
+    "tsunami": "Sóng thần",
+    "storm_surge": "Nước dâng",
+    "wildfire": "Cháy rừng",
+    "erosion": "Xói lở",
+    "warning_forecast": "Cảnh báo, dự báo",
+    "recovery": "Khắc phục hậu quả",
+    "unknown": "Chưa phân loại"
+}
+
+def get_date_range(hours: int, date: str | None, start_date: str | None, end_date: str | None):
+    """Standardizes date range parsing for all stats endpoints."""
+    if start_date or end_date:
+        try:
+            # Create aware datetimes to match database standards
+            start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc) if start_date else datetime.min.replace(tzinfo=timezone.utc)
+            end = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=timezone.utc) if end_date else datetime.now(timezone.utc)
+            return start, end
+        except ValueError:
+            pass # Fallback to default
+    elif date:
+        try:
+            target = datetime.strptime(date, "%Y-%m-%d")
+            start = target.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+            end = start + timedelta(days=1)
+            return start, end
+        except ValueError:
+            pass # Fallback
+
+    # Default logic
+    start = datetime.now(timezone.utc) - timedelta(hours=hours)
+    end = datetime.now(timezone.utc)
+    return start, end
+
+def get_visibility_filter(query, is_admin: bool):
+    """Applies standard visibility rules for non-admin users."""
+    if is_admin:
+        return query
+    
+    # Public users:
+    # - Show if confidence >= 0.8
+    # - OR if needs_verification=0 AND sources_count >= 2
+    return query.filter(or_(
+        Event.confidence >= 0.8,
+        (Event.needs_verification == 0) & (Event.sources_count >= 2)
+    ))
+
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -63,7 +126,13 @@ def latest_articles(
     cached = cache.get(cache_key)
     if cached: return cached
 
-    q = db.query(Article).filter(Article.status == "approved").order_by(desc(Article.published_at))
+    q = db.query(Article).filter(Article.status == "approved")\
+        .options(defer(Article.full_text))\
+        .order_by(desc(Article.published_at))
+
+    
+
+
     if after_id is not None:
         q = q.filter(Article.id < after_id)
     if type:
@@ -77,16 +146,9 @@ def latest_articles(
     cache.set(cache_key, res, ttl=120)
     return res
 
-# Optimized filtering logic: move simple filters to DB to reduce payload
+    # Optimized filtering logic: move simple filters to DB to reduce payload
 def get_base_event_query(db: Session):
-    # Defer heavy fields for list views to save memory and I/O
-    from sqlalchemy.orm import defer
-    return db.query(Event).options(
-        defer(Event.cause),
-        defer(Event.characteristics),
-        defer(Event.location_description),
-        defer(Event.details)
-    )
+    return db.query(Event)
 
 @router.get("/events")
 def events(
@@ -122,43 +184,28 @@ def events(
     query = db.query(Event)
 
     # 1. Base Security / Visibility Filter
-    if not is_admin:
-        # Public users:
-        # - Show if confidence >= 0.8
-        # - OR if needs_verification=0 AND sources_count >= 2
-        # - Hide filtered keywords (handled by nlp mostly, but ensuring DB cleanliness)
-        from sqlalchemy import or_
-        query = query.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
+    query = get_visibility_filter(query, is_admin)
 
     # 2. Database-level filters (Decision 18/2021/QĐ-TTg Implementation)
-    query = apply_dashboard_filters(get_base_event_query(db), db)
+    query = apply_dashboard_filters(query, db)
 
-    if date:
-        try:
-            target_date = datetime.strptime(date, "%Y-%m-%d")
-            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            end = start + timedelta(days=1)
-            query = query.filter(Event.started_at >= start, Event.started_at < end)
-        except ValueError: pass
+    # Standardized Date Logic
+    if date or start_date or end_date:
+        # We assume 'hours' is ignored if specific dates are provided, 
+        # but the original logic had separate blocks. 
+        # For 'events' list specifically, we can reuse get_date_range logic 
+        # BUT we must respect the original 'hours' param default of None
+        # So we only apply if they are present.
+        d_start, d_end = get_date_range(hours or 24, date, start_date, end_date)
+        query = query.filter(Event.started_at >= d_start, Event.started_at < d_end)
     elif hours:
-        since = datetime.utcnow() - timedelta(hours=hours)
+        since = datetime.now(timezone.utc) - timedelta(hours=hours)
         query = query.filter(Event.last_updated_at >= since)
 
     if type: query = query.filter(Event.disaster_type == type)
     if province: query = query.filter(Event.province == province)
     if q: query = query.filter(Event.title.ilike(f"%{q}%"))
     
-    if start_date:
-        try: query = query.filter(Event.started_at >= datetime.strptime(start_date, "%Y-%m-%d"))
-        except ValueError: pass
-    if end_date:
-        try: query = query.filter(Event.started_at < datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1))
-        except ValueError: pass
-
-    # Keyset Pagination: filter items older than after_id
     if after_id is not None:
         query = query.filter(Event.id < after_id)
 
@@ -182,12 +229,7 @@ def events(
                 desc(Event.confidence)
             )
 
-    # Use Limit/Offset (or consider Keyset if we add after_id parameter later)
     filtered = query.limit(limit).offset(offset).all()
-    
-    # Legacy Python Sort (Removed as it breaks pagination)
-    # if sort == "latest": ...
-    
     if not filtered:
         return []
 
@@ -200,14 +242,13 @@ def events(
         Article.status == "approved"
     )
     if hours:
-        h_start = datetime.utcnow() - timedelta(hours=hours)
+        h_start = datetime.now(timezone.utc) - timedelta(hours=hours)
         count_q = count_q.filter(Article.published_at >= h_start)
     
     counts_map = {row[0]: row[1] for row in count_q.group_by(Article.event_id).all()}
 
     # 6. [OPTIMIZATION] Fix N+1: Batch Fetch Images & Sources
     # Prioritizing 'approved' status then latest publication date
-    from sqlalchemy import and_
     subq = db.query(
         Article.event_id,
         Article.image_url,
@@ -296,25 +337,28 @@ SUB_IMAGES = {
 }
 
 @router.get("/events/{event_id}", response_model=EventDetailOut)
-def event_detail(event_id: int, response: Response, db: Session = Depends(get_db)):
+def event_detail(event_id: int, response: Response, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(auth.get_current_user_optional)):
+    is_admin = current_user and current_user.role == "admin"
+    
     # 1. Try Cache
-    cache_key = f"ev_detail_v2_{event_id}"
+    cache_key = f"ev_detail_v3_{event_id}_{is_admin}"
     cached = cache.get(cache_key)
     if cached:
         response.headers["X-Cache"] = "HIT"
         response.headers["Cache-Control"] = "public, max-age=60"
         return cached
-
+    
     # 2. Optimized Fetch (Get Event only first)
-    ev = db.query(Event).filter(Event.id == event_id).first()
+    query = db.query(Event).filter(Event.id == event_id)
+    query = get_visibility_filter(query, is_admin)
+    ev = query.first()
     
     if not ev:
-        raise HTTPException(status_code=404, detail="Sự kiện không tồn tại.")
+        raise HTTPException(status_code=404, detail="Sự kiện không tồn tại hoặc bạn không có quyền xem.")
         
     # 3. [OPTIMIZATION] Database-side Article Filtering & Limited Fetch
     # For large datasets, we should not load thousands of articles into a single response.
     # We fetch the latest 300 articles (status approved/pending).
-    from sqlalchemy.orm import defer
     limit_articles = 300
     articles_q = db.query(Article).filter(
         Article.event_id == event_id,
@@ -363,7 +407,7 @@ def update_event(
         logs_dir.mkdir(parents=True, exist_ok=True)
         audit_file = logs_dir / 'audit_log.jsonl'
         record = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'event_id': event_id,
             'changes': update_data,
             'action': 'manual_correction'
@@ -376,9 +420,14 @@ def update_event(
     for field, value in update_data.items():
         setattr(ev, field, value)
     
-    ev.last_updated_at = datetime.utcnow()
+    ev.last_updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(ev)
+    
+    # Invalidate cache
+    cache.delete(f"ev_detail_{event_id}")
+    cache.delete_match("stats_*")
+    
     return ev
 
 @router.delete("/events/{event_id}", status_code=204)
@@ -395,17 +444,29 @@ def delete_event(
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
         
-    # Add all associated article hashes to Blacklist before unlinking
+    # [OPTIMIZATION] Batch check and bulk insert to avoid N+1 queries
     articles = db.query(Article).filter(Article.event_id == event_id).all()
-    for art in articles:
-        if art.news_hash:
-            existing_bl = db.query(Blacklist).filter(Blacklist.news_hash == art.news_hash).first()
-            if not existing_bl:
-                db.add(Blacklist(
+    
+    hashes = [a.news_hash for a in articles if a.news_hash]
+    if hashes:
+        existing_hashes = {
+            r[0] for r in db.query(Blacklist.news_hash).filter(Blacklist.news_hash.in_(hashes)).all()
+        }
+        
+        new_blacklist_entries = []
+        seen_in_batch = set()
+        
+        for art in articles:
+            if art.news_hash and art.news_hash not in existing_hashes and art.news_hash not in seen_in_batch:
+                new_blacklist_entries.append(Blacklist(
                     news_hash=art.news_hash,
                     title=art.title,
                     reason=f"Admin deleted parent event: {ev.title}"
                 ))
+                seen_in_batch.add(art.news_hash)
+        
+        if new_blacklist_entries:
+            db.add_all(new_blacklist_entries)
 
     # Mark all associated articles as Rejected/Hidden
     db.query(Article).filter(Article.event_id == event_id).update(
@@ -464,14 +525,61 @@ def delete_article(
             db.commit()
             # Clear cache as an event disappeared
             cache.delete_match(f"ev_detail_{old_event_id}*")
-            cache.delete_match("stats_*")
-            cache.delete_match("articles_latest_*")
     
     # Always clear the detail of the article's parent event even if not deleted
+    # AND global stats/lists since an article was removed
     if old_event_id:
+        recalculate_event_metrics(db, old_event_id)
         cache.delete(f"ev_detail_{old_event_id}")
 
+    # Global consistency
+    cache.delete_match("stats_*")
+    cache.delete_match("articles_latest_*")
+    
     return
+
+def recalculate_event_metrics(db: Session, event_id: int):
+    """
+    Helper to recalculate Event metrics (deaths, injured, sources_count)
+    after an admin explicitly removes an article.
+    Uses efficient SQL aggregation instead of loading objects.
+    """
+    ev = db.query(Event).filter(Event.id == event_id).first()
+    if not ev: return
+    
+    # SQL Aggregation for metrics
+    aggs = db.query(
+        func.max(Article.deaths),
+        func.max(Article.missing),
+        func.max(Article.injured),
+        func.max(Article.damage_billion_vnd),
+        func.count(func.distinct(Article.domain))
+    ).filter(
+        Article.event_id == event_id,
+        Article.status.in_(["approved", "pending"])
+    ).first()
+    
+    if not aggs or aggs[4] == 0:
+        # No active articles left
+        ev.sources_count = 0
+        ev.deaths = 0
+        ev.missing = 0
+        ev.injured = 0
+        ev.damage_billion_vnd = 0.0
+    else:
+        # Update with aggregated max values
+        ev.deaths = aggs[0] or 0
+        ev.missing = aggs[1] or 0
+        ev.injured = aggs[2] or 0
+        ev.damage_billion_vnd = aggs[3] or 0.0
+        ev.sources_count = aggs[4] or 0
+        
+        # Downgrade confidence if sources dropped explicitly
+        if ev.sources_count < 2 and ev.confidence > 0.6:
+            ev.confidence = 0.5
+            
+    db.commit()
+    db.refresh(ev)
 
 
 
@@ -494,44 +602,25 @@ def stats_summary(
         if response: response.headers["Cache-Control"] = "public, max-age=120"
         return cached
 
-    if start_date or end_date:
-        try:
-            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
-            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    elif date:
-        try:
-            target = datetime.strptime(date, "%Y-%m-%d")
-            start = target.replace(hour=0, minute=0, second=0)
-            end = start + timedelta(days=1)
-        except ValueError:
-             start = datetime.utcnow() - timedelta(hours=hours)
-             end = datetime.utcnow()
-    else:
-        start = datetime.utcnow() - timedelta(hours=hours)
-        end = datetime.utcnow()
+    start, end = get_date_range(hours, date, start_date, end_date)
 
-    # 1. New articles count (total signals)
-    article_count_q = db.query(func.count(Article.id)).filter(
+
+    # 1. New articles count (total & needs verify)
+    # [OPTIMIZATION] Combined two queries into one
+    art_stats_q = db.query(
+        func.count(Article.id),
+        func.sum(case((Article.needs_verification == 1, 1), else_=0))
+    ).filter(
         Article.published_at >= start,
         Article.published_at < end,
         Article.status == "approved"
     )
-    if type: article_count_q = article_count_q.filter(Article.disaster_type == type)
-    if province: article_count_q = article_count_q.filter(Article.province == province)
-    total_articles = article_count_q.scalar() or 0
-
-    needs_verify_q = db.query(func.count(Article.id)).filter(
-        Article.published_at >= start,
-        Article.published_at < end,
-        Article.status == "approved",
-        Article.needs_verification == 1
-    )
-    if type: needs_verify_q = needs_verify_q.filter(Article.disaster_type == type)
-    if province: needs_verify_q = needs_verify_q.filter(Article.province == province)
-    needs_verification_count = needs_verify_q.scalar() or 0
+    if type: art_stats_q = art_stats_q.filter(Article.disaster_type == type)
+    if province: art_stats_q = art_stats_q.filter(Article.province == province)
+    
+    art_stats_res = art_stats_q.first()
+    total_articles = art_stats_res[0] or 0
+    needs_verification_count = art_stats_res[1] or 0
 
     # 2. Events Aggregation (With Decision 18 Filtering)
     major_hazards = [
@@ -548,20 +637,6 @@ def stats_summary(
          func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
     )
 
-    events_q = db.query(Event).filter(
-        Event.started_at >= start, 
-        Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
-        Event.sources_count > 0,
-        dec18_filter
-    )
-    
-    if not is_admin:
-        from sqlalchemy import or_
-        events_q = events_q.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
 
     # Calculate Aggregates using SQL
     from sqlalchemy.sql import case
@@ -597,12 +672,7 @@ def stats_summary(
     )
     if type: agg_q = agg_q.filter(Event.disaster_type == type)
     if province: agg_q = agg_q.filter(Event.province == province)
-    if not is_admin:
-        from sqlalchemy import or_
-        agg_q = agg_q.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
+    agg_q = get_visibility_filter(agg_q, is_admin)
         
     agg_res = agg_q.first()
     
@@ -622,12 +692,7 @@ def stats_summary(
     )
     if type: type_counts_q = type_counts_q.filter(Event.disaster_type == type)
     if province: type_counts_q = type_counts_q.filter(Event.province == province)
-    if not is_admin:
-        from sqlalchemy import or_
-        type_counts_q = type_counts_q.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
+    type_counts_q = get_visibility_filter(type_counts_q, is_admin)
     
     type_counts_rows = type_counts_q.group_by(Event.disaster_type).all()
     
@@ -657,12 +722,7 @@ def stats_summary(
     )
     if type: prov_counts_q = prov_counts_q.filter(Event.disaster_type == type)
     if province: prov_counts_q = prov_counts_q.filter(Event.province == province)
-    if not is_admin:
-        from sqlalchemy import or_
-        prov_counts_q = prov_counts_q.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
+    prov_counts_q = get_visibility_filter(prov_counts_q, is_admin)
     
     prov_counts_rows = prov_counts_q.group_by(Event.province).order_by(func.count(Event.id).desc()).limit(20).all()
     by_province = [{"province": row[0], "events": row[1]} for row in prov_counts_rows]
@@ -677,12 +737,7 @@ def stats_summary(
     )
     if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
     if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
-    if not is_admin:
-        from sqlalchemy import or_
-        provinces_count_q = provinces_count_q.filter(or_(
-            Event.confidence >= 0.8,
-            (Event.needs_verification == 0) & (Event.sources_count >= 2)
-        ))
+    provinces_count_q = get_visibility_filter(provinces_count_q, is_admin)
     provinces_count = provinces_count_q.scalar() or 0
 
     res = {
@@ -703,7 +758,7 @@ def stats_summary(
         "by_province": by_province,
     }
     cache.set(cache_key, res, ttl=120)
-    from fastapi import Response
+
     # Cache summary for 2 mins (same as internal cache)
     if response: response.headers["Cache-Control"] = "public, max-age=120"
     return res
@@ -724,24 +779,7 @@ def stats_timeline(
         response.headers["Cache-Control"] = "public, max-age=180"
         return cached
 
-    if start_date or end_date:
-        try:
-            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
-            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    elif date:
-        try:
-            target_date = datetime.strptime(date, "%Y-%m-%d")
-            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            end = start + timedelta(days=1)
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    else:
-        start = datetime.utcnow() - timedelta(hours=hours)
-        end = datetime.utcnow()
+    start, end = get_date_range(hours, date, start_date, end_date)
     
     # Database agnostic hour grouping
     if engine.url.drivername.startswith("postgresql"):
@@ -790,7 +828,7 @@ async def stream_events(request: Request):
     async def event_publisher():
         try:
             # Send initial connection confirmation
-            yield f"data: {{\"type\": \"connected\", \"timestamp\": \"{datetime.utcnow().isoformat()}\"}}\n\n"
+            yield f"data: {{\"type\": \"connected\", \"timestamp\": \"{datetime.now(timezone.utc).isoformat()}\"}}\n\n"
             while True:
                 if await request.is_disconnected():
                     break
@@ -809,11 +847,14 @@ from .auth import get_current_admin
 
 @router.get('/admin/skip-logs')
 def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = Depends(get_current_admin)):
+    from collections import deque
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     log_file = logs_dir / 'review_potential_disasters.jsonl'
-    out = []
+    
     if not log_file.exists():
         return []
+        
+    out = deque(maxlen=limit)
     try:
         with log_file.open('r', encoding='utf-8') as f:
             for line in f:
@@ -823,7 +864,7 @@ def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = D
                     continue
     except Exception:
         return []
-    return out[-limit:]
+    return list(out)
 
 
 @router.post('/admin/label')
@@ -833,7 +874,7 @@ def label_log(payload: dict, admin: models.User = Depends(get_current_admin)):
     logs_dir.mkdir(parents=True, exist_ok=True)
     labels_file = logs_dir / 'labels.jsonl'
     record = {
-        'timestamp': datetime.utcnow().isoformat(),
+        'timestamp': datetime.now(timezone.utc).isoformat(),
         'entry': payload,
     }
     try:
@@ -858,7 +899,7 @@ def get_pending_articles(
 
 
 @router.post('/admin/approve-article/{article_id}')
-async def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     """Approve a pending article and integrate it into events."""
     article = db.query(models.Article).filter(models.Article.id == article_id).first()
     if not article:
@@ -871,11 +912,16 @@ async def approve_article(article_id: int, db: Session = Depends(get_db), admin:
     # Invalidate event detail cache
     if article.event_id:
         cache.delete(f"ev_detail_{article.event_id}")
+    
+    # Global cache invalidation for consistency
+    cache.delete_match("stats_*")
+    cache.delete_match("articles_latest_*")
+        
     return {"ok": True, "message": "Article approved and event updated"}
 
 
 @router.post('/admin/events/{event_id}/approve')
-async def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     """Approve an entire event: clear needs_verification and approve all articles."""
     ev = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not ev:
@@ -897,13 +943,17 @@ async def approve_event(event_id: int, db: Session = Depends(get_db), admin: mod
 
 
 @router.post('/admin/reject-article/{article_id}')
-async def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     """Reject an article and add its hash to blacklist to prevent re-crawling."""
     article = db.query(models.Article).filter(models.Article.id == article_id).first()
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
         
+    # Save event_id to check for orphans
+    old_event_id = article.event_id
+
     article.status = "rejected"
+    article.event_id = None # Unlink from event
     
     # Add to blacklist if hash exists
     if article.news_hash:
@@ -918,7 +968,24 @@ async def reject_article(article_id: int, db: Session = Depends(get_db), admin: 
             db.add(blacklist_entry)
             
     db.commit()
-    return {"ok": True, "message": "Article rejected and blacklisted"}
+
+    # Cleanup: If the event has no more approved/pending articles, delete it
+    if old_event_id:
+        remaining = db.query(models.Article).filter(models.Article.event_id == old_event_id).count()
+        if remaining == 0:
+            db.query(models.Event).filter(models.Event.id == old_event_id).delete()
+            db.commit()
+            cache.delete_match(f"ev_detail_{old_event_id}*")
+        else:
+            # Recalculate metrics for the remaining event
+            recalculate_event_metrics(db, old_event_id)
+            cache.delete(f"ev_detail_{old_event_id}")
+
+    # Global consistency
+    cache.delete_match("stats_*")
+    cache.delete_match("articles_latest_*")
+
+    return {"ok": True, "message": "Article rejected, blacklisted, and event updated"}
 
 
 @router.post('/alerts')
@@ -929,7 +996,7 @@ def post_alert(payload: dict):
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     logs_dir.mkdir(parents=True, exist_ok=True)
     alerts_file = logs_dir / 'alerts.jsonl'
-    record = {'timestamp': datetime.utcnow().isoformat(), 'alert': payload}
+    record = {'timestamp': datetime.now(timezone.utc).isoformat(), 'alert': payload}
     try:
         with alerts_file.open('a', encoding='utf-8') as f:
             f.write(json.dumps(record, ensure_ascii=False) + '\n')
@@ -948,43 +1015,28 @@ def stats_heatmap(
     date: str | None = Query(None),
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional)
 ):
     """Heatmap: số sự kiện theo tỉnh"""
-    if start_date or end_date:
-        try:
-            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
-            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    elif date:
-        try:
-            target_date = datetime.strptime(date, "%Y-%m-%d")
-            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            end = start + timedelta(days=1)
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    else:
-        start = datetime.utcnow() - timedelta(hours=hours)
-        end = datetime.utcnow()
+    is_admin = current_user and current_user.role == "admin"
+    start, end = get_date_range(hours, date, start_date, end_date)
 
-    # Fetch and filter events using unified logic at SQL level
-    query = db.query(Event).filter(Event.started_at >= start, Event.started_at < end)
-    filtered_events = apply_dashboard_filters(query, db).all()
+    query = db.query(Event.province, func.count(Event.id))
+    query = query.filter(Event.started_at >= start, Event.started_at < end)
     
-    prov_counts = {}
-    for ev in filtered_events:
-        p = ev.province or "unknown"
-        if p in PROVINCES:
-            prov_counts[p] = prov_counts.get(p, 0) + 1
-            
-    # Sort and format
-    sorted_data = sorted(prov_counts.items(), key=lambda x: x[1], reverse=True)
-    data = [{"province": p, "events": c} for p, c in sorted_data]
+    query = get_visibility_filter(query, is_admin)
+    query = apply_dashboard_filters(query, db)
     
-    return {"hours": hours, "data": data}
+    query = query.filter(Event.province.in_(PROVINCES))
+    query = query.group_by(Event.province)
+    
+    result_rows = query.all()
+    
+    # Sort
+    sorted_data = sorted([{"province": r[0], "events": r[1]} for r in result_rows], key=lambda x: x["events"], reverse=True)
+    
+    return {"hours": hours, "data": sorted_data}
 
 @router.get("/stats/top-risky-province")
 def top_risky_province(
@@ -992,27 +1044,12 @@ def top_risky_province(
     date: str | None = Query(None),
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional)
 ):
     """Tỉnh nguy hiểm nhất"""
-    if start_date or end_date:
-        try:
-            start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.min
-            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) if end_date else datetime.max
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    elif date:
-        try:
-            target_date = datetime.strptime(date, "%Y-%m-%d")
-            start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            end = start + timedelta(days=1)
-        except ValueError:
-            start = datetime.utcnow() - timedelta(hours=hours)
-            end = datetime.utcnow()
-    else:
-        start = datetime.utcnow() - timedelta(hours=hours)
-        end = datetime.utcnow()
+    is_admin = current_user and current_user.role == "admin"
+    start, end = get_date_range(hours, date, start_date, end_date)
     
     query = db.query(
         Event.province,
@@ -1022,7 +1059,12 @@ def top_risky_province(
         Event.started_at >= start,
         Event.started_at < end,
         Event.province != 'unknown'
-    ).group_by(Event.province).order_by(desc(func.count(Event.id)), desc(func.max(Event.last_updated_at))).limit(1)
+    )
+    
+    query = get_visibility_filter(query, is_admin)
+    query = apply_dashboard_filters(query, db)
+    
+    query = query.group_by(Event.province).order_by(desc(text('count')), desc(text('latest'))).limit(1)
     
     result = query.first()
     if result:
@@ -1065,7 +1107,7 @@ async def trigger_crawler(db: Session = Depends(get_db), admin: models.User = De
     return {"ok": True, "message": "Crawler started in background."}
 
 @router.post("/admin/system/clear-cache")
-async def clear_system_cache(admin: models.User = Depends(get_current_admin)):
+def clear_system_cache(admin: models.User = Depends(get_current_admin)):
     """Clears all cached API responses."""
     from .cache import cache
     if hasattr(cache, 'clear'):
@@ -1073,7 +1115,7 @@ async def clear_system_cache(admin: models.User = Depends(get_current_admin)):
     return {"ok": True, "message": "Cache cleared."}
 
 @router.post("/admin/system/restart")
-async def restart_system(admin: models.User = Depends(get_current_admin)):
+def restart_system(admin: models.User = Depends(get_current_admin)):
     """Triggers a backend restart by touching a source file (requires --reload)."""
     main_file = Path(__file__).resolve().parent / "main.py"
     if main_file.exists():
@@ -1084,7 +1126,7 @@ async def restart_system(admin: models.User = Depends(get_current_admin)):
     return {"ok": False, "message": "Main file not found, restart failed."}
 
 @router.post("/admin/ai-feedback")
-async def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     article_id = payload.get("article_id")
     corrected_type = payload.get("corrected_type")
     
@@ -1116,24 +1158,8 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
         
     articles = db.query(Article).filter(Article.event_id == event_id).all()
     
-    # Disaster type mapping for Vietnamese names
-    TYPE_MAP = {
-        "storm": "Bão/ATNĐ",
-        "flood": "Lũ lụt",
-        "flash_flood": "Lũ quét/Lũ ống",
-        "landslide": "Sạt lở",
-        "subsidence": "Sụt lún đất",
-        "drought": "Hạn hán",
-        "salinity": "Xâm nhập mặn",
-        "extreme_weather": "Mưa lớn/Lốc/Sét",
-        "heatwave": "Nắng nóng",
-        "cold_surge": "Rét hại/Sương muối",
-        "earthquake": "Động đất",
-        "tsunami": "Sóng thần",
-        "storm_surge": "Nước dâng",
-        "wildfire": "Cháy rừng",
-        "erosion": "Xói lở",
-    }
+    # Disaster type mapping for Vietnamese names (used globally)
+    # TYPE_MAP is now at module level
     
     data = []
     for art in articles:
@@ -1231,7 +1257,7 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
 def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     import pandas as pd
     if not date:
-        date = datetime.utcnow().strftime("%Y-%m-%d")
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
     target_date = datetime.strptime(date, "%Y-%m-%d")
     start = target_date.replace(hour=0, minute=0, second=0)
@@ -1277,26 +1303,7 @@ def export_events_summary(
     import pandas as pd
     import calendar
     
-    TYPE_MAP = {
-        "storm": "Bão, ATNĐ",
-        "flood": "Lũ lụt",
-        "flash_flood": "Lũ quét, Lũ ống",
-        "landslide": "Sạt lở",
-        "subsidence": "Sụt lún đất",
-        "drought": "Hạn hán",
-        "salinity": "Xâm nhập mặn",
-        "extreme_weather": "Mưa lớn, Lốc, Sét, Mưa Đá",
-        "heatwave": "Nắng nóng",
-        "cold_surge": "Rét hại, Sương muối",
-        "earthquake": "Động đất",
-        "tsunami": "Sóng thần",
-        "storm_surge": "Nước dâng",
-        "wildfire": "Cháy rừng",
-        "erosion": "Xói lở",
-        "warning_forecast": "Cảnh báo, dự báo",
-        "recovery": "Khắc phục hậu quả",
-        "unknown": "Chưa phân loại"
-    }
+    # TYPE_MAP is used from module level
 
     query = db.query(Event).filter(Event.sources_count > 0)
     

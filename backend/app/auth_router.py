@@ -81,7 +81,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     }
 
 @router.get("/me", response_model=UserOut)
-async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
 class UserUpdate(BaseModel):

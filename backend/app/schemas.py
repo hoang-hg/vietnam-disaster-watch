@@ -22,12 +22,12 @@ class ArticleOut(BaseModel):
     damage_billion_vnd: float | None
     agency: str | None
     summary: str | None
-    full_text: str | None
-    is_broken: int = 0
+    # full_text removed to prevent heavy payloads and N+1 queries in defer() scenarios
+    is_broken: bool = False
     image_url: str | None
     is_red_alert: bool = False
     event_id: int | None
-    needs_verification: int = 0
+    needs_verification: bool = False
     status: str | None = None
     score: float | None = None
 
@@ -59,7 +59,7 @@ class EventOut(BaseModel):
     confidence: float
     sources_count: int
     articles_count: int = 0
-    needs_verification: int = 0
+    needs_verification: bool = False
     image_url: str | None = None
     is_red_alert: bool = False
     source: str | None = None
@@ -85,7 +85,7 @@ class EventUpdate(BaseModel):
     missing: int | None = None
     injured: int | None = None
     damage_billion_vnd: float | None = None
-    needs_verification: int | None = None
+    needs_verification: bool | None = None
     is_red_alert: bool | None = None
 
 class CrowdsourcedReportOut(BaseModel):

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from .database import get_db
 from . import models, schemas, auth
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 router = APIRouter(prefix="/api/user", tags=["user"])
@@ -25,7 +25,11 @@ def submit_report(
 
 @router.get("/crowdsource/approved", response_model=List[schemas.CrowdsourcedReportOut])
 def get_approved_reports(db: Session = Depends(get_db)):
-    return db.query(models.CrowdsourcedReport).filter(models.CrowdsourcedReport.status == "approved").all()
+    # Optimized query: filter first, then limit if necessary (though usually few approved reports)
+    # Using defer() is not necessary here as description is text but likely crucial for map
+    return db.query(models.CrowdsourcedReport).filter(
+        models.CrowdsourcedReport.status == "approved"
+    ).order_by(models.CrowdsourcedReport.created_at.desc()).limit(200).all()
 
 # Event Following
 @router.post("/events/{event_id}/follow")
@@ -34,6 +38,12 @@ def toggle_follow_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
+    # Check existence of event first to fail fast
+    # Use scalar query for event existence to be lighter
+    event_exists = db.query(models.Event.id).filter(models.Event.id == event_id).first()
+    if not event_exists:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
     follow = db.query(models.EventFollow).filter(
         models.EventFollow.user_id == current_user.id,
         models.EventFollow.event_id == event_id
@@ -44,11 +54,6 @@ def toggle_follow_event(
         db.commit()
         return {"status": "unfollowed"}
     else:
-        # Check if event exists
-        ev = db.query(models.Event).filter(models.Event.id == event_id).first()
-        if not ev:
-            raise HTTPException(status_code=404, detail="Event not found")
-        
         db_follow = models.EventFollow(user_id=current_user.id, event_id=event_id)
         db.add(db_follow)
         db.commit()
@@ -59,11 +64,13 @@ def get_followed_events(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    follows = db.query(models.EventFollow).filter(models.EventFollow.user_id == current_user.id).all()
-    event_ids = [f.event_id for f in follows]
-    if not event_ids:
-        return []
-    events = db.query(models.Event).filter(models.Event.id.in_(event_ids)).all()
+    # Optimized: Join Follow -> Event directly instead of N+1 query pattern (Fetch IDs -> Filter IN)
+    events = db.query(models.Event).join(
+        models.EventFollow, models.EventFollow.event_id == models.Event.id
+    ).filter(
+        models.EventFollow.user_id == current_user.id
+    ).all()
+    
     return events
 
 @router.get("/events/{event_id}/is-following")
@@ -72,11 +79,13 @@ def check_is_following(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    follow = db.query(models.EventFollow).filter(
+    # Scalar query exists check is faster than fetching object
+    is_following = db.query(models.EventFollow.id).filter(
         models.EventFollow.user_id == current_user.id,
         models.EventFollow.event_id == event_id
-    ).first()
-    return {"is_following": follow is not None}
+    ).first() is not None
+    
+    return {"is_following": is_following}
 
 # Notifications
 @router.get("/notifications", response_model=List[schemas.NotificationOut])
@@ -93,11 +102,11 @@ def get_unread_count(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    count = db.query(models.Notification).filter(
+    count = db.query(func.count(models.Notification.id)).filter(
         models.Notification.user_id == current_user.id,
         models.Notification.is_read == False
-    ).count()
-    return {"count": count}
+    ).scalar()
+    return {"count": count or 0}
 
 @router.patch("/notifications/{notif_id}/read")
 def mark_notification_read(
@@ -105,14 +114,15 @@ def mark_notification_read(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_current_user)
 ):
-    notif = db.query(models.Notification).filter(
+    # Use update() for atomic operation instead of fetch-modify-save
+    rows = db.query(models.Notification).filter(
         models.Notification.id == notif_id,
         models.Notification.user_id == current_user.id
-    ).first()
-    if not notif:
+    ).update({"is_read": True})
+    
+    if rows == 0:
         raise HTTPException(status_code=404, detail="Notification not found")
     
-    notif.is_read = True
     db.commit()
     return {"ok": True}
 
@@ -134,7 +144,9 @@ def get_pending_reports(
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_current_admin)
 ):
-    return db.query(models.CrowdsourcedReport).filter(models.CrowdsourcedReport.status == "pending").all()
+    return db.query(models.CrowdsourcedReport).filter(
+        models.CrowdsourcedReport.status == "pending"
+    ).order_by(models.CrowdsourcedReport.created_at.asc()).all()
 
 @router.patch("/admin/crowdsource/{report_id}/approve")
 def approve_report(
@@ -148,16 +160,18 @@ def approve_report(
     
     report.status = "approved"
     
-    # Notify user
-    notif = models.Notification(
-        user_id=report.user_id,
-        type="report_approved",
-        title="Đóng góp đã được duyệt",
-        message=f"Thông tin tại {report.province or 'hiện trường'} của bạn đã được Admin duyệt và hiển thị trên bản đồ.",
-        link="/map",
-        created_at=datetime.utcnow()
-    )
-    db.add(notif)
+    # Notify user if registered
+    if report.user_id:
+        notif = models.Notification(
+            user_id=report.user_id,
+            type="report_approved",
+            title="Đóng góp đã được duyệt",
+            message=f"Thông tin tại {report.province or 'hiện trường'} của bạn đã được Admin duyệt và hiển thị trên bản đồ.",
+            link="/map",
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(notif)
+        
     db.commit()
     return {"ok": True}
 
@@ -167,11 +181,13 @@ def reject_report(
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_current_admin)
 ):
-    report = db.query(models.CrowdsourcedReport).filter(models.CrowdsourcedReport.id == report_id).first()
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+    rows = db.query(models.CrowdsourcedReport).filter(
+        models.CrowdsourcedReport.id == report_id
+    ).update({"status": "rejected"})
     
-    report.status = "rejected"
+    if rows == 0:
+        raise HTTPException(status_code=404, detail="Report not found")
+        
     db.commit()
     return {"ok": True}
 
@@ -254,10 +270,9 @@ def delete_rescue_hotline(
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_current_admin)
 ):
-    hotline = db.query(models.RescueHotline).filter(models.RescueHotline.id == hotline_id).first()
-    if not hotline:
+    rows = db.query(models.RescueHotline).filter(models.RescueHotline.id == hotline_id).delete()
+    if rows == 0:
         raise HTTPException(status_code=404, detail="Hotline not found")
         
-    db.delete(hotline)
     db.commit()
     return

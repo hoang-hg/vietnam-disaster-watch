@@ -1,6 +1,7 @@
 import time
 import json
 import logging
+from collections import OrderedDict
 from typing import Any, Optional
 from .settings import settings
 
@@ -19,9 +20,9 @@ class CacheManager:
     """
     def __init__(self):
         self.redis_client = None
-        self.memory_cache = {}
+        self.memory_cache = OrderedDict()
+        self.capacity = 1000 
         
-        # Try to initialize Redis if URL is provided
         redis_url = getattr(settings, "redis_url", None)
         if REDIS_AVAILABLE and redis_url:
             try:
@@ -64,8 +65,13 @@ class CacheManager:
             except Exception as e:
                 logger.error(f"Redis set failed: {e}")
 
-        # 2. Store in local memory
+        # 2. Store in local memory with LRU-like eviction
+        if key in self.memory_cache:
+            self.memory_cache.move_to_end(key)
         self.memory_cache[key] = (value, time.time() + ttl)
+        
+        if len(self.memory_cache) > self.capacity:
+            self.memory_cache.popitem(last=False)
 
     def delete(self, key: str):
         # 1. Delete from Redis
@@ -87,11 +93,9 @@ class CacheManager:
         if self.redis_client:
             try:
                 # Use SCAN to find keys non-blocking
-                cursor = '0'
-                while cursor != 0:
-                    cursor, keys = self.redis_client.scan(cursor=cursor, match=pattern, count=100)
-                    if keys:
-                        self.redis_client.delete(*keys)
+                # Use SCAN ITER for safer, simpler iteration
+                for key in self.redis_client.scan_iter(match=pattern, count=100):
+                    self.redis_client.delete(key)
             except Exception as e:
                 logger.error(f"Redis delete_match failed: {e}")
 

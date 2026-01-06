@@ -19,6 +19,10 @@ DISASTER_CLUSTERS = {
     "earthquake": ["earthquake", "tsunami"],
     "tsunami": ["tsunami", "earthquake"],
     "erosion": ["erosion", "landslide", "subsidence"],
+    "heatwave": ["heatwave", "drought"],
+    "cold_surge": ["cold_surge", "extreme_weather"],
+    "wildfire": ["wildfire", "drought", "heatwave"],
+    "extreme_weather": ["extreme_weather", "storm", "flood", "cold_surge"],
 }
 
 # [OPTIMIZATION] Cache trusted map
@@ -31,10 +35,14 @@ STOPWORDS = {
     "việc", "vừa", "mới", "vẫn", "được", "rất", "hay", "như", "nhưng", "nếu", "thì"
 }
 
+# Pre-compiled regex for tokenization
+# Pre-compiled regex for tokenization - Modified to keep Vietnamese characters
+TOKEN_CLEAN_RE = re.compile(r"[^\w\s\u00C0-\u1EF9]", re.UNICODE)
+
 def _get_tokens(text):
     if not text: return set(), set()
     # Normalize: lowercase, remove special characters
-    text = re.sub(r"[^\w\s]", " ", text.lower())
+    text = TOKEN_CLEAN_RE.sub(" ", text.lower())
     words = [t for t in text.split() if t not in STOPWORDS and not t.isdigit() and len(t) > 1]
     
     # 1-grams
@@ -91,27 +99,40 @@ def _get_impact_bucket(article: Article) -> str:
     return f"{cb}_{db}"
 
 def upsert_event_for_article(db: Session, article: Article) -> Event:
-    """
-    Groups articles into Events using a Fingerprint Strategy:
-    (Hazard, Province, Time_Bucket, Impact_Bucket) + Title Similarity.
-    """
-    # 1. Broad Candidate Search (24h window for new events)
+    """Groups articles into Events using a Fingerprint Strategy."""
+    # 1. Match/Find Candidate
+    matched_event, best_score = _find_best_match(db, article)
+
+    if matched_event is None:
+        # 2. Create New Event if no match
+        return _create_new_event(db, article)
+    
+    # 3. Update Existing Event
+    ev = matched_event
+    _update_event_from_article(db, ev, article)
+    
+    # 4. Finalize: Consensus, Notifications, Broadcast
+    _finalize_event_upsert(db, ev, article)
+    return ev
+
+def _find_best_match(db: Session, article: Article) -> tuple[Event | None, float]:
+    """Search for the most similar existing event in the same location/time window."""
     window_start = article.published_at - timedelta(hours=24)
     window_end = article.published_at + timedelta(hours=12)
     
-    impact_bucket = _get_impact_bucket(article)
+    is_meta_type = article.disaster_type in ("recovery", "warning_forecast")
     
-    # 1. Broad Candidate Search (24h window + Disaster Cluster)
-    # We look for events in the same cluster to handle terminology variations (e.g. 'storm' vs 'flood')
-    cluster = DISASTER_CLUSTERS.get(article.disaster_type, [article.disaster_type])
-    
-    candidates = db.query(Event).filter(
-        Event.disaster_type.in_(cluster),
+    query = db.query(Event).filter(
         Event.province == article.province,
         Event.last_updated_at >= window_start,
         Event.last_updated_at <= window_end
-    ).all()
-
+    )
+    
+    if not is_meta_type:
+        cluster = DISASTER_CLUSTERS.get(article.disaster_type, [article.disaster_type])
+        query = query.filter(Event.disaster_type.in_(cluster))
+        
+    candidates = query.all()
     matched_event = None
     best_score = 0.0
     new_tokens = _get_tokens(article.title)
@@ -120,352 +141,212 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         cand_tokens = _get_tokens(cand.title)
         title_sim = _calculate_similarity(new_tokens, cand_tokens)
         
-        # Entry threshold for similarity (low enough to allow location boost)
-        if title_sim < 0.35:
-            continue
+        if title_sim < 0.35: continue
 
         score = title_sim
-        
         # LOCATION BOOST: Strong evidence for merging
-        if article.commune and cand.commune and article.commune.lower() == cand.commune.lower():
-            score += 0.3
-        if article.village and cand.village and article.village.lower() == cand.village.lower():
-            score += 0.4
-        if article.landmark and cand.landmark and article.landmark.lower() == cand.landmark.lower():
-            score += 0.4
-        if article.route and cand.route and article.route.lower() == cand.route.lower():
-            score += 0.3
+        if article.commune and cand.commune and article.commune.lower() == cand.commune.lower(): score += 0.3
+        if article.village and cand.village and article.village.lower() == cand.village.lower(): score += 0.4
+        if article.landmark and cand.landmark and article.landmark.lower() == cand.landmark.lower(): score += 0.4
+        if article.route and cand.route and article.route.lower() == cand.route.lower(): score += 0.3
             
-        # The final matching threshold remains quite high (0.7) to ensure high-quality groups
         if score > 0.7 and score > best_score:
             best_score = score
             matched_event = cand
+            
+    return matched_event, best_score
 
-    if matched_event is None:
-        # Create a unique key for the new event sequence
-        timestamp_slug = article.published_at.strftime("%Y%m%d%H%M")
-        unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}"
-        
-        # Guard against key collision
-        counter = 0
-        while db.query(Event).filter(Event.key == unique_key).first():
-            counter += 1
-            unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}_{counter}"
-
-        # Get coordinates for the province
-        from .nlp import PROVINCE_COORDINATES
-        coords = PROVINCE_COORDINATES.get(article.province, [None, None])
-
-        ev = Event(
-            key=unique_key,
-            title=article.title,
-            disaster_type=article.disaster_type,
-            province=article.province,
-            stage=article.stage,
-            started_at=article.published_at,
-            last_updated_at=article.published_at,
-            deaths=article.deaths,
-            missing=article.missing,
-            injured=article.injured,
-            damage_billion_vnd=article.damage_billion_vnd,
-            confidence=0.5 if article.deaths or article.needs_verification else 0.3, # Initial confidence
-            sources_count=1,
-            lat=coords[0],
-            lon=coords[1],
-            needs_verification=article.needs_verification,
-            commune=article.commune,
-            village=article.village,
-            route=article.route,
-            landmark=article.landmark,
-            location_description=article.location_description,
-            cause=article.cause,
-            characteristics=article.characteristics,
-            details={"impact_bucket": impact_bucket},
-            is_red_alert=article.is_red_alert
-        )
-        db.add(ev)
-        db.flush()
-        article.event_id = ev.id
-        
-        # publish new event to subscribers
-        # publish new event to subscribers
-        try:
-            data = {
-                "type": "new_event",
-                "event_id": ev.id,
-                "title": ev.title,
-                "disaster_type": ev.disaster_type,
-                "province": ev.province,
-                "started_at": ev.started_at.isoformat() if ev.started_at else None,
-            }
-        # Broadcast update
-            broadcast.publish_event_sync(data)
-        except Exception:
-            pass
-        
-        # Also Push via WebSocket
-        try:
-            from .ws import manager
-            manager.broadcast_sync({"type": "EVENT_UPSERT", "data": data})
-        except ImportError:
-            pass
-        except Exception:
-            pass
-
-        # Telegram Notifications
-        try:
-            from .notifications import notify_users_of_event
-            notify_users_of_event(db, ev)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Notification error: {e}")
-
-        return ev
+def _create_new_event(db: Session, article: Article) -> Event:
+    """Initialize a new event from an article."""
+    timestamp_slug = article.published_at.strftime("%Y%m%d%H%M")
+    unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}"
     
-    # If match found, update event metrics
-    ev = matched_event
+    # Guard against key collision (rare but possible in high-volume bursts)
+    counter = 0
+    while db.query(Event.id).filter(Event.key == unique_key).first():
+        counter += 1
+        unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}_{counter}"
 
-    # UPDATE LEADER: If this article is from a trusted source or is more detailed, update title
-    # We compare using a length-weighted trusted score
+    from .nlp import PROVINCE_COORDINATES
+    coords = PROVINCE_COORDINATES.get(article.province, [None, None])
+
+    ev = Event(
+        key=unique_key,
+        title=article.title,
+        disaster_type=article.disaster_type,
+        province=article.province,
+        stage=article.stage,
+        started_at=article.published_at,
+        last_updated_at=article.published_at,
+        deaths=article.deaths,
+        missing=article.missing,
+        injured=article.injured,
+        damage_billion_vnd=article.damage_billion_vnd,
+        confidence=0.5 if article.deaths or article.needs_verification else 0.3,
+        sources_count=1,
+        lat=coords[0], lon=coords[1],
+        needs_verification=article.needs_verification,
+        commune=article.commune, village=article.village,
+        route=article.route, landmark=article.landmark,
+        location_description=article.location_description,
+        cause=article.cause, characteristics=article.characteristics,
+        details={"impact_bucket": _get_impact_bucket(article)},
+        is_red_alert=article.is_red_alert
+    )
+    db.add(ev)
+    db.flush()
+    article.event_id = ev.id
     
-    current_lead_is_trusted = TRUSTED_MAP.get(ev.articles[0].source, False) if ev.articles else False
+    # Notifications and Broadcast for New Event
+    _broadcast_event(ev, is_new=True)
+    try:
+        from .notifications import notify_users_of_event
+        notify_users_of_event(db, ev)
+    except Exception as e:
+        logger.error(f"Error notifying users of new event {ev.id}: {e}")
+    
+    return ev
+
+def _update_event_from_article(db: Session, ev: Event, article: Article):
+    """Update event fields based on new article signals."""
+    # Update Title logic: Trusted or more detailed wins
+    try:
+        current_leader_trusted = TRUSTED_MAP.get(db.query(Article.source).filter(Article.event_id == ev.id).order_by(Article.id).limit(1).scalar(), False)
+    except Exception:
+        current_leader_trusted = False
+    
     new_is_trusted = TRUSTED_MAP.get(article.source, False)
     
-    # Swap criteria: (Trusted wins over non-trusted) OR (Longer titles if both equal trust)
-    if (new_is_trusted and not current_lead_is_trusted) or \
-       (new_is_trusted == current_lead_is_trusted and len(article.title) > len(ev.title) + 5):
+    if (new_is_trusted and not current_leader_trusted) or \
+       (new_is_trusted == current_leader_trusted and len(article.title) > len(ev.title) + 5):
         ev.title = article.title
-        # Keep old details but update bucket if this is a more severe report
-        if ev.details is None:
-            ev.details = {}
-        ev.details["impact_bucket"] = impact_bucket
+        if ev.details is None: ev.details = {}
+        ev.details["impact_bucket"] = _get_impact_bucket(article)
 
-    # Update Type (Upgrade to more severe type if prioritized)
-    # Use global DISASTER_PRIORITY from nlp.py
+    # Type & Stage Upgrades
     if article.disaster_type != ev.disaster_type:
-        prio = nlp.DISASTER_PRIORITY
-        if article.disaster_type in prio and ev.disaster_type in prio:
-            if prio.index(article.disaster_type) < prio.index(ev.disaster_type):
-                ev.disaster_type = article.disaster_type
+        prio = nlp.DISASTER_PRIORITY_MAP
+        if prio.get(article.disaster_type, 99) < prio.get(ev.disaster_type, 99):
+            ev.disaster_type = article.disaster_type
 
-    # Update Stage (Recovery > Incident > Forecast)
     stage_priority = {"FORECAST": 1, "INCIDENT": 2, "RECOVERY": 3}
     if stage_priority.get(article.stage, 0) > stage_priority.get(ev.stage, 0):
         ev.stage = article.stage
 
-    # Update location details if event is missing them but article has them
-    if not ev.commune and article.commune: ev.commune = article.commune
-    if not ev.village and article.village: ev.village = article.village
-    if not ev.route and article.route: ev.route = article.route
-    if not ev.landmark and article.landmark: ev.landmark = article.landmark
-    if not ev.location_description and article.location_description: 
+    # Location & Metrics
+    for attr in ["commune", "village", "route", "landmark"]:
+        if not getattr(ev, attr) and getattr(article, attr):
+            setattr(ev, attr, getattr(article, attr))
+    
+    if article.location_description and len(article.location_description) > len(ev.location_description or ""):
         ev.location_description = article.location_description
 
     ev.last_updated_at = max(ev.last_updated_at, article.published_at)
     ev.started_at = min(ev.started_at, article.published_at)
 
-    # Update global event impact metrics (Cumulative logic)
-    # Note: For deaths/missing, if sources report DIFFERENT numbers for SAME event, 
-    # we take MAX (following government directive to use highest confirmed count)
     for field in ["deaths", "missing", "injured"]:
         val = getattr(article, field)
-        if val is not None:
-            setattr(ev, field, max(getattr(ev, field) or 0, val))
+        if val is not None: setattr(ev, field, max(getattr(ev, field) or 0, val))
             
     if article.damage_billion_vnd:
         ev.damage_billion_vnd = max(ev.damage_billion_vnd or 0.0, article.damage_billion_vnd)
 
-    if article.needs_verification:
-        ev.needs_verification = 1
-
-    if article.is_red_alert:
-        ev.is_red_alert = True
-
-    # Update location details in Event if article has more specific info
-    if article.commune and not ev.commune: ev.commune = article.commune
-    if article.village and not ev.village: ev.village = article.village
-    if article.route and not ev.route: ev.route = article.route
+    if article.needs_verification: ev.needs_verification = True
+    if article.is_red_alert: ev.is_red_alert = True
     
-    # [OPTIMIZATION] Update to the most detailed location description (longest string)
-    new_loc = article.location_description or ""
-    old_loc = ev.location_description or ""
-    if len(new_loc) > len(old_loc):
-        ev.location_description = new_loc
-        
-    if article.cause and not ev.cause: ev.cause = article.cause
-    if article.characteristics and not ev.characteristics: ev.characteristics = article.characteristics
-
-    # Aggregating impact_details into ev.details
+    # Merge impact_details
     if article.impact_details:
-        import json
-        current_details = dict(ev.details or {})
-        new_details = article.impact_details
-        
-        for key, items in new_details.items():
-            if not items: continue
-            
-            if key not in current_details:
-                current_details[key] = items
-            else:
-                # Merge lists
-                existing = current_details[key]
-                combined = existing + items
-                if not combined: continue
-                
-                # Dedup strategy
-                first_item = combined[0]
-                if isinstance(first_item, int):
-                    current_details[key] = sorted(list(set(combined)), reverse=True)
-                elif isinstance(first_item, dict):
-                    seen = set()
-                    unique = []
-                    for x in combined:
-                        u = (x.get("unit") or "").lower().strip()
-                        n = x.get("num")
-                        sig = f"{n}_{u}"
-                        if sig not in seen:
-                            seen.add(sig)
-                            unique.append(x)
-                    current_details[key] = unique
-        ev.details = current_details
+        _merge_impact_details(ev, article.impact_details)
 
-    # Update source count and smart confidence
-    # Update source count and smart confidence
-    from .sources import VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
-    from . import nlp
-    
-    # [OPTIMIZATION 3] Multi-Source Consolidation & Auto-Promotion
-    # Get all articles current linked to this event + the new one
-    all_articles = [a for a in ev.articles if a.id != article.id] + [article]
-    
-    unique_domains = {a.domain for a in all_articles if a.domain}
-    sources_used = {a.source for a in all_articles}
-    ev.sources_count = len(sources_used)
-
-    # If we have 3 or more unique domains reporting this, it's a strong consensus signal.
-    # We auto-promote all "pending" articles linked to this event.
-    if len(unique_domains) >= 3:
-        promoted = 0
-        for a in all_articles:
-            if a.status == "pending":
-                a.status = "approved"
-                promoted += 1
-        if promoted > 0:
-            print(f"   [AUTO-UPGRADE] Event ID {ev.id}: Promoted {promoted} articles to APPROVED based on consensus ({len(unique_domains)} sources).")
-            # We don't need to manually broadcast here as the main upsert_event_for_article loop
-            # sends an EVENT_UPSERT notification at the end of the process.
-    
-    # 1. Check for Strong Signals across all articles in this event
-    # 1. Check for Strong Signals across all articles in this event
-    has_trusted_source = any(TRUSTED_MAP.get(a.source, False) for a in all_articles)
-    
-    # Check for Red Alert, VIP, Sensitive Locations, and Metrics
-    has_red_alert = any(a.is_red_alert for a in all_articles)
-    has_vip_term = False
-    has_sensitive_loc = False
-    has_strong_metrics = False
-    
-    for a in all_articles:
-        combined_text = f"{a.title} {a.summary or ''}".lower()
-        
-        # VIP Check
-        if not has_vip_term:
-            for vip_re in VIP_TERMS_RE:
-                if vip_re.search(combined_text):
-                    has_vip_term = True; break
-        
-        # Sensitive Loc Check
-        if not has_sensitive_loc:
-            for loc_re in SENSITIVE_LOCATIONS_RE:
-                if loc_re.search(combined_text):
-                    has_sensitive_loc = True; break
-        
-        # Metrics Check (High rainfall or winds)
-        if not has_strong_metrics:
-            if a.deaths or a.missing or (a.damage_billion_vnd and a.damage_billion_vnd > 0.5):
-                has_strong_metrics = True
-    
-    # 2. Smart Title Selection: 
-    # Use the most descriptive title (often from trusted or longest titles)
-    # Prefer title with VIP terms
-    best_title = ev.title
-    if has_vip_term and not any(pat.search(best_title.lower()) for pat in VIP_TERMS_RE):
-        # Current title doesn't have VIP but new article might
-        for a in all_articles:
-            if any(pat.search(a.title.lower()) for pat in VIP_TERMS_RE):
-                best_title = a.title; break
-    elif has_trusted_source:
-        # If we have trusted sources, prefer their titles (take the longest one for detail)
-        trusted_titles = [a.title for a in all_articles if TRUSTED_MAP.get(a.source, False)]
-        if trusted_titles:
-            best_title = max(trusted_titles, key=len)
-    
-    ev.title = best_title
-
-    # 3. Calculate Smart Confidence
-    if has_vip_term:
-        ev.confidence = 1.0  # Absolute priority (Emergency dispatch)
-    elif has_red_alert:
-        ev.confidence = 1.0  # Red Alert implies extreme danger
-    elif has_sensitive_loc and has_trusted_source:
-        ev.confidence = 0.98 # Strategic infrastructure at risk
-    elif has_trusted_source:
-        # confirmed by at least one official source
-        ev.confidence = 0.95 if ev.sources_count >= 2 else 0.9
-    elif has_sensitive_loc:
-        ev.confidence = 0.85 if ev.sources_count >= 2 else 0.7
-    elif has_strong_metrics:
-        ev.confidence = 0.8 if ev.sources_count >= 2 else 0.6
-    else:
-        # Pure crowd-sourced / general news
-        if ev.sources_count == 1:
-            ev.confidence = 0.3
-        elif ev.sources_count == 2:
-            ev.confidence = 0.5
-        elif ev.sources_count == 3:
-            ev.confidence = 0.75
+def _merge_impact_details(ev: Event, new_details: dict):
+    if not ev.details: ev.details = {}
+    current = dict(ev.details)
+    for key, items in new_details.items():
+        if not items: continue
+        if key not in current: 
+            current[key] = items
         else:
-            ev.confidence = 0.85
+            combined = current[key] + items
+            # Dedup strategy for dicts (impact objects)
+            seen, unique = set(), []
+            for x in combined:
+                if isinstance(x, dict):
+                    sig = f"{x.get('num')}_{x.get('unit', '').lower().strip()}"
+                    if sig not in seen:
+                        seen.add(sig); unique.append(x)
+                else: unique.append(x)
+            current[key] = unique if (combined and isinstance(combined[0], dict)) else sorted(list(set(combined)), reverse=True)
+    ev.details = current
+
+def _finalize_event_upsert(db: Session, ev: Event, article: Article):
+    """Final consensus check, confidence scoring, notifications and broadcast."""
+    from sqlalchemy import or_
+    from .sources import VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
+    
+    # Batch fetch flat article data in 1 query
+    article_data = db.query(Article.domain, Article.source, Article.status, Article.is_red_alert, Article.title)\
+        .filter(Article.event_id == ev.id).all()
+    
+    all_domains = {r.domain for r in article_data if r.domain}
+    all_sources = {r.source for r in article_data if r.source}
+    if article.domain: all_domains.add(article.domain)
+    if article.source: all_sources.add(article.source)
+    
+    ev.sources_count = len(all_sources)
+
+    # 1. Consensus Promotion
+    if len(all_domains) >= 3:
+        db.query(Article).filter(Article.event_id == ev.id, Article.status == "pending").update({"status": "approved"})
+
+    # 2. Strong Signal Checks
+    has_trusted = any(TRUSTED_MAP.get(s, False) for s in all_sources)
+    has_red = article.is_red_alert or any(r.is_red_alert for r in article_data)
+    has_strong_metrics = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.damage_billion_vnd or 0) > 0.5
+    
+    # Use pre-compiled mega-regex for titles if available
+    has_vip = any(nlp.sources.RE_RECOVERY.search(article.title.lower())) if hasattr(nlp.sources, 'RE_RECOVERY') else False
+    if not has_vip:
+        for vip_re in VIP_TERMS_RE:
+            if vip_re.search(article.title.lower()): has_vip = True; break
+    
+    # 3. Smart Confidence Matrix
+    if has_vip or has_red: ev.confidence = 1.0
+    elif has_trusted: ev.confidence = 0.95 if ev.sources_count >= 2 else 0.9
+    elif has_strong_metrics: ev.confidence = 0.8 if ev.sources_count >= 2 else 0.6
+    else:
+        # Logistic curve approximation
+        ev.confidence = min(0.1 + (ev.sources_count * 0.25), 0.85)
 
     article.event_id = ev.id
-
-    # Notification for followers
+    
+    # Notifications and Broadcast
     try:
         from .notifications import notify_followers_of_article
         notify_followers_of_article(db, ev, article)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Follower notification error: {e}")
+        logger.error(f"Error notifying followers for event {ev.id}: {e}")
     
-    # Real-time Broadcast: Notify subscribers of event updates
-    # Real-time Broadcast: Notify subscribers of event updates
+    _broadcast_event(ev, is_new=False)
+
+def _broadcast_event(ev: Event, is_new: bool = False):
+    """Universal broadcast to real-time channels."""
     try:
         data = {
-            "type": "event_updated",
+            "type": "new_event" if is_new else "event_updated",
             "event_id": ev.id,
             "title": ev.title,
             "disaster_type": ev.disaster_type,
             "province": ev.province,
             "deaths": ev.deaths,
             "missing": ev.missing,
-            "injured": ev.injured,
             "damage": ev.damage_billion_vnd,
-            "location_description": ev.location_description,
             "confidence": ev.confidence,
             "sources_count": ev.sources_count,
-            "needs_verification": getattr(ev, 'needs_verification', 1),
             "is_red_alert": ev.is_red_alert,
             "last_updated": ev.last_updated_at.isoformat() if ev.last_updated_at else None
         }
         broadcast.publish_event_sync(data)
-        
-        # Also Push via WebSocket
-        try:
-            from .ws import manager
-            manager.broadcast_sync({"type": "EVENT_UPSERT", "data": data})
-        except ImportError:
-            pass
-    except Exception:
-        pass
-
-    return ev
+        from .ws import manager
+        manager.broadcast_sync({"type": "EVENT_UPSERT", "data": data})
+    except Exception as e:
+        logger.error(f"Failed to broadcast event {ev.id}: {e}")

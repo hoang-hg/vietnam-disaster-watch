@@ -110,6 +110,7 @@ def find_duplicate_article(
 
         # Candidates in time window
         candidates = db.query(Article).filter(
+            Article.domain == domain,  # [OPTIMIZATION] Dedup is per-source
             Article.published_at >= published_at - timedelta(hours=time_window_hours),
             Article.published_at <= published_at + timedelta(hours=2),
         ).options(

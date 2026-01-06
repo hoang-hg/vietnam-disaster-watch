@@ -34,43 +34,64 @@ RATE_PERIOD = 60 # seconds
 @app.middleware("http")
 async def cdn_optimization_middleware(request: Request, call_next):
     """
-    Ensures optimal caching for CDNs like Cloudflare.
+    Ensures optimal caching for CDNs like Cloudflare and safe defaults.
     """
     response = await call_next(request)
-    # Add Vary header for compression awareness
+    
+    # Security: Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    
+    # Add Vary header for compression and auth awareness
     response.headers["Vary"] = "Accept-Encoding, Authorization"
-    # Ensure a default Cache-Control if not set (to prevent CDN from caching sensitive data)
+    
+    # Ensure a default Cache-Control if not set
     if not response.headers.get("Cache-Control"):
         if request.url.path.startswith("/api"):
-            # Default private for API if not specified
-            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            # API responses should not be cached by default for security
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
     return response
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    # Skip rate limiting for OPTIONS requests (CORS preflight)
+    # Skip rate limiting for OPTIONS requests
     if request.method == "OPTIONS":
         return await call_next(request)
 
     client_ip = request.client.host
     now = time.time()
     
-    # Simple whitelist for static or local requests if needed
+    # Whitelist for static/local
     if request.url.path.startswith("/static"):
         return await call_next(request)
 
     # Filter out old requests
-    request_counts[client_ip] = [t for t in request_counts[client_ip] if now - t < RATE_PERIOD]
+    window_start = now - RATE_PERIOD
+    request_counts[client_ip] = [t for t in request_counts[client_ip] if t > window_start]
     
-    # Increase limit to 100 for smoother admin/dev experience
-    limit = 100 
-    
-    if len(request_counts[client_ip]) >= limit:
+    # Use the defined constant instead of hardcoded 100
+    if len(request_counts[client_ip]) >= RATE_LIMIT:
         return Response(content="Too Many Requests", status_code=429)
     
     request_counts[client_ip].append(now)
-    response = await call_next(request)
-    return response
+    
+    # Periodically clean up the dictionary to prevent memory growth (if > 1000 IPs)
+    if len(request_counts) > 1000:
+        for ip in list(request_counts.keys()):
+            if not request_counts[ip]:
+                del request_counts[ip]
+
+    return await call_next(request)
+
+# GLOBAL EXCEPTION HANDLER
+from fastapi.responses import JSONResponse
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import logging
+    logging.getLogger("uvicorn.error").error(f"Global Exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Lỗi nội bộ server. Vui lòng thử lại sau.", "error_type": type(exc).__name__}
+    )
 
 app.include_router(api_router)
 app.include_router(auth_router)
@@ -133,43 +154,40 @@ async def on_startup():
 
     # Tier 1: Critical Official Sources (High Frequency: 15 mins)
     # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
-    # Tier 1: Critical Official Sources (High Frequency: 15 mins)
-    # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
-    def get_tier1_sources():
-        from .sources import SOURCES
-        return [s.name for s in SOURCES if any(kw in s.name for kw in ["KTTV Quốc gia", "KTTV Ninh Bình", 
-        "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", 
-        "KTTV An Giang", "KTTV Hưng Yên", "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
-        "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"])]
+    from .sources import SOURCES
+    tier1_sources = [s.name for s in SOURCES if any(kw in s.name for kw in [
+        "KTTV Quốc gia", "KTTV Ninh Bình", "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", 
+        "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", "KTTV An Giang", "KTTV Hưng Yên", 
+        "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
+        "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"
+    ])]
 
     # Tier 2: Major National News (Medium Frequency: 30 mins)
-    # These sources have high coverage and fast reporting but are not official disaster agencies.
-    def get_tier2_sources():
-        return [
-            "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
-            "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
-            "VietNamNet", "Nhân Dân", "Tiền Phong", "Người Lao Động", "Quân đội Nhân dân", "Báo Chính Phủ", 
-            "Nông Nghiệp & Môi trường", "Báo Dân tộc và Phát triển","Báo Giao thông", "Cổng TTĐT Chính phủ (Công báo)",
-            "Bnews", "Báo Nông nghiệp VN", "Tạp chí Giao thông", "Báo Công lý", "Báo Văn hóa", "Báo Xây dựng",
-            "VnEconomy", "VTC News", "Báo Quốc tế", "Dân Việt", "VOV", "Báo Công Thương", "Vietnam.vn",
-            "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
-        ]
+    tier2_sources = [
+        "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
+        "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
+        "VietNamNet", "Nhân Dân", "Tiền Phong", "Người Lao Động", "Quân đội Nhân dân", "Báo Chính Phủ", 
+        "Nông Nghiệp & Môi trường", "Báo Dân tộc và Phát triển","Báo Giao thông", "Cổng TTĐT Chính phủ (Công báo)",
+        "Bnews", "Báo Nông nghiệp VN", "Tạp chí Giao thông", "Báo Công lý", "Báo Văn hóa", "Báo Xây dựng",
+        "VnEconomy", "VTC News", "Báo Quốc tế", "Dân Việt", "VOV", "Báo Công Thương", "Vietnam.vn",
+        "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
+    ]
 
     # Job 1: Group 1 (Critical Official Sources) - Frequency: 15 MINUTES
-    # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
     scheduler.add_job(
-        lambda: process_once(only_sources=get_tier1_sources()),
+        process_once,
         trigger=IntervalTrigger(minutes=15, jitter=10),
+        kwargs={"only_sources": tier1_sources},
         id="crawl_group1_critical",
         replace_existing=True,
         misfire_grace_time=300
     )
 
     # Job 2: Group 2 (Major National News) - Frequency: 30 MINUTES
-    # Coverage: VnExpress, Tuổi Trẻ, Thanh Niên, Dân Trí, VTV, VOV...
     scheduler.add_job(
-        lambda: process_once(only_sources=get_tier2_sources()),
+        process_once,
         trigger=IntervalTrigger(minutes=30, jitter=20),
+        kwargs={"only_sources": tier2_sources},
         id="crawl_group2_major",
         replace_existing=True,
         misfire_grace_time=600

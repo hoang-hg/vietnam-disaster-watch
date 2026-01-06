@@ -4,13 +4,13 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from .database import SessionLocal
 from .models import Article
-from .sources import load_sources_from_json, Source
+from .sources import load_sources_from_json
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,11 @@ class SourceMonitor:
             elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
             
             if resp.status_code == 200:
+                # Basic validation: check if content looks like XML/RSS/Atom
+                content_type = resp.headers.get("content-type", "").lower()
+                # Some servers return text/xml or application/rss+xml
+                # But strict checking might fail on valid feeds with bad headers.
+                # Just checking 200 OK is safer for basic liveness.
                 return {"status": "ok", "code": resp.status_code, "elapsed": elapsed}
             else:
                 return {"status": "error", "code": resp.status_code, "error": f"HTTP {resp.status_code}", "elapsed": elapsed}
@@ -48,7 +53,7 @@ class SourceMonitor:
         
         return {r.source: r.latest for r in results}
 
-    async def run_check(self):
+    async def run_check(self) -> Dict[str, Any]:
         """Run full monitor check on all sources."""
         sources = load_sources_from_json(self.sources_json_path)
         db = SessionLocal()
@@ -70,10 +75,15 @@ class SourceMonitor:
 
             # Batch connectivity checks
             tasks = []
-            source_map = [] # Track which tasks belong to which source/feed
+            source_map: List[Tuple[str, str]] = [] # Track which tasks belong to which source/feed
             
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
-            async with httpx.AsyncClient(timeout=10, follow_redirects=True, verify=False, headers=headers) as client:
+            # Use standard user agent
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+            
+            # Increase connection pool limits for monitoring checks
+            limits = httpx.Limits(max_keepalive_connections=20, max_connections=40)
+            
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=False, headers=headers, limits=limits) as client:
                 for src in sources:
                     if src.primary_rss:
                         tasks.append(self.check_connectivity(client, src.primary_rss))
@@ -83,10 +93,13 @@ class SourceMonitor:
                         source_map.append((src.name, "backup"))
 
                 # Run checks concurrently
-                results = await asyncio.gather(*tasks)
+                if tasks:
+                    results = await asyncio.gather(*tasks)
+                else:
+                    results = []
             
             # Organize results
-            connectivity_results = {}
+            connectivity_results: Dict[str, Dict[str, Any]] = {}
             for i, (src_name, feed_type) in enumerate(source_map):
                 if src_name not in connectivity_results:
                     connectivity_results[src_name] = {}
@@ -118,15 +131,12 @@ class SourceMonitor:
                 is_broken = False
                 if primary_status["status"] not in ["ok", "none"]:
                     is_broken = True
-                if src.backup_rss and backup_status["status"] not in ["ok", "none"]:
-                    # If primary is ok but backup is broken, we still flag it
-                    pass 
-
-                if primary_status["status"] in ["error", "failed"] and primary_status.get("code") in [403, 401]:
-                    report["summary"]["blocked"] += 1
-
-                if is_broken:
+                    # Only count as broken if primary is broken
                     report["summary"]["broken_rss"] += 1
+
+                # Check for blocking (401/403)
+                if primary_status.get("code") in [403, 401]:
+                    report["summary"]["blocked"] += 1
 
                 src_report = {
                     "name": src.name,
@@ -156,6 +166,10 @@ class SourceMonitor:
             
             logger.info(f"Source monitor finished. Report saved to {self.results_path}")
             return report
+            
+        except Exception as e:
+            logger.error(f"Source monitor failed: {e}")
+            return {}
 
         finally:
             db.close()

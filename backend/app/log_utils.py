@@ -4,13 +4,15 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+from collections import deque
+
 def truncate_jsonl(file_path: Path, max_lines: int = 5000):
     """Keep only the last max_lines in a jsonl file."""
-    if not file_path.exists():
+    if not file_path.exists() or file_path.stat().st_size == 0:
         return
 
     try:
-        from collections import deque
+        # Read only the last max_lines using deque efficiently
         
         # Read only the last max_lines using deque efficiently
         # This keeps memory usage low even if the file is gigabytes in size

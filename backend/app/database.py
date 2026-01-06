@@ -11,7 +11,18 @@ engine = create_engine(
     max_overflow=100 if not settings.app_db_url.startswith("sqlite") else 10,
     pool_timeout=30,
     pool_recycle=1800, # Recycle connections every 30 mins to avoid stale links
+    pool_pre_ping=True, # Check connection liveness before using
 )
+
+# Enable WAL mode for SQLite for better concurrency
+if settings.app_db_url.startswith("sqlite"):
+    from sqlalchemy import event
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
 
 # Register JSON adapters for psycopg2 if using Postgres
 if engine.url.drivername.startswith("postgresql"):

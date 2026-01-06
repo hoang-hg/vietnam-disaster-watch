@@ -101,8 +101,21 @@ def _get_impact_value(impact_data):
 def _to_dt(entry) -> datetime:
     tt = getattr(entry, "published_parsed", None) or getattr(entry, "updated_parsed", None)
     if tt:
+        # Ensure UTC timezone handling is robust
         return datetime(*tt[:6], tzinfo=timezone.utc).astimezone(timezone.utc).replace(tzinfo=None)
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    # Try different date fields if parsed struct is missing
+    if hasattr(entry, "published"):
+        from dateutil import parser as date_parser
+        try:
+            dt = date_parser.parse(entry.published)
+            if dt.tzinfo:
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            return dt
+        except Exception:
+            pass
+
+    return datetime.now(timezone.utc)
 
 def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
     """Extract best image URL from Feed Entry or HTML Soup."""
@@ -297,720 +310,312 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
 
     return results
 
+async def _ingest_article_async(db: Session, src, title: str, link: str, published_at: datetime, summary_raw: str) -> tuple[Article | None, str]:
+    """
+    Centralized logic to process, classify, and save an article.
+    Handles deduplication, status upgrades (Pending -> Approved), and blacklisting.
+    """
+    article_hash = get_article_hash(title, src.domain)
+    
+    # 0. Blacklist Check
+    if db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
+        return None, "blacklisted"
 
+    # 1. Deduplication (Same-Source)
+    existing = await asyncio.to_thread(find_duplicate_article, db, src.domain, link, title, published_at)
+    
+    if existing and existing.status == "approved":
+        return None, "duplicate-approved"
+
+    # 2. NLP Diagnosis
+    diag = await asyncio.to_thread(nlp.diagnose, f"{title}\n{summary_raw}", title=title, authority_level=src.authority_level)
+    score = diag["score"]
+    
+    if existing:
+        # Upgrade Pending -> Approved if new score is high enough
+        if existing.status == "pending" and score >= 15.0:
+            existing.status = "approved"
+            existing.score = score
+            # Update meta if it's better now
+            meta = await asyncio.to_thread(nlp.extract_all_metadata, summary_raw, summary_raw, title, existing_signals=diag["signals"])
+            existing.is_red_alert = meta.get("is_red_alert", False)
+            await asyncio.to_thread(upsert_event_for_article, db, existing)
+            return existing, "upgraded"
+            
+        return None, "duplicate-pending"
+
+    # 2. Status Assignment
+    status = "auto-blacklisted"
+    if score >= 15.0: status = "approved"
+    elif score >= 10.0: status = "pending"
+
+    if status == "auto-blacklisted":
+        if not db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
+            db.add(Blacklist(news_hash=article_hash, title=title, reason=f"Low Score: {score:.1f}"))
+        
+        if score >= 3.0 or diag["signals"].get("rule_matches"):
+            _log_to_review_file(src, title, link, published_at, score, diag["reason"], "auto_blacklisted", diag["signals"])
+        return None, status
+
+    # 3. Full Ingestion
+    meta = await asyncio.to_thread(nlp.extract_all_metadata, summary_raw, summary_raw, title, existing_signals=diag["signals"])
+
+    article = Article(
+        source=src.name, domain=src.domain, title=title, url=link,
+        published_at=published_at, news_hash=article_hash,
+        status=status, score=score,
+        disaster_type=meta["disaster_type"],
+        province=meta["province"],
+        summary=meta["summary"],
+        stage=meta["stage"],
+        is_red_alert=meta["is_red_alert"],
+        needs_verification=meta["needs_verification"],
+        deaths=_get_impact_value(meta["impacts"]["deaths"]),
+        missing=_get_impact_value(meta["impacts"]["missing"]),
+        injured=_get_impact_value(meta["impacts"]["injured"]),
+        damage_billion_vnd=_get_impact_value(meta["impacts"]["damage_billion_vnd"]),
+        impact_details=meta["impact_details"],
+        commune=meta["impacts"].get("commune"),
+        village=meta["impacts"].get("village"),
+        route=meta["impacts"].get("route"),
+        landmark=meta["landmark"],
+        cause=meta["impacts"].get("cause"),
+        characteristics=meta["impacts"].get("characteristics"),
+        agency=meta["impacts"].get("agency")[:255] if meta["impacts"].get("agency") else None
+    )
+
+    if status == "pending":
+        _log_to_review_file(src, title, link, published_at, score, diag["reason"], "pending_review")
+
+    try:
+        db.add(article)
+        db.flush()
+        await asyncio.to_thread(upsert_event_for_article, db, article)
+        return article, status
+    except Exception as e:
+        db.rollback()
+        logger.error(f"   [ERROR_INGEST] {src.name}: {e}")
+        return None, "error"
+
+def _log_to_review_file(src, title, link, published_at, score, reason, action, signals=None):
+    try:
+        logs_dir = Path(__file__).resolve().parents[1] / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        record = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "published_at": published_at.isoformat(),
+            "action": action,
+            "source": src.name,
+            "domain": src.domain,
+            "title": title,
+            "url": link,
+            "score": score,
+            "reason": reason
+        }
+        if signals: record["diagnose"] = signals
+        with open(logs_dir / "review_potential_disasters.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception: pass
 
 async def _process_once_async(force_update: bool = False, only_sources: list[str] = None) -> dict:
     """Async implementation of a single crawl run."""
     db: Session = SessionLocal()
     new_count = 0
     start_total = time.perf_counter()
+    per_source_stats = []
+    
     try:
-        # Build list of feed urls with fallback chain per source
-        sources_feeds: dict = {}  # source.name -> list of urls (primary, backup, gnews)
-        for src in SOURCES:
-            if only_sources and src.name not in only_sources:
-                continue
-                
-            feed_urls = []
+        sources_to_process = [s for s in SOURCES if not only_sources or s.name in only_sources]
+        sources_info: dict = {}
+        all_feed_urls = []
+
+        for src in sources_to_process:
+            feeds = [("primary", src.primary_rss), ("backup", src.backup_rss)]
+            feeds = [(t, u) for t, u in feeds if u]
+            feeds.append(("gnews", build_gnews_rss(src.domain, context_terms=CONFIG.get("gnews_context_terms", []))))
             
-            # Add primary and backup RSS if available
-            if src.primary_rss:
-                feed_urls.append(("primary_rss", src.primary_rss))
-            if src.backup_rss:
-                feed_urls.append(("backup_rss", src.backup_rss))
-            
-            # Always add GNews fallback with context terms from config
-            gnews_context = CONFIG.get("gnews_context_terms", [])
-            if gnews_context:
-                # Use context terms for better filtering
-                gnews_url = build_gnews_rss(src.domain, context_terms=gnews_context)
-                print(f"[DEBUG] {src.name} GNews with {len(gnews_context)} context terms")
-            else:
-                # Fallback to no context terms
-                gnews_url = build_gnews_rss(src.domain)
-            feed_urls.append(("gnews", gnews_url))
-            
-            sources_feeds[src.name] = {
-                "source": src,
-                "feed_urls": feed_urls,
-                "used_feed": None,
-                "articles_added": 0
-            }
+            sources_info[src.name] = {"source": src, "feeds": feeds, "added": 0}
+            all_feed_urls.extend([url for _, url in feeds])
 
         headers = {"User-Agent": settings.user_agent}
+        fetched = await _fetch_all_feeds(all_feed_urls, headers, settings.request_timeout_seconds, force_update=force_update)
 
-        # Fetch all feeds concurrently
-        all_feed_urls = []
-        feed_to_source_info: dict = {}  # (url, feed_type) -> source_info
-        
-        for src_name, src_info in sources_feeds.items():
-            for feed_type, url in src_info["feed_urls"]:
-                all_feed_urls.append(url)
-                feed_to_source_info[url] = (src_name, feed_type)
-
-        fetched = {}
-        try:
-            fetched = await _fetch_all_feeds(all_feed_urls, headers, settings.request_timeout_seconds, force_update=force_update)
-        except Exception as e:
-            logger.warning(f"concurrent fetch failed: {e}")
-            fetched = {}
-
-        # Try fallback chain per source: primary → backup → gnews
-        per_source_stats = []
-        
-        for src_name, src_info in sources_feeds.items():
-            src = src_info["source"]
-            stat = {"source": src.name, "feed_used": None, "elapsed": 0.0, "error": None, "articles_added": 0}
-            
+        for name, info in sources_info.items():
+            src = info["source"]
+            stat = {"source": name, "feed_used": [], "elapsed": 0.0, "error": None, "articles_added": 0}
             feed_worked = False
-            for feed_type, url in src_info["feed_urls"]:
-                info = fetched.get(url)
 
-                if info is None or "error" in info:
-                    elapsed = info.get("elapsed", 0) if info else 0
-                    err = info.get("error", "no response") if info else "no response"
-                    logger.warning(f"{src.name} {feed_type} failed ({elapsed:.2f}s): {err}")
-                    continue
-
-                # If feed did not change since last fetch (HTTP 304), treat as a successful feed with no new entries
-                if info.get("not_modified"):
-                    elapsed = info.get("elapsed", 0)
-                    stat["feed_used"] = f"{stat['feed_used']}, {feed_type}" if stat["feed_used"] else feed_type
-                    stat["elapsed"] = (stat["elapsed"] or 0) + elapsed
+            for f_type, f_url in info["feeds"]:
+                f_data = fetched.get(f_url)
+                if not f_data or f_data.get("error"): continue
+                
+                stat["elapsed"] += f_data.get("elapsed", 0.0)
+                if f_data.get("not_modified"):
                     feed_worked = True
-                    logger.info(f"{src.name} using {feed_type} (not modified, {elapsed:.2f}s)")
-                    # DO NOT BREAK: Continue to check next feed (e.g. backup/secondary)
+                    stat["feed_used"].append(f_type)
                     continue
+
+                feed = entry_list = feedparser.parse(f_data.get("text", "")).entries
+                if not entry_list: continue
                 
-                # Try to parse this feed
-                elapsed = info.get("elapsed", 0)
-                feed = feedparser.parse(info.get("text", ""))
-                
-                if not feed.entries:
-                    logger.warning(f"{src.name} {feed_type} returned 0 entries")
-                    continue
-                
-                # Success! Use this feed
-                stat["feed_used"] = f"{stat['feed_used']}, {feed_type}" if stat["feed_used"] else feed_type
-                stat["elapsed"] = (stat["elapsed"] or 0) + elapsed
                 feed_worked = True
+                stat["feed_used"].append(f_type)
                 
-                logger.info(f"{src.name} using {feed_type} ({len(feed.entries)} entries, {elapsed:.2f}s)")
-                
-                # Process articles from this feed
-                # Differentiated limit: Higher for direct RSS, lower for noisy GNews search
-                max_articles = 50 if feed_type == "gnews" else 200
-                for entry in feed.entries[:max_articles]:
-                    raw_title = getattr(entry, "title", "")
-                    # Double unescape to catch poorly encoded sources
-                    title = html.unescape(html.unescape(raw_title)).strip()
+                for entry in entry_list[:(50 if f_type == "gnews" else 200)]:
+                    title = html.unescape(html.unescape(getattr(entry, "title", ""))).strip()
                     title = re.sub(r"\s+", " ", title)
-                    
                     link = getattr(entry, "link", "").strip()
+                    pub_at = _to_dt(entry)
+                    if pub_at < CRAWL_MIN_DATE: continue
+
+                    raw_sum = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+                    sum_raw = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(html.unescape(raw_sum)))).strip()
                     
-                    published_at = _to_dt(entry)
-                    if published_at < CRAWL_MIN_DATE:
-                        # Skip historical news before Jan 1st 2025
-                        continue
-                    raw_summary = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
-                    summary_raw = html.unescape(html.unescape(raw_summary)).strip()
-                    summary_raw = re.sub(r"<[^>]+>", "", summary_raw)
-                    summary_raw = re.sub(r"\s+", " ", summary_raw)
-                    
-                    text_for_nlp = title + " " + summary_raw
-                    if len(text_for_nlp) > 5000:
-                        text_for_nlp = text_for_nlp[:5000] # [OPTIMIZATION] Safety limit
-
-                    # ---------------------------------------------------------
-                    # 0. PRE-CHECK: Blacklist & Hash Deduplication
-                    # ---------------------------------------------------------
-                    news_hash = get_article_hash(title, src.domain, link)
-                    
-                    # Check blacklist
-                    blacklisted = db.query(Blacklist).filter(Blacklist.news_hash == news_hash).first()
-                    if blacklisted:
-                        continue
-                        
-                    existing = find_duplicate_article(db, src.domain, link, title, published_at)
-
-                    # ---------------------------------------------------------
-                    # 1. TIERED FILTERING: 3-Tier Scoring System (User Adjusted)
-                    # ---------------------------------------------------------
-                    diag = await asyncio.to_thread(nlp.diagnose, text_for_nlp, title=title, authority_level=src.authority_level)
-                    score = diag["score"]
-
-                    # Logic for upgrading Pending -> Approved
-                    if existing:
-                        if existing.status == "approved":
-                            # We already have this and it's approved
-                            logger.info(f"[DEDUP] {src.name}: {title[:100]}... (already approved)")
-                            continue
-                        
-                        # If it was pending but giờ có điểm cao đủ để duyệt tự động, ta nâng cấp lên approved
-                        if existing.status == "pending" and score >= 15.0:
-                            logger.info(f"[INFO] Nâng cấp bài viết lên Approved: {title} (Điểm mới: {score})")
-                            existing.status = "approved"
-                            existing.score = score
-                            # Update impacts with new info if available
-                            impacts = nlp.extract_impacts(text_for_nlp)
-                            existing.deaths = _get_impact_value(impacts["deaths"])
-                            existing.missing = _get_impact_value(impacts["missing"])
-                            existing.injured = _get_impact_value(impacts["injured"])
-                            existing.damage_billion_vnd = _get_impact_value(impacts["damage_billion_vnd"])
-                            existing.is_red_alert = diag["signals"].get("is_red_alert", False)
-                            existing.summary = summary_raw[:1000] # Update summary if it's longer/better
-                            
-                            # Link to an event now that it's approved
-                            await asyncio.to_thread(upsert_event_for_article, db, existing)
-                            db.commit()
-                            new_count += 1
-                        continue # Skip to next article in feed
-
-                    status = None
-                    if score >= 15.0:
-                        status = "approved"
-                    elif score >= 10.0:
-                        status = "pending"
-                    
-                    if not status:
-                        # Logic for low score items (< 10.0) -> Auto Blacklist
-                        try:
-                            # Add to Blacklist to prevent re-crawling
-                            if news_hash:
-                                # Check if already blacklisted to avoid unique constraint error
-                                bl_exists = db.query(Blacklist).filter(Blacklist.news_hash == news_hash).first()
-                                if not bl_exists:
-                                    bl_entry = Blacklist(
-                                        news_hash=news_hash,
-                                        title=title,
-                                        reason=f"Low Score: {score} ({diag['reason']})"
-                                    )
-                                    db.add(bl_entry)
-                                    db.commit()
-
-                            # Log to file still, for audit (only if score > 3 to avoid complete noise)
-                            if score >= 3.0 or diag["signals"].get("rule_matches"):
-                                logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                                logs_dir.mkdir(parents=True, exist_ok=True)
-                                potential_file = logs_dir / "review_potential_disasters.jsonl"
-                                record = {
-                                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                                    "published_at": published_at.isoformat(),
-                                    "action": "auto_blacklisted",
-                                    "source": src.name,
-                                    "domain": src.domain,
-                                    "title": title,
-                                    "url": link,
-                                    "news_hash": news_hash,
-                                    "score": score,
-                                    "reason": diag["reason"],
-                                    "diagnose": diag["signals"]
-                                }
-                                with potential_file.open("a", encoding="utf-8") as f:
-                                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-                        except Exception as e:
-                            logger.error(f"Error blacklisting low-score item: {e}")
-                            db.rollback()
-                        continue
-
-                    # For articles in the reviewable range (6.0 - 11.5), we also log them to JSONL 
-                    # as per user request, while keeping them in DB as 'pending' for structure
-                    if status == "pending":
-                        try:
-                            logs_dir = Path(__file__).resolve().parents[1] / "logs"
-                            potential_file = logs_dir / "review_potential_disasters.jsonl"
-                            record = {
-                                "timestamp": datetime.now(timezone.utc).isoformat(),
-                                "published_at": published_at.isoformat(),
-                                "action": "pending_review",
-                                "source": src.name,
-                                "domain": src.domain,
-                                "title": title,
-                                "url": link,
-                                "news_hash": news_hash,
-                                "score": score,
-                                "reason": diag["reason"]
-                            }
-                            with potential_file.open("a", encoding="utf-8") as f:
-                                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-                        except Exception: pass
-
-
-                    # If we reach here, it's either 'approved' or 'pending'
-                    
-                    # Offload heavy NLP extraction to thread
-                    meta = await asyncio.to_thread(nlp.extract_all_metadata, text_for_nlp, summary_raw, title)
-                    
-                    disaster_type = meta["disaster_type"]
-                    province = meta["province"]
-                    impacts = meta["impacts"]
-                    summary_text = meta["summary"]
-                    has_impacts = meta["has_impacts"]
-                    stage = meta["stage"]
-                    
-                    stage_vn = {
-                        "FORECAST": "DỰ BÁO",
-                        "INCIDENT": "DIỄN BIẾN",
-                        "RECOVERY": "KHẮC PHỤC"
-                    }.get(stage, "TIN MỚI")
-                    
-                    summary = f"[{stage_vn}] {summary_text}"
-                    is_red_alert = diag["signals"].get("is_red_alert", False)
-
-                    article = Article(
-                        source=src.name,
-                        domain=src.domain,
-                        title=title,
-                        url=link,
-                        news_hash=news_hash,
-                        status=status,
-                        score=score,
-                        published_at=published_at,
-                        disaster_type=disaster_type,
-                        province=province,
-                        commune=impacts.get("commune"),
-                        village=impacts.get("village"),
-                        route=impacts.get("route"),
-                        location_description=impacts.get("location_description"),
-                        landmark=impacts.get("landmark"),
-                        cause=impacts.get("cause"),
-                        characteristics=impacts.get("characteristics"),
-                        stage=stage,
-                        deaths=_get_impact_value(impacts["deaths"]),
-                        missing=_get_impact_value(impacts["missing"]),
-                        injured=_get_impact_value(impacts["injured"]),
-                        damage_billion_vnd=_get_impact_value(impacts["damage_billion_vnd"]),
-                        agency=impacts["agency"][:255] if impacts["agency"] else None,
-                        summary=summary,
-                        image_url=_extract_image_url(entry),
-                        impact_details=meta["impact_details"],
-                        needs_verification=meta["needs_verification"],
-                        is_red_alert=is_red_alert
-                    )
-
-                    try:
-                        db.add(article)
-                        db.flush()
-                        
-                        # Process event matching for both Approved and Pending articles
-                        # This allows "pending" articles to contribute to event metadata (multi-source count)
-                        if status in ("approved", "pending"):
-                            await asyncio.to_thread(upsert_event_for_article, db, article)
-
-                        if status == "approved":
-                            logger.info(f"   [ADDED] {src.name}: {title[:70]}...")
-                        else:
-                            logger.info(f"   [PENDING] {src.name}: {title[:70]}... (Score: {score:.1f})")
-                            
+                    article, status = await _ingest_article_async(db, src, title, link, pub_at, sum_raw)
+                    if article:
                         new_count += 1
-                        src_info["articles_added"] += 1
-                    except Exception as e:
-                        db.rollback()
-                        logger.error(f"   [ERROR_DB] {src.name}: {e}")
-                        continue
+                        info["added"] += 1
+                        _log_artic_status(src.name, title, status, article.score)
+                        await _enrich_article_async(db, src, article)
 
-                    # Log accepted/inserted candidate (for review)
-                        # Skip logging accepted entries to skip_debug.jsonl to save space.
-                        # We already have them in the Database!
-                        pass
-                    except Exception:
-                        pass
-                    
-                    # Full-page fetch if impact keywords found
-                    try:
-                        # Fetch full HTML for trusted sources, for title-matched entries,
-                        # or when impact keywords are present in feed summary.
-                        should_fetch = False
-                        text_lower = (title + "\n" + (getattr(entry, "summary", "") or "")).lower()
-                        if src.trusted or nlp.title_contains_disaster_keyword(title):
-                            should_fetch = True
-                        else:
-                            for data in nlp.IMPACT_KEYWORDS.values():
-                                terms = data.get("terms", [])
-                                for kw in terms:
-                                    if kw.lower() in text_lower:
-                                        should_fetch = True
-                                        break
-                                if should_fetch:
-                                    break
+                if feed_worked: break
 
-                        if should_fetch:
-                            try:
-                                timeout = settings.request_timeout_seconds
-                                # Integration of the improved Generic Content Extractor
-                                fetch_res = await fetch_article_full_text_async(link, timeout=timeout)
-                                
-                                if fetch_res:
-                                    full_text = fetch_res["text"]
-                                    images = fetch_res["images"]
-                                    final_url = fetch_res["final_url"]
-                                    
-                                    # Update is_broken status
-                                    if fetch_res.get("is_broken"):
-                                        article.is_broken = 1
-                                        
-                                    # Update URL if it was a redirect (important for Google News/Shorteners)
-                                    if final_url and final_url != link:
-                                        # Check if another article with same domain and final_url already exists
-                                        # to avoid UniqueViolation on (domain, url)
-                                        collision = db.query(Article).filter(Article.domain == article.domain, Article.url == final_url).first()
-                                        if not collision:
-                                            article.url = final_url
-                                        else:
-                                            logger.debug(f"URL resolution collision for {final_url}, skipping update")
-                                    
-                                    # Update Image if missing or if we found a better one
-                                    if not article.image_url and images:
-                                        article.image_url = images[0]
-                                    elif article.image_url and images and "googleusercontent" in article.image_url:
-                                        # Prefer original site image over Google proxy image
-                                        article.image_url = images[0]
-
-                                    full_impacts = nlp.extract_impacts(full_text)
-                                    
-                                    # Update metrics from full text
-                                    if full_impacts.get("deaths") is not None and article.deaths is None:
-                                        article.deaths = _get_impact_value(full_impacts.get("deaths"))
-                                    if full_impacts.get("missing") is not None and article.missing is None:
-                                        article.missing = _get_impact_value(full_impacts.get("missing"))
-                                    if full_impacts.get("injured") is not None and article.injured is None:
-                                        article.injured = _get_impact_value(full_impacts.get("injured"))
-                                    if full_impacts.get("damage_billion_vnd") is not None and article.damage_billion_vnd is None:
-                                        article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
-                                    
-                                    if full_impacts.get("agency") is not None and article.agency is None:
-                                        raw_agency = full_impacts.get("agency")
-                                        article.agency = raw_agency[:255] if raw_agency else None
-                                        
-                                    # Update extended location and cause from full text if currently missing
-                                    if full_impacts.get("commune") and not article.commune:
-                                        article.commune = full_impacts.get("commune")
-                                    if full_impacts.get("village") and not article.village:
-                                        article.village = full_impacts.get("village")
-                                    if full_impacts.get("route") and not article.route:
-                                        article.route = full_impacts.get("route")
-                                    if full_impacts.get("cause") and not article.cause:
-                                        article.cause = full_impacts.get("cause")
-                                    if full_impacts.get("characteristics") and not article.characteristics:
-                                        article.characteristics = full_impacts.get("characteristics")
-
-                                    if article.province in (None, "unknown"):
-                                        prov = nlp.extract_province(full_text, title=title)
-                                        if prov and prov != "unknown":
-                                            article.province = prov
-                                    
-                                    # Re-validate after full text fetch
-                                    needs_v = nlp.validate_impacts(full_impacts)
-                                    if needs_v:
-                                        article.needs_verification = 1
-
-                                    # SAVE FULL TEXT - This powers the "Archived at System" feature
-                                    try:
-                                        article.full_text = full_text[:100000] # Safety limit
-                                        
-                                        # IMPROVED SUMMARY: If original summary was generic or short, replace with better one from full text
-                                        if "Đang tổng hợp dữ liệu" in article.summary or len(article.summary) < 100:
-                                            # Determine stage if not already set correctly
-                                            stage = article.stage or nlp.determine_event_stage(full_text)
-                                            stage_vn = {
-                                                "FORECAST": "DỰ BÁO",
-                                                "INCIDENT": "DIỄN BIẾN",
-                                                "RECOVERY": "KHẮC PHỤC"
-                                            }.get(stage, "TIN MỚI")
-                                            
-                                            better_summary_text = nlp.summarize(full_text, title=article.title)
-                                            article.summary = f"[{stage_vn}] {better_summary_text}"
-                                            logger.debug(f"Updated summary for {article.title} from full text")
-                                            
-                                    except Exception:
-                                        pass
-                            except Exception as e:
-                                logger.debug(f"Full-text fetch failed for {link}: {e}")
-                    except Exception as e:
-                        db.rollback()
-                        logger.error(f"Error processing article {link}: {e}")
-
-                    try:
-                        upsert_event_for_article(db, article)
-                    except Exception as e:
-                        logger.error(f"Failed to upsert event for {article.title}: {e}")
-                        db.rollback()
-                
-                break  # Don't try other feeds for this source, we got articles
-            
-            # Force HTML scraper for known difficult sources w/ custom scrapers
-            # or if previous RSS feeds failed
-            force_html_scrape = any(x in src.domain for x in ["thoitietvietnam", "nchmf", "kttv"])
-
-            if (not feed_worked) or force_html_scrape:
-                # Try HTML scraper
+            force_html = any(x in src.domain for x in ["thoitietvietnam", "nchmf", "kttv"])
+            if not feed_worked or force_html:
                 try:
-                    if force_html_scrape:
-                         logger.info(f"{src.name} - forcing HTML scraper execution...")
-                    else:
-                         logger.info(f"{src.name} - attempting HTML scraper fallback...")
-
-                    scraper = HTMLScraper(timeout=settings.request_timeout_seconds)
-                    scraped_articles = await scraper.scrape_source(src.domain)
-                    
-                    if scraped_articles:
-                        stat["feed_used"] = f"{stat['feed_used']}, html_scraper" if stat["feed_used"] else "html_scraper"
-                        # Reset elapsed since this is async/parallel to feed
-                        # stat["elapsed"] += ... 
-                        logger.info(f"{src.name} using html_scraper ({len(scraped_articles)} articles)")
-                        
-                        # Process scraped articles
-                        for scraped in scraped_articles[:50]:
-                            title = html.unescape(scraped.get("title", "")).strip()
-                            url = scraped.get("url", "").strip()
-                            if not title or not url:
-                                continue
-                            
-                            # Use scrape time as publish time
-                            published_at = datetime.utcnow()
-                            if published_at < CRAWL_MIN_DATE:
-                                continue
-                            
-                            summary_raw_scraper = html.unescape(scraped.get("summary", "") or scraped.get("description", "") or "")
-                            text_for_nlp = title + " " + summary_raw_scraper
-                            
-                            # Pre-filter using main NLP: 
-                            # - Explicitly check using full NLP (Veto/Rules)
-                            # - Pass trusted_source=src.trusted to allow lighter threshold for official sources
-                            if not nlp.contains_disaster_keywords(summary_raw_scraper, title=title, trusted_source=src.trusted, authority_level=src.authority_level):
-                                article_hash = get_article_hash(title, src.domain)
-                                diag = nlp.diagnose(summary_raw_scraper, title=title, authority_level=src.authority_level)
-                                logger.info(f"{src.name} #{article_hash}: nlp-rejected score={diag['score']:.1f} reason={diag['reason']}")
-                                continue
-                            
-                            
-                            disaster_info = nlp.classify_disaster(text_for_nlp)
-                            disaster_type = disaster_info.get("primary_type", "unknown")
-                            province = nlp.extract_province(text_for_nlp)
-                            
-                            impacts = nlp.extract_impacts(summary_raw_scraper or title)
-                            summary = nlp.summarize(summary_raw_scraper, title=title)
-                            
-                            # Check for duplicates (DB I/O offloaded)
-                            duplicate = await asyncio.to_thread(
-                                find_duplicate_article,
-                                db,
-                                src.domain,
-                                url,
-                                title,
-                                published_at,
-                                time_window_hours=24
-                            )
-                            
-                            if duplicate:
-                                article_hash = get_article_hash(title, src.domain)
-                                logger.info(f"{src.name} #{article_hash}: duplicate (skipped)")
-                                continue
-                            
-                            article = Article(
-                                source=src.name,
-                                domain=src.domain,
-                                title=title,
-                                url=url,
-                                published_at=published_at,
-                                disaster_type=disaster_type,
-                                province=province,
-                                commune=impacts.get("commune"),
-                                village=impacts.get("village"),
-                                route=impacts.get("route"),
-                                landmark=impacts.get("landmark"),
-                                location_description=impacts.get("location_description"),
-                                cause=impacts.get("cause"),
-                                characteristics=impacts.get("characteristics"),
-                                deaths=_get_impact_value(impacts["deaths"]),
-                                missing=_get_impact_value(impacts["missing"]),
-                                injured=_get_impact_value(impacts["injured"]),
-                                damage_billion_vnd=_get_impact_value(impacts["damage_billion_vnd"]),
-                                agency=impacts["agency"][:255] if impacts["agency"] else None,
-                                summary=summary,
-                                impact_details=nlp.extract_impact_details(text_for_nlp),
-                                needs_verification=int(nlp.validate_impacts(impacts))
-                            )
-                            
-                            try:
-                                db.add(article)
-                                db.flush()
-                                new_count += 1
-                                src_info["articles_added"] += 1
-                                logger.info(f"   [ADDED_SCRAPE] {src.name}: {title[:70]}...")
-                                try:
-                                    await asyncio.to_thread(upsert_event_for_article, db, article)
-                                except Exception as e:
-                                    logger.error(f"Failed to upsert event for {article.title} (Scrape): {e}")
-                                    db.rollback()
-                                
-                                # Fetch full text using the robust scraper
-                                from .html_scraper import fetch_article_full_text_async
-                                full_info = await fetch_article_full_text_async(url)
-
-                                if full_info and full_info.get("text"):
-                                    full_text = full_info["text"]
-                                    
-                                    # Offload heavy NLP to thread
-                                    meta = await asyncio.to_thread(nlp.extract_all_metadata, full_text, full_text if len(full_text) < 2000 else full_text[:2000], title)
-                                    full_impacts = meta["impacts"]
-                                    
-                                    # Save full text and image
-                                    article.full_text = full_text[:100000]
-                                    if full_info.get("images") and not article.image_url:
-                                        article.image_url = full_info["images"][0]
-                                    
-                                    # Update stats if currently missing or zero
-                                    if full_impacts.get("deaths") is not None and (article.deaths or 0) == 0:
-                                        article.deaths = _get_impact_value(full_impacts.get("deaths"))
-                                    if full_impacts.get("missing") is not None and (article.missing or 0) == 0:
-                                        article.missing = _get_impact_value(full_impacts.get("missing"))
-                                    if full_impacts.get("injured") is not None and (article.injured or 0) == 0:
-                                        article.injured = _get_impact_value(full_impacts.get("injured"))
-                                    if full_impacts.get("damage_billion_vnd") is not None and (article.damage_billion_vnd or 0) == 0:
-                                        article.damage_billion_vnd = _get_impact_value(full_impacts.get("damage_billion_vnd"))
-                                    
-                                    # Update extended location and cause
-                                    if full_impacts.get("commune") and not article.commune:
-                                        article.commune = full_impacts.get("commune")
-                                    if full_impacts.get("village") and not article.village:
-                                        article.village = full_impacts.get("village")
-                                    if full_impacts.get("route") and not article.route:
-                                        article.route = full_impacts.get("route")
-                                    if full_impacts.get("cause") and not article.cause:
-                                        article.cause = full_impacts.get("cause")
-                                    if full_impacts.get("characteristics") and not article.characteristics:
-                                        article.characteristics = full_impacts.get("characteristics")
-                                        
-                                    if article.province in (None, "unknown"):
-                                        if meta["province"] and meta["province"] != "unknown":
-                                            article.province = meta["province"]
-                                            
-                                    if meta["needs_verification"]:
-                                        article.needs_verification = 1
-                                    
-                                db.commit()
-
-                            except Exception as e:
-                                db.rollback()
-                                logger.error(f"   [ERROR_DB_SCRAPE] {src.name}: {e}")
-                                continue
-                        
+                    scraped = await HTMLScraper(timeout=settings.request_timeout_seconds).scrape_source(src.domain)
+                    if scraped:
+                        stat["feed_used"].append("html_scraper")
                         feed_worked = True
-                    else:
-                        stat["error"] = "all feeds and scraper failed"
-                        logger.debug(f"[INFO] {src.name} - html scraper returned no articles")
+                        for item in scraped[:50]:
+                            a, s = await _ingest_article_async(db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", ""))
+                            if a:
+                                new_count += 1
+                                info["added"] += 1
+                                _log_artic_status(src.name, item["title"], s, a.score)
+                                await _enrich_article_async(db, src, a)
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
-                    logger.error(f"[ERROR] {src.name} - html scraper failed: {e}")
-                
-                if not feed_worked:
-                    stat["error"] = "all feeds and scraper failed"
-                    logger.error(f"[ERROR] {src.name} - all feed sources and scraper failed")
-            
-            stat["articles_added"] = src_info["articles_added"]
+
+            if not feed_worked: stat["error"] = "all sources failed"
+            stat["articles_added"] = info["added"]
+            stat["feed_used"] = ", ".join(stat["feed_used"])
             per_source_stats.append(stat)
-            
-            # Update CrawlerStatus table for this source
-            try:
-                c_status = db.query(CrawlerStatus).filter(CrawlerStatus.source_name == src.name).first()
-                if not c_status:
-                    c_status = CrawlerStatus(source_name=src.name)
-                    db.add(c_status)
-                
-                c_status.last_run_at = datetime.utcnow()
-                c_status.articles_added = src_info["articles_added"]
-                c_status.latency_ms = int((stat.get("elapsed") or 0.0) * 1000)
-                c_status.feed_used = stat.get("feed_used") # Add this line
-                
-                if stat.get("error"):
-                    c_status.status = "error"
-                    c_status.last_error = stat["error"]
-                elif stat.get("feed_used") and "gnews" in stat["feed_used"] and ("primary_rss" not in stat["feed_used"]):
-                    c_status.status = "warning"
-                    c_status.last_error = "Using GNews fallback"
-                else:
-                    c_status.status = "success"
-                    c_status.last_error = None
-                
-                db.commit()
-            except Exception as e:
-                logger.warning(f"[WARN] Failed to update CrawlerStatus for {src.name}: {e}")
-                db.rollback()
-            
-        total_elapsed = time.perf_counter() - start_total
-        logger.info(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
+            _update_source_status(db, name, stat)
 
-        # Log crawl results
-        try:
-            logs_dir = Path(__file__).resolve().parents[1] / "logs"
-            logs_dir.mkdir(parents=True, exist_ok=True)
-            log_file = logs_dir / "crawl_log.jsonl"
-            record = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "new_articles": new_count,
-                "elapsed": total_elapsed,
-                "per_source": per_source_stats,
-            }
-            with log_file.open("a", encoding="utf-8") as f:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-        except Exception as e:
-            logger.warning(f"[WARN] failed writing crawl log: {e}")
-
-        if new_count > 0:
-            logger.info(f"[INFO] crawl finished - new_articles={new_count} - elapsed={total_elapsed:.2f}s")
-
+        await _finalize_crawl(db, new_count, start_total, per_source_stats)
         return {"status": "success", "new_articles": new_count, "sources_processed": len(per_source_stats)}
+
     except Exception as e:
         logger.critical(f"[CRITICAL] crawler cycle failed: {e}")
         return {"status": "error", "error": str(e)}
     finally:
         db.close()
 
+def _log_artic_status(src_name, title, status, score):
+    tag = f"[{status.upper()}]"
+    logger.info(f"   {tag} {src_name}: {title[:70]}... (Score: {score:.1f})")
+
+async def _enrich_article_async(db: Session, src, article):
+    """Enrich article with full-text content and better metadata."""
+    should_fetch = src.trusted or nlp.title_contains_disaster_keyword(article.title)
+    if not should_fetch:
+        for data in nlp.IMPACT_KEYWORDS.values():
+            if any(kw.lower() in (article.title + (article.summary or "")).lower() for kw in data.get("terms", [])):
+                should_fetch = True; break
+    
+    if not should_fetch: return
+
+    try:
+        res = await fetch_article_full_text_async(article.url, timeout=settings.request_timeout_seconds)
+        if res and res.get("text"):
+            txt = res["text"]
+            article.full_text = txt[:100000]
+            if res.get("images") and not article.image_url:
+                article.image_url = res["images"][0]
+            
+            meta = await asyncio.to_thread(nlp.extract_all_metadata, txt, article.summary or "", article.title)
+            
+            for f in ["deaths", "missing", "injured", "damage_billion_vnd"]:
+                val = _get_impact_value(meta["impacts"].get(f))
+                if val is not None:
+                    current_val = getattr(article, f) or 0
+                    # Update if new value is better (higher) or current is 0
+                    if val > current_val or (current_val == 0 and val > 0):
+                        setattr(article, f, val)
+            
+            for lf in ["province", "commune", "village", "route", "cause"]:
+                new_val = meta.get(lf) if lf == "province" else meta["impacts"].get(lf)
+                if new_val and new_val != "unknown" and (not getattr(article, lf) or getattr(article, lf) == "unknown"):
+                    setattr(article, lf, new_val)
+            
+            if meta.get("is_red_alert"): article.is_red_alert = True
+            if meta.get("needs_verification"): article.needs_verification = 1
+            
+            await asyncio.to_thread(upsert_event_for_article, db, article)
+            db.commit()
+    except Exception: pass
+
+def _update_source_status(db: Session, name, stat):
+    try:
+        c = db.query(CrawlerStatus).filter(CrawlerStatus.source_name == name).first()
+        if not c:
+            c = CrawlerStatus(source_name=name); db.add(c)
+        c.last_run_at = datetime.now(timezone.utc)
+        c.articles_added = stat["articles_added"]
+        c.latency_ms = int(stat["elapsed"] * 1000)
+        c.feed_used = stat["feed_used"]
+        if stat["error"]:
+            c.status, c.last_error = "error", stat["error"]
+        elif "gnews" in stat["feed_used"] and "primary" not in stat["feed_used"]:
+            c.status, c.last_error = "warning", "Using GNews fallback"
+        else:
+            c.status, c.last_error = "success", None
+        db.commit()
+    except Exception: db.rollback()
+
+async def _finalize_crawl(db, new_count, start_time, per_source):
+    total_elapsed = time.perf_counter() - start_time
+    logger.info(f"[INFO] crawl finished - new={new_count} - time={total_elapsed:.2f}s")
+    
+    try:
+        logs_dir = Path(__file__).resolve().parents[1] / "logs"
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        record = {"timestamp": datetime.now(timezone.utc).isoformat(), "new_articles": new_count, "elapsed": total_elapsed, "per_source": per_source}
+        with open(logs_dir / "crawl_log.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception: pass
+
+    if new_count > 0:
+        try:
+            from .cache import cache
+            cache.delete_match("stats_*"); cache.delete_match("articles_latest_*"); cache.delete_match("ev_*")
+            from . import broadcast
+            broadcast.publish_event_sync({"type": "update", "message": f"Found {new_count} new articles"})
+        except Exception: pass
+
 def process_once(force: bool = False, only_sources: list[str] = None) -> dict:
-    """Synchronous wrapper used by the scheduler/background jobs."""
     return asyncio.run(_process_once_async(force_update=force, only_sources=only_sources))
 
-
 def cleanup_old_pending_articles():
-    """
-    Automatic cleanup: Delete articles with status='pending' that are older than 30 days.
-    This helps keep the database clean from noise that was never approved.
-    """
-    from .database import SessionLocal
-    from .models import Article
-    from datetime import datetime, timedelta
-    
     db = SessionLocal()
     try:
-        cutoff = datetime.utcnow() - timedelta(days=30)
-        deleted = db.query(Article).filter(
-            Article.status == "pending",
-            Article.published_at < cutoff
-        ).delete(synchronize_session=False)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        deleted = db.query(Article).filter(Article.status == "pending", Article.published_at < cutoff).delete(synchronize_session=False)
         db.commit()
-        if deleted > 0:
-            logger.info(f"Cleaned up {deleted} old pending articles (older than 30 days).")
-        else:
-            logger.info("No old pending articles to clean up.")
+        if deleted > 0: logger.info(f"Cleaned up {deleted} old pending articles.")
     except Exception as e:
-        db.rollback()
-        logger.error(f"Failed to cleanup old pending articles: {e}")
-    finally:
-        db.close()
+        db.rollback(); logger.error(f"Failed to cleanup old pending articles: {e}")
+    finally: db.close()
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--once", action="store_true")
-    parser.add_argument("--force", action="store_true", help="Ignore feed cache and force re-crawl")
+    parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
     if args.once:
-        import pprint
-        pprint.pprint(process_once(force=args.force))
-    else:
-        logger.info("Use --once; scheduling is handled by backend server.")
-
+        import pprint; pprint.pprint(process_once(force=args.force))
+    else: logger.info("Use --once; scheduling is handled by backend server.")
 
 if __name__ == "__main__":
     main()

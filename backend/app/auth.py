@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -21,9 +21,9 @@ def get_password_hash(password):
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, app_settings.settings.secret_key, algorithm=app_settings.settings.algorithm)
     return encoded_jwt
@@ -46,18 +46,9 @@ def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_sch
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    if not token:
-        raise credentials_exception
-    try:
-        payload = jwt.decode(token, app_settings.settings.secret_key, algorithms=[app_settings.settings.algorithm])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
+    # Delegate to optional checker effectively, but raise if none
+    user = get_current_user_optional(token, db)
+    if not user:
         raise credentials_exception
     return user
 

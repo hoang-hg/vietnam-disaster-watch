@@ -3,6 +3,7 @@ import json
 from typing import AsyncGenerator
 
 # Simple in-memory broadcaster for Server-Sent Events (SSE)
+from collections import deque
 _subscribers: list[asyncio.Queue] = []
 _buffer_file = None
 _buffer_size = 200
@@ -18,17 +19,28 @@ def _init_buffer_file():
 def _make_message(data: dict) -> str:
     return json.dumps(data, default=str, ensure_ascii=False)
 
+_append_count = 0
+
 def _append_to_buffer(msg: str) -> None:
+    global _append_count
     try:
         _init_buffer_file()
         with open(_buffer_file, "a", encoding="utf-8") as f:
             f.write(msg + "\n")
-        # trim buffer if too large
-        with open(_buffer_file, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-        if len(lines) > _buffer_size:
-            with open(_buffer_file, "w", encoding="utf-8") as f:
-                f.writelines(lines[-_buffer_size:])
+        
+        _append_count += 1
+        # Trim buffer every 50 messages to keep disk usage low & stable
+        if _append_count >= 50:
+            _append_count = 0
+            try:
+                if _buffer_file.exists():
+                    with open(_buffer_file, "r", encoding="utf-8") as f:
+                        lines = deque(f, maxlen=_buffer_size)
+                    if lines:
+                        with open(_buffer_file, "w", encoding="utf-8") as f:
+                            f.writelines(lines)
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -80,15 +92,21 @@ def publish_event_sync(data: dict) -> None:
     
     # Use the stored main loop if available (reliable for cross-thread from Crawler)
     if _main_loop and not _main_loop.is_closed():
-        for q in list(_subscribers):
-            _main_loop.call_soon_threadsafe(q.put_nowait, msg)
+        # Dispatch a single task to the loop to handle all subscribers 
+        # instead of many individual call_soon_threadsafe calls
+        def _dispatch():
+            for q in list(_subscribers):
+                try: q.put_nowait(msg)
+                except Exception: pass
+        _main_loop.call_soon_threadsafe(_dispatch)
         return
 
     # Fallback logic (only works if on same loop)
     try:
         loop = asyncio.get_running_loop()
         for q in list(_subscribers):
-            loop.call_soon_threadsafe(q.put_nowait, msg)
+            try: q.put_nowait(msg)
+            except Exception: pass
     except RuntimeError:
         pass
 
