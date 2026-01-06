@@ -243,10 +243,11 @@ SENSITIVE_LOCATIONS = [
     "Mai Châu", "Ngọc Linh", "Đèo Thung Khe", "Hoàng Su Phì", "Bát Xát"
 ]
 # Pre-compile for Case-Insensitive and Verbose matching
-SENSITIVE_LOCATIONS_RE = [
-    re.compile(rf"(?<!\w){re.escape(loc).replace(r'\ ', r'\s+')}(?!\w)", re.IGNORECASE | re.VERBOSE) 
-    for loc in SENSITIVE_LOCATIONS
-]
+SENSITIVE_LOCATIONS_RE = []
+for loc in SENSITIVE_LOCATIONS:
+    escaped = re.escape(loc).replace(r'\ ', r'\s+')
+    pattern = rf"(?<!\w){escaped}(?!\w)"
+    SENSITIVE_LOCATIONS_RE.append(re.compile(pattern, re.IGNORECASE | re.VERBOSE))
 
 # VIP Terms (Critical warnings/actions that bypass all filters)
 VIP_TERMS = [

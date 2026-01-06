@@ -2,13 +2,13 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from . import auth, models, database, settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: str
     password: str
     full_name: str | None = None
     favorite_province: str | None = None

@@ -193,7 +193,9 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
                 "started_at": ev.started_at.isoformat() if ev.started_at else None,
             }
         # Broadcast update
-        broadcast.publish_event_sync(data)
+            broadcast.publish_event_sync(data)
+        except Exception:
+            pass
         
         # Also Push via WebSocket
         try:

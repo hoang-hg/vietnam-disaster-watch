@@ -2400,7 +2400,7 @@ def _to_int(num_str: str) -> int:
 try:
     ABSOLUTE_VETO_RE = [re.compile(p, re.IGNORECASE) for p in ABSOLUTE_VETO]
     CONDITIONAL_VETO_RE = [re.compile(p, re.IGNORECASE) for p in CONDITIONAL_VETO]
-    HARD_NEGATIVE_RE = [re.compile(p, re.IGNORECASE) for p in HARD_NEGATIVE]
+
     
     # DISASTER_PATTERNS is a dict of lists
     DISASTER_PATTERNS_RE = {
@@ -2440,7 +2440,7 @@ except Exception as e:
     # Fallback to empty to prevent crash, though logic will fail
     ABSOLUTE_VETO_RE = []
     CONDITIONAL_VETO_RE = []
-    HARD_NEGATIVE_RE = []
+
     DISASTER_PATTERNS_RE = {}
     DISASTER_RULES_RE = []
 
