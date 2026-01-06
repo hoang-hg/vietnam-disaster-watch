@@ -4,26 +4,40 @@ import { getJson } from "../api";
 import VietnamMap from "../components/VietnamMap";
 import { Filter, Calendar, Layers } from "lucide-react";
 import { THEME_COLORS } from "../theme";
+import { PROVINCE_COORDINATES } from "../provinces";
 import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
 import logoIge from "../assets/logo_ige.png";
 
-// Build province lookup map
+// Build optimized lookup map for province coordinates
+// [OPTIMIZATION] Pre-compute lookup map to avoid O(N) search in loop
+const PROVINCE_GEO_LOOKUP = {};
+if (VIETNAM_LOCATIONS && Array.isArray(VIETNAM_LOCATIONS)) {
+    VIETNAM_LOCATIONS.forEach(loc => {
+        if (loc.properties?.category === "provincial_unit" && loc.properties?.name) {
+            const [lon, lat] = loc.geometry.coordinates;
+             // Store by lowercase name for lenient matching
+            PROVINCE_GEO_LOOKUP[loc.properties.name.toLowerCase()] = { lat, lon };
+        }
+    });
+}
+
 const getProvCoords = (name) => {
-  // Try standardized centroids first (from provinces.js)
-  if (window.__PROVINCE_CENTROIDS__ && window.__PROVINCE_CENTROIDS__[name]) {
-    const [lat, lon] = window.__PROVINCE_CENTROIDS__[name];
+  if (!name) return null;
+  // 1. Try standardized centroids first (fastest)
+  if (PROVINCE_COORDINATES && PROVINCE_COORDINATES[name]) {
+    const [lat, lon] = PROVINCE_COORDINATES[name];
     return { lat, lon };
   }
   
-  // Fallback to static geojson
-  const match = VIETNAM_LOCATIONS.find(loc => 
-    loc.properties.category === "provincial_unit" && 
-    (loc.properties.name === name || name.includes(loc.properties.name))
-  );
-  if (match) {
-    const [lon, lat] = match.geometry.coordinates;
-    return { lat, lon };
-  }
+  // 2. Try GeoJSON lookup (O(1))
+  const lower = name.toLowerCase();
+  if (PROVINCE_GEO_LOOKUP[lower]) return PROVINCE_GEO_LOOKUP[lower];
+  
+  // 3. Fallback: partial match scan (only if direct lookup fails)
+  // This is rare so O(N) is acceptable here
+  const key = Object.keys(PROVINCE_GEO_LOOKUP).find(k => k.includes(lower) || lower.includes(k));
+  if (key) return PROVINCE_GEO_LOOKUP[key];
+
   return null;
 };
 
@@ -41,6 +55,20 @@ const LEGEND_ITEMS = [
     { key: "warning_forecast", color: THEME_COLORS.warning_forecast, label: "Tin cảnh báo" },
     { key: "recovery", color: THEME_COLORS.recovery, label: "Khắc phục hậu quả" },
 ];
+
+const MAPPING = {
+    storm: ['storm'],
+    flood_landslide: ['flood', 'flash_flood', 'landslide', 'subsidence'],
+    heat_drought: ['heatwave', 'drought', 'salinity'],
+    wind_fog: ['cold_surge', 'wind_fog'],
+    storm_surge: ['storm_surge'],
+    extreme_other: ['extreme_weather', 'unknown'],
+    wildfire: ['wildfire'],
+    erosion: ['erosion'],
+    quake_tsunami: ['earthquake', 'tsunami'],
+    warning_forecast: ['warning_forecast'],
+    recovery: ['recovery']
+};
 
 export default function MapPage() {
   const [dataEvents, setDataEvents] = useState([]); // Raw data from API
@@ -134,20 +162,6 @@ export default function MapPage() {
 
   // Derived state for display
   const displayedEvents = useMemo(() => {
-    const MAPPING = {
-        storm: ['storm'],
-        flood_landslide: ['flood', 'flash_flood', 'landslide', 'subsidence'],
-        heat_drought: ['heatwave', 'drought', 'salinity'],
-        wind_fog: ['cold_surge', 'wind_fog'],
-        storm_surge: ['storm_surge'],
-        extreme_other: ['extreme_weather', 'unknown'],
-        wildfire: ['wildfire'],
-        erosion: ['erosion'],
-        quake_tsunami: ['earthquake', 'tsunami'],
-        warning_forecast: ['warning_forecast'],
-        recovery: ['recovery']
-    };
-
     return dataEvents.filter(e => {
         if (activeFilter === "all") return true;
         const matchTypes = MAPPING[activeFilter] || [activeFilter];

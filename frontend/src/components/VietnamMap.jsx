@@ -14,13 +14,40 @@ L.Icon.Default.mergeOptions({
   shadowUrl: null,
 });
 
+// Memoize icons to prevent recreation on every render
+const iconCache = {};
+
+function getIcon(type, isRedAlert) {
+  const color = THEME_COLORS[type] || THEME_COLORS.unknown;
+  const key = `${type}-${isRedAlert ? 'alert' : 'normal'}`;
+
+  if (!iconCache[key]) {
+    // Only animate if it's a red alert
+    const animationClass = isRedAlert ? 'animate-ping' : '';
+    const opacity = isRedAlert ? 'opacity-75' : 'opacity-20';
+    
+    iconCache[key] = L.divIcon({
+      className: "bg-transparent",
+      html: `
+        <div class="relative flex items-center justify-center w-8 h-8 group hover:scale-110 transition-transform">
+            <span class="${animationClass} absolute inline-flex h-full w-full rounded-full ${opacity}" style="background-color: ${color}"></span>
+            <span class="relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-white shadow-md" style="background-color: ${color}"></span>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+  }
+  return iconCache[key];
+}
+
 export default function VietnamMap({ points }) {
-  const center = [16.5, 107.0]; // Slightly adjusted center for "Big Vietnam" feel
+  const center = [16.5, 107.0]; 
 
   return (
     <MapContainer 
         center={center} 
-        zoom={5} // Zoom 5 makes Vietnam fill the view (desktop)
+        zoom={5} 
         scrollWheelZoom={true} 
         zoomControl={true} 
         className="w-full h-full z-0 font-sans"
@@ -31,23 +58,11 @@ export default function VietnamMap({ points }) {
         url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&hl=vi&gl=vn"
       />
 
-      {/* Dynamic Disaster Events - Clustering disabled as per request */}
       {points.map((p) => {
         if (typeof p.lat !== 'number' || typeof (p.lon ?? p.lng) !== 'number') return null;
         
-        const color = THEME_COLORS[p.disaster_type || p.type] || THEME_COLORS.unknown;
-        
-        const icon = L.divIcon({
-          className: "bg-transparent",
-          html: `
-            <div class="relative flex items-center justify-center w-8 h-8 group hover:scale-110 transition-transform">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style="background-color: ${color}"></span>
-                <span class="relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-white shadow-md" style="background-color: ${color}"></span>
-            </div>
-          `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
-        });
+        const type = p.disaster_type || p.type;
+        const icon = getIcon(type, p.is_red_alert);
 
         return (
           <Marker key={p.id} position={[p.lat, p.lon ?? p.lng]} icon={icon}>

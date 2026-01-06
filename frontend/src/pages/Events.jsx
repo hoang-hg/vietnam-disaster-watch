@@ -37,7 +37,7 @@ export default function Events() {
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [type, setType] = useState(searchParams.get("type") || "");
   const [province, setProvince] = useState(searchParams.get("province") || "");
-  const [startDate, setStartDate] = useState(searchParams.get("start_date") || new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(searchParams.get("start_date") || "");
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || "");
   
   // Pagination
@@ -122,12 +122,14 @@ export default function Events() {
   const handleExportCSV = async () => {
     // [LOGIC REFINEMENT] Use fetch binary download to keep token in headers (more secure than URL)
     const token = localStorage.getItem("access_token");
-    let query = `?token_query=${token}`; // Fallback for some endpoints, but let's try fetch first
+    let query = ""; // Token passed via headers
     
     if (startDate && endDate) {
-        query += `&start_date=${startDate}&end_date=${endDate}`;
+        query += `?start_date=${startDate}&end_date=${endDate}`;
     } else if (startDate) {
-        query += `&start_date=${startDate}`;
+        query += `?start_date=${startDate}`;
+    } else {
+        query += "?";
     }
     
     if (q) query += `&q=${encodeURIComponent(q)}`;

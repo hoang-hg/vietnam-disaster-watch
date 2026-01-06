@@ -383,6 +383,12 @@ RECOVERY_ANCHOR = r"(?:hậu\s*quả|sau\s*(?:bão|lũ|mưa\s*lớn|ngập|sạt
 
 # === PRE-COMPILED STAGE DETECTORS ===
 # Join patterns into a single mega-regex for performance
+# === PRE-COMPILED STAGE DETECTORS ===
+FORECAST_SIGS = DISASTER_GROUPS["warning_forecast"]
+RECOVERY_KEYWORDS = DISASTER_GROUPS["recovery"]
+INCIDENT_SIGS = [item for k, v in DISASTER_GROUPS.items() if k not in ("warning_forecast", "recovery") for item in v]
+
+# Join patterns into a single mega-regex for performance
 RE_FORECAST = re.compile("|".join(rf"(?:{p})" for p in FORECAST_SIGS), re.IGNORECASE)
 RE_INCIDENT = re.compile("|".join(rf"(?:{p})" for p in INCIDENT_SIGS), re.IGNORECASE)
 RE_RECOVERY = re.compile("|".join(rf"(?:{p})" for p in RECOVERY_KEYWORDS), re.IGNORECASE)
@@ -498,4 +504,25 @@ def load_sources_from_json(file_path: str) -> List[Source]:
     return sources
 
 CONFIG_FILE = Path(__file__).parent.parent / "sources.json"
-SOURCES = load_sources_from_json(str(CONFIG_FILE))
+
+# Load raw config for global settings
+CONFIG = {}
+try:
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        CONFIG = json.load(f)
+except Exception:
+    CONFIG = {}
+
+# Parse sources list
+SOURCES = []
+for s in CONFIG.get("sources", []):
+    SOURCES.append(Source(
+        name=s.get("name", "Unknown"),
+        domain=s.get("domain", ""),
+        primary_rss=s.get("primary_rss"),
+        backup_rss=s.get("backup_rss"),
+        note=s.get("note"),
+        trusted=s.get("trusted", False),
+        authority_level=s.get("authority_level", 2 if s.get("trusted") else 1)
+    ))
+

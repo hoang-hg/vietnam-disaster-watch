@@ -12,8 +12,7 @@ def truncate_jsonl(file_path: Path, max_lines: int = 5000):
         return
 
     try:
-        # Read only the last max_lines using deque efficiently
-        
+
         # Read only the last max_lines using deque efficiently
         # This keeps memory usage low even if the file is gigabytes in size
         with open(file_path, "r", encoding="utf-8") as f:

@@ -99,3 +99,53 @@ def update_user_preferences(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password", status_code=200)
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(auth.get_db)
+):
+    """Allows any logged-in user (admin or normal) to change their password."""
+    # verify old password
+    if not auth.verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu hiện tại không đúng."
+        )
+    
+    # update password
+    current_user.hashed_password = auth.get_password_hash(payload.new_password)
+    db.commit()
+    
+    return {"message": "Đổi mật khẩu thành công."}
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    new_password: str
+
+@router.post("/reset-password", status_code=200)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(auth.get_db)
+):
+    """
+    [INSECURE] Allows resetting password knowing only the email.
+    Intended for development environments or closed internal tools without email service.
+    """
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email không tồn tại trong hệ thống."
+        )
+    
+    # Update password
+    user.hashed_password = auth.get_password_hash(payload.new_password)
+    db.commit()
+    
+    return {"message": "Mật khẩu đã được đặt lại thành công."}

@@ -21,7 +21,7 @@ const getNationalStyle = (phone) => {
 export default function RescuePage() {
     const [hotlines, setHotlines] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filterProvince, setFilterProvince] = useState("An Giang"); // Default to first alphabetic or intelligent default
+    const [filterProvince, setFilterProvince] = useState("Toàn quốc");
     const [search, setSearch] = useState("");
     const [user, setUser] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -48,7 +48,7 @@ export default function RescuePage() {
         checkRole();
         window.addEventListener("storage", checkRole);
         
-        setFilterProvince("Toàn quốc"); 
+        // setFilterProvince("Toàn quốc"); // Removed redundant set 
         fetchHotlines();
         return () => window.removeEventListener("storage", checkRole);
     }, []);

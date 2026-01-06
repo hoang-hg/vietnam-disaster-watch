@@ -172,6 +172,7 @@ def extract_max_mm(text: str) -> Optional[float]:
 
 def extract_max_temp(text: str) -> Optional[float]:
     t, t0 = canon(text)
+    vals: list[float] = []
     # Check both t and t0 to handle both °C and "do C"
     # Try with t for °C
     for m in RE_TEMP_RANGE_T.finditer(t):
@@ -187,6 +188,7 @@ def extract_max_temp(text: str) -> Optional[float]:
 
 def extract_max_salinity(text: str) -> Optional[float]:
     t, t0 = canon(text)
+    vals: list[float] = []
     # Symbols in t, text keywords in t0
     for m in RE_SALINITY_T.finditer(t):
          vals.append(float(m.group(1).replace(",", ".")))

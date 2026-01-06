@@ -27,12 +27,8 @@ from typing import Optional, List
 # Unified filtering rules for Dashboard/Stats (Decision 18/2021/QĐ-TTg)
 def apply_dashboard_filters(query, db: Session):
     """Applies Decision 18 filters directly to a SQLAlchemy query."""
-    major_hazards = [
-        "storm", "flood", "flash_flood", "landslide", "subsidence", 
-        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
-        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-        "warning_forecast", "recovery"
-    ]
+    from .sources import DISASTER_GROUPS
+    major_hazards = list(DISASTER_GROUPS.keys())
     
 
     dec18_filter = or_(
@@ -45,8 +41,6 @@ def apply_dashboard_filters(query, db: Session):
                 .filter(dec18_filter)
 
 # --- HELPER FUNCTIONS & CONSTANTS ---
-
-from sqlalchemy import or_
 
 TYPE_MAP = {
     "storm": "Bão, ATNĐ",
@@ -623,12 +617,9 @@ def stats_summary(
     needs_verification_count = art_stats_res[1] or 0
 
     # 2. Events Aggregation (With Decision 18 Filtering)
-    major_hazards = [
-        "storm", "flood", "flash_flood", "landslide", "subsidence", 
-        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge", 
-        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-        "warning_forecast", "recovery"
-    ]
+    # 2. Events Aggregation (With Decision 18 Filtering)
+    from .sources import DISASTER_GROUPS
+    major_hazards = list(DISASTER_GROUPS.keys())
     
     from sqlalchemy import or_
     dec18_filter = or_(
@@ -1125,6 +1116,48 @@ def restart_system(admin: models.User = Depends(get_current_admin)):
         return {"ok": True, "message": "Backend restart triggered (reloader)."}
     return {"ok": False, "message": "Main file not found, restart failed."}
 
+@router.post("/admin/approve-article/{article_id}")
+def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
+    """Manually approve a pending article."""
+    art = db.query(Article).filter(Article.id == article_id).first()
+    if not art: 
+        raise HTTPException(status_code=404, detail="Article not found")
+    
+    art.status = "approved"
+    db.commit()
+    
+    # Update parent event metrics if attached
+    if art.event_id:
+        recalculate_event_metrics(db, art.event_id)
+        cache.delete(f"ev_detail_{art.event_id}")
+    
+    cache.delete_match("stats_*")
+    cache.delete_match("articles_latest_*")
+    return {"ok": True}
+
+@router.post("/admin/events/{event_id}/approve")
+def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
+    """Manually verify an event and approve all its pending articles."""
+    ev = db.query(Event).filter(Event.id == event_id).first()
+    if not ev: 
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    ev.needs_verification = 0
+    
+    # Auto-approve all pending articles in this event
+    pending_articles = db.query(Article).filter(Article.event_id == event_id, Article.status == "pending").all()
+    for a in pending_articles:
+        a.status = "approved"
+        
+    db.commit()
+    
+    # Recalc metrics to be safe
+    recalculate_event_metrics(db, event_id)
+    
+    cache.delete(f"ev_detail_{event_id}")
+    cache.delete_match("stats_*")
+    return {"ok": True}
+
 @router.post("/admin/ai-feedback")
 def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     article_id = payload.get("article_id")
@@ -1256,10 +1289,8 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
 @router.get("/admin/export/daily")
 def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
     import pandas as pd
-    if not date:
-        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
-    target_date = datetime.strptime(date, "%Y-%m-%d")
+    today = datetime.now(timezone.utc)
+    target_date = today if not date else datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
     start = target_date.replace(hour=0, minute=0, second=0)
     end = start + timedelta(days=1)
     
@@ -1310,15 +1341,15 @@ def export_events_summary(
     # Range Logic
     title_suffix = ""
     if month and year:
-        start = datetime(year, month, 1)
+        start = datetime(year, month, 1, tzinfo=timezone.utc)
         last_day = calendar.monthrange(year, month)[1]
-        end = datetime(year, month, last_day, 23, 59, 59)
+        end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
         query = query.filter(Event.started_at >= start, Event.started_at <= end)
         title_suffix = f"Tháng {month}-{year}"
     elif start_date:
-        sd = datetime.strptime(start_date, "%Y-%m-%d")
+        sd = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         if end_date:
-            ed = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+            ed = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=timezone.utc)
             query = query.filter(Event.started_at >= sd, Event.started_at < ed)
             title_suffix = f"Từ {start_date} Đến {end_date}"
         else:

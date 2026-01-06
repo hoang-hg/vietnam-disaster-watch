@@ -12,7 +12,7 @@ import json
 import html
 import logging
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import random
 import feedparser
 import httpx
@@ -391,6 +391,8 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
         db.add(article)
         db.flush()
         await asyncio.to_thread(upsert_event_for_article, db, article)
+        db.commit()
+        db.refresh(article)
         return article, status
     except Exception as e:
         db.rollback()

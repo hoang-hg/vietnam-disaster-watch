@@ -2231,7 +2231,8 @@ for label, pats in DISASTER_RULES:
         
     DISASTER_RULES_RE.append((label, compiled_acc, compiled_no))
 
-RE_DANGER = re.compile("|".join(f"(?:{v_safe(p)})" for p in DANGER_SIGS), RE_FLAGS)
+RE_DANGER = re.compile("|".join(f"(?:{v_safe(p)})" for p in sources.DANGER_SIGS), RE_FLAGS)
+HIGH_PRIORITY_RE = [re.compile(v_safe(p), RE_FLAGS) for p in sources.HIGH_PRIORITY_KEYWORDS]
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp\s*)?([1-5|I-V|V])", re.IGNORECASE)
 
 def build_two_channel_re(pats: List[str]):

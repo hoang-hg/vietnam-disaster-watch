@@ -1,5 +1,5 @@
 // 34 Standardized Provinces/Cities in Vietnam (Effective July 1, 2025)
-window.__PROVINCE_CENTROIDS__ = {
+export const PROVINCE_COORDINATES = {
     "TP. Hà Nội": [21.0285, 105.8542],
     "TP. Huế": [16.4637, 107.5908],
     "Lai Châu": [22.3846, 103.4641],
@@ -37,4 +37,7 @@ window.__PROVINCE_CENTROIDS__ = {
     "unknown": [16.0, 107.5]
 };
 
-export const VALID_PROVINCES = Object.keys(window.__PROVINCE_CENTROIDS__).filter(k => k !== "unknown").sort();
+// Keep global for legacy components but prefer import
+window.__PROVINCE_CENTROIDS__ = PROVINCE_COORDINATES;
+
+export const VALID_PROVINCES = Object.keys(PROVINCE_COORDINATES).filter(k => k !== "unknown").sort();

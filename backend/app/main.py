@@ -57,7 +57,11 @@ async def rate_limit_middleware(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    client_ip = request.client.host
+    client_ip = request.headers.get("x-forwarded-for") or request.client.host
+    # Handle multiple IPs in header (take the first one)
+    if client_ip and "," in client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+
     now = time.time()
     
     # Whitelist for static/local
@@ -74,10 +78,16 @@ async def rate_limit_middleware(request: Request, call_next):
     
     request_counts[client_ip].append(now)
     
-    # Periodically clean up the dictionary to prevent memory growth (if > 1000 IPs)
+    # Periodically clean up the dictionary to prevent memory growth
     if len(request_counts) > 1000:
+        # Optimization: Clear expired timestamps for all IPs when map gets large
+        cleanup_threshold = now - RATE_PERIOD
         for ip in list(request_counts.keys()):
-            if not request_counts[ip]:
+            # Keep only valid timestamps
+            valid_requests = [t for t in request_counts[ip] if t > cleanup_threshold]
+            if valid_requests:
+                request_counts[ip] = valid_requests
+            else:
                 del request_counts[ip]
 
     return await call_next(request)

@@ -1,11 +1,96 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Github, Loader2, AlertCircle } from "lucide-react";
-import { login as apiLogin } from "../api";
+import { login as apiLogin, resetPassword } from "../api";
+
+function ResetPasswordForm({ onSuccess }) {
+  const [email, setEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState({ type: "", content: "" });
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setMsg({ type: "error", content: "Mật khẩu xác nhận không khớp" });
+      return;
+    }
+    
+    setLoading(true);
+    setMsg({ type: "", content: "" });
+    try {
+      await resetPassword(email, newPassword);
+      setMsg({ type: "success", content: "Đặt lại mật khẩu thành công!" });
+      setTimeout(() => {
+        onSuccess?.();
+      }, 2000);
+    } catch (err) {
+      setMsg({ type: "error", content: err.message || "Lỗi đặt lại mật khẩu" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleReset} className="space-y-4">
+      {msg.content && (
+        <div className={`p-3 rounded-xl text-sm border ${msg.type === "success" ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+           {msg.content}
+        </div>
+      )}
+      
+      <div>
+        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email tài khoản</label>
+        <input 
+          type="email" 
+          required 
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="admin@example.com"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Mật khẩu mới</label>
+        <input 
+          type="password" 
+          required 
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]"
+          value={newPassword}
+          onChange={e => setNewPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+      </div>
+
+       <div>
+        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Xác nhận mật khẩu</label>
+        <input 
+          type="password" 
+          required 
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]"
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full py-2.5 bg-[#2fa1b3] hover:bg-[#258a9b] text-white font-bold rounded-xl transition-colors disabled:opacity-70 flex justify-center items-center"
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Xác nhận đổi mật khẩu"}
+      </button>
+    </form>
+  );
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -99,6 +184,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -113,9 +199,13 @@ export default function LoginPage() {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-[#2fa1b3] hover:text-[#258a9b]">
+              <button 
+                type="button" 
+                onClick={() => setShowForgotModal(true)}
+                className="font-medium text-[#2fa1b3] hover:text-[#258a9b]"
+              >
                 Quên mật khẩu?
-              </a>
+              </button>
             </div>
           </div>
 
@@ -139,25 +229,23 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-slate-500 uppercase tracking-widest text-[10px] font-bold">Hoặc đăng nhập với</span>
-            </div>
+        {/* Forgot Password Modal */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
+             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                   <h3 className="text-lg font-bold text-slate-900">Đặt lại mật khẩu</h3>
+                   <button onClick={() => setShowForgotModal(false)} className="text-slate-400 hover:text-slate-600">
+                      <AlertCircle className="w-5 h-5" />
+                   </button>
+                </div>
+                
+                <ResetPasswordForm onSuccess={() => setShowForgotModal(false)} />
+             </div>
           </div>
+        )}
 
-          <div className="grid grid-cols-2 gap-3">
-             <button type="button" className="w-full inline-flex justify-center py-2.5 px-4 border border-slate-200 rounded-xl bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
-                <img src="https://www.svgrepo.com/show/475656/google_color.svg" className="h-5 w-5 mr-2" alt="Google" />
-                Google
-             </button>
-             <button type="button" className="w-full inline-flex justify-center py-2.5 px-4 border border-slate-200 rounded-xl bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors">
-                <Github className="h-5 w-5 mr-2 text-slate-900" />
-                Github
-             </button>
-          </div>
+
         </form>
       </div>
     </div>

@@ -153,7 +153,7 @@ export default function Dashboard() {
       // Optimized: Fetch summary, recent events (limited), and latest articles in parallel
       const [s, evs, arts] = await Promise.all([
         getJson(`/api/stats/summary${queryParams}`, { signal }),
-        getJson(`/api/events${queryParams}&limit=100&hours=72`, { signal }), 
+        getJson(`/api/events${queryParams}&limit=100`, { signal }), 
         getJson(`/api/articles/latest${artParams}`, { signal })
       ]);
       
@@ -233,14 +233,7 @@ export default function Dashboard() {
     setPage(0);
   };
 
-  const mapPoints = useMemo(() => 
-    events.map((e) => ({
-      id: e.id,
-      title: e.title,
-      lat: e.lat,
-      lon: e.lon ?? e.lng,
-      disaster_type: e.disaster_type,
-    })), [events]);
+
 
   const chartData = useMemo(() => {
     // [OPTIMIZATION] Use server-side aggregated stats if available

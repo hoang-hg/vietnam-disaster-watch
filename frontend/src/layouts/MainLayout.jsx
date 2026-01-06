@@ -17,15 +17,17 @@ import {
   Activity,
   ArrowRight,
   ShieldAlert,
-  Phone
+  Phone,
+  Key
 } from "lucide-react";
+
+
 import logoIge from "../assets/logo_ige.png";
 import { putJson, API_BASE } from "../api.js";
 import NotificationDropdown from "../components/NotificationDropdown";
 import CrowdsourceModal from "../components/CrowdsourceModal";
 
-import { VALID_PROVINCES as PROVINCES_LIST } from "../provinces.js";
-const PROVINCES = [...PROVINCES_LIST].sort();
+
 
 export default function MainLayout({ children }) {
   const [isDark, setIsDark] = useState(() => {
@@ -269,7 +271,7 @@ export default function MainLayout({ children }) {
                  </div>
                ) : (
                  <div className="flex items-center gap-2">
-                    <Link to="/login" className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-[#2fa1b3] transition-colors">Đăng nhập</Link>
+                    <Link to="/login" className="px-4 py-2 text-sm font-bold bg-[#2fa1b3] text-white rounded-xl hover:bg-[#258a9b] transition-all shadow-lg shadow-[#2fa1b3]/20">Đăng nhập</Link>
                     <Link to="/register" className="px-4 py-2 text-sm font-bold bg-[#2fa1b3] text-white rounded-xl hover:bg-[#258a9b] transition-all shadow-lg shadow-[#2fa1b3]/20">Đăng ký</Link>
                  </div>
                )}
@@ -360,6 +362,13 @@ export default function MainLayout({ children }) {
                                 {user.role === 'admin' ? <ShieldCheck className="w-4 h-4 text-yellow-300" /> : <User className="w-4 h-4" />}
                                 {(user.full_name || user.email || "").toUpperCase()}
                             </span>
+                            <Link 
+                                to="/change-password"
+                                className="flex items-center gap-2 px-3 h-full text-white text-sm font-bold hover:bg-white/10 transition-colors border-l border-white/20"
+                                title="Đổi mật khẩu"
+                            >
+                                <Key className="w-4 h-4" />
+                            </Link>
                             <button 
                                 onClick={handleLogout}
                                 className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-red-500 transition-colors border-l border-r border-white/20"
@@ -448,6 +457,13 @@ export default function MainLayout({ children }) {
                                 <div className="px-3 py-2 text-xs font-bold text-white/70 uppercase">
                                     {user.full_name || user.email}
                                 </div>
+                                <Link
+                                    to="/change-password"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-white/10"
+                                >
+                                    ĐỔI MẬT KHẨU
+                                </Link>
                                 <button
                                     onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
                                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-red-500"

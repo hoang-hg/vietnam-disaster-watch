@@ -71,6 +71,7 @@ export async function login(username, password) {
   return res.json();
 }
 
+
 export async function register(email, password, fullName) {
   const res = await fetch(`${API_BASE}/api/auth/register`, {
     method: "POST",
@@ -82,6 +83,20 @@ export async function register(email, password, fullName) {
     throw new Error(data.detail || "Đăng ký thất bại");
   }
   return res.json();
+}
+
+export async function changePassword(currentPassword, newPassword) {
+  return postJson("/api/auth/change-password", { 
+    current_password: currentPassword, 
+    new_password: newPassword 
+  });
+}
+
+export async function resetPassword(email, newPassword) {
+  return postJson("/api/auth/reset-password", { 
+    email: email, 
+    new_password: newPassword 
+  });
 }
 
 export function fmtType(t) {
@@ -128,11 +143,14 @@ export function fmtDate(s) {
   });
 }
 
-/** Robust unescape for UI display */
+/** Robust unescape for UI display - Optimized */
+const _domParser = new DOMParser();
 export function cleanText(text) {
   if (!text) return "";
-  const doc = new DOMParser().parseFromString(text, "text/html");
-  return doc.documentElement.textContent;
+  // Optimization: Skip parsing if no HTML entities or tags are suspected
+  if (!text.includes('&') && !text.includes('<')) return text;
+  
+  return _domParser.parseFromString(text, "text/html").documentElement.textContent;
 }
 
 /** Helper to normalize string for search (diacritics removed, lowercase) */

@@ -328,6 +328,9 @@ class HTMLScraper:
         if not html_content: return []
         return await self._extract_generic_links(html_content, domain, max_items=15)
 
+    RE_NEWS_CONTAINER = re.compile(r'list-news|uk-list|news-list|tin-tuc|lastest-news', re.IGNORECASE)
+    RE_SUMMARY_CLASS = re.compile(r'summary|desc|lead|snippet|short', re.IGNORECASE)
+    
     async def scrape_kttv_portal(self, domain: str) -> List[dict]:
         """Scrape any KTTV portal (National or Provincial) - Targeted Scrape."""
         if not _HAS_BS4: return []
@@ -359,7 +362,7 @@ class HTMLScraper:
         try:
             soup = await asyncio.to_thread(BeautifulSoup, html_content, "html.parser")
             # Provincial sites often have news in these containers
-            content_containers = soup.find_all(['ul', 'div'], class_=re.compile(r'list-news|uk-list|news-list|tin-tuc|lastest-news', re.I))
+            content_containers = soup.find_all(['ul', 'div'], class_=self.RE_NEWS_CONTAINER)
             
             seen_titles = set()
             all_links = []
@@ -421,7 +424,7 @@ class HTMLScraper:
                 # Strategy: Look inside the same container for p, span, or div with class summary/desc
                 parent = link.find_parent(['li', 'div', 'article'])
                 if parent:
-                    desc_tag = parent.find(['p', 'div', 'span'], class_=re.compile(r'summary|desc|lead|snippet|short', re.I))
+                    desc_tag = parent.find(['p', 'div', 'span'], class_=self.RE_SUMMARY_CLASS)
                     if desc_tag:
                         summary = desc_tag.get_text(strip=True)
                     else:

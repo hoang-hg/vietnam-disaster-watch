@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 
 // Local metadata removed
 
-const isJunk_internal = (url) => isJunkImage(url);
+
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -698,11 +698,7 @@ export default function EventDetail() {
       {ev.articles && ev.articles.length > 0
         ? (() => {
             const combined = ev.articles
-              .map((a) =>
-                a.full_text && a.full_text.length
-                  ? a.full_text
-                  : a.summary || ""
-              )
+              .map((a) => a.summary || "")
               .filter(Boolean)
               .slice(0, 3)
               .join("<br/><br/>"); // Use line breaks for HTML
