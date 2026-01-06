@@ -18,6 +18,7 @@ DISASTER_CLUSTERS = {
     "salinity": ["salinity", "drought"],
     "earthquake": ["earthquake", "tsunami"],
     "tsunami": ["tsunami", "earthquake"],
+    "erosion": ["erosion", "landslide", "subsidence"],
 }
 
 # [OPTIMIZATION] Cache trusted map
@@ -119,20 +120,24 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
         cand_tokens = _get_tokens(cand.title)
         title_sim = _calculate_similarity(new_tokens, cand_tokens)
         
-        # Semantic threshold: 0.7 for hybrid is quite restrictive and accurate
-        if title_sim < 0.7:
+        # Entry threshold for similarity (low enough to allow location boost)
+        if title_sim < 0.35:
             continue
 
         score = title_sim
         
-        # LOCATION BOOST: If same group & high title sim, use location to confirm the matches
+        # LOCATION BOOST: Strong evidence for merging
         if article.commune and cand.commune and article.commune.lower() == cand.commune.lower():
             score += 0.3
         if article.village and cand.village and article.village.lower() == cand.village.lower():
             score += 0.4
+        if article.landmark and cand.landmark and article.landmark.lower() == cand.landmark.lower():
+            score += 0.4
+        if article.route and cand.route and article.route.lower() == cand.route.lower():
+            score += 0.3
             
-        # The threshold for a definitive match remains high to ensure quality
-        if score > best_score:
+        # The final matching threshold remains quite high (0.7) to ensure high-quality groups
+        if score > 0.7 and score > best_score:
             best_score = score
             matched_event = cand
 
@@ -171,6 +176,7 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
             commune=article.commune,
             village=article.village,
             route=article.route,
+            landmark=article.landmark,
             location_description=article.location_description,
             cause=article.cause,
             characteristics=article.characteristics,
@@ -246,6 +252,14 @@ def upsert_event_for_article(db: Session, article: Article) -> Event:
     stage_priority = {"FORECAST": 1, "INCIDENT": 2, "RECOVERY": 3}
     if stage_priority.get(article.stage, 0) > stage_priority.get(ev.stage, 0):
         ev.stage = article.stage
+
+    # Update location details if event is missing them but article has them
+    if not ev.commune and article.commune: ev.commune = article.commune
+    if not ev.village and article.village: ev.village = article.village
+    if not ev.route and article.route: ev.route = article.route
+    if not ev.landmark and article.landmark: ev.landmark = article.landmark
+    if not ev.location_description and article.location_description: 
+        ev.location_description = article.location_description
 
     ev.last_updated_at = max(ev.last_updated_at, article.published_at)
     ev.started_at = min(ev.started_at, article.published_at)

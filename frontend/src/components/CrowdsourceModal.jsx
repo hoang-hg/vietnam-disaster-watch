@@ -120,181 +120,199 @@ export default function CrowdsourceModal({ isOpen, onClose, user }) {
 
     return (
         <div 
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+            className="fixed inset-0 z-[100] flex items-start md:items-center justify-center p-2 md:p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
             onClick={onClose}
         >
             <div 
-                className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+                className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto"
                 onClick={e => e.stopPropagation()}
             >
                 <Toast 
                     {...toast} 
                     onClose={() => setToast(prev => ({ ...prev, isVisible: false }))} 
                 />
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-red-100 dark:bg-red-500/20 rounded-xl">
-                            <AlertTriangle className="w-5 h-5 text-red-600" />
+                <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 sticky top-0 z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-red-50 dark:bg-red-500/10 rounded-2xl">
+                            <AlertTriangle className="w-6 h-6 text-red-500" />
                         </div>
-                        <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Đóng góp báo cáo hiện trường</h3>
+                        <div>
+                            <h2 className="text-xl font-black text-slate-800 dark:text-white leading-none mb-1 tracking-tight">ĐÓNG GÓP BÁO CÁO HIỆN TRƯỜNG</h2>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Cung cấp thông tin thực tế từ hiện trường thiên tai</p>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
-                        <X className="w-5 h-5 text-slate-500" />
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors group">
+                        <X className="w-6 h-6 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200" />
                     </button>
                 </div>
 
-                {success ? (
-                    <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Send className="w-8 h-8 text-emerald-600" />
-                        </div>
-                        <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2">Gửi thành công!</h4>
-                        <p className="text-slate-500 text-sm">Báo cáo của bạn đang chờ Admin duyệt trước khi hiển thị trên bản đồ.</p>
-                    </div>
-                ) : (
-                    <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Họ tên của bạn</label>
-                                <input 
-                                    type="text"
-                                    placeholder="Nguyễn Văn A"
-                                    value={formData.name || ""}
-                                    onChange={e => setFormData({...formData, name: e.target.value})}
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
-                                />
+                <div className="max-h-[80vh] overflow-y-auto custom-scrollbar">
+                    {success ? (
+                        <div className="p-16 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Send className="w-12 h-12 text-emerald-500 animate-bounce" />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Số điện thoại</label>
-                                <input 
-                                    type="tel"
-                                    placeholder="0987..."
-                                    value={formData.phone || ""}
-                                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
-                                />
-                            </div>
+                            <h4 className="text-3xl font-black text-slate-800 dark:text-white mb-4">Gửi thành công!</h4>
+                            <p className="text-slate-500 text-lg max-w-md mx-auto leading-relaxed">
+                                Thông tin của bạn vô cùng quý giá. Đội ngũ kiểm duyệt sẽ xác minh và cập nhật lên bản đồ ngay lập tức.
+                            </p>
                         </div>
-
-                        <div className="space-y-1">
-                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Tỉnh thành</label>
-                             <select 
-                                 required
-                                 value={formData.province}
-                                 onChange={e => setFormData({...formData, province: e.target.value})}
-                                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
-                             >
-                                 <option value="">Chọn tỉnh thành...</option>
-                                 {VALID_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                             </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Địa chỉ cụ thể</label>
-                            <input 
-                                type="text"
-                                placeholder="Số nhà, đường, thôn/xóm..."
-                                value={formData.address || ""}
-                                onChange={e => setFormData({...formData, address: e.target.value})}
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mô tả tình hình</label>
-                            <textarea 
-                                required
-                                placeholder="Chỗ tôi đang ngập cao 1m, nước vẫn đang lên..."
-                                value={formData.description}
-                                onChange={e => setFormData({...formData, description: e.target.value})}
-                                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all min-h-[100px]"
-                            />
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Hình ảnh hiện trường</label>
-                            <div className="flex flex-col gap-3">
-                                {formData.image_url ? (
-                                    <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-slate-100 dark:border-slate-800 group">
-                                        <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
-                                        <button 
-                                            type="button"
-                                            onClick={() => setFormData(prev => ({ ...prev, image_url: "" }))}
-                                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Click nút X để xóa ảnh</span>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                            {/* Information Grid Container */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {/* Left Column: Basic Info */}
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Người báo cáo</label>
+                                            <input 
+                                                type="text"
+                                                placeholder="Họ và tên của bạn"
+                                                value={formData.name || ""}
+                                                onChange={e => setFormData({...formData, name: e.target.value})}
+                                                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500/40 transition-all shadow-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Số điện thoại liên lạc</label>
+                                            <input 
+                                                type="tel"
+                                                placeholder="Số điện thoại cá nhân"
+                                                value={formData.phone || ""}
+                                                onChange={e => setFormData({...formData, phone: e.target.value})}
+                                                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500/40 transition-all shadow-sm"
+                                            />
                                         </div>
                                     </div>
-                                ) : (
-                                    <button 
-                                        type="button"
-                                        onClick={() => fileInputRef.current.click()}
-                                        className="w-full py-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:border-blue-300 transition-all text-slate-400"
-                                    >
-                                        <Upload className="w-8 h-8" />
-                                        <span className="text-xs font-bold uppercase tracking-tight">Tải ảnh từ máy tính / Điện thoại</span>
-                                        <span className="text-[9px] font-medium opacity-60">Ưu tiên ảnh thực tế hiện trường (Max 5MB)</span>
-                                    </button>
-                                )}
-                                
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef}
-                                    accept="image/*"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                />
 
-                                <div className="flex items-center gap-2">
-                                    <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800"></div>
-                                    <span className="text-[9px] font-black text-slate-300 uppercase">Hoặc dán URL</span>
-                                    <div className="h-px flex-1 bg-slate-100 dark:bg-slate-800"></div>
+                                    <div className="space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800/50">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Tỉnh / Thành phố</label>
+                                            <select 
+                                                required
+                                                value={formData.province}
+                                                onChange={e => setFormData({...formData, province: e.target.value})}
+                                                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-red-500/10 transition-all appearance-none cursor-pointer shadow-sm"
+                                            >
+                                                <option value="">Chọn khu vực chịu ảnh hưởng...</option>
+                                                {VALID_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Địa chỉ / Vị trí cụ thể</label>
+                                            <input 
+                                                type="text"
+                                                placeholder="Xã, Huyện, Thôn hoặc tên địa danh..."
+                                                value={formData.address || ""}
+                                                onChange={e => setFormData({...formData, address: e.target.value})}
+                                                className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500/40 transition-all shadow-sm"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="url"
-                                        placeholder="https://imgur.com/..."
-                                        value={formData.image_url.startsWith('data:') ? '' : formData.image_url}
-                                        onChange={e => setFormData({...formData, image_url: e.target.value})}
-                                        className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-all"
-                                    />
-                                    <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                                        <ImageIcon className="w-5 h-5 text-slate-400" />
+                                {/* Right Column: Details & Assets */}
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Mô tả chi tiết tình hình</label>
+                                        <textarea 
+                                            required
+                                            placeholder="Nêu rõ diễn biến thiên tai, mức độ thiệt hại (nếu có) và tình trạng giao thông..."
+                                            value={formData.description}
+                                            onChange={e => setFormData({...formData, description: e.target.value})}
+                                            className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-red-500/10 focus:border-red-500/40 transition-all h-[142px] resize-none shadow-sm leading-relaxed"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Ảnh thực tế từ hiện trường</label>
+                                        {formData.image_url ? (
+                                            <div className="relative rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-black aspect-video group shadow-xl">
+                                                <img src={formData.image_url} alt="Preview" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center backdrop-blur-[2px]">
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setFormData(prev => ({ ...prev, image_url: "" }))}
+                                                        className="p-4 bg-red-600 text-white rounded-full shadow-2xl hover:bg-red-700 active:scale-90 transition-all"
+                                                    >
+                                                        <X className="w-6 h-6" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button 
+                                                type="button"
+                                                onClick={() => fileInputRef.current.click()}
+                                                className="w-full h-[142px] border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center gap-3 hover:bg-red-50/30 dark:hover:bg-red-500/5 hover:border-red-300 dark:hover:border-red-500/40 transition-all group overflow-hidden relative shadow-sm"
+                                            >
+                                                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl group-hover:bg-red-100/50 dark:group-hover:bg-red-500/20 transition-all group-hover:scale-110">
+                                                    <Camera className="w-6 h-6 text-slate-400 group-hover:text-red-500" />
+                                                </div>
+                                                <div className="text-center">
+                                                    <span className="block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tải ảnh lên</span>
+                                                    <span className="block text-[9px] text-slate-400 font-bold mt-1">(Dung lượng tối đa 5MB)</span>
+                                                </div>
+                                            </button>
+                                        )}
+                                        <input 
+                                            type="file" 
+                                            ref={fileInputRef}
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                        />
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="pt-2">
-                            <button 
-                                type="button"
-                                onClick={handleGetLocation}
-                                disabled={locLoading}
-                                className="w-full py-3 bg-blue-50 dark:bg-blue-500/10 text-blue-600 font-bold rounded-2xl text-sm flex items-center justify-center gap-2 hover:bg-blue-100 transition-all border border-blue-100 dark:border-blue-500/20 disabled:opacity-70"
-                            >
-                                {locLoading ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                    <MapPin className="w-4 h-4" />
-                                )}
-                                {locLoading ? "Đang xác định vị trí chính xác..." : (formData.lat != null ? `Đã lấy tọa độ (${formData.lat.toFixed(4)}, ${formData.lon.toFixed(4)})` : "Lấy vị trí hiện tại của tôi")}
-                            </button>
-                            <p className="text-[9px] text-slate-400 mt-2 text-center uppercase font-bold tracking-tighter">Địa chỉ IP và tọa độ sẽ được gửi kèm để xác thực tin cậy</p>
-                        </div>
+                            {/* Location Section - Full Width */}
+                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800/50">
+                                <button 
+                                    type="button"
+                                    onClick={handleGetLocation}
+                                    disabled={locLoading}
+                                    className={`w-full py-5 px-6 rounded-2xl text-[13px] font-black flex items-center justify-center gap-4 transition-all shadow-md group ${
+                                        formData.lat != null 
+                                            ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border-2 border-emerald-100 dark:border-emerald-500/20" 
+                                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-2 border-slate-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 hover:text-red-500"
+                                    } disabled:opacity-70`}
+                                >
+                                    {locLoading ? (
+                                        <Loader2 className="w-5 h-5 animate-spin text-red-500" />
+                                    ) : formData.lat != null ? (
+                                        <MapPin className="w-5 h-5 fill-emerald-500 text-emerald-600 animate-pulse" />
+                                    ) : (
+                                        <MapPin className="w-5 h-5" />
+                                    )}
+                                    <div className="text-left">
+                                        <span className="block uppercase tracking-wider leading-none mb-1">
+                                            {locLoading ? "ĐANX XÁC ĐỊNH VỊ TRÍ..." : (formData.lat != null ? "VỊ TRÍ ĐÃ ĐƯỢC XÁC ĐỊNH" : "XÁC ĐỊNH TỌA ĐỘ HIỆN TẠI")}
+                                        </span>
+                                        <span className="block text-[10px] font-bold opacity-70 tracking-tight">
+                                            {formData.lat != null ? `Tọa độ: ${formData.lat.toFixed(6)}, ${formData.lon.toFixed(6)}` : "Tăng độ chính xác và tin cậy cho báo cáo của bạn"}
+                                        </span>
+                                    </div>
+                                </button>
+                            </div>
 
-                        <button 
-                            disabled={loading}
-                            className="w-full py-4 bg-red-600 text-white font-black rounded-2xl shadow-lg shadow-red-500/30 hover:bg-red-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 uppercase tracking-widest disabled:opacity-70"
-                        >
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /> Gửi báo cáo</>}
-                        </button>
-                    </form>
-                )}
+                            {/* Main Action - Sticky Footer style within form */}
+                            <div className="pt-4 pb-2">
+                                <button 
+                                    disabled={loading}
+                                    className="w-full py-5 bg-gradient-to-r from-red-600 to-red-500 text-white font-black rounded-3xl shadow-2xl shadow-red-500/40 hover:shadow-red-500/60 active:scale-[0.98] transition-all flex items-center justify-center gap-4 uppercase tracking-[0.2em] text-sm disabled:opacity-70"
+                                >
+                                    {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Send className="w-6 h-6" /> Gửi báo cáo hiện trường</>}
+                                </button>
+                                <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-widest opacity-60">
+                                    Thông tin của bạn sẽ được bảo mật và chỉ dùng cho mục đích cứu hộ
+                                </p>
+                            </div>
+                        </form>
+                    )}
+                </div>
             </div>
         </div>
     );
+
 }

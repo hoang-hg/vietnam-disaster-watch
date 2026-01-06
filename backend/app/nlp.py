@@ -53,6 +53,14 @@ AQUA_OBJ = r"(?:ao|đầm|lồng\s*bè|lồng|bè)"
 AQUA = r"(?:tôm|cá|thủy\s*sản)"
 AQUA_STATUS = r"(?:bị\s*)?(?:trôi|cuốn\s*trôi|vỡ|tràn|thiệt\s*hại|mất\s*trắng|thất\s*thoát|cá\s*chết|tôm\s*chết)"
 
+# Disaster Priority (Severity for tie-breaking and event upgrades)
+DISASTER_PRIORITY = [
+    "tsunami", "earthquake", "storm", "flash_flood", "landslide", 
+    "flood", "subsidence", "storm_surge", "wildfire", "salinity",
+    "drought", "heatwave", "cold_surge", "extreme_weather", "erosion",
+    "warning_forecast", "recovery"
+]
+
 # Impact keywords
 IMPACT_KEYWORDS = {
     "deaths": {
@@ -2397,52 +2405,7 @@ def _to_int(num_str: str) -> int:
 
 # Pre-compile regexes for performance
 # This ensures we don't re-compile thousands of patterns per article check
-try:
-    ABSOLUTE_VETO_RE = [re.compile(p, re.IGNORECASE) for p in ABSOLUTE_VETO]
-    CONDITIONAL_VETO_RE = [re.compile(p, re.IGNORECASE) for p in CONDITIONAL_VETO]
 
-    
-    # DISASTER_PATTERNS is a dict of lists
-    DISASTER_PATTERNS_RE = {
-        k: [re.compile(p, re.IGNORECASE) for p in v] 
-        for k, v in DISASTER_PATTERNS.items()
-    }
-    
-    # DISASTER_RULES might be a list of tuples?
-    # Based on usage in compute_disaster_signals: (label, compiled_acc, compiled_no)
-    # If DISASTER_RULES is defined as raw strings, we need to compile.
-    # But usage shows it expects already compiled tuples? 
-    # Let's check DISASTER_RULES definition. 
-    # Assuming DISASTER_RULES_RE is usually built from DISASTER_RULES.
-    # We will assume DISASTER_RULES_RE is what we need to build if not existing.
-    
-    # Re-building DISASTER_RULES_RE for safety if it depends on regexes
-    # (Checking usage: for i, (label, compiled_acc, compiled_no) in enumerate(DISASTER_RULES_RE):)
-    # If DISASTER_RULES exists as (label, pat_acc, pat_no), we compile it here.
-    if 'DISASTER_RULES' in globals():
-        DISASTER_RULES_RE = []
-        for label, p_acc, p_no in DISASTER_RULES:
-            # Handle list of patterns or single string
-            acc_list = [p_acc] if isinstance(p_acc, str) else p_acc
-            no_list = [p_no] if isinstance(p_no, str) else p_no
-            
-            c_acc = [re.compile(p, re.IGNORECASE) for p in acc_list]
-            c_no = [re.compile(p, re.IGNORECASE) for p in no_list] if no_list else []
-            DISASTER_RULES_RE.append((label, c_acc, c_no))
-
-    # Optimization for Absolute Veto No Accents
-    # We create a separate list if raw list ABSOLUTE_VETO_NO exists
-    if 'ABSOLUTE_VETO_NO' in globals():
-        ABSOLUTE_VETO_NO_RE = [(k, re.compile(p, re.IGNORECASE)) for k, p in ABSOLUTE_VETO_NO]
-        
-except Exception as e:
-    logger.error(f"Regex compilation error: {e}")
-    # Fallback to empty to prevent crash, though logic will fail
-    ABSOLUTE_VETO_RE = []
-    CONDITIONAL_VETO_RE = []
-
-    DISASTER_PATTERNS_RE = {}
-    DISASTER_RULES_RE = []
 
 
 def extract_provinces(text: str, title: str = "", impact_spans: List[tuple] = None) -> List[dict]:
@@ -3139,7 +3102,8 @@ def extract_impacts(text: str) -> dict:
         "route": None,
         "cause": None,
         "characteristics": None,
-        "location_description": None
+        "location_description": None,
+        "landmark": None
     }
     
     # 1. Human casualties (using max value from detailed extraction)
@@ -3175,6 +3139,9 @@ def extract_impacts(text: str) -> dict:
     m_route = re.search(r"(?:tuyến|quốc\s*lộ|tỉnh\s*lộ|đường|cao\s*tốc)\s+([A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*(\s+[A-Z0-9Đ][a-z0-9à-ỹ\-\.\/]*)*)", text)
     if m_route: res["route"] = m_route.group(1).strip()
 
+    m_landmark = re.search(r"((?:sông|suối|núi|cầu|hồ|đập|đèo|kè|cống|vịnh|biển|mương|rạch|kênh)\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*(?:\s+[A-Z\xC0-\xDFĐ][a-z\xE0-\xFFà-ỹ]*)*)", text)
+    if m_landmark: res["landmark"] = m_landmark.group(1).strip()
+
     # 5. Cause
     if "mưa" in t_lower: res["cause"] = "Mưa lớn"
     elif any(kw in t_lower for kw in ["nhân sinh", "xây dựng", "đào đắp", "xẻ núi"]): res["cause"] = "Hoạt động nhân sinh"
@@ -3196,6 +3163,7 @@ def format_location_description(impacts: dict, province: str) -> str:
     if impacts.get("village"): parts.append(impacts["village"])
     if impacts.get("commune"): parts.append(impacts["commune"])
     if impacts.get("route"): parts.append(impacts["route"])
+    if impacts.get("landmark"): parts.append(impacts["landmark"])
     
     loc = ", ".join(parts)
     if loc and province and province != "unknown":
@@ -3320,13 +3288,6 @@ def classify_disaster(text: str, title: str = "") -> dict:
         forest_indicators = ["rừng", "thực bì", "khoảnh", "tiểu khu", "lâm phần", "lâm nghiệp", "diện tích", "thảm thực vật"]
         if not any(fi in full_text.lower() for fi in forest_indicators):
             hazard_weights["wildfire"] -= 10
-
-    PRIO = [
-        "tsunami", "earthquake", "storm", "flash_flood", "landslide", 
-        "flood", "subsidence", "storm_surge", "wildfire", "salinity",
-        "drought", "heatwave", "cold_surge", "extreme_weather", "erosion",
-        "warning_forecast", "recovery"
-    ]
 
     primary = "unknown"
     if hazard_weights:
@@ -3530,5 +3491,6 @@ def extract_all_metadata(text: str, summary_raw: str, title: str) -> dict:
         "stage": stage,
         "impact_details": impact_details,
         "needs_verification": needs_verification,
-        "has_impacts": has_impacts
+        "has_impacts": has_impacts,
+        "landmark": impacts.get("landmark")
     }

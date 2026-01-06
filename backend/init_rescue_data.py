@@ -5,6 +5,13 @@ from sqlalchemy.orm import Session
 # Ensure table exists
 models.Base.metadata.create_all(bind=engine)
 
+NATIONAL_HOTLINES = [
+    { "province": "Toàn quốc", "phone": "112", "agency": "Yêu cầu cứu trợ, tìm kiếm cứu nạn" },
+    { "province": "Toàn quốc", "phone": "113", "agency": "Cảnh sát phản ứng nhanh" },
+    { "province": "Toàn quốc", "phone": "114", "agency": "Phòng cháy chữa cháy & Cứu nạn" },
+    { "province": "Toàn quốc", "phone": "115", "agency": "Cấp cứu y tế" },
+]
+
 PROVINCE_HOTLINES = [
     { "province": "TP. Hà Nội", "phone": "0243.3824.507", "agency": "Ban CM PCTT & TKCN" },
     { "province": "TP. Hồ Chí Minh", "phone": "0283.8293.134", "agency": "Ban CM PCTT & TKCN" },
@@ -44,19 +51,29 @@ PROVINCE_HOTLINES = [
 
 def init_data():
     db = SessionLocal()
-    # Check if data exists
-    count = db.query(models.RescueHotline).count()
-    if count > 0:
-        print("Rescue data already exists. Skipping.")
-        return
+    
+    print("Clearing existing Rescue data...")
+    db.query(models.RescueHotline).delete()
+    db.commit()
 
     print("Initializing Rescue data...")
+    # Add National Hotlines
+    for item in NATIONAL_HOTLINES:
+        hotline = models.RescueHotline(
+            province=item["province"],
+            phone=item["phone"],
+            agency=item["agency"],
+            address="Liên hệ khẩn cấp toàn quốc"
+        )
+        db.add(hotline)
+
+    # Add Province Hotlines
     for item in PROVINCE_HOTLINES:
         hotline = models.RescueHotline(
             province=item["province"],
             phone=item["phone"],
             agency=item["agency"],
-            address=f"Trụ sở {item['agency']} - {item['province']}" # Default address
+            address=f"Trụ sở {item['agency']} - {item['province']}"
         )
         db.add(hotline)
     

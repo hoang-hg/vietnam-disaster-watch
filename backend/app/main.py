@@ -121,11 +121,13 @@ async def on_startup():
 
     # 1. Initial full crawl on startup
     # Use scheduler to run in background thread to avoid blocking main loop (WebSocket handshake)
+    import pytz
     from datetime import datetime, timedelta
+    tz = pytz.timezone(settings.app_timezone)
     scheduler.add_job(
         process_once,
         'date',
-        run_date=datetime.now() + timedelta(seconds=15),
+        run_date=datetime.now(tz) + timedelta(seconds=15),
         id="startup_crawl"
     )
 

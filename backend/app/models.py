@@ -25,6 +25,7 @@ class Article(Base):
     cause: Mapped[str | None] = mapped_column(Text, nullable=True)
     characteristics: Mapped[str | None] = mapped_column(Text, nullable=True)
     location_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    landmark: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
 
     stage: Mapped[str] = mapped_column(String(32), index=True, default="INCIDENT")
     event_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -75,6 +76,7 @@ class Event(Base):
     cause: Mapped[str | None] = mapped_column(Text, nullable=True)
     characteristics: Mapped[str | None] = mapped_column(Text, nullable=True)
     location_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    landmark: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
     stage: Mapped[str] = mapped_column(String(32), index=True, default="INCIDENT")
     started_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     last_updated_at: Mapped[datetime] = mapped_column(DateTime, index=True)

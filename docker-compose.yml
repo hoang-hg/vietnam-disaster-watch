@@ -7,7 +7,7 @@ services:
     restart: always
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=12102004
       - POSTGRES_DB=postgres
     ports:
       - "5432:5432"
@@ -33,7 +33,7 @@ services:
       - ./backend_data:/app/data
       - ./backend/logs:/app/logs
     environment:
-      - APP_DB_URL=postgresql://postgres:password@db:5432/postgres
+      - APP_DB_URL=postgresql://postgres:12102004@db:5432/postgres
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
