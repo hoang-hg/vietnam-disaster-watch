@@ -17,20 +17,16 @@ L.Icon.Default.mergeOptions({
 // Memoize icons to prevent recreation on every render
 const iconCache = {};
 
-function getIcon(type, isRedAlert) {
+function getIcon(type) {
   const color = THEME_COLORS[type] || THEME_COLORS.unknown;
-  const key = `${type}-${isRedAlert ? 'alert' : 'normal'}`;
+  const key = `${type}`;
 
   if (!iconCache[key]) {
-    // Only animate if it's a red alert
-    const animationClass = isRedAlert ? 'animate-ping' : '';
-    const opacity = isRedAlert ? 'opacity-75' : 'opacity-20';
-    
     iconCache[key] = L.divIcon({
       className: "bg-transparent",
       html: `
         <div class="relative flex items-center justify-center w-8 h-8 group hover:scale-110 transition-transform">
-            <span class="${animationClass} absolute inline-flex h-full w-full rounded-full ${opacity}" style="background-color: ${color}"></span>
+            <span class="absolute inline-flex h-full w-full rounded-full opacity-20" style="background-color: ${color}"></span>
             <span class="relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-white shadow-md" style="background-color: ${color}"></span>
         </div>
       `,
@@ -62,7 +58,7 @@ export default function VietnamMap({ points }) {
         if (typeof p.lat !== 'number' || typeof (p.lon ?? p.lng) !== 'number') return null;
         
         const type = p.disaster_type || p.type;
-        const icon = getIcon(type, p.is_red_alert);
+        const icon = getIcon(type);
 
         return (
           <Marker key={p.id} position={[p.lat, p.lon ?? p.lng]} icon={icon}>

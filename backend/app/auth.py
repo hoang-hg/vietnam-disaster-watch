@@ -9,9 +9,8 @@ from . import models, database, settings as app_settings
 
 # Password hashing - Explicitly configured for security
 pwd_context = CryptContext(
-    schemes=["bcrypt"], 
-    deprecated="auto",
-    bcrypt__rounds=12  # Explicit rounds for production security
+    schemes=["pbkdf2_sha256"], 
+    deprecated="auto"
 )
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
@@ -66,13 +65,19 @@ def get_current_admin(current_user: models.User = Depends(get_current_user)):
 
 def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[models.User]:
     if not token:
+        print("[AUTH] No token found in request")
         return None
     try:
         payload = jwt.decode(token, app_settings.settings.secret_key, algorithms=[app_settings.settings.algorithm])
         email: str = payload.get("sub")
         if email is None:
+            print("[AUTH] Token payload missing 'sub'")
             return None
-    except JWTError:
+    except JWTError as e:
+        print(f"[AUTH] JWT Decode Error: {e}")
         return None
     
-    return db.query(models.User).filter(models.User.email == email).first()
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        print(f"[AUTH] User not found for email: {email}")
+    return user

@@ -330,16 +330,22 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
             existing.score = score
             # Update meta if it's better now
             meta = await asyncio.to_thread(nlp.extract_all_metadata, summary_raw, summary_raw, title, existing_signals=diag["signals"])
-            existing.is_red_alert = meta.get("is_red_alert", False)
             await asyncio.to_thread(upsert_event_for_article, db, existing)
+            _log_to_review_file(src, title, link, published_at, score, diag["reason"], "upgraded_to_approved")
             return existing, "upgraded"
             
         return None, "duplicate-pending"
 
     # 2. Status Assignment
     status = "auto-blacklisted"
-    if score >= 15.0: status = "approved"
-    elif score >= 10.0: status = "pending"
+    
+    # [FIX] Respect NLP Vetoes
+    is_vetoed = diag["signals"].get("absolute_veto", False) or \
+                (diag["signals"].get("conditional_veto", False) and diag["signals"].get("hazard_score", 0) == 0)
+    
+    if not is_vetoed:
+        if score >= 15.0: status = "approved"
+        elif score >= 10.0: status = "pending"
 
     if status == "auto-blacklisted":
         if not db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
@@ -360,7 +366,6 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
         province=meta["province"],
         summary=meta["summary"],
         stage=meta["stage"],
-        is_red_alert=meta["is_red_alert"],
         needs_verification=meta["needs_verification"],
         deaths=_get_impact_value(meta["impacts"]["deaths"]),
         missing=_get_impact_value(meta["impacts"]["missing"]),
@@ -376,8 +381,9 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
         agency=meta["impacts"].get("agency")[:255] if meta["impacts"].get("agency") else None
     )
 
-    if status == "pending":
-        _log_to_review_file(src, title, link, published_at, score, diag["reason"], "pending_review")
+    if status in ["approved", "pending"]:
+        log_action = "auto_approved" if status == "approved" else "pending_review"
+        _log_to_review_file(src, title, link, published_at, score, diag["reason"], log_action)
 
     try:
         db.add(article)
@@ -548,7 +554,7 @@ async def _enrich_article_async(db: Session, src, article):
                     setattr(article, lf, new_val)
             
             if meta.get("is_red_alert"): article.is_red_alert = True
-            if meta.get("needs_verification"): article.needs_verification = 1
+            if meta.get("needs_verification"): article.needs_verification = True
             
             await asyncio.to_thread(upsert_event_for_article, db, article)
             db.commit()

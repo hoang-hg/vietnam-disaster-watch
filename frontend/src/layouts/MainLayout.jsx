@@ -143,10 +143,9 @@ export default function MainLayout({ children }) {
           try {
             const parsed = JSON.parse(storedUser);
             if (parsed && typeof parsed === 'object') {
-                setUser(parsed);
+              setUser(parsed);
             }
           } catch (e) {
-            console.error("Session corruption:", e);
             localStorage.removeItem("user");
             setUser(null);
           }
@@ -356,44 +355,7 @@ export default function MainLayout({ children }) {
                         </>
                     )}
 
-                    {user && user.role !== 'guest' ? (
-                        <div className="flex items-center h-full">
-                            <span className="flex items-center gap-2 px-4 h-full text-white text-xs font-bold border-l border-white/20">
-                                {user.role === 'admin' ? <ShieldCheck className="w-4 h-4 text-yellow-300" /> : <User className="w-4 h-4" />}
-                                {(user.full_name || user.email || "").toUpperCase()}
-                            </span>
-                            <Link 
-                                to="/change-password"
-                                className="flex items-center gap-2 px-3 h-full text-white text-sm font-bold hover:bg-white/10 transition-colors border-l border-white/20"
-                                title="Đổi mật khẩu"
-                            >
-                                <Key className="w-4 h-4" />
-                            </Link>
-                            <button 
-                                onClick={handleLogout}
-                                className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-red-500 transition-colors border-l border-r border-white/20"
-                            >
-                                <LogOut className="w-4 h-4" />
-                                ĐĂNG XUẤT
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <Link 
-                                to="/login" 
-                                className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-[#258a9b] transition-colors border-l border-white/20"
-                            >
-                                <User className="w-4 h-4" />
-                                ĐĂNG NHẬP
-                            </Link>
-                            <Link 
-                                to="/register" 
-                                className="flex items-center gap-2 px-4 h-full text-white text-sm font-bold hover:bg-[#258a9b] transition-colors border-l border-r border-white/20 bg-white/10"
-                            >
-                                ĐĂNG KÝ
-                            </Link>
-                        </>
-                    )}
+
                 </div>
             </div>
         </div>

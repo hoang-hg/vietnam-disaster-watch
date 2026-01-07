@@ -52,7 +52,6 @@ class Article(Base):
     
     # Unique identifier for content to prevent re-crawling rejected news
     news_hash: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
-    is_red_alert: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     __table_args__ = (
         UniqueConstraint("domain", "url", name="uq_article_url"),
@@ -96,7 +95,6 @@ class Event(Base):
     sources_count: Mapped[int] = mapped_column(Integer, default=1)
     needs_verification: Mapped[bool] = mapped_column(Boolean, default=False)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_red_alert: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
     articles = relationship("Article", back_populates="event")
 

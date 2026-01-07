@@ -75,11 +75,12 @@ export default function Dashboard() {
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
-          if (parsed && typeof parsed === 'object' && parsed.username) {
+          if (parsed && typeof parsed === 'object' && (parsed.role || parsed.email)) {
             setUser(parsed);
           } else {
             // Invalid user object, clear it
             setUser(null);
+            console.warn("[DashboardV2] Invalid user object detected, clearing session", parsed);
             localStorage.removeItem("user");
           }
         } catch (e) {
@@ -488,11 +489,6 @@ export default function Dashboard() {
                       <Badge tone={getDisasterMeta(event.disaster_type).tone} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
                         {fmtType(event.disaster_type)}
                       </Badge>
-                      {event.is_red_alert && (
-                        <Badge tone="red" className="px-1.5 py-0.5 text-[9px] uppercase font-black bg-red-600 text-white animate-pulse">
-                          CẢNH BÁO ĐỎ
-                        </Badge>
-                      )}
                     </div>
                   </div>
                   <Link to={`/events/${event.id}`}>

@@ -85,31 +85,38 @@ export const CHART_COLORS = [
  * Emergency Hotline Configuration
  * Used by Rescue page for national emergency numbers styling
  */
+import { Phone, Shield, Flame, Heart, LifeBuoy } from 'lucide-react';
+
 export const EMERGENCY_HOTLINE_STYLES = {
   "112": { 
     color: THEME_COLORS.danger, 
     label: "CỨU NẠN TRUNG ƯƠNG",
-    description: "Tổng đài cứu nạn khẩn cấp 112"
+    description: "Tổng đài cứu nạn khẩn cấp 112",
+    icon: LifeBuoy
   },
   "113": { 
     color: THEME_COLORS.storm, 
     label: "AN NINH TRẬT TỰ",
-    description: "Công an - Trật tự an toàn xã hội"
+    description: "Công an - Trật tự an toàn xã hội",
+    icon: Shield
   },
   "114": { 
     color: THEME_COLORS.drought, 
     label: "PCCC & CỨU HỘ",
-    description: "Phòng cháy chữa cháy và cứu hộ"
+    description: "Phòng cháy chữa cháy và cứu hộ",
+    icon: Flame
   },
   "115": { 
     color: THEME_COLORS.success, 
     label: "CẤP CỨU Y TẾ",
-    description: "Cấp cứu y tế khẩn cấp"
+    description: "Cấp cứu y tế khẩn cấp",
+    icon: Heart
   },
   "default": { 
     color: THEME_COLORS.secondary, 
     label: "ĐƯỜNG DÂY NÓNG",
-    description: "Hotline hỗ trợ"
+    description: "Hotline hỗ trợ",
+    icon: Phone
   }
 };
 

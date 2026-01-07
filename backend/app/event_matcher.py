@@ -190,8 +190,7 @@ def _create_new_event(db: Session, article: Article) -> Event:
         route=article.route, landmark=article.landmark,
         location_description=article.location_description,
         cause=article.cause, characteristics=article.characteristics,
-        details={"impact_bucket": _get_impact_bucket(article)},
-        is_red_alert=article.is_red_alert
+        details={"impact_bucket": _get_impact_bucket(article)}
     )
     db.add(ev)
     db.flush()
@@ -252,7 +251,6 @@ def _update_event_from_article(db: Session, ev: Event, article: Article):
         ev.damage_billion_vnd = max(ev.damage_billion_vnd or 0.0, article.damage_billion_vnd)
 
     if article.needs_verification: ev.needs_verification = True
-    if article.is_red_alert: ev.is_red_alert = True
     
     # Merge impact_details
     if article.impact_details:
@@ -284,7 +282,7 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
     from .sources import VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
     
     # Batch fetch flat article data in 1 query
-    article_data = db.query(Article.domain, Article.source, Article.status, Article.is_red_alert, Article.title)\
+    article_data = db.query(Article.domain, Article.source, Article.status, Article.title)\
         .filter(Article.event_id == ev.id).all()
     
     all_domains = {r.domain for r in article_data if r.domain}
@@ -300,7 +298,6 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
 
     # 2. Strong Signal Checks
     has_trusted = any(TRUSTED_MAP.get(s, False) for s in all_sources)
-    has_red = article.is_red_alert or any(r.is_red_alert for r in article_data)
     has_strong_metrics = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.damage_billion_vnd or 0) > 0.5
     
     # Use pre-compiled mega-regex for titles if available
@@ -313,7 +310,7 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
                 break
     
     # 3. Smart Confidence Matrix
-    if has_vip or has_red: ev.confidence = 1.0
+    if has_vip: ev.confidence = 1.0
     elif has_trusted: ev.confidence = 0.95 if ev.sources_count >= 2 else 0.9
     elif has_strong_metrics: ev.confidence = 0.8 if ev.sources_count >= 2 else 0.6
     else:
@@ -345,7 +342,6 @@ def _broadcast_event(ev: Event, is_new: bool = False):
             "damage": ev.damage_billion_vnd,
             "confidence": ev.confidence,
             "sources_count": ev.sources_count,
-            "is_red_alert": ev.is_red_alert,
             "last_updated": ev.last_updated_at.isoformat() if ev.last_updated_at else None
         }
         broadcast.publish_event_sync(data)

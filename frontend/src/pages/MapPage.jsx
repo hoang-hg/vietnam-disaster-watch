@@ -79,11 +79,7 @@ export default function MapPage() {
   
   // Filters
   const [startDate, setStartDate] = useState(() => {
-    return searchParams.get("start_date") || (() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        return d.toISOString().split('T')[0];
-    })();
+    return searchParams.get("start_date") || new Date().toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || '');
   const [activeFilter, setActiveFilter] = useState(searchParams.get("type") || "all");
@@ -149,11 +145,7 @@ export default function MapPage() {
   // Handle URL changes (Back button)
   useEffect(() => {
     const urlType = searchParams.get("type") || "all";
-    const urlStart = searchParams.get("start_date") || (() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        return d.toISOString().split('T')[0];
-    })();
+    const urlStart = searchParams.get("start_date") || new Date().toISOString().split('T')[0];
     const urlEnd = searchParams.get("end_date") || "";
 
     if (urlType !== activeFilter) setActiveFilter(urlType);

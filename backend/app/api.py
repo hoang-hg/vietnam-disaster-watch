@@ -1,4 +1,7 @@
+import logging
 from fastapi import APIRouter, Depends, Query
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import desc, func, or_, and_, case
 from sqlalchemy.orm import Session, joinedload, defer
 from sqlalchemy.sql import text
@@ -96,7 +99,7 @@ def get_visibility_filter(query, is_admin: bool):
     # - OR if needs_verification=0 AND sources_count >= 2
     return query.filter(or_(
         Event.confidence >= 0.8,
-        (Event.needs_verification == 0) & (Event.sources_count >= 2)
+        (Event.needs_verification.is_(False)) & (Event.sources_count >= 2)
     ))
 
 
@@ -153,7 +156,7 @@ def get_base_event_query(db: Session):
 def events(
     request: Request,
     response: Response,
-    limit: int = Query(50, ge=1, le=500), # Reduced from 2000 to 500 to fit within SQLite variable limits (999) for IN clauses
+    limit: int = Query(50, ge=1, le=2000), # Reduced from 2000 to 500 to fit within SQLite variable limits (999) for IN clauses
     offset: int = Query(0, ge=0),
     after_id: int | None = Query(None, description="Keyset pagination for better performance on large datasets"),
     hours: int | None = Query(None, ge=1, le=720),
@@ -212,7 +215,7 @@ def events(
     elif quick == "damage":
         query = query.filter(func.coalesce(Event.damage_billion_vnd, 0) > 0)
     elif quick == "provinces":
-        query = query.filter(Event.province.isnot(None))
+        query = query.filter(Event.province.in_(PROVINCES))
 
     if after_id is not None:
         query = query.filter(Event.id < after_id)
@@ -232,7 +235,6 @@ def events(
         else:
             # Sort by impact + confidence
             query = query.order_by(
-                desc(Event.is_red_alert),
                 desc(func.coalesce(Event.deaths, 0) * 10 + func.coalesce(Event.missing, 0) * 8 + func.coalesce(Event.damage_billion_vnd, 0)),
                 desc(Event.confidence)
             )
@@ -404,9 +406,10 @@ def event_detail(event_id: int, response: Response, db: Session = Depends(get_db
 def update_event(
     event_id: int, 
     payload: EventUpdate, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_current_admin)
 ):
-    """Update event details (admin only logic in production)."""
+    """Update event details (admin only)."""
     ev = db.query(Event).filter(Event.id == event_id).first()
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -437,7 +440,10 @@ def update_event(
     db.refresh(ev)
     
     # Invalidate cache
-    cache.delete(f"ev_detail_{event_id}")
+    cache.delete(f"ev_detail_v3_{event_id}_True")
+    cache.delete(f"ev_detail_v3_{event_id}_False")
+    cache.delete_match(f"ev_detail_v3_{event_id}*")
+    cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
     
     return ev
@@ -487,17 +493,19 @@ def delete_event(
     )
     
     # Delete the event
+    title_for_log = ev.title
     db.delete(ev)
     db.commit()
     
     # Comprehensive cache invalidation
-    cache.delete(f"ev_detail_{event_id}")  # Event detail
-    cache.delete_match(f"ev_detail_{event_id}*")  # Event detail variants
-    cache.delete_match("events_*")  # All event list caches
+    cache.delete(f"ev_detail_v3_{event_id}_True")  # Admin detail
+    cache.delete(f"ev_detail_v3_{event_id}_False") # Public detail
+    cache.delete_match(f"ev_detail_v3_{event_id}*") # Any variants
+    cache.delete_match("ev_v2_*")  # All event list caches (started with ev_v2_)
     cache.delete_match("stats_*")  # Stats summaries (event count changed)
     cache.delete_match("articles_latest_*")  # Article lists may reference event
     
-    logger.info(f"Deleted event {event_id}: {ev.title}")
+    logger.info(f"Deleted event {event_id}: {title_for_log}")
     
     return
 
@@ -542,8 +550,8 @@ def delete_article(
             db.commit()
             
             # Comprehensive cache invalidation for deleted event
-            cache.delete_match(f"ev_detail_{old_event_id}*")  # Event detail caches
-            cache.delete_match("events_*")  # All event list caches
+            cache.delete_match(f"ev_detail_v3_{old_event_id}*")  # Event detail caches
+            cache.delete_match("ev_v2_*")  # All event list caches
             cache.delete_match("stats_*")  # Stats summaries (event count changed)
             cache.delete_match("articles_latest_*")  # Article lists may reference event
             
@@ -551,9 +559,10 @@ def delete_article(
         else:
             # Event still has articles, just recalculate metrics
             recalculate_event_metrics(db, old_event_id)
-            cache.delete(f"ev_detail_{old_event_id}")
+            cache.delete(f"ev_detail_v3_{old_event_id}_True")
+            cache.delete(f"ev_detail_v3_{old_event_id}_False")
             # Also clear event lists as metrics changed
-            cache.delete_match("events_*")
+            cache.delete_match("ev_v2_*")
     
     # Global cache invalidation (article removed from system)
     cache.delete_match("stats_*")
@@ -631,7 +640,7 @@ def stats_summary(
     # [OPTIMIZATION] Combined two queries into one
     art_stats_q = db.query(
         func.count(Article.id),
-        func.sum(case((Article.needs_verification == 1, 1), else_=0))
+        func.sum(case((Article.needs_verification.is_(True), 1), else_=0))
     ).filter(
         Article.published_at >= start,
         Article.published_at < end,
@@ -863,10 +872,10 @@ async def stream_events(request: Request):
     return StreamingResponse(event_publisher(), media_type='text/event-stream')
 
 
-from .auth import get_current_admin
+# Admin logic moved to auth module consistent usage
 
 @router.get('/admin/skip-logs')
-def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = Depends(get_current_admin)):
+def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = Depends(auth.get_current_admin)):
     from collections import deque
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     log_file = logs_dir / 'review_potential_disasters.jsonl'
@@ -888,7 +897,7 @@ def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = D
 
 
 @router.post('/admin/label')
-def label_log(payload: dict, admin: models.User = Depends(get_current_admin)):
+def label_log(payload: dict, admin: models.User = Depends(auth.get_current_admin)):
     """Label a skipped/accepted item for training/audit. Payload must include `id` and `label`."""
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -910,7 +919,7 @@ def get_pending_articles(
     skip: int = 0, 
     limit: int = 50, 
     db: Session = Depends(get_db), 
-    admin: models.User = Depends(get_current_admin)
+    admin: models.User = Depends(auth.get_current_admin)
 ):
     """Fetch articles waiting for admin review."""
     return db.query(models.Article).filter(models.Article.status == "pending")\
@@ -919,7 +928,7 @@ def get_pending_articles(
 
 
 @router.post('/admin/approve-article/{article_id}')
-def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     """Approve a pending article and integrate it into events."""
     article = db.query(models.Article).filter(models.Article.id == article_id).first()
     if not article:
@@ -931,9 +940,11 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
     db.commit()
     # Invalidate event detail cache
     if article.event_id:
-        cache.delete(f"ev_detail_{article.event_id}")
+        cache.delete(f"ev_detail_v3_{article.event_id}_True")
+        cache.delete(f"ev_detail_v3_{article.event_id}_False")
     
     # Global cache invalidation for consistency
+    cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
     cache.delete_match("articles_latest_*")
         
@@ -941,7 +952,7 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
 
 
 @router.post('/admin/events/{event_id}/approve')
-def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     """Approve an entire event: clear needs_verification and approve all articles."""
     ev = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not ev:
@@ -956,14 +967,16 @@ def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.Us
     
     db.commit()
     # Invalidate cache
-    cache.delete(f"ev_detail_{event_id}")
+    cache.delete(f"ev_detail_v3_{event_id}_True")
+    cache.delete(f"ev_detail_v3_{event_id}_False")
+    cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
     
     return {"ok": True, "message": "Event and its articles approved"}
 
 
 @router.post('/admin/reject-article/{article_id}')
-def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     """Reject an article and add its hash to blacklist to prevent re-crawling."""
     article = db.query(models.Article).filter(models.Article.id == article_id).first()
     if not article:
@@ -995,11 +1008,15 @@ def reject_article(article_id: int, db: Session = Depends(get_db), admin: models
         if remaining == 0:
             db.query(models.Event).filter(models.Event.id == old_event_id).delete()
             db.commit()
-            cache.delete_match(f"ev_detail_{old_event_id}*")
+            cache.delete_match(f"ev_detail_v3_{old_event_id}*")
         else:
             # Recalculate metrics for the remaining event
             recalculate_event_metrics(db, old_event_id)
-            cache.delete(f"ev_detail_{old_event_id}")
+            cache.delete(f"ev_detail_v3_{old_event_id}_True")
+            cache.delete(f"ev_detail_v3_{old_event_id}_False")
+        
+        # Clear list caches as event might be gone or changed
+        cache.delete_match("ev_v2_*")
 
     # Global consistency
     cache.delete_match("stats_*")
@@ -1009,7 +1026,7 @@ def reject_article(article_id: int, db: Session = Depends(get_db), admin: models
 
 
 @router.post('/alerts')
-def post_alert(payload: dict):
+def post_alert(payload: dict, admin: models.User = Depends(auth.get_current_admin)):
     """Receive an alert to be pushed to subscribers or external push systems.
     This stores the alert in `logs/alerts.jsonl` and publishes it to SSE subscribers.
     """
@@ -1121,11 +1138,11 @@ def sources_health():
         return {"error": f"Failed to read report: {str(e)}"}
 
 @router.get("/admin/crawler-status")
-def get_crawler_status(db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def get_crawler_status(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     return db.query(CrawlerStatus).all()
 
 @router.post("/admin/crawler/run")
-async def trigger_crawler(db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+async def trigger_crawler(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     """Manually triggers a full crawl job."""
     from .crawler import _process_once_async
     # Run in background to not block the request
@@ -1133,7 +1150,7 @@ async def trigger_crawler(db: Session = Depends(get_db), admin: models.User = De
     return {"ok": True, "message": "Crawler started in background."}
 
 @router.post("/admin/system/clear-cache")
-def clear_system_cache(admin: models.User = Depends(get_current_admin)):
+def clear_system_cache(admin: models.User = Depends(auth.get_current_admin)):
     """Clears all cached API responses."""
     from .cache import cache
     if hasattr(cache, 'clear'):
@@ -1141,7 +1158,7 @@ def clear_system_cache(admin: models.User = Depends(get_current_admin)):
     return {"ok": True, "message": "Cache cleared."}
 
 @router.post("/admin/system/restart")
-def restart_system(admin: models.User = Depends(get_current_admin)):
+def restart_system(admin: models.User = Depends(auth.get_current_admin)):
     """Triggers a backend restart by touching a source file (requires --reload)."""
     main_file = Path(__file__).resolve().parent / "main.py"
     if main_file.exists():
@@ -1155,7 +1172,7 @@ def restart_system(admin: models.User = Depends(get_current_admin)):
     return {"ok": True}
 
 @router.post("/admin/ai-feedback")
-def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     article_id = payload.get("article_id")
     corrected_type = payload.get("corrected_type")
     
@@ -1179,7 +1196,7 @@ def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: mode
     return {"ok": True, "message": "Feedback saved and classification updated."}
 
 @router.get("/admin/export/event/{event_id}")
-def export_event_data(event_id: int, format: str = "excel", db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def export_event_data(event_id: int, format: str = "excel", db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     import pandas as pd
     ev = db.query(Event).filter(Event.id == event_id).first()
     if not ev:
@@ -1283,7 +1300,7 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
         return StreamingResponse(buffer, headers=headers, media_type='application/pdf')
 
 @router.get("/admin/export/daily")
-def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(get_current_admin)):
+def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     import pandas as pd
     today = datetime.now(timezone.utc)
     target_date = today if not date else datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)

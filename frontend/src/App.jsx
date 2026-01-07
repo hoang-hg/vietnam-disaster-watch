@@ -35,9 +35,21 @@ function ProtectedRoute({ children, roleRequired }) {
     }
   }
 
-  if (!user || (roleRequired && user.role !== roleRequired)) {
+  const isAuthenticated = !!(user && user.role && user.role !== "guest");
+  const currentRole = (user?.role || "").trim().toLowerCase();
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  // [ROLE CHECK] Robust comparison
+  if (roleRequired) {
+     const required = roleRequired.trim().toLowerCase();
+     if (currentRole !== required) {
+        return <Navigate to="/login" replace />;
+     }
+  }
+
   return children;
 }
 

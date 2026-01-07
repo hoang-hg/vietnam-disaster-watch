@@ -1,6 +1,6 @@
 import React from "react";
 import { 
-  MapPin, Clock, FileText, Zap, Users, Activity, DollarSign, Filter 
+  MapPin, Clock, FileText, Zap, Users, Activity, DollarSign, Filter, Trash2
 } from "lucide-react";
 import { 
   getDisasterMeta, fmtType, isJunkImage, fmtTimeAgo, fmtVndBillion, cleanText 
@@ -44,11 +44,6 @@ const EventCard = ({ event: e, isAdmin, onDelete }) => {
           <Badge tone={meta.tone} className="shadow-md">
             {fmtType(e.disaster_type)}
           </Badge>
-          {e.is_red_alert && (
-            <Badge tone="red" className="shadow-md bg-red-600 text-white animate-pulse">
-              CẢNH BÁO ĐỎ
-            </Badge>
-          )}
           {e.needs_verification === 1 && (e.deaths > 0 || e.missing > 0 || e.damage_billion_vnd >= 1) && (
             <div className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg border border-red-400/30">
               Cần kiểm chứng
@@ -57,17 +52,18 @@ const EventCard = ({ event: e, isAdmin, onDelete }) => {
         </div>
         
         {isAdmin && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-30 translate-x-2 group-hover:translate-x-0">
+          <div className="absolute top-3 right-3 flex items-center gap-1 z-30">
             <button 
               onClick={(evt) => {
                 evt.preventDefault();
                 evt.stopPropagation();
                 onDelete(e.id);
               }}
-              className="p-1.5 bg-white/95 backdrop-blur-sm hover:bg-red-50 text-red-500 rounded-lg shadow-lg border border-red-100 transition-colors"
-              title="Xóa nhanh"
+              className="group/del flex items-center gap-1.5 px-3 py-1.5 bg-white/95 backdrop-blur-sm hover:bg-red-600 text-red-600 hover:text-white rounded-xl shadow-lg border border-red-100 transition-all duration-300 transform"
+              title="Xóa sự kiện"
             >
-              <Zap className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-tighter">Xóa</span>
             </button>
           </div>
         )}

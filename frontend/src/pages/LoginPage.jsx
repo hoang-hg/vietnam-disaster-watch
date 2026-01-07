@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Github, Loader2, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Github, Loader2, AlertCircle, X } from "lucide-react";
 import { login as apiLogin, resetPassword } from "../api";
 
 function ResetPasswordForm({ onSuccess }) {
@@ -98,6 +98,19 @@ export default function LoginPage() {
     password: "",
   });
 
+  // Redirect if already logged in
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+        try {
+            const user = JSON.parse(storedUser);
+            if (user && user.role !== "guest") {
+                navigate(user.role === "admin" ? "/admin/logs" : "/");
+            }
+        } catch(e) {}
+    }
+  }, [navigate]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -105,13 +118,23 @@ export default function LoginPage() {
     
     try {
         const data = await apiLogin(formData.email, formData.password);
+        console.log("LOGIN SUCCESS:", data);
+        
+        if (!data.user) {
+             throw new Error("No user data received");
+        }
+
         localStorage.setItem("access_token", data.access_token);
         localStorage.setItem("user", JSON.stringify(data.user));
+        console.log("LocalStorage set:", localStorage.getItem("user"));
         
         // Dispatch event for same-tab components to see the login
         window.dispatchEvent(new Event("storage"));
         
-        navigate("/");
+        // Small delay to ensure storage propagates
+        setTimeout(() => {
+             navigate("/");
+        }, 100);
     } catch (err) {
         setError(err.message);
     } finally {
@@ -229,14 +252,22 @@ export default function LoginPage() {
             </button>
           </div>
 
+        </form>
+
         {/* Forgot Password Modal */}
         {showForgotModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-             <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200"
+            onClick={() => setShowForgotModal(false)}
+          >
+             <div 
+               className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4"
+               onClick={e => e.stopPropagation()}
+             >
                 <div className="flex items-center justify-between">
                    <h3 className="text-lg font-bold text-slate-900">Đặt lại mật khẩu</h3>
                    <button onClick={() => setShowForgotModal(false)} className="text-slate-400 hover:text-slate-600">
-                      <AlertCircle className="w-5 h-5" />
+                      <X className="w-5 h-5" />
                    </button>
                 </div>
                 
@@ -244,9 +275,6 @@ export default function LoginPage() {
              </div>
           </div>
         )}
-
-
-        </form>
       </div>
     </div>
   );

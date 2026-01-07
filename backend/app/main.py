@@ -112,7 +112,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Viet Disaster Watch API",
     version="0.1.0",
-    description="API tổng hợp tin thiên tai từ 12 báo (RSS/GNews RSS), phân loại & nhóm sự kiện.",
+    description="API tổng hợp tin thiên tai từ báo (RSS/GNews RSS), phân loại & nhóm sự kiện.",
     lifespan=lifespan
 )
 
@@ -144,15 +144,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom Rate Limiter Middleware (Simple Memory-based)
+# Custom Rate Limiter Middleware (Simple Memory-based) -> REMOVED in favor of slowapi
 from fastapi import Request, Response
-import time
-from collections import defaultdict
-
-request_counts = defaultdict(list)
-RATE_LIMIT = 50  # requests
-RATE_PERIOD = 60 # seconds
-
+# import time
+# from collections import defaultdict
+# 
+# request_counts = defaultdict(list)
+# RATE_LIMIT = 50  # requests
+# RATE_PERIOD = 60 # seconds
+# 
 @app.middleware("http")
 async def cdn_optimization_middleware(request: Request, call_next):
     """
@@ -173,46 +173,10 @@ async def cdn_optimization_middleware(request: Request, call_next):
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
     return response
 
-@app.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    # Skip rate limiting for OPTIONS requests
-    if request.method == "OPTIONS":
-        return await call_next(request)
-
-    client_ip = request.headers.get("x-forwarded-for") or request.client.host
-    # Handle multiple IPs in header (take the first one)
-    if client_ip and "," in client_ip:
-        client_ip = client_ip.split(",")[0].strip()
-
-    now = time.time()
-    
-    # Whitelist for static/local
-    if request.url.path.startswith("/static"):
-        return await call_next(request)
-
-    # Filter out old requests
-    window_start = now - RATE_PERIOD
-    request_counts[client_ip] = [t for t in request_counts[client_ip] if t > window_start]
-    
-    # Use the defined constant instead of hardcoded 100
-    if len(request_counts[client_ip]) >= RATE_LIMIT:
-        return Response(content="Too Many Requests", status_code=429)
-    
-    request_counts[client_ip].append(now)
-    
-    # Periodically clean up the dictionary to prevent memory growth
-    if len(request_counts) > 1000:
-        # Optimization: Clear expired timestamps for all IPs when map gets large
-        cleanup_threshold = now - RATE_PERIOD
-        for ip in list(request_counts.keys()):
-            # Keep only valid timestamps
-            valid_requests = [t for t in request_counts[ip] if t > cleanup_threshold]
-            if valid_requests:
-                request_counts[ip] = valid_requests
-            else:
-                del request_counts[ip]
-
-    return await call_next(request)
+# @app.middleware("http")
+# async def rate_limit_middleware(request: Request, call_next):
+#     # [REMOVED] Use slowapi for endpoint-specific limits instead of global blanket.
+#     return await call_next(request)
 
 # GLOBAL EXCEPTION HANDLER
 from fastapi.responses import JSONResponse

@@ -34,7 +34,6 @@ export const PROVINCE_COORDINATES = {
     "Vĩnh Long": [10.2500, 105.9667],
     "TP. Cần Thơ": [10.0333, 105.7833],
     "Cà Mau": [9.1833, 105.1500],
-    "unknown": [16.0, 107.5]
 };
 
 // Keep global for legacy components but prefer import

@@ -19,7 +19,7 @@ import logoIge from "../assets/logo_ige.png";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import EventCard from "../components/events/EventCard.jsx";
 
 // Local TYPE_TONES removed
@@ -542,6 +542,7 @@ export default function Events() {
                             <th className="px-4 py-3 text-left text-xs font-black uppercase">Nguyên nhân</th>
                             <th className="px-4 py-3 text-left text-xs font-black uppercase">Đặc điểm</th>
                             <th className="px-4 py-3 text-left text-xs font-black uppercase">Thiệt hại</th>
+                            {isAdmin && <th className="px-4 py-3 text-center text-xs font-black uppercase no-print">Thao tác</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -549,8 +550,9 @@ export default function Events() {
                             <tr key={e.id} className="hover:bg-blue-50/30 transition-colors">
                                 <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(e.started_at).toLocaleDateString('vi-VN')}</td>
                                 <td className="px-4 py-3 text-xs font-bold text-blue-700">
-                                    {fmtType(e.disaster_type)}
-                                    {e.is_red_alert && <div className="text-[8px] text-red-600 animate-pulse">CẢNH BÁO ĐỎ</div>}
+                                    <Link to={`/events/${e.id}`} className="hover:underline">
+                                        {fmtType(e.disaster_type)}
+                                    </Link>
                                 </td>
                                 <td className="px-4 py-3 text-xs font-bold">{e.province}</td>
                                 <td className="px-4 py-3 text-[11px] leading-tight">
@@ -572,6 +574,17 @@ export default function Events() {
                                         {e.damage_billion_vnd > 0 && <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{e.damage_billion_vnd}T</span>}
                                     </div>
                                 </td>
+                                {isAdmin && (
+                                    <td className="px-4 py-3 text-center no-print">
+                                        <button 
+                                            onClick={(evt) => handleDelete(evt, e.id)}
+                                            className="p-1.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all"
+                                            title="Xóa sự kiện"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </td>
+                                )}
                             </tr>
                         ))}
                     </tbody>

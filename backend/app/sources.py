@@ -50,7 +50,7 @@ DISASTER_GROUPS = {
     "flood": [
         "lũ lụt", "ngập lụt", "ngập úng", "lũ dâng", "đỉnh lũ", "mực nước báo động",
         "vỡ đê", "tràn đê", "xả lũ", "hồ chứa", "thủy điện", "xả tràn", "nước sông dâng",
-        "ngập sâu", "ngập nhà", "ngập phố", "chia cắt", "cô lập", "vỡ đập", "sự cố đập",
+        "ngập sâu", "ngập nhà", "ngập phố", "chia cắt", "cô lập", "vỡ đập", "sự cố đập", "vỡ hồ", "sự cố hồ chứa",
         "vượt báo động", "đạt đỉnh", "nước lụt", "triều cường kết hợp", "ngập triều cường",
         "mực nước trên báo động", "lũ báo động 3", "lũ lịch sử", "ngập lụt cục bộ", "vùng trũng thấp",
         "nước dâng", "triều cường",
@@ -195,9 +195,9 @@ CONTEXT_KEYWORDS = [
   "mất điện", "mất nước", "mất sóng", "mất liên lạc",
 
   # Casualty / SAR
-  "tử vong", "thiệt mạng", "thương vong", "bị thương", "trọng thương",
+  "tử vong", "thiệt mạng", "thương vong", "bị thương", "trọng thương", "chết người",
   "mất tích", "mất liên lạc", "mắc kẹt", "bị kẹt",
-  "tìm kiếm", "tìm kiếm cứu nạn", "cứu nạn", "cứu hộ", "giải cứu", "giúp dân", "chiến sĩ", "gặt lúa", "chạy lũ", "vùng lũ", "đồng bào"
+  "tìm kiếm", "tìm kiếm cứu nạn", "cứu nạn", "cứu hộ", "giải cứu", "giúp dân", "chiến sĩ", "gặt lúa", "chạy lũ", "vùng lũ", "đồng bào",
 
   # Response / command
   "sơ tán", "sơ tán khẩn cấp", "di dời", "di dời khẩn cấp", "lánh nạn", "tránh trú",
@@ -276,8 +276,9 @@ VIP_TERMS = [
     r"trực\s*ban\s*(?:PCTT|24\/24|phòng\s*chống\s*thiên\s*tai)",
 
     # Severe incident signatures
-    r"vỡ\s*(?:đê|đập)(?:\s*(?:nghiêm\s*trọng|khẩn\s*cấp))?",
-    r"sự\s*cố\s*(?:đê\s*điều|hồ\s*đập|đập|kè)\s*(?:nghiêm\s*trọng|khẩn\s*cấp)",
+    r"vỡ\s*(?:đê|đập|hồ)(?:\s*(?:nghiêm\s*trọng|khẩn\s*cấp))?",
+    r"hồ\s*chứa\s*(?:(?!\.).)*\s*vỡ",
+    r"sự\s*cố\s*(?:đê\s*điều|hồ\s*đập|đập|hồ|kè)\s*(?:nghiêm\s*trọng|khẩn\s*cấp)",
     r"cảnh\s*báo\s*lũ\s*khẩn\s*cấp",
     r"nguy\s*cơ\s*sạt\s*lở\s*(?:rất\s*cao|đặc\s*biệt\s*cao)",
     r"phát\s*hiện\s*thi\s*thể.*(?:bão|lũ|sạt\s*lở|trôi|sông|suối)",
@@ -298,6 +299,8 @@ VIP_TERMS = [
     r"thương\s*vong\s*(?:lớn|nặng\s*nề|nghiêm\s*trọng)",
     r"đoàn\s*thiện\s*nguyện\s*gặp\s*nạn",
     r"xe\s*cứu\s*trợ\s*gặp\s*nạn",
+    r"chết\s*người\s*(?:do|vì|trong)\s*(?:lũ|bão|ngập|sạt|vỡ|thiên\s*tai)",
+    r"(?:làm|khiến)\s*(?:\d+|nhiều)\s*người\s*(?:chết|tử\s*vong|thiệt\s*mạng)",
     r"xe\s*chở\s*đoàn\s*.*gặp\s*nạn",
     r"khẩn\s*trương\s*cứu\s*hộ",
     r"tàu\s*.*mắc\s*cạn",

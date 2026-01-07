@@ -399,31 +399,46 @@ PLANNING_PREP_KEYWORDS = [
 
 def safe_no_accent(pat: str) -> bool:
     """
-    Determine if a regex pattern is safe to match against unaccented text.
-    Prevents single-word disaster terms (like 'bão' -> 'bao') from matching
-    unrelated words (like 'báo động', 'bạo hành').
+    Heuristic to determine if a regex pattern is safe to match against
+    unaccented text without causing excessive false positives.
     """
-    # 1. Whitelist high-confidence hazard words that are relatively unique
-    # We allow these even if they are single words because 'lu', 'loc', 'ret'
-    # are less likely to cause massive noise than 'bao' or 'mua'.
-    hazard_whitelist = ["lũ", "lụt", "lốc", "rét"]
-    if any(hw in pat.lower() for hw in hazard_whitelist):
-        return True
+    # Whitelist very specific disaster terms that are safe even if short
+    hazard_whitelist = ["lũ", "lụt", "lốc", "rét", "bão"]
+    # Only allow unaccented if it contains one of these AND is long enough or specific
 
-    # 2. Extract "Effective" content by stripping regex syntax
-    # Remove lookarounds (?...) and char classes [\w] etc.
-    p = re.sub(r"\(\?[:=!<>]+.*?\)", "", pat)
+    # 1. Strip lookarounds (they don't add to match length)
+    # (?=...), (?!...), (?<=...), (?<!...)
+    p = re.sub(r"\(\?(?![P:])(?:[=!<>]+).*?\)", " ", pat)
+
+    # 2. Strip character classes [a-z], [0-9], etc.
+    p = re.sub(r"\[.*?\]", " ", p)
+
+    # 3. Strip escape classes \w, \s, \d, etc.
     p = re.sub(r"\\(?:[wsdbwWSD]|b|B)", " ", p)
-    p = re.sub(r"[\(\)\|\{\}\[\]\*\+\?\.\^\\\$]", " ", p)
+
+    # 4. Strip group syntax but keep contents
+    p = re.sub(r"\(\?P<.*?>", " ", p) # named groups
+    p = re.sub(r"\(\?:", " ", p)   # non-capturing
+    p = re.sub(r"[\(\)]", " ", p)
+
+    # 5. Strip quantifiers and other meta-chars
+    p = re.sub(r"[\*\+\?\.\^\\\$|{}]", " ", p)
+
+    # 6. Normalize whitespace
     p = re.sub(r"\s+", " ", p).strip()
 
-    # 3. Strict Safety Heuristic
-    # Pattern is safe if it is long enough (> 12 chars) to be specific.
-    # OR it is a multi-word phrase AND long enough to avoid short word collisions (e.g. 'bo bao' vs 'bo bao')
-    if len(p) >= 12:
-        return True
-    if " " in p and len(p) >= 10:
-        return True
+    # [LOGIC]
+    # - If very long literal string (>= 12), usually safe
+    # - If multiple words (contains space) and length >= 10, usually safe
+    # - If it's a whitelisted hazard word AND has some specificity (e.g. "lũ ống", "siêu bão")
+
+    if len(p) >= 12: return True
+    if " " in p and len(p) >= 10: return True
+
+    # Specific safety for whitelisted words with modifiers
+    for hw in hazard_whitelist:
+        if hw in p.lower() and len(p) >= 6:
+            return True
 
     return False
 
@@ -640,21 +655,23 @@ for reg in PROVINCE_REGIONS:
 
 DISASTER_RULES = [
   # 1) Bão & áp thấp nhiệt đới (Storm/Tropical Cyclone)
-  ("storm", [
-    r"(?<!\w)(?<!đi\s)(?<!dự\s)(?<!tờ\s)(?<!đọc\s)(?<!thông\s)(?<!cảnh\s)(?<!tình\s)(?<!khai\s)(?<!đảm\s)(?<!nhà\s)(?<!đăng\s)(?<!viết\s)(?<!bài\s)(?<!gây\s)(?<!tâm\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\ssale)(?!\skhuyến\s)(?!\schấn\s)(?!\ssa\s)(?!\struyền\s)(?!\s*chí)(?!\s*cáo)(?!\s*hiểm)(?!\s*vệ)(?!\s*đảm)(?!\s*tàng)(?!\s*toàn)(?!\s*quản)(?!\s*trì)(?!\s*hành)(?!\s*mật)(?!\s*gồm)(?!\s*phủ)(?!\s*quát)(?!\s*trọn)(?!\s*bì)(?!\s*vây)(?!\s*nhiêu)(?!\s*lâu)(?!\s*xa)(?!\s*giờ)(?!\s*lao\s*động)(?!\s*thanh\s*niên)(?!\s*tiền\s*phong)(?!\s*tin\s*tức)(?!\s*công\s*an)(?!\s*phụ\s*nữ)(?!\s*đầu\s*tư)(?!\s*pháp\s*luật)(?!\s*giáo\s*dục)(?!\s*nhân\s*dân)(?!\s*điện\s*tử)(?!\s*vietnamnet)(?!\s*dân\s*trí)(?!\s*vnexpress)(?!\s*công\s*lý)(?!\s*văn\s*hóa)(?!\s*quốc\s*tế)(?!\s*thù)(?!\s*đáp)(?!\s*công)(?!\s*hại)(?!\s*bệnh)(?!\s*lửa)(?!\s*dư\s*luận)(?!\s*chấn\s*thương)(?!\s*đơn)(?!\s*deal)(?!\s*like)(?!\s*view)(?!\s*cấp(?!\s*\d))(?!\w)",
-    r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
-    r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"ATND", r"xoáy\s*thuận\s*nhiệt\s*đới",
-    r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"gió\s*bão", r"bão\s*khẩn\s*cấp",
-    r"đổ\s*bộ", r"tiến\s*vào\s*biển\s*đông", r"tin\s*bão", r"bão\s*[A-Za-z][A-Za-z0-9-]{2,}",
-    r"vùng\s*tâm\s*bão", r"áp\s*sát\s*ven\s*biển", r"hoàn\s*lưu\s*sau\s*bão", r"gió\s*xoáy", r"phong\s*ba", r"mưa\s*lũ", r"mưa\s*bão"
-  ]),
+    ("storm", [
+        rf"(?<!\w)(?<!đi\s)(?<!dự\s)(?<!tờ\s)(?<!đọc\s)(?<!thông\s)(?<!cảnh\s)(?<!tình\s)(?<!khai\s)(?<!đảm\s)(?<!nhà\s)(?<!đăng\s)(?<!viết\s)(?<!bài\s)(?<!gây\s)(?<!tâm\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\ssale)(?!\skhuyến\s)(?!\schấn\s)(?!\ssa\s)(?!\struyền\s)(?!\s*chí)(?!\s*cáo)(?!\s*hiểm)(?!\s*vệ)(?!\s*đảm)(?!\s*tàng)(?!\s*toàn)(?!\s*quản)(?!\s*trì)(?!\s*hành)(?!\s*mật)(?!\s*gồm)(?!\s*phủ)(?!\s*quát)(?!\s*trọn)(?!\s*bì)(?!\s*vây)(?!\s*nhiêu)(?!\s*lâu)(?!\s*xa)(?!\s*giờ)(?!\s*lao\s*động)(?!\s*thanh\s*niên)(?!\s*tiền\s*phong)(?!\s*tin\s*tức)(?!\s*công\s*an)(?!\s*phụ\s*nữ)(?!\s*đầu\s*tư)(?!\s*pháp\s*luật)(?!\s*giáo\s*dục)(?!\s*nhân\s*dân)(?!\s*điện\s*tử)(?!\s*vietnamnet)(?!\s*dân\s*trí)(?!\s*vnexpress)(?!\s*công\s*lý)(?!\s*văn\s*hóa)(?!\s*quốc\s*tế)(?!\s*thù)(?!\s*đáp)(?!\s*công)(?!\s*hại)(?!\s*bệnh)(?!\s*lửa)(?!\s*dư\s*luận)(?!\s*chấn\s*thương)(?!\s*đơn)(?!\s*deal)(?!\s*like)(?!\s*view)(?!\s*cấp(?!\s*\d))(?!\w)",
+        r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
+        r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"ATND", r"xoáy\s*thuận\s*nhiệt\s*đới",
+        r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"gió\s*bão", r"bão\s*khẩn\s*cấp",
+        r"đổ\s*bộ", r"tiến\s*vào\s*biển\s*đông", r"tin\s*bão",
+        # Named Storms: Stricter, and we'll manually ensure this doesn't pass safe_no_accent if it's too risky
+        r"(?<!\w)bão\s+[A-ZĐ][a-zà-ỹ]{3,}(?!\w)",
+        r"vùng\s*tâm\s*bão", r"áp\s*sát\s*ven\s*biển", r"hoàn\s*lưu\s*sau\s*bão", r"gió\s*xoáy", r"phong\s*ba", r"mưa\s*lũ", r"mưa\s*bão"
+    ]),
 
   # 2) Lũ lụt (Flood) - User Cat 2
   ("flood", [
     r"lũ\s*lụt", r"ngập\s*lụt", r"ngập\s*úng", r"xả\s*lũ",
     r"lũ\s*lên", r"lũ\s*xuống", r"lũ\s*về", r"nước\s*lũ",
     r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lưu\s*lượng\s*về\s*hồ",
-    r"lũ\s*trên\s*các\s*sông", r"vỡ\s*đê", r"tràn\s*đê", r"vỡ\s*đập", r"xả\s*tràn",
+    r"lũ\s*trên\s*các\s*sông", r"vỡ\s*đê", r"tràn\s*đê", r"vỡ\s*đập", r"vỡ\s*hồ", r"hồ\s*chứa\s*(?:(?!\.).)*\s*vỡ", r"sự\s*cố\s*hồ", r"xả\s*tràn",
     r"tin\s*lũ", r"báo\s*động\s*(?:1|2|3|I|II|III)",
     r"lũ\s*lịch\s*sử", r"ngập\s*lụt\s*cục\s*bộ", r"vùng\s*trũng\s*thấp", r"\blũ(?!\s*trẻ)\b", r"vùng\s*lũ", r"rốn\s*lũ", r"chạy\s*lũ"
   ]),
@@ -1820,7 +1837,7 @@ ABSOLUTE_VETO = [
     r"\b(?:huyền\s*sử|truyền\s*thuyết|giai\s*thoại|chứng\s*nhân\s*lịch\s*sử|kỷ\s*vật|hồi\s*ký|tâm\s*tình|tản\s*mạn|góc\s*nhìn)\b",
 
     # 11. CULTURE & ETHNIC CUSTOMS (Jan 2026)
-    r"\b(?:dân\s*tộc\s*(?:mông|dao|tày|nùng|thái|lô\s*lô)|văn\s*hóa\s*dân\s*gian|làn\s*điệu|điệu\s*múa|then|cọi|páo\s*dung|lễ\s*hội|tín\s*ngưỡng|thờ\s*cúng|miếu|đền|chùa|di\s*sản|phong\s*tục|tập\s*quán|làng\s*nghề|nghệ\s*nhân)(?!.*(?:sạt\s*lở|lũ|bão|thiên\s*tai|mưa\s*lũ|khắc\s*phục|thiệt\s*hại))\b",
+    r"\b(?:dân\s*tộc\s*(?:mông|dao|tày|nùng|thái|lô\s*lô)|văn\s*hóa\s*dân\s*gian|làn\s*điệu|điệu\s*múa|then|cọi|páo\s*dung|lễ\s*hội|tín\s*ngưỡng|thờ\s*cúng|miếu|đền|chùa|di\s*sản|phong\s*tục|tập\s*quán|làng\s*nghề|nghệ\s*nhân)(?!.*(?:sạt\s*lở|lũ|bão|thiên\s*tai|mưa\s*lũ|khắc\s*phục|thiệt\s*hại|vỡ|chết\s*người|thiệt\s*mạng|tử\s*vong|hồ\s*chứa))\b",
 
     # 12. MEDICAL & HEALTH (Individual cases)
     r"\b(?:phẫu\s*thuật|mổ|cấp\s*cứu\s*bệnh\s*nhân|bệnh\s*viện\s*đa\s*khoa|nguy\s*kịch|vỡ\s*tạng|vỡ\s*tim|chạy\s*thận|ecmo|lọc\s*máu|đột\s*quỵ|nhồi\s*máu|ung\s*thư|bàng\s*quang|ruột\s*thừa|sỏi\s*thận)(?!.*(?:bão|lũ|sạt\s*lở|thiên\s*tai|tai\s*nạn\s*thảm\s*khốc|sập\s*hầm|cháy\s*lớn|giông\s*bão|gặp\s*nạn|đuối\s*nước|ngập|mưa\s*lũ))\b",
@@ -2253,7 +2270,6 @@ for label, pats in DISASTER_RULES:
         
     DISASTER_RULES_RE.append((label, compiled_acc, compiled_no))
 
-RE_DANGER = re.compile("|".join(f"(?:{v_safe(p)})" for p in sources.DANGER_SIGS), RE_FLAGS)
 HIGH_PRIORITY_RE = [re.compile(v_safe(p), RE_FLAGS) for p in sources.HIGH_PRIORITY_KEYWORDS]
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp\s*)?([1-5|I-V|V])", re.IGNORECASE)
 
@@ -2929,18 +2945,6 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     if title_rule_match:
         rule_score += 2.0 # Increased from 1.5
 
-    # Red Alert Detection (High-danger warnings)
-    is_red_alert = False
-    # Check title first (higher confidence)
-    if title and RE_DANGER.search(title):
-        is_red_alert = True
-    # Then check body
-    if not is_red_alert and RE_DANGER.search(text):
-        is_red_alert = True
-    
-    if is_red_alert:
-        rule_score += 5.0 # Boost for danger signals (Lũ lịch sử, Khẩn cấp)
-
     # 2. Impact Match - Deaths, missing, or significant damage/metrics
     # REFINED: Use extracted objects to determine impact_score
     raw_details = extract_impact_details(text, t_acc=t_acc, t_no=t_no)
@@ -3092,6 +3096,11 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         score -= 10.0 # Effectively kill the score if it's a conditional veto (accident/fire) with no disaster rule match
     
     if score < 0: score = 0.0
+    
+    # [OPTIMIZATION] Soft Negative Penalty: Significant reduction for ambiguous noise
+    if soft_negative:
+        score -= 4.0
+        if score < 0: score = 0.0
 
     context_score = context_score_val
 
@@ -3119,8 +3128,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         "is_province_match": best_prov != "unknown",
         "is_agency_match": agency_match is not None,
         "is_sensitive_location": len(sensitive_found) > 0,
-        "stage": event_stage, # Add the detected stage
-        "is_red_alert": is_red_alert
+        "stage": event_stage # Add the detected stage
     }
 
 def determine_event_stage(text: str, impact_detected: bool = False, t_acc: str = None) -> str:
@@ -3181,7 +3189,7 @@ def contains_disaster_keywords(text: str, title: str = "", trusted_source: bool 
     if title:
         # Named Storms, Cold Waves, Heat Waves, Quakes, Tsunamis, Landslides
         if re.search(r"(?:bão|áp\s*thấp).*?(?:số\s*\d+|[A-ZĐ][a-zà-ỹ]+)", title): return True
-        if re.search(r"(?:động\s*đất|sóng\s*thần|rung\s*chấn|triều\s*cường|mưa\s*đá|lũ\s*quét|sạt\s*lở|lũ\s*ống|hạn\s*mặn|xâm\s*nhập\s*mặn|sụt\s*lún|gió\s*lốc|vòi\s*rồng|mưa\s*(?:lớn|lũ|to|dông|bão)|ngập(?:\s*(?:lụt|úng|nặng))?|rốn\s*lũ|lũ\s*lụt|nước\s*dâng|xả\s*lũ|vỡ\s*đê|vỡ\s*đập|sập\s*cầu|sập\s*nhà|sập\s*bờ\s*kè|sập\s*đê|cấm\s*biển|cấm\s*đường|mất\s*tích\s*do\s*lũ|lệnh\s*sơ\s*tán|tình\s*trạng\s*khẩn\s*cấp|khắc\s*phục\s*hậu\s*quả|hàng\s*cứu\s*trợ|tiếp\s*tế|(?:tái\s*thiết|hồi\s*sinh|khôi\s*phục|cứu\s*trợ|viện\s*trợ).*(?:lũ|bão|thiên\s*tai|ngập|sạt\s*lở))", title_lower, re.IGNORECASE): return True
+        if re.search(r"(?:động\s*đất|sóng\s*thần|rung\s*chấn|triều\s*cường|mưa\s*đá|lũ\s*quét|sạt\s*lở|lũ\s*ống|hạn\s*mặn|xâm\s*nhập\s*mặn|sụt\s*lún|gió\s*lốc|vòi\s*rồng|mưa\s*(?:lớn|lũ|to|dông|bão)|ngập(?:\s*(?:lụt|úng|nặng))?|rốn\s*lũ|lũ\s*lụt|nước\s*dâng|xả\s*lũ|vỡ\s*đê|vỡ\s*đập|vỡ\s*hồ|hồ\s*chứa\s*.*vỡ|sập\s*cầu|sập\s*nhà|sập\s*bờ\s*kè|sập\s*đê|cấm\s*biển|cấm\s*đường|mất\s*tích\s*do\s*lũ|lệnh\s*sơ\s*tán|tình\s*trạng\s*khẩn\s*cấp|khắc\s*phục\s*hậu\s*quả|hàng\s*cứu\s*trợ|tiếp\s*tế|chết\s*người\s*(?:do|vì|trong)\s*(?:lũ|bão|ngập|sạt|vỡ|thiên\s*tai)|(?:tái\s*thiết|hồi\s*sinh|khôi\s*phục|cứu\s*trợ|viện\s*trợ).*(?:lũ|bão|thiên\s*tai|ngập|sạt\s*lở))", title_lower, re.IGNORECASE): return True
         # Official Bulletins
         if re.search(r"(?:bản)?\s*tin\s*(?:dự\s*báo|cảnh\s*báo|khí\s*tượng|thủy\s*văn|hải\s*văn|khẩn\s*cấp)", title_lower, re.IGNORECASE): return True
         if "đài khí tượng" in title_lower or "trung tâm dự báo" in title_lower: return True
@@ -3719,7 +3727,7 @@ def extract_all_metadata(text: str, summary_raw: str, title: str, existing_signa
     has_impacts = (impacts.get("deaths") or impacts.get("missing") or impacts.get("injured") or 0) > 0
     stage = determine_event_stage(text, impact_detected=has_impacts, t_acc=t_acc)
     
-    needs_verification = int(validate_impacts(impacts))
+    needs_verification = validate_impacts(impacts)
     
     return {
         "disaster_type": disaster_info.get("primary_type", "unknown"),
@@ -3730,6 +3738,5 @@ def extract_all_metadata(text: str, summary_raw: str, title: str, existing_signa
         "impact_details": impact_details_raw,
         "needs_verification": needs_verification,
         "has_impacts": has_impacts,
-        "landmark": impacts.get("landmark"),
-        "is_red_alert": signals.get("is_red_alert", False)
+        "landmark": impacts.get("landmark")
     }

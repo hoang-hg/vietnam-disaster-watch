@@ -337,17 +337,6 @@ export default function EventDetail() {
         }
       `}</style>
       
-      {ev.is_red_alert && (
-        <div className="bg-red-600 text-white px-4 py-3 rounded-xl flex items-center justify-between gap-3 mb-6 animate-pulse shadow-lg shadow-red-200 no-print">
-          <div className="flex items-center gap-3">
-             <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-             <div>
-                <div className="font-black text-lg uppercase tracking-wider leading-none">CẢNH BÁO ĐỎ - NGUY HIỂM KHẨN CẤP</div>
-                <div className="text-[10px] font-bold opacity-90 uppercase tracking-tighter mt-1">Đây là bản tin cảnh báo cấp độ cao. Yêu cầu theo dõi sát sao và thực hiện các biện pháp phòng tránh.</div>
-             </div>
-          </div>
-        </div>
-      )}
 
       {/* Header Actions */}
       <div className="flex justify-between items-center no-print mb-6">

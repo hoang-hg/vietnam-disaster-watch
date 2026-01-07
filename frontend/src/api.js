@@ -21,18 +21,22 @@ async function request(path, options = {}) {
   const res = await fetch(API_BASE + path, { ...options, headers });
 
   if (!res.ok) {
+    let errorDetail = "";
+    try {
+      const errData = await res.json();
+      errorDetail = errData.detail || JSON.stringify(errData);
+    } catch (e) {
+      errorDetail = await res.text().catch(() => "Unknown error");
+    }
+
     if (res.status === 401) {
+      console.error(`[AUTH] 401 Unauthorized at ${path}. Detail:`, errorDetail);
+      
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
       window.dispatchEvent(new Event("storage"));
     }
     
-    let errorDetail = "";
-    try {
-      const errData = await res.json();
-      errorDetail = errData.detail || "";
-    } catch (e) {}
-
     const err = new Error(errorDetail || `API error ${res.status}`);
     err.status = res.status;
     throw err;
