@@ -19,35 +19,35 @@ Tài liệu này là cẩm nang chi tiết nhất giúp bạn **Triển khai**, 
 Đây là cách chuẩn nhất, đảm bảo môi trường trên máy bạn "y hệt" server thật, tránh lỗi "trên máy tôi vẫn chạy được".
 
 ### A. Môi trường Phát triển (Dev)
-Dùng khi bạn code, test tính năng mới trên máy cá nhân.
+Dùng khi bạn phát triển, test tính năng mới.
 
-1.  **Cấu hình:** Đảm bảo file `.env` (ở thư mục gốc) đã có nội dung cơ bản (có thể copy từ `.env.example`).
+1.  **Cấu hình:** Đảm bảo file `.env` (ở thư mục gốc) đã có nội dung cơ bản.
 2.  **Khởi động:**
     ```bash
     docker-compose up --build
     ```
-    *(Thêm `-d` vào cuối nếu muốn chạy ngầm)*
+    Hệ thống sẽ chờ Database và Redis đạt trạng thái **healthy** trước khi khởi động Backend.
 3.  **Truy cập:**
-    *   Web: `http://localhost:5173` (hoặc cổng 8080 tùy cấu hình Nginx dev)
-    *   API: `http://localhost:8000`
+    *   Web Frontend: `http://localhost` (Cổng 80)
+    *   Full API Docs: `http://localhost:8000/docs`
 
 ### B. Môi trường Thực tế (Production)
-Dùng khi bạn đưa lên Server (VPS) để người dùng truy cập công khai.
+Dùng khi triển khai trên VPS (Ubuntu/Debian) có domain và SSL.
 
 1.  **Chuẩn bị file cấu hình:**
     ```bash
-    cp .env.production.example backend/.env
-    # Sửa file backend/.env này: thay đổi SECRET_KEY và DB_PASSWORD thật bảo mật.
+    cp .env.production.example .env
+    # Sửa file .env: Cập nhật DB_PASSWORD, SECRET_KEY, DEFAULT_ADMIN_PASSWORD, DOMAIN, EMAIL.
     ```
-2.  **Cài đặt SSL (HTTPS) & Chạy:**
-    Sử dụng file cấu hình dành riêng cho Prod:
+2.  **Khởi động:**
     ```bash
     docker-compose -f docker-compose.prod.yml up -d --build
     ```
+    Hệ thống sẽ tự động cấu hình Nginx, Certbot (cho SSL) và thiết lập các Health Check để đảm bảo độ tin cậy.
 3.  **Cấu hình Tên miền (Domain):**
     *   Mở file `nginx/nginx.conf`.
     *   Tìm dòng `server_name` và sửa `example.com` thành tên miền của bạn.
-    *   Chạy lại lệnh ở bước 2 để Nginx cập nhật.
+    *   Khởi động lại: `docker-compose -f docker-compose.prod.yml restart nginx`
 
 ---
 
@@ -145,7 +145,7 @@ A: Đây là lỗi phổ biến về network trong Docker. Nguyên nhân và cá
      build:
        context: ./frontend
        args:
-         - VITE_API_BASE=/api  # PHẢI là /api, KHÔNG PHẢI http://localhost:8000
+         - VITE_API_BASE=  # Để trống để sử dụng relative paths (tự động nhận domain hiện tại)
    ```
 
 2. **Kiểm tra `frontend/nginx.conf` có proxy cấu hình:**

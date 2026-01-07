@@ -16,7 +16,7 @@ export default function AdminReports() {
             const data = await getJson("/api/user/admin/crowdsource/pending");
             setReports(data);
         } catch (err) {
-            console.error(err);
+            setToast({ isVisible: true, message: `Không thể tải danh sách: ${err.message}`, type: "error" });
         } finally {
             setLoading(false);
         }

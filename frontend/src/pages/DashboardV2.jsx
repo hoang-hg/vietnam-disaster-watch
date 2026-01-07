@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString('vi-VN'));
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
   useEffect(() => {
     const handleStorage = () => {
@@ -74,12 +75,20 @@ export default function Dashboard() {
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
-          if (parsed && typeof parsed === 'object') {
-              setUser(parsed);
+          if (parsed && typeof parsed === 'object' && parsed.username) {
+            setUser(parsed);
+          } else {
+            // Invalid user object, clear it
+            setUser(null);
+            localStorage.removeItem("user");
           }
         } catch (e) {
-          console.error("Dashboard session sync error:", e);
+          // Invalid JSON, clear corrupted data
+          setUser(null);
+          localStorage.removeItem("user");
         }
+      } else {
+        setUser(null);
       }
     };
     handleStorage();
@@ -91,46 +100,22 @@ export default function Dashboard() {
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+
     return () => {
         window.removeEventListener("storage", handleStorage);
+        window.removeEventListener("resize", handleResize);
         observer.disconnect();
     };
   }, []);
 
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
-
+  const isAdmin = user?.role === 'admin';
   const favoriteProvince = user?.favorite_province;
 
 
-  const events = useMemo(() => {
-    let list = rawEvents;
-    if (hazardType !== "all") list = list.filter(e => e.disaster_type === hazardType);
-    if (provQuery) {
-        const q = normalizeStr(provQuery, true);
-        list = list.filter(e => e.province && normalizeStr(e.province, true).includes(q));
-    }
-    if (searchQuery) {
-        const q = normalizeStr(searchQuery);
-        list = list.filter(e => e.title && normalizeStr(e.title).includes(q));
-    }
-    if (quickFilter === "casualties") {
-        list = list.filter(e => (e.deaths || 0) + (e.missing || 0) + (e.injured || 0) > 0);
-    } else if (quickFilter === "damage") {
-        list = list.filter(e => {
-            const hasAmount = (e.damage_billion_vnd || 0) > 0;
-            const det = e.details || {};
-            return hasAmount || 
-                   (det.homes?.length > 0) || 
-                   (det.agriculture?.length > 0) || 
-                   (det.infrastructure?.length > 0) || 
-                   (det.disruption?.length > 0) || 
-                   (det.damage?.length > 0);
-        });
-    } else if (quickFilter === "provinces") {
-        list = list.filter(e => e.province && VALID_PROVINCES.includes(e.province));
-    }
-    return list;
-  }, [rawEvents, hazardType, provQuery, searchQuery, quickFilter]);
+  const events = rawEvents; // Rely on server-side filtering
 
   useEffect(() => {
     setPage(0);
@@ -144,11 +129,14 @@ export default function Dashboard() {
       if (endDate) queryParams += `&end_date=${endDate}`;
       if (hazardType !== "all") queryParams += `&type=${hazardType}`;
       if (provQuery) queryParams += `&province=${encodeURIComponent(provQuery)}`;
+      if (searchQuery) queryParams += `&q=${encodeURIComponent(searchQuery)}`;
+      if (quickFilter) queryParams += `&quick=${quickFilter}`;
 
       // Sidebar articles should ideally follow type/province filters too
       let artParams = `?limit=20`;
       if (hazardType !== "all") artParams += `&type=${hazardType}`;
       if (provQuery) artParams += `&province=${encodeURIComponent(provQuery)}`;
+      if (searchQuery) artParams += `&q=${encodeURIComponent(searchQuery)}`;
 
       // Optimized: Fetch summary, recent events (limited), and latest articles in parallel
       const [s, evs, arts] = await Promise.all([
@@ -160,7 +148,7 @@ export default function Dashboard() {
       if (signal?.aborted) return;
 
       setStats(s);
-      setRawEvents(evs.filter((e) => e.disaster_type && !["unknown", "other"].includes(e.disaster_type)));
+      setRawEvents(evs); // Filtered by server already
       setArticles(arts);
       setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
 
@@ -219,7 +207,7 @@ export default function Dashboard() {
       controller.abort();
       clearInterval(t);
     };
-  }, [startDate, endDate, hazardType, provQuery]);
+  }, [startDate, endDate, hazardType, provQuery, searchQuery, quickFilter]);
 
   const isToday = startDate === new Date().toISOString().split('T')[0] && !endDate;
 
@@ -633,12 +621,12 @@ export default function Dashboard() {
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-5 transition-all duration-300">
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Phân loại thiên tai</h3>
-            <div className="h-96">
+            <div className={windowWidth < 640 ? "h-64" : "h-96"}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 30 }} barCategoryGap="15%">
+                <BarChart data={chartData} layout="vertical" margin={{ left: 5, right: 30 }} barCategoryGap="15%">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="dark:opacity-10" />
                   <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: '#64748b' }} />
+                  <YAxis type="category" dataKey="name" width={windowWidth < 640 ? 100 : 140} tick={{ fontSize: windowWidth < 640 ? 9 : 10, fill: '#64748b' }} />
                   <Tooltip 
                     cursor={{fill: '#f1f5f9', opacity: 0.1}} 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }}
@@ -646,13 +634,13 @@ export default function Dashboard() {
                   <Bar 
                     dataKey="count" 
                     radius={[0, 4, 4, 0]} 
-                    barSize={24}
+                    barSize={windowWidth < 640 ? 18 : 24}
                     isAnimationActive={true}
                     animationDuration={1500}
                     animationBegin={200}
                   >
                     {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
-                    <LabelList dataKey="count" position="right" fontSize={12} fontWeight={600} fill="#64748b" /> 
+                    <LabelList dataKey="count" position="right" fontSize={windowWidth < 640 ? 10 : 12} fontWeight={600} fill="#64748b" /> 
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

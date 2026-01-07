@@ -43,7 +43,7 @@ DISASTER_GROUPS = {
         "vịnh bắc bộ", "vịnh thái lan",
         "tên bão", "bão có tên", "bão quốc tế",
         "vùng tâm bão", "áp sát ven biển", "hoàn lưu sau bão", "gió xoáy", "phong ba",
-        "chống bão", "ứng phó bão", "phòng chống bão", "chạy bão", "tránh trú bão"
+        "chống bão", "ứng phó bão", "phòng chống bão", "chạy bão", "tránh trú bão", "mưa bão"
     ],
 
     # 2) Lũ lụt (Flood)
@@ -58,7 +58,7 @@ DISASTER_GROUPS = {
         "lật ghe", "chìm ghe", "lật thuyền", "chìm thuyền", "chìm tàu", "trôi dạt",
         "di dời", "sơ tán", "phong tỏa", "uy hiếp",
         "sập bờ kè", "sập cầu", "cuốn trôi",
-        "mạch đùn", "mạch sủi"
+        "mạch đùn", "mạch sủi", "vùng rốn lũ", "lũ", "vùng lũ", "chạy lũ", "đồng bào vùng lũ"
     ],
 
     # 3) Lũ quét/Lũ ống (Flash Flood)
@@ -172,7 +172,8 @@ DISASTER_GROUPS = {
         "nghỉ học", "cho học sinh nghỉ", "dừng học",
         "tình trạng khẩn cấp", "công bố khẩn cấp", "lệnh khẩn cấp",
         "tìm kiếm", "cứu nạn", "cứu hộ", "mất tích", "xuất quân", "điều động", "tái định cư",
-        "giải cứu", "mắc kẹt", "huy động", "hàng cứu trợ"
+        "giải cứu", "mắc kẹt", "huy động", "hàng cứu trợ", "tìm kiếm cứu nạn", "trục vớt",
+        "giúp dân", "chiến sĩ", "gặt lúa", "chạy lũ", "vùng lũ", "đồng bào", "trắng đêm", "xuyên đêm"
     ]
 }
 
@@ -196,7 +197,7 @@ CONTEXT_KEYWORDS = [
   # Casualty / SAR
   "tử vong", "thiệt mạng", "thương vong", "bị thương", "trọng thương",
   "mất tích", "mất liên lạc", "mắc kẹt", "bị kẹt",
-  "tìm kiếm", "tìm kiếm cứu nạn", "cứu nạn", "cứu hộ", "giải cứu",
+  "tìm kiếm", "tìm kiếm cứu nạn", "cứu nạn", "cứu hộ", "giải cứu", "giúp dân", "chiến sĩ", "gặt lúa", "chạy lũ", "vùng lũ", "đồng bào"
 
   # Response / command
   "sơ tán", "sơ tán khẩn cấp", "di dời", "di dời khẩn cấp", "lánh nạn", "tránh trú",
@@ -289,7 +290,7 @@ VIP_TERMS = [
     r"viện\s*trợ.*thiên\s*tai",
     r"ủng\s*hộ\s*đồng\s*bào.*(?:bão|lũ|thiên\s*tai)",
     r"(?:tiếp\s*nhận|trao\s*tặng).*hỗ\s*trợ.*(?:bão|lũ|thiên\s*tai)",
-    r"khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|ngập|sạt\s*lở)",
+    r"khắc\s*phục\s*hậu\s*quả\s*(?:sau\s*)?(?:thiên\s*tai|bão|lũ|mưa\s*bão|ngập|sạt\s*lở)",
     r"sạt\s*lở\s*(?:nghiêm\s*trọng|gây\s*tắc|chia\s*cắt|núi)",
     r"cấm\s*(?:đường|phương\s*tiện)\s*(?:do|vì)\s*(?:sạt\s*lở|mưa\s*lũ|bão)",
     r"tàu\s*cá.*mất\s*liên\s*lạc",
@@ -317,8 +318,10 @@ VIP_TERMS_RE = [
 DANGER_SIGS = [
     r"khẩn\s*cấp", r"đặc\s*biệt\s*nguy\s*hiểm", r"cực\s*kỳ\s*nguy\s*hiểm",
     r"siêu\s*bão", r"lũ\s*lịch\s*sử", r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*[345]",
-    r"đặc\s*biệt\s*lớn", r"nguy\s*hiểm\s*cao", r"báo\s*động\s*đỏ", r"cảnh\s*báo\s*đỏ"
+    r"đặc\s*biệt\s*lớn", r"nguy\s*hiểm\s*cao", r"báo\s*động\s*đỏ", r"cảnh\s*báo\s*đỏ",
+    r"khốc\s*liệt", r"dữ\s*dội", r"thảm\s*khốc", r"tang\s*thương", r"trắng\s*trời"
 ]
+# High Priority Keywords indicative of high-impact events
 
 HAZARD_ANCHOR = r"(?:bão|áp\s*thấp|lũ|ngập|sạt\s*lở|nắng\s*nóng|hạn\s*hán|xâm\s*nhập\s*mặn|gió\s*mạnh|sương\s*mù|cháy\s*rừng|động\s*đất|sóng\s*thần|triều\s*cường|nước\s*dâng|mưa\s*lớn|chìm\s*tàu|tài\s*cá\s*gặp\s*nạn|thuyền\s*viên|mất\s*tích)"
 PCTT_ANCHOR   = r"(?:phòng\s*chống\s*thiên\s*tai|PCTT|TKCN|tìm\s*kiếm\s*cứu\s*nạn)"
@@ -398,6 +401,7 @@ HIGH_PRIORITY_KEYWORDS = [
     r"lũ\s*quét", r"lũ\s*ống", r"vỡ\s*đê", r"vỡ\s*đập", r"siêu\s*bão",
     r"sạt\s*lở\s*đất", r"sóng\s*thần", r"động\s*đất\s*mạnh", r"nước\s*dâng\s*do\s*bão",
     r"triều\s*cường\s*kỷ\s*lục", r"công\s*điện\s*(?:khẩn|hỏa\s*tốc|chỉ\s*đạo|ứng\s*phó|số)",
+    r"ngập\s*lụt\s*nghiêm\s*trọng", r"sạt\s*lở\s*đất\s*vùi\s*lấp", r"mưa\s*lũ\s*gây\s*ngập",
     r"lệnh\s*sơ\s*tán", r"tình\s*trạng\s*khẩn\s*cấp", r"chỉ\s*thị\s*khẩn",
     r"bị\s*cô\s*lập", r"bị\s*chia\s*cắt", r"phong\s*tỏa\s*khẩn\s*cấp",
     r"(?:thủ\s*tướng|phó\s*thủ\s*tướng)\s*(?:chỉ\s*đạo|yêu\s*cầu|ký\s*công\s*điện)",

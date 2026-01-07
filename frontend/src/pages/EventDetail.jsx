@@ -14,13 +14,16 @@ import {
   API_BASE
 } from "../api.js";
 import { DISASTER_METADATA } from "../theme.js";
-import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle, ChevronRight } from "lucide-react";
+import { ArrowLeft, Trash2, Printer, FileText, Edit2, Check, X, Share2, Facebook, Send, Bell, BellOff, Download, RefreshCw, MapPin, Calendar, Zap, AlertTriangle, ChevronRight, Loader2 } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import Badge from "../components/Badge.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
 import { useNavigate } from "react-router-dom";
+import ImpactBreakdown from "../components/event-detail/ImpactBreakdown.jsx";
+import FieldInfoTable from "../components/event-detail/FieldInfoTable.jsx";
+import ArticleTimelineItem from "../components/event-detail/ArticleTimelineItem.jsx";
 
 // Local metadata removed
 
@@ -43,7 +46,7 @@ export default function EventDetail() {
           setUser(u);
           setIsAdmin(u?.role === 'admin');
         } catch (e) {
-          console.error("Role check error:", e);
+          // Session errors are expected when logged out
         }
       } else {
         setUser(null);
@@ -60,6 +63,10 @@ export default function EventDetail() {
 
   // Modal states
   const [deleteModal, setDeleteModal] = useState({ open: false, type: null, id: null });
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Toast state
   const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
@@ -71,12 +78,14 @@ export default function EventDetail() {
 
   const confirmDeleteArticle = async () => {
     const articleId = deleteModal.id;
+    setIsDeleting(true);
     try {
         await deleteJson(`/api/articles/${articleId}`);
         setEv(prev => ({
             ...prev,
             articles: prev.articles.filter(a => a.id !== articleId),
-            sources_count: Math.max(0, prev.sources_count - 1)
+            sources_count: Math.max(0, (prev.sources_count || 0) - 1),
+            articles_count: Math.max(0, (prev.articles_count || 0) - 1)
         }));
         setToast({ isVisible: true, message: 'Đã xóa bài báo thành công!', type: 'success' });
     } catch (err) {
@@ -89,11 +98,15 @@ export default function EventDetail() {
         } else {
             setToast({ isVisible: true, message: "Xóa thất bại: " + err.message, type: 'error' });
         }
+    } finally {
+        setIsDeleting(false);
+        setDeleteModal({ open: false, type: null, id: null });
     }
   };
 
   const handleApproveArticle = async (e, articleId) => {
     e.preventDefault();
+    setIsApproving(articleId);
     try {
         await postJson(`/api/admin/approve-article/${articleId}`);
         // Update local state to reflect approved status
@@ -104,10 +117,13 @@ export default function EventDetail() {
         setToast({ isVisible: true, message: 'Đã duyệt bài báo thành công!', type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Duyệt bài thất bại: " + err.message, type: 'error' });
+    } finally {
+        setIsApproving(null);
     }
   };
 
   const handleApproveEvent = async () => {
+    setIsApproving('all');
     try {
         await postJson(`/api/admin/events/${ev.id}/approve`);
         setEv(prev => ({
@@ -118,6 +134,8 @@ export default function EventDetail() {
         setToast({ isVisible: true, message: 'Đã duyệt toàn bộ sự kiện thành công!', type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Duyệt sự kiện thất bại: " + err.message, type: 'error' });
+    } finally {
+        setIsApproving(null);
     }
   };
 
@@ -153,6 +171,7 @@ export default function EventDetail() {
   };
 
   const confirmDeleteEvent = async () => {
+    setIsDeleting(true);
     try {
         await deleteJson(`/api/events/${ev.id}`);
         // Redirect with success parameter
@@ -163,10 +182,14 @@ export default function EventDetail() {
         } else {
             setToast({ isVisible: true, message: "Xóa sự kiện thất bại: " + err.message, type: 'error' });
         }
+    } finally {
+        setIsDeleting(false);
+        setDeleteModal({ open: false, type: null, id: null });
     }
   };
 
   const handleExportExcel = async () => {
+    setIsExporting(true);
     const token = localStorage.getItem("access_token");
     try {
         const response = await fetch(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel`, {
@@ -180,8 +203,11 @@ export default function EventDetail() {
         document.body.appendChild(a);
         a.click();
         a.remove();
+        setToast({ isVisible: true, message: 'Đã xuất dữ liệu thành công!', type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
+    } finally {
+        setIsExporting(false);
     }
   };
 
@@ -191,7 +217,9 @@ export default function EventDetail() {
     if (user && ev?.id) {
       getJson(`/api/user/events/${ev.id}/is-following`)
         .then(data => setIsFollowing(data.is_following))
-        .catch(console.error);
+        .catch((err) => {
+          showToast(`Không thể tải dữ liệu: ${err.message}`, "error");
+        });
     }
   }, [user, ev?.id]);
 
@@ -209,6 +237,7 @@ export default function EventDetail() {
   };
 
   const handleSaveEdit = async () => {
+    setIsSaving(true);
     try {
         const updated = await putJson(`/api/events/${ev.id}`, editForm);
         setEv({ ...ev, ...updated });
@@ -216,6 +245,8 @@ export default function EventDetail() {
         setToast({ isVisible: true, message: 'Cập nhật sự kiện thành công!', type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi cập nhật: " + err.message, type: 'error' });
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -320,15 +351,16 @@ export default function EventDetail() {
             {!isEditing ? (
               <>
                 <button 
+                  disabled={isExporting}
                   onClick={handleExportExcel}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md disabled:opacity-50"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Xuất Excel</span>
+                  {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span>{isExporting ? "Đang xuất..." : "Xuất Excel"}</span>
                 </button>
                 <button 
                   onClick={() => window.print()}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group no-print"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Xuất PDF</span>
@@ -345,29 +377,32 @@ export default function EventDetail() {
                   className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-all shadow-md group"
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Xóa sự kiện</span>
+                  <span>Xóa</span>
                 </button>
                 {(ev.needs_verification === 1 || ev.articles.some(a => a.status === 'pending')) && (
                   <button 
+                    disabled={isApproving === 'all'}
                     onClick={handleApproveEvent}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md animate-pulse hover:animate-none"
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md animate-pulse hover:animate-none disabled:opacity-50"
                     title="Duyệt nhanh toàn bộ sự kiện và bài báo"
                   >
-                    <Check className="w-4 h-4" />
-                    <span>Duyệt nhanh</span>
+                    {isApproving === 'all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    <span>{isApproving === 'all' ? "Đang duyệt..." : "Duyệt nhanh"}</span>
                   </button>
                 )}
               </>
             ) : (
                 <>
                 <button 
+                  disabled={isSaving}
                   onClick={handleSaveEdit}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group"
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md group disabled:opacity-50"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Lưu</span>
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  <span>{isSaving ? "Đang lưu..." : "Lưu"}</span>
                 </button>
                 <button 
+                  disabled={isSaving}
                   onClick={() => setIsEditing(false)}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition-all shadow-md group"
                 >
@@ -561,139 +596,15 @@ export default function EventDetail() {
       </div>
       
       {/* Field Information Table - Matches the professional report format */}
-      {(isEditing || ev.commune || ev.village || ev.route || ev.cause || ev.characteristics) && (
-        <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-             <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
-             <span className="text-sm font-bold text-slate-800 uppercase tracking-tight">Thông tin thực địa (Trích xuất)</span>
-          </div>
-          <table className="min-w-full divide-y divide-slate-100">
-             <tbody className="divide-y divide-slate-50 text-sm">
-                {(isEditing || ev.commune) && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 w-1/3 bg-slate-50/50 text-xs uppercase tracking-wider">Xã/Phường</td>
-                    <td className="px-4 py-3 text-slate-900 font-semibold">
-                      {isEditing ? (
-                        <input value={editForm.commune || ""} onChange={e => setEditForm({...editForm, commune: e.target.value})} className="w-full border rounded px-2 py-1" />
-                      ) : ev.commune}
-                    </td>
-                  </tr>
-                )}
-                {(isEditing || ev.village) && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Thôn/Bản/Xóm</td>
-                    <td className="px-4 py-3 text-slate-900">
-                      {isEditing ? (
-                        <input value={editForm.village || ""} onChange={e => setEditForm({...editForm, village: e.target.value})} className="w-full border rounded px-2 py-1" />
-                      ) : ev.village}
-                    </td>
-                  </tr>
-                )}
-                {(isEditing || ev.route) && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Tuyến đường</td>
-                    <td className="px-4 py-3 text-slate-900 font-mono text-xs">
-                      {isEditing ? (
-                        <input value={editForm.route || ""} onChange={e => setEditForm({...editForm, route: e.target.value})} className="w-full border rounded px-2 py-1" />
-                      ) : ev.route}
-                    </td>
-                  </tr>
-                )}
-                {(isEditing || ev.cause) && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Nguyên nhân</td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input value={editForm.cause || ""} onChange={e => setEditForm({...editForm, cause: e.target.value})} className="w-full border rounded px-2 py-1" />
-                      ) : (
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${ev.cause.includes('Mưa') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {ev.cause}
-                         </span>
-                      )}
-                    </td>
-                  </tr>
-                )}
-                {(isEditing || ev.characteristics) && (
-                  <tr>
-                    <td className="px-4 py-3 font-medium text-slate-500 bg-slate-50/50 text-xs uppercase tracking-wider">Đặc điểm / Quy mô</td>
-                    <td className="px-4 py-3 text-slate-800 leading-relaxed italic">
-                      {isEditing ? (
-                        <textarea value={editForm.characteristics || ""} onChange={e => setEditForm({...editForm, characteristics: e.target.value})} className="w-full border rounded px-2 py-1" rows={3} />
-                      ) : `"${ev.characteristics}"`}
-                    </td>
-                  </tr>
-                )}
-             </tbody>
-          </table>
-        </div>
-      )}
+      <FieldInfoTable 
+        isEditing={isEditing} 
+        ev={ev} 
+        editForm={editForm} 
+        setEditForm={setEditForm} 
+      />
 
       {/* Detailed Impact Breakdown (homes, agriculture, etc.) */}
-      {ev.details && Object.keys(ev.details).length > 0 && (
-          <div className="mt-8 space-y-4">
-              <div className="flex items-center gap-2 text-slate-800 font-bold">
-                  <span className="w-1.5 h-5 bg-red-500 rounded-full"></span>
-                  Chi tiết thiệt hại trích xuất
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Housing Details */}
-                  {ev.details.homes?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                          <div className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                               <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                               Nhà cửa & Công trình
-                          </div>
-                          <div className="space-y-2">
-                              {ev.details.homes.map((h, i) => (
-                                  <div key={i} className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 truncate mr-2">{h.status || 'Hư hại'}</span>
-                                      <span className="font-bold text-slate-900 whitespace-nowrap">{h.num} {h.unit || 'căn'}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-
-                  {/* Agriculture Details */}
-                  {ev.details.agriculture?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                          <div className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                               <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                               Nông nghiệp & Chăn nuôi
-                          </div>
-                          <div className="space-y-2">
-                              {ev.details.agriculture.map((a, i) => (
-                                  <div key={i} className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 truncate mr-2">{a.crop || a.livestock || 'Diện tích'} {a.status ? `(${a.status})` : ''}</span>
-                                      <span className="font-bold text-slate-900 whitespace-nowrap">{a.num} {a.unit}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-
-
-                  {/* Disruption Details */}
-                  {ev.details.disruption?.length > 0 && (
-                      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                          <div className="text-xs font-bold text-slate-600 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                               <div className="w-2 h-2 rounded-full bg-slate-500"></div>
-                               Giao thông & Đời sống
-                          </div>
-                          <div className="space-y-2">
-                              {ev.details.disruption.map((d, i) => (
-                                  <div key={i} className="flex justify-between items-center text-sm">
-                                      <span className="text-slate-600 truncate mr-2">{d.obj || 'Số lượng'}</span>
-                                      <span className="font-bold text-slate-900 whitespace-nowrap">{d.num || ''} {d.unit || 'lần'}</span>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
-              </div>
-          </div>
-      )}
+      <ImpactBreakdown details={ev.details} />
 
       {ev.articles && ev.articles.length > 0
         ? (() => {
@@ -762,101 +673,15 @@ export default function EventDetail() {
             ?.sort(
               (a, b) => new Date(b.published_at) - new Date(a.published_at)
             )
-            .map((a, idx) => (
-              <div
-                key={a.id}
-                className="relative border-l-2 border-gray-300 pb-4 pl-6"
-              >
-                <div className="absolute -left-2.5 top-1 h-5 w-5 rounded-full bg-blue-500" />
-                <div className="flex items-start justify-between gap-3 group/item">
-                  <a
-                    className={`font-medium text-sm transition-all flex-1 ${a.is_broken ? 'text-slate-400 cursor-not-allowed no-underline' : 'underline decoration-gray-300 hover:decoration-gray-600 text-blue-600 hover:text-blue-800'}`}
-                    href={a.is_broken ? '#' : a.url}
-                    onClick={(e) => a.is_broken && e.preventDefault()}
-                    target={a.is_broken ? '_self' : '_blank'}
-                    rel="noreferrer"
-                  >
-                    {a.title}
-                    {a.is_broken && <span className="ml-2 text-[10px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">BÀI GỐC ĐÃ GỠ</span>}
-                  </a>
-                   {isAdmin && a.status === 'pending' && (
-                       <div className="flex gap-1 no-print">
-                          <button
-                              onClick={(e) => handleApproveArticle(e, a.id)}
-                              className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-                              title="Duyệt bài báo (Admin)"
-                          >
-                              <Check className="w-3.5 h-3.5" />
-                          </button>
-                       </div>
-                   )}
-                </div>
-                <div className="mt-1 text-xs text-gray-500 flex flex-wrap gap-2 items-center">
-                     <span className="text-blue-600 hover:underline font-semibold bg-gray-50 px-2 py-1 rounded border border-gray-100 uppercase">
-                     {a.source.replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
-                   </span>
-                  <span>{fmtTimeAgo(a.published_at)}</span>
-                  <span>•</span>
-                  <span>{fmtType(a.disaster_type)}</span>
-                  {a.province !== "unknown" ? (
-                    <>
-                      <span>•</span>
-                      <span>{a.province}</span>
-                    </>
-                  ) : null}
-                  {a.agency ? (
-                    <>
-                      <span>•</span>
-                      <span className="font-medium">Xác nhận: {a.agency}</span>
-                    </>
-                  ) : null}
-                   {a.needs_verification === 1 ? (
-                     <span className="bg-red-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">
-                        SỐ LIỆU CẦN XÁC MINH
-                     </span>
-                  ) : null}
-                  {a.status === 'pending' ? (
-                     <span className="bg-yellow-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm">
-                        ĐANG CHỜ DUYỆT
-                     </span>
-                  ) : null}
-                  {a.is_broken ? (
-                     <span className="bg-blue-50 text-blue-600 border border-blue-200 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                        ĐÃ LƯU TRỮ TẠI HỆ THỐNG
-                     </span>
-                  ) : null}
-                </div>
-                {a.full_text ? (
-                   <div className="mt-3">
-                     <details className="group/fulltext border border-slate-100 rounded-lg overflow-hidden">
-                       <summary className="bg-slate-50 px-3 py-2 text-[10px] font-bold text-blue-600 cursor-pointer uppercase hover:text-blue-800 transition-colors list-none flex items-center justify-between">
-                          <span className="flex items-center gap-1.5">
-                            <ChevronRight className="w-3 h-3 group-open/fulltext:rotate-90 transition-transform" />
-                            {a.is_broken ? 'Nội dung đã lưu trữ tại hệ thống' : 'Xem nội dung chi tiết bài báo'}
-                          </span>
-                          <span className="text-slate-400 font-medium lowercase italic">{Math.round(a.full_text.length / 5)} chữ</span>
-                       </summary>
-                       <div className="p-4 bg-white text-xs text-slate-800 leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap font-serif">
-                          {a.full_text}
-                       </div>
-                     </details>
-                   </div>
-                ) : a.summary ? (
-                  <div className={`mt-2 text-xs text-gray-700 ${a.is_broken ? '' : 'line-clamp-2'}`}>
-                    {a.summary}
-                  </div>
-                ) : null}
-                {a.image_url && !isJunkImage(a.image_url) ? (
-                  <div className="mt-3">
-                    <img 
-                      src={a.image_url} 
-                      alt="" 
-                      className="rounded-lg h-48 w-full object-cover border border-slate-200"
-                      onError={(e) => {e.target.style.display = 'none'}}
-                    />
-                  </div>
-                ) : null}
-              </div>
+            .map((a) => (
+              <ArticleTimelineItem 
+                key={a.id} 
+                article={a} 
+                isAdmin={isAdmin} 
+                handleApprove={handleApproveArticle}
+                handleDelete={handleDeleteArticle}
+                isApproving={isApproving}
+              />
             ))}
         </div>
       </div>

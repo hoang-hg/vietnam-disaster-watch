@@ -81,3 +81,51 @@ export const CHART_COLORS = [
   THEME_COLORS.wildfire,
 ];
 
+/**
+ * Emergency Hotline Configuration
+ * Used by Rescue page for national emergency numbers styling
+ */
+export const EMERGENCY_HOTLINE_STYLES = {
+  "112": { 
+    color: THEME_COLORS.danger, 
+    label: "CỨU NẠN TRUNG ƯƠNG",
+    description: "Tổng đài cứu nạn khẩn cấp 112"
+  },
+  "113": { 
+    color: THEME_COLORS.storm, 
+    label: "AN NINH TRẬT TỰ",
+    description: "Công an - Trật tự an toàn xã hội"
+  },
+  "114": { 
+    color: THEME_COLORS.drought, 
+    label: "PCCC & CỨU HỘ",
+    description: "Phòng cháy chữa cháy và cứu hộ"
+  },
+  "115": { 
+    color: THEME_COLORS.success, 
+    label: "CẤP CỨU Y TẾ",
+    description: "Cấp cứu y tế khẩn cấp"
+  },
+  "default": { 
+    color: THEME_COLORS.secondary, 
+    label: "ĐƯỜNG DÂY NÓNG",
+    description: "Hotline hỗ trợ"
+  }
+};
+
+/**
+ * Get styling for national emergency hotline based on phone number
+ * @param {string} phone - Phone number (e.g., "112", "113-xxx-xxx")
+ * @returns {Object} Style config with color and label
+ */
+export function getNationalHotlineStyle(phone) {
+  if (!phone) return EMERGENCY_HOTLINE_STYLES.default;
+  
+  const key = Object.keys(EMERGENCY_HOTLINE_STYLES).find(k => 
+    k !== "default" && phone.includes(k)
+  );
+  
+  return EMERGENCY_HOTLINE_STYLES[key] || EMERGENCY_HOTLINE_STYLES.default;
+}
+
+

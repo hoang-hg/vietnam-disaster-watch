@@ -304,10 +304,13 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
     has_strong_metrics = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.damage_billion_vnd or 0) > 0.5
     
     # Use pre-compiled mega-regex for titles if available
-    has_vip = any(nlp.sources.RE_RECOVERY.search(article.title.lower())) if hasattr(nlp.sources, 'RE_RECOVERY') else False
+    has_vip = bool(nlp.sources.RE_RECOVERY.search(article.title)) if hasattr(nlp.sources, 'RE_RECOVERY') else False
     if not has_vip:
+        title_lower = article.title.lower()
         for vip_re in VIP_TERMS_RE:
-            if vip_re.search(article.title.lower()): has_vip = True; break
+            if vip_re.search(title_lower): 
+                has_vip = True
+                break
     
     # 3. Smart Confidence Matrix
     if has_vip or has_red: ev.confidence = 1.0

@@ -7,17 +7,26 @@ services:
     restart: always
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-12102004}
-      - POSTGRES_DB=${DB_NAME:-postgres}
-    # No ports exposed - only accessible within Docker network
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres_password_dev}
+      - POSTGRES_DB=${DB_NAME:-viet_disaster}
+    # Using volumes for persistence in dev
     volumes:
-      - ./db_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: viet_disaster_redis
     restart: always
-    # No ports exposed - only accessible within Docker network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   backend:
     build: 
@@ -31,25 +40,34 @@ services:
       - ./backend_data:/app/data
       - ./backend/logs:/app/logs
     environment:
-      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-12102004}@db:5432/${DB_NAME:-postgres}
+      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres_password_dev}@db:5432/${DB_NAME:-viet_disaster}
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key_123}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD:-Admin@123456}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
-      - db
-      - redis
-
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   frontend:
     build:
       context: ./frontend
       args:
-        - VITE_API_BASE=
+        - VITE_API_BASE= # Empty for same-domain proxy in dev
     container_name: viet_disaster_frontend
     restart: always
     ports:
       - "80:80"
     depends_on:
       - backend
+
 volumes:
   db_data:

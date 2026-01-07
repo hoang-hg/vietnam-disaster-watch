@@ -226,12 +226,23 @@ def export_crowdsource_reports(db: Session = Depends(get_db), admin: models.User
 def get_rescue_hotlines(
     limit: int = 1000,
     province: str | None = None,
+    q: str | None = None,
     db: Session = Depends(get_db)
 ):
-    q = db.query(models.RescueHotline)
-    if province:
-        q = q.filter(models.RescueHotline.province == province)
-    return q.limit(limit).all()
+    query = db.query(models.RescueHotline)
+    if province and province != "Toàn quốc":
+        query = query.filter(models.RescueHotline.province == province)
+    
+    if q:
+        search_filter = f"%{q}%"
+        query = query.filter(
+            (models.RescueHotline.agency.ilike(search_filter)) | 
+            (models.RescueHotline.phone.ilike(search_filter)) |
+            (models.RescueHotline.address.ilike(search_filter)) |
+            (models.RescueHotline.province.ilike(search_filter))
+        )
+        
+    return query.order_by(models.RescueHotline.province.asc(), models.RescueHotline.agency.asc()).limit(limit).all()
 
 @router.post("/admin/rescue", response_model=schemas.RescueHotlineOut)
 def create_rescue_hotline(

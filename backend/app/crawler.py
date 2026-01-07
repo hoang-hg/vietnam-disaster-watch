@@ -70,16 +70,8 @@ Base.metadata.create_all(bind=engine)
 # User Requirement: Skip any news before 2025-01-01
 CRAWL_MIN_DATE = datetime(2025, 1, 1)
 
-# Optional classifier loader (joblib). If model exists, use as second-pass.
+# Optional classifier loader (joblib) - Removed as it was unused and causing import overhead
 _classifier = None
-try:
-    import joblib
-    from pathlib import Path
-    model_path = Path(__file__).resolve().parents[1] / 'models' / 'light_classifier.joblib'
-    if model_path.exists():
-        _classifier = joblib.load(model_path)
-except Exception:
-    _classifier = None
 
 
 def _get_impact_value(impact_data):
@@ -516,7 +508,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
 
 def _log_artic_status(src_name, title, status, score):
     tag = f"[{status.upper()}]"
-    logger.info(f"   {tag} {src_name}: {title[:70]}... (Score: {score:.1f})")
+    # [OPTIMIZATION] Reduce log spam in production
+    if status == "approved":
+        logger.info(f"   {tag} {src_name}: {title[:70]}... (Score: {score:.1f})")
+    else:
+        logger.debug(f"   {tag} {src_name}: {title[:70]}... (Score: {score:.1f})")
 
 async def _enrich_article_async(db: Session, src, article):
     """Enrich article with full-text content and better metadata."""

@@ -34,18 +34,18 @@ def register(user_in: UserCreate, db: Session = Depends(auth.get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Initial logic: first user or email starting with "admin" can be admin
-    # Constraint: Maximum 3 admin accounts
-    admin_count = db.query(models.User).filter(models.User.role == "admin").count()
-    is_first = db.query(models.User).count() == 0
+    # Fixed Admin Accounts Configuration
+    # Only these specific emails will be granted Admin privileges upon registration.
+    # You can modify this list to change who gets admin access.
+    FIXED_ADMIN_EMAILS = {
+        "admin@vdw.com",
+        "quantri@vdw.com", 
+        "root@vdw.com" 
+    }
     
     role = "user"
-    if is_first or user_in.email.startswith("admin"):
-        if admin_count < 3:
-            role = "admin"
-        else:
-            # Fallback to "user" if admin limit (3) is reached
-            role = "user"
+    if user_in.email in FIXED_ADMIN_EMAILS:
+        role = "admin"
 
     hashed_pw = auth.get_password_hash(user_in.password)
     new_user = models.User(

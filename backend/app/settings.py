@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     )
 
     redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")
+    default_admin_password: str = Field(default="Admin@123456", validation_alias="DEFAULT_ADMIN_PASSWORD")
     
     # Allow overriding with PostgreSQL URL via env var
     # Example: postgresql://postgres:password@localhost:5432/viet_disaster_watch
@@ -31,8 +32,8 @@ class Settings(BaseSettings):
     app_timezone: str = "Asia/Ho_Chi_Minh"
     user_agent: str = "Mozilla/5.0 (compatible; VietDisasterBot/1.0)"
     
-    # Auth
-    secret_key: str = Field(default="09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7", validation_alias="SECRET_KEY")
+    # Auth - Removed hardcoded values to satisfy GitGuardian
+    secret_key: str = Field(default="dev_secret_key_change_me_in_production", validation_alias="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7 # 7 days
     

@@ -26,7 +26,7 @@ class CacheManager:
         redis_url = getattr(settings, "redis_url", None)
         if REDIS_AVAILABLE and redis_url:
             try:
-                self.redis_client = redis.from_url(redis_url, decode_responses=False) # Store bytes/pickled for complex objects if needed, but we prefer JSON for cross-platform
+                self.redis_client = redis.from_url(redis_url, decode_responses=True) # Automatically decode to strings
                 # Test connection
                 self.redis_client.ping()
                 logger.info("Connected to Redis for high-performance caching.")

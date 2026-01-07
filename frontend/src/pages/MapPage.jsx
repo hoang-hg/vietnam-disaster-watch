@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { getJson } from "../api";
 import VietnamMap from "../components/VietnamMap";
 import { Filter, Calendar, Layers } from "lucide-react";
-import { THEME_COLORS } from "../theme";
+import { THEME_COLORS, DISASTER_METADATA } from "../theme";
 import { PROVINCE_COORDINATES } from "../provinces";
 import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
 import logoIge from "../assets/logo_ige.png";
@@ -43,24 +43,24 @@ const getProvCoords = (name) => {
 
 const LEGEND_ITEMS = [
     { key: "all", color: THEME_COLORS.brand, label: "Tất cả" },
-    { key: "storm", color: THEME_COLORS.storm, label: "Bão / Áp thấp" },
-    { key: "flood_landslide", color: THEME_COLORS.landslide, label: "Lũ / Sạt lở" },
-    { key: "heat_drought", color: THEME_COLORS.drought, label: "Nắng nóng / Hạn" },
-    { key: "wind_fog", color: THEME_COLORS.cold_surge, label: "Gió mạnh / Sương mù" },
-    { key: "storm_surge", color: THEME_COLORS.storm_surge, label: "Nước dâng" },
+    { key: "storm", color: THEME_COLORS.storm, label: DISASTER_METADATA.storm.label },
+    { key: "flood_landslide", color: THEME_COLORS.flash_flood, label: "Lũ / Sạt lở / Sụt lún" },
+    { key: "heat_drought", color: THEME_COLORS.drought, label: "Nắng nóng / Hạn / Mặn" },
+    { key: "wind_fog", color: THEME_COLORS.cold_surge, label: "Rét / Sương muối" },
+    { key: "storm_surge", color: THEME_COLORS.storm_surge, label: DISASTER_METADATA.storm_surge.label },
     { key: "extreme_other", color: THEME_COLORS.extreme_weather, label: "Cực đoan khác" },
-    { key: "wildfire", color: THEME_COLORS.wildfire, label: "Cháy rừng" },
-    { key: "erosion", color: THEME_COLORS.erosion, label: "Xói lở" },
-    { key: "quake_tsunami", color: THEME_COLORS.earthquake, label: "Động đất" },
-    { key: "warning_forecast", color: THEME_COLORS.warning_forecast, label: "Tin cảnh báo" },
-    { key: "recovery", color: THEME_COLORS.recovery, label: "Khắc phục hậu quả" },
+    { key: "wildfire", color: THEME_COLORS.wildfire, label: DISASTER_METADATA.wildfire.label },
+    { key: "erosion", color: THEME_COLORS.erosion, label: DISASTER_METADATA.erosion.label },
+    { key: "quake_tsunami", color: THEME_COLORS.earthquake, label: "Động đất / Sóng thần" },
+    { key: "warning_forecast", color: THEME_COLORS.warning_forecast, label: DISASTER_METADATA.warning_forecast.label },
+    { key: "recovery", color: THEME_COLORS.recovery, label: DISASTER_METADATA.recovery.label },
 ];
 
 const MAPPING = {
     storm: ['storm'],
     flood_landslide: ['flood', 'flash_flood', 'landslide', 'subsidence'],
     heat_drought: ['heatwave', 'drought', 'salinity'],
-    wind_fog: ['cold_surge', 'wind_fog'],
+    wind_fog: ['cold_surge'], 
     storm_surge: ['storm_surge'],
     extreme_other: ['extreme_weather', 'unknown'],
     wildfire: ['wildfire'],
@@ -73,6 +73,7 @@ const MAPPING = {
 export default function MapPage() {
   const [dataEvents, setDataEvents] = useState([]); // Raw data from API
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -136,7 +137,7 @@ export default function MapPage() {
             }
         } catch (e) {
             if (e.name === 'AbortError') return;
-            console.error(e);
+            setError(`Không thể tải dữ liệu bản đồ: ${e.message}`);
         } finally {
             setLoading(false);
         }

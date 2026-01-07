@@ -8,11 +8,119 @@ from .auth_router import router as auth_router
 from .user_router import router as user_router
 from .crawler import process_once, _process_once_async
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    # 0. Create database tables if they don't exist
+    from .database import engine, Base
+    from . import models # ensure models are registered
+    Base.metadata.create_all(bind=engine)
+    
+    # 0.1 Seed Fixed Admin Accounts (User request)
+    try:
+        from . import settings as app_settings
+        from . import auth
+        db = next(auth.get_db())
+        
+        # Use a secure default from settings or env
+        default_admin_pw = getattr(settings, "default_admin_password", "Admin@123456")
+        
+        fixed_admins = [
+            ("admin@vdw.com", default_admin_pw),
+            ("quantri@vdw.com", default_admin_pw),
+            ("root@vdw.com", default_admin_pw)
+        ]
+        
+        for email, pw in fixed_admins:
+            user = db.query(models.User).filter(models.User.email == email).first()
+            if not user:
+                hashed = auth.get_password_hash(pw)
+                new_admin = models.User(
+                    email=email,
+                    hashed_password=hashed,
+                    full_name="Administrator",
+                    role="admin",
+                    favorite_province=None
+                )
+                db.add(new_admin)
+                print(f"[SEED] Created Admin: {email} (Password from ENV/Default)")
+        db.commit()
+    except Exception as e:
+        print(f"[SEED] Failed to seed admins: {e}")
+
+    # 0.2 Capture Main Loop for Broadcast (Cross-thread SSE)
+    import asyncio
+    from . import broadcast, ws
+    try:
+        loop = asyncio.get_running_loop()
+        broadcast.set_main_loop(loop)
+        ws.manager.set_main_loop(loop)
+    except RuntimeError:
+        pass
+
+    # 1. Initial full crawl on startup
+    import pytz
+    from datetime import datetime, timedelta
+    tz = pytz.timezone(settings.app_timezone)
+    scheduler.add_job(
+        process_once,
+        'date',
+        run_date=datetime.now(tz) + timedelta(seconds=15),
+        id="startup_crawl"
+    )
+
+    # ... Tiered Scheduler Jobs Configuration ...
+    from .sources import SOURCES
+    tier1_sources = [s.name for s in SOURCES if any(kw in s.name for kw in [
+        "KTTV Quốc gia", "KTTV Ninh Bình", "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", 
+        "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", "KTTV An Giang", "KTTV Hưng Yên", 
+        "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
+        "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"
+    ])]
+
+    tier2_sources = [
+        "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
+        "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
+        "VietNamNet", "Nhân Dân", "Tiền Phong", "Người Lao Động", "Quân đội Nhân dân", "Báo Chính Phủ", 
+        "Nông Nghiệp & Môi trường", "Báo Dân tộc và Phát triển","Báo Giao thông", "Cổng TTĐT Chính phủ (Công báo)",
+        "Bnews", "Báo Nông nghiệp VN", "Tạp chí Giao thông", "Báo Công lý", "Báo Văn hóa", "Báo Xây dựng",
+        "VnEconomy", "VTC News", "Báo Quốc tế", "Dân Việt", "VOV", "Báo Công Thương", "Vietnam.vn",
+        "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
+    ]
+
+    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=15, jitter=60), kwargs={"only_sources": tier1_sources}, id="crawl_group1_critical", replace_existing=True)
+    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=45, jitter=120), kwargs={"only_sources": tier2_sources}, id="crawl_group2_major", replace_existing=True)
+    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=120, jitter=300), id="crawl_group3_full", replace_existing=True)
+    
+    from .source_monitor import monitor_now
+    scheduler.add_job(lambda: asyncio.run(monitor_now()), trigger=IntervalTrigger(minutes=720, jitter=60), id="source_health_monitor", replace_existing=True)
+    
+    from .log_utils import rotate_logs
+    scheduler.add_job(rotate_logs, trigger=IntervalTrigger(hours=12, jitter=60), id="log_rotation", replace_existing=True)
+    
+    from .crawler import cleanup_old_pending_articles
+    scheduler.add_job(cleanup_old_pending_articles, trigger=IntervalTrigger(hours=24, jitter=120), id="db_cleanup_pending", replace_existing=True)
+
+    scheduler.start()
+
+    yield
+    # Shutdown logic
+    scheduler.shutdown(wait=False)
+
 app = FastAPI(
     title="Viet Disaster Watch API",
     version="0.1.0",
     description="API tổng hợp tin thiên tai từ 12 báo (RSS/GNews RSS), phân loại & nhóm sự kiện.",
+    lifespan=lifespan
 )
+
+# Root endpoint redirect
+from fastapi.responses import RedirectResponse
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 app.add_middleware(
     CORSMiddleware,
@@ -139,125 +247,6 @@ job_defaults = {
 }
 scheduler = BackgroundScheduler(timezone=settings.app_timezone, job_defaults=job_defaults)
 
-@app.on_event("startup")
-async def on_startup():
-    # 0. Create database tables if they don't exist
-    from .database import engine, Base
-    from . import models # ensure models are registered
-    Base.metadata.create_all(bind=engine)
-    
-    # 0.1 Capture Main Loop for Broadcast (Cross-thread SSE)
-    import asyncio
-    from . import broadcast, ws
-    try:
-        loop = asyncio.get_running_loop()
-        broadcast.set_main_loop(loop)
-        ws.manager.set_main_loop(loop)
-    except RuntimeError:
-        pass
-
-    # 1. Initial full crawl on startup
-    # Use scheduler to run in background thread to avoid blocking main loop (WebSocket handshake)
-    import pytz
-    from datetime import datetime, timedelta
-    tz = pytz.timezone(settings.app_timezone)
-    scheduler.add_job(
-        process_once,
-        'date',
-        run_date=datetime.now(tz) + timedelta(seconds=15),
-        id="startup_crawl"
-    )
-
-    # Tier 1: Critical Official Sources (High Frequency: 15 mins)
-    # Includes National/Provincial KTTV, Earthquake Center, and Dyke Management
-    from .sources import SOURCES
-    tier1_sources = [s.name for s in SOURCES if any(kw in s.name for kw in [
-        "KTTV Quốc gia", "KTTV Ninh Bình", "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", 
-        "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", "KTTV An Giang", "KTTV Hưng Yên", 
-        "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
-        "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"
-    ])]
-
-    # Tier 2: Major National News (Medium Frequency: 30 mins)
-    tier2_sources = [
-        "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
-        "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
-        "VietNamNet", "Nhân Dân", "Tiền Phong", "Người Lao Động", "Quân đội Nhân dân", "Báo Chính Phủ", 
-        "Nông Nghiệp & Môi trường", "Báo Dân tộc và Phát triển","Báo Giao thông", "Cổng TTĐT Chính phủ (Công báo)",
-        "Bnews", "Báo Nông nghiệp VN", "Tạp chí Giao thông", "Báo Công lý", "Báo Văn hóa", "Báo Xây dựng",
-        "VnEconomy", "VTC News", "Báo Quốc tế", "Dân Việt", "VOV", "Báo Công Thương", "Vietnam.vn",
-        "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
-    ]
-
-    # Job 1: Group 1 (Critical Official Sources) - Frequency: 15 MINUTES
-    scheduler.add_job(
-        process_once,
-        trigger=IntervalTrigger(minutes=120, jitter=10),
-        kwargs={"only_sources": tier1_sources},
-        id="crawl_group1_critical",
-        replace_existing=True,
-        misfire_grace_time=300
-    )
-
-    # Job 2: Group 2 (Major National News) - Frequency: 30 MINUTES
-    scheduler.add_job(
-        process_once,
-        trigger=IntervalTrigger(minutes=240, jitter=20),
-        kwargs={"only_sources": tier2_sources},
-        id="crawl_group2_major",
-        replace_existing=True,
-        misfire_grace_time=600
-    )
-
-    # Job 3: Group 3 (Full Sweep / Province Papers) - Frequency: 60 MINUTES
-    # Performs a complete scan of all sources in sources.json.
-    scheduler.add_job(
-        process_once,
-        trigger=IntervalTrigger(minutes=480, jitter=120),
-        id="crawl_group3_full",
-        replace_existing=True,
-        misfire_grace_time=1200
-    )
-
-    # Job 4: Source Health Monitor (Periodic Check) - Frequency: 12 HOURS (720 mins)
-    # Checks for broken RSS feeds and inactive sources.
-    from .source_monitor import monitor_now
-    scheduler.add_job(
-        lambda: asyncio.run(monitor_now()),
-        trigger=IntervalTrigger(minutes=720, jitter=60),
-        id="source_health_monitor",
-        replace_existing=True,
-        misfire_grace_time=300
-    )
-
-
-    # Job 6: Log Rotation & Cleanup - Frequency: 12 HOURS
-    # Keeps log files small and prevents disk full issues.
-    from .log_utils import rotate_logs
-    scheduler.add_job(
-        rotate_logs,
-        trigger=IntervalTrigger(hours=12, jitter=60),
-        id="log_rotation",
-        replace_existing=True,
-        misfire_grace_time=600
-    )
-
-    # Job 7: Database Maintenance - Frequency: 24 HOURS
-    # Automatically deletes pending articles older than 30 days.
-    from .crawler import cleanup_old_pending_articles
-    scheduler.add_job(
-        cleanup_old_pending_articles,
-        trigger=IntervalTrigger(hours=24, jitter=120),
-        id="db_cleanup_pending",
-        replace_existing=True,
-        misfire_grace_time=3600
-    )
-
-    scheduler.start()
-
-@app.on_event("shutdown")
-def on_shutdown():
-    scheduler.shutdown(wait=False)
 
 
 

@@ -13,8 +13,8 @@ from .event_matcher import upsert_event_for_article
 import asyncio
 from pathlib import Path
 import json
-from .nlp import RECOVERY_KEYWORDS, PROVINCES
-from .sources import DISASTER_KEYWORDS
+from .nlp import PROVINCES
+from .sources import DISASTER_GROUPS
 from .risk_lookup import canon
 from . import broadcast, auth
 from .cache import cache
@@ -27,7 +27,6 @@ from typing import Optional, List
 # Unified filtering rules for Dashboard/Stats (Decision 18/2021/QĐ-TTg)
 def apply_dashboard_filters(query, db: Session):
     """Applies Decision 18 filters directly to a SQLAlchemy query."""
-    from .sources import DISASTER_GROUPS
     major_hazards = list(DISASTER_GROUPS.keys())
     
 
@@ -137,7 +136,13 @@ def latest_articles(
         q = q.filter(Article.disaster_type != 'unknown')
     
     res = q.limit(limit).all()
-    cache.set(cache_key, res, ttl=120)
+    
+    # [OPTIMIZATION] Serialize to dicts before caching to avoid detaching ORM objects
+    # and to ensure the cache stores simple serializable data.
+    # We use jsonable_encoder or model_dump depending on need, but since ArticleOut is a Pydantic model:
+    serialized = [ArticleOut.model_validate(a).model_dump() for a in res]
+    
+    cache.set(cache_key, serialized, ttl=120)
     return res
 
     # Optimized filtering logic: move simple filters to DB to reduce payload
@@ -148,7 +153,7 @@ def get_base_event_query(db: Session):
 def events(
     request: Request,
     response: Response,
-    limit: int = Query(50, ge=1, le=2000),
+    limit: int = Query(50, ge=1, le=500), # Reduced from 2000 to 500 to fit within SQLite variable limits (999) for IN clauses
     offset: int = Query(0, ge=0),
     after_id: int | None = Query(None, description="Keyset pagination for better performance on large datasets"),
     hours: int | None = Query(None, ge=1, le=720),
@@ -159,6 +164,7 @@ def events(
     q: str | None = Query(None),
     date: str | None = Query(None),
     wrapper: bool = Query(False),
+    quick: str | None = Query(None),
     db: Session = Depends(get_db),
     sort: str = Query("impact"),
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
@@ -166,7 +172,7 @@ def events(
     is_admin = current_user and current_user.role == "admin"
     
     # Cache optimization - include is_admin, offset, and wrapper in key
-    cache_key = f"ev_v2_{limit}_{offset}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}_{is_admin}_{wrapper}"
+    cache_key = f"ev_v2_{limit}_{offset}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}_{is_admin}_{wrapper}_{quick}"
     cached = cache.get(cache_key)
     if cached:
         response.headers["X-Cache"] = "HIT"
@@ -199,7 +205,15 @@ def events(
     if type: query = query.filter(Event.disaster_type == type)
     if province: query = query.filter(Event.province == province)
     if q: query = query.filter(Event.title.ilike(f"%{q}%"))
-    
+
+    # Quick Filters (Decision & UI Shortcuts)
+    if quick == "casualties":
+        query = query.filter((func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + func.coalesce(Event.injured, 0)) > 0)
+    elif quick == "damage":
+        query = query.filter(func.coalesce(Event.damage_billion_vnd, 0) > 0)
+    elif quick == "provinces":
+        query = query.filter(Event.province.isnot(None))
+
     if after_id is not None:
         query = query.filter(Event.id < after_id)
 
@@ -257,7 +271,9 @@ def events(
         Article.status.in_(["approved", "pending"])
     ).subquery()
     
+    # Optimized fetch of latest image/source per event
     leads = db.query(subq).filter(subq.c.rn == 1).all()
+    # Build map: event_id -> (image_url, source, url)
     leads_map = {row.event_id: (row.image_url, row.source, row.url) for row in leads}
 
     # 7. Final response assembly
@@ -286,7 +302,9 @@ def events(
 
         events_out.append(ev_data)
 
+    # [OPTIMIZATION] Serialize detailed Pydantic models to dicts before caching
     final_result = [e.model_dump() for e in events_out]
+    
     if wrapper:
         result = {"items": final_result, "total": total_count}
         cache.set(cache_key, result, ttl=300)
@@ -295,7 +313,7 @@ def events(
     else:
         cache.set(cache_key, final_result, ttl=300)
         response.headers["Cache-Control"] = "public, max-age=300"
-        return events_out
+        return final_result
 
 # Lightweight SVGs (stable CDN, pinned version)
 DEFAULT_IMAGES = {
@@ -472,10 +490,14 @@ def delete_event(
     db.delete(ev)
     db.commit()
     
-    # Invalidate cache
-    cache.delete(f"ev_detail_{event_id}")
-    cache.delete_match("stats_*")
-    cache.delete_match("articles_latest_*")
+    # Comprehensive cache invalidation
+    cache.delete(f"ev_detail_{event_id}")  # Event detail
+    cache.delete_match(f"ev_detail_{event_id}*")  # Event detail variants
+    cache.delete_match("events_*")  # All event list caches
+    cache.delete_match("stats_*")  # Stats summaries (event count changed)
+    cache.delete_match("articles_latest_*")  # Article lists may reference event
+    
+    logger.info(f"Deleted event {event_id}: {ev.title}")
     
     return
 
@@ -515,18 +537,25 @@ def delete_article(
     if old_event_id:
         remaining = db.query(Article).filter(Article.event_id == old_event_id).count()
         if remaining == 0:
+            # Event is now orphaned, delete it
             db.query(Event).filter(Event.id == old_event_id).delete()
             db.commit()
-            # Clear cache as an event disappeared
-            cache.delete_match(f"ev_detail_{old_event_id}*")
+            
+            # Comprehensive cache invalidation for deleted event
+            cache.delete_match(f"ev_detail_{old_event_id}*")  # Event detail caches
+            cache.delete_match("events_*")  # All event list caches
+            cache.delete_match("stats_*")  # Stats summaries (event count changed)
+            cache.delete_match("articles_latest_*")  # Article lists may reference event
+            
+            logger.info(f"Deleted orphaned event {old_event_id} after removing last article")
+        else:
+            # Event still has articles, just recalculate metrics
+            recalculate_event_metrics(db, old_event_id)
+            cache.delete(f"ev_detail_{old_event_id}")
+            # Also clear event lists as metrics changed
+            cache.delete_match("events_*")
     
-    # Always clear the detail of the article's parent event even if not deleted
-    # AND global stats/lists since an article was removed
-    if old_event_id:
-        recalculate_event_metrics(db, old_event_id)
-        cache.delete(f"ev_detail_{old_event_id}")
-
-    # Global consistency
+    # Global cache invalidation (article removed from system)
     cache.delete_match("stats_*")
     cache.delete_match("articles_latest_*")
     
@@ -547,19 +576,17 @@ def recalculate_event_metrics(db: Session, event_id: int):
         func.max(Article.missing),
         func.max(Article.injured),
         func.max(Article.damage_billion_vnd),
-        func.count(func.distinct(Article.domain))
+        func.count(func.distinct(Article.source))
     ).filter(
         Article.event_id == event_id,
         Article.status.in_(["approved", "pending"])
     ).first()
     
     if not aggs or aggs[4] == 0:
-        # No active articles left
-        ev.sources_count = 0
-        ev.deaths = 0
-        ev.missing = 0
-        ev.injured = 0
-        ev.damage_billion_vnd = 0.0
+        # No active articles left - cleanup the event
+        db.delete(ev)
+        db.commit()
+        return
     else:
         # Update with aggregated max values
         ev.deaths = aggs[0] or 0
@@ -585,12 +612,13 @@ def stats_summary(
     end_date: str | None = Query(None),
     type: str | None = Query(None),
     province: str | None = Query(None),
+    q: str | None = Query(None),
     response: Response = None,
     db: Session = Depends(get_db),
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
 ):
     is_admin = current_user and current_user.role == "admin"
-    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{type}_{province}_{is_admin}"
+    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{type}_{province}_{q}_{is_admin}"
     cached = cache.get(cache_key)
     if cached:
         if response: response.headers["Cache-Control"] = "public, max-age=120"
@@ -611,6 +639,7 @@ def stats_summary(
     )
     if type: art_stats_q = art_stats_q.filter(Article.disaster_type == type)
     if province: art_stats_q = art_stats_q.filter(Article.province == province)
+    if q: art_stats_q = art_stats_q.filter(Article.title.ilike(f"%{q}%"))
     
     art_stats_res = art_stats_q.first()
     total_articles = art_stats_res[0] or 0
@@ -618,7 +647,6 @@ def stats_summary(
 
     # 2. Events Aggregation (With Decision 18 Filtering)
     # 2. Events Aggregation (With Decision 18 Filtering)
-    from .sources import DISASTER_GROUPS
     major_hazards = list(DISASTER_GROUPS.keys())
     
     from sqlalchemy import or_
@@ -661,6 +689,7 @@ def stats_summary(
     )
     if type: agg_q = agg_q.filter(Event.disaster_type == type)
     if province: agg_q = agg_q.filter(Event.province == province)
+    if q: agg_q = agg_q.filter(Event.title.ilike(f"%{q}%"))
     agg_q = get_visibility_filter(agg_q, is_admin)
         
     agg_res = agg_q.first()
@@ -681,16 +710,12 @@ def stats_summary(
     )
     if type: type_counts_q = type_counts_q.filter(Event.disaster_type == type)
     if province: type_counts_q = type_counts_q.filter(Event.province == province)
+    if q: type_counts_q = type_counts_q.filter(Event.title.ilike(f"%{q}%"))
     type_counts_q = get_visibility_filter(type_counts_q, is_admin)
     
     type_counts_rows = type_counts_q.group_by(Event.disaster_type).all()
     
-    official_types = [
-        "storm", "flood", "flash_flood", "landslide", "subsidence", 
-        "drought", "salinity", "extreme_weather", "heatwave", "cold_surge",
-        "earthquake", "tsunami", "storm_surge", "wildfire", "erosion",
-        "warning_forecast", "recovery"
-    ]
+    official_types = list(DISASTER_GROUPS.keys())
     type_counts = {t: 0 for t in official_types}
     type_counts["unknown"] = 0
     
@@ -711,6 +736,7 @@ def stats_summary(
     )
     if type: prov_counts_q = prov_counts_q.filter(Event.disaster_type == type)
     if province: prov_counts_q = prov_counts_q.filter(Event.province == province)
+    if q: prov_counts_q = prov_counts_q.filter(Event.title.ilike(f"%{q}%"))
     prov_counts_q = get_visibility_filter(prov_counts_q, is_admin)
     
     prov_counts_rows = prov_counts_q.group_by(Event.province).order_by(func.count(Event.id).desc()).limit(20).all()
@@ -726,6 +752,7 @@ def stats_summary(
     )
     if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
     if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
+    if q: provinces_count_q = provinces_count_q.filter(Event.title.ilike(f"%{q}%"))
     provinces_count_q = get_visibility_filter(provinces_count_q, is_admin)
     provinces_count = provinces_count_q.scalar() or 0
 
@@ -779,9 +806,12 @@ def stats_timeline(
     query = db.query(
         time_func.label('hour'),
         func.count(Event.id).label('count')
-    ).filter(Event.started_at >= start, Event.started_at < end).group_by(
-        'hour'
-    ).order_by('hour')
+    ).filter(Event.started_at >= start, Event.started_at < end)
+    
+    # [OPTIMIZATION] Sync visibility with dashboard
+    query = get_visibility_filter(query, False) # Non-admin visibility for public timeline
+    
+    query = query.group_by('hour').order_by('hour')
     
     results = {row[0]: row[1] for row in query.all()}
     
@@ -790,7 +820,6 @@ def stats_timeline(
     if date:
         for i in range(24):
             h_str = (start + timedelta(hours=i)).strftime('%Y-%m-%d %H:00:00')
-            # For Postgres, the key might be a datetime object
             found = False
             for k, v in results.items():
                 k_str = k.strftime('%Y-%m-%d %H:00:00') if hasattr(k, 'strftime') else str(k)
@@ -801,12 +830,14 @@ def stats_timeline(
             if not found:
                 data.append({"time": h_str, "events": 0})
     else:
-        for hour, count in query.all():
+        for hour, count in results.items():
             h_str = hour.strftime('%Y-%m-%d %H:00:00') if hasattr(hour, 'strftime') else str(hour)
             data.append({"time": h_str, "events": count})
     
+    res = {"window": date or f"{hours}h", "data": data}
+    cache.set(cache_key, res, ttl=300)
     response.headers["Cache-Control"] = "public, max-age=300"
-    return {"window": date or f"{hours}h", "data": data}
+    return res
 
 
 @router.get('/stream/events')
@@ -1009,6 +1040,10 @@ def stats_heatmap(
 ):
     """Heatmap: số sự kiện theo tỉnh"""
     is_admin = current_user and current_user.role == "admin"
+    cache_key = f"heatmap_{hours}_{date}_{start_date}_{end_date}_{is_admin}"
+    cached = cache.get(cache_key)
+    if cached: return cached
+
     start, end = get_date_range(hours, date, start_date, end_date)
 
     query = db.query(Event.province, func.count(Event.id))
@@ -1025,7 +1060,9 @@ def stats_heatmap(
     # Sort
     sorted_data = sorted([{"province": r[0], "events": r[1]} for r in result_rows], key=lambda x: x["events"], reverse=True)
     
-    return {"hours": hours, "data": sorted_data}
+    res = {"hours": hours, "data": sorted_data}
+    cache.set(cache_key, res, ttl=300)
+    return res
 
 @router.get("/stats/top-risky-province")
 def top_risky_province(
@@ -1114,45 +1151,6 @@ def restart_system(admin: models.User = Depends(get_current_admin)):
         return {"ok": True, "message": "Backend restart triggered (reloader)."}
     return {"ok": False, "message": "Main file not found, restart failed."}
 
-@router.post("/admin/approve-article/{article_id}")
-def approve_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
-    """Manually approve a pending article."""
-    art = db.query(Article).filter(Article.id == article_id).first()
-    if not art: 
-        raise HTTPException(status_code=404, detail="Article not found")
-    
-    art.status = "approved"
-    db.commit()
-    
-    # Update parent event metrics if attached
-    if art.event_id:
-        recalculate_event_metrics(db, art.event_id)
-        cache.delete(f"ev_detail_{art.event_id}")
-    
-    cache.delete_match("stats_*")
-    cache.delete_match("articles_latest_*")
-    return {"ok": True}
-
-@router.post("/admin/events/{event_id}/approve")
-def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
-    """Manually verify an event and approve all its pending articles."""
-    ev = db.query(Event).filter(Event.id == event_id).first()
-    if not ev: 
-        raise HTTPException(status_code=404, detail="Event not found")
-    
-    ev.needs_verification = 0
-    
-    # Auto-approve all pending articles in this event
-    pending_articles = db.query(Article).filter(Article.event_id == event_id, Article.status == "pending").all()
-    for a in pending_articles:
-        a.status = "approved"
-        
-    db.commit()
-    
-    # Recalc metrics to be safe
-    recalculate_event_metrics(db, event_id)
-    
-    cache.delete(f"ev_detail_{event_id}")
     cache.delete_match("stats_*")
     return {"ok": True}
 

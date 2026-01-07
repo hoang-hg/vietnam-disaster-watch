@@ -1,0 +1,24 @@
+TITLE                                                                            | SCORE | RESULT     | REASON
+------------------------------------------------------------------------------------------------------------------------
+Cơn bão giá quét qua thị trường bất động sản                                     | 6.5   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 6.0
+Bão sao kê càn quét showbiz Việt                                                 | 6.5   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 6.0
+Siêu bão giảm giá đổ bộ Shopee                                                   | 18.0  | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 12.0
+Tạo nên cơn địa chấn trên sân cỏ                                                 | 6.0   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 6.0
+Cháy lớn tại quán karaoke ở Bình Dương làm 32 người chết                         | 9.0   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 1.0
+Tai nạn thảm khốc trên cao tốc: 2 người tử vong                                  | 9.5   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 6.0
+Xe tải mất lái lao xuống vực, tài xế nguy kịch                                   | 0.0   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 0.0
+Nổ bình gas tại hộ gia đình, 1 người bị bỏng                                     | 0.0   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 0.0
+Hội nghị tổng kết công tác phòng chống thiên tai năm 2025                        | 0.0   | FAIL       | ['SOFT_NEGATIVE_MATCH'] / Haz: 0.0
+Thủ tướng chỉ đạo khắc phục hậu quả bão số 3 (Relevant but might be admin noise? | 40.5  | PASS_AUTO  | [] / Haz: 8.0
+Lễ phát động tết trồng cây đời đời nhớ ơn Bác                                    | 0.0   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 0.0
+Đại hội đảng bộ tỉnh nhiệm kỳ mới                                                | 0.0   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 0.0
+Bão số 1 giật cấp 12 đang tiến vào biển Đông                                     | 13.5  | PASS_PEND  | [] / Haz: 6.0
+Mưa lũ gây ngập lụt nghiêm trọng tại Huế                                         | 12.0  | PASS_PEND  | [] / Haz: 8.0
+Sạt lở đất vùi lấp 3 ngôi nhà tại Lào Cai, 5 người mất tích                      | 16.5  | PASS_AUTO  | [] / Haz: 7.0
+Động đất 5.3 độ richter rung chuyển Kon Tum                                      | 13.0  | PASS_PEND  | [] / Haz: 6.0
+Hạn hán khốc liệt khiến lúa chết khô tại miền Tây                                | 14.0  | PASS_PEND  | [] / Haz: 11.0
+Triều cường đạt đỉnh, TP.HCM ngập sâu diện rộng                                  | 12.5  | PASS_PEND  | [] / Haz: 7.0
+Hàng trăm chiến sĩ giúp dân gặt lúa chạy lũ                                      | 11.0  | PASS_PEND  | [] / Haz: 6.0
+Khắc phục hậu quả sau mưa bão: Điện lực ra quân                                  | 40.0  | PASS_AUTO  | [] / Haz: 8.0
+Mang Tết ấm đến với đồng bào vùng lũ                                             | 8.5   | FAIL       | [] / Haz: 7.0
+Thanh niên tử vong do bị nước cuốn khi tắm sông                                  | 1.5   | VETO       | ['ABSOLUTE_VETO_MATCH'] / Haz: 1.0

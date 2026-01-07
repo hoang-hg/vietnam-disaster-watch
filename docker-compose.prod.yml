@@ -13,8 +13,10 @@ services:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
     depends_on:
-      - frontend
-      - backend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
 
   certbot:
     image: certbot/certbot
@@ -30,7 +32,7 @@ services:
     restart: always
     environment:
       - POSTGRES_USER=${DB_USER:-postgres}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-password}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password_change_me}
       - POSTGRES_DB=${DB_NAME:-viet_disaster}
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -56,9 +58,10 @@ services:
     container_name: viet_disaster_backend
     restart: always
     environment:
-      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password}@db:5432/${DB_NAME:-viet_disaster}
+      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password_change_me}@db:5432/${DB_NAME:-viet_disaster}
       - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-your_secret_key_here}
+      - SECRET_KEY=${SECRET_KEY:-your_production_secret_key_change_me}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}
       - PYTHONUNBUFFERED=1
     volumes:
       - backend_data:/app/data
@@ -79,11 +82,12 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_BASE= # Empty - API paths in code already have /api prefix
+        - VITE_API_BASE= # Empty forces same-origin relative paths, ideal for Nginx proxy
     container_name: viet_disaster_frontend
     restart: always
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   db_data:

@@ -67,7 +67,6 @@ export default function AdminSkipLogs() {
       }
     } catch (e) {
       if (e.name === 'AbortError') return;
-      console.error(e);
       setError("Không thể tải dữ liệu: " + (e.message || String(e)));
     } finally {
       setLoading(false);

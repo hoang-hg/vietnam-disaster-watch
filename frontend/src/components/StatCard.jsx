@@ -1,4 +1,5 @@
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { THEME_COLORS } from "../theme";
 
 export default function StatCard({ title, value, sub, icon: Icon, trend, color = "text-blue-600", onClick, active }) {
   // Extract base color (e.g., from 'text-red-500' get 'red')
@@ -6,6 +7,7 @@ export default function StatCard({ title, value, sub, icon: Icon, trend, color =
   const baseColor = colorMatch ? colorMatch[1] : "blue";
   
   const COLOR_MAPS = {
+    // ... other colors remain same for now as they match tailwind classes ...
     blue: {
       border: "border-blue-500",
       ring: "ring-blue-500/20",
@@ -47,12 +49,12 @@ export default function StatCard({ title, value, sub, icon: Icon, trend, color =
       hover: "hover:border-slate-300"
     },
     brand: {
-      border: "border-[#2fa1b3]",
-      ring: "ring-[#2fa1b3]/20",
-      iconBg: "bg-[#eef9fa]",
-      iconText: "text-[#2fa1b3]",
-      iconActive: "bg-[#2fa1b3] text-white",
-      hover: "hover:border-[#2fa1b3]"
+      border: `border-[${THEME_COLORS.brand}]`,
+      ring: `ring-[${THEME_COLORS.brand}]/20`,
+      iconBg: `bg-[${THEME_COLORS.brandLight}]`,
+      iconText: `text-[${THEME_COLORS.brand}]`,
+      iconActive: `bg-[${THEME_COLORS.brand}] text-white`,
+      hover: `hover:border-[${THEME_COLORS.brand}]`
     }
   };
 
