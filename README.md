@@ -46,7 +46,7 @@ Cách này giúp bạn tự do sửa code và debug chi tiết từng phần.
 **1. Backend (Python):**
 ```bash
 cd backend
-python -m venv .venv
+python -m venv .venv #py -m venv .venv
 .\.venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000

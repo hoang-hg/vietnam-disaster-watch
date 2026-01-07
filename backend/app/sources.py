@@ -242,12 +242,23 @@ SENSITIVE_LOCATIONS = [
     "Mù Cang Chải", "Sa Pa", "Mường La", "Kỳ Sơn", "Nam Trà My", "Bắc Trà My",
     "Mai Châu", "Ngọc Linh", "Đèo Thung Khe", "Hoàng Su Phì", "Bát Xát"
 ]
+
+INTERNATIONAL_LOCATIONS = [
+    "Nhật Bản", "Hàn Quốc", "Trung Quốc", "Đài Loan", "Philippines", "Thái Lan", "Lào", "Campuchia", "Myanmar", "Malaysia", "Singapore", "Indonesia", "Mỹ", "Hoa Kỳ", "Nga", "Đức", "Pháp", "Anh", "Ý", "Italia", "Tây Ban Nha", "Úc", "Australia", "Canada", "Ấn Độ", "Thổ Nhĩ Kỳ", "Maroc", "Nepal", "Pakistan", "Afghanistan", "Iran", "Iraq", "Israel", "Palestine", "Ukraina", "Ukrainia", "Thụy Sĩ", "Thụy Điển", "Na Uy", "Phần Lan", "Đan Mạch", "Hà Lan", "Bỉ", "Áo", "Hy Lạp", "Bồ Đào Nha", "Bắc Triều Tiên", "Mông Cổ", "Kazakhstan", "Uzbekistan", "Ả Rập Xê Út", "UAE", "Ai Cập", "Nam Phi", "Nigeria", "Kenya", "Ethiopia", "Brazil", "Argentina", "Mexico", "Colombia", "Chile", "New Zealand"
+]
+
 # Pre-compile for Case-Insensitive and Verbose matching
 SENSITIVE_LOCATIONS_RE = []
 for loc in SENSITIVE_LOCATIONS:
     escaped = re.escape(loc).replace(r'\ ', r'\s+')
     pattern = rf"(?<!\w){escaped}(?!\w)"
     SENSITIVE_LOCATIONS_RE.append(re.compile(pattern, re.IGNORECASE | re.VERBOSE))
+
+INTERNATIONAL_LOCATIONS_RE = []
+for loc in INTERNATIONAL_LOCATIONS:
+    escaped = re.escape(loc).replace(r'\ ', r'\s+')
+    pattern = rf"(?<!\w){escaped}(?!\w)"
+    INTERNATIONAL_LOCATIONS_RE.append(re.compile(pattern, re.IGNORECASE | re.VERBOSE))
 
 # VIP Terms (Critical warnings/actions that bypass all filters)
 VIP_TERMS = [
@@ -298,6 +309,10 @@ VIP_TERMS = [
     r"gặp\s*nạn\s*trên\s*biển",
     r"thương\s*vong\s*(?:lớn|nặng\s*nề|nghiêm\s*trọng)",
     r"đoàn\s*thiện\s*nguyện\s*gặp\s*nạn",
+    r"lũ\s*lịch\s*sử",
+    r"Chiến\s*dịch\s*Quang\s*Trung",
+    r"sập\s*hầm\s*lò.*(?:tử\s*vong|mất\s*tích|bị\s*thương)",
+    r"sạt\s*lở.*vùi\s*lấp",
     r"xe\s*cứu\s*trợ\s*gặp\s*nạn",
     r"chết\s*người\s*(?:do|vì|trong)\s*(?:lũ|bão|ngập|sạt|vỡ|thiên\s*tai)",
     r"(?:làm|khiến)\s*(?:\d+|nhiều)\s*người\s*(?:chết|tử\s*vong|thiệt\s*mạng)",

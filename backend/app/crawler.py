@@ -344,8 +344,20 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
                 (diag["signals"].get("conditional_veto", False) and diag["signals"].get("hazard_score", 0) == 0)
     
     if not is_vetoed:
-        if score >= 15.0: status = "approved"
-        elif score >= 10.0: status = "pending"
+        # [STRATEGY] Dynamic Approval Threshold based on Title strength
+        # "Strong" titles (contain disaster words or VIP terms) approve at 15.0
+        # "Generic" titles require 18.0 to auto-approve
+        is_strong_title = diag["signals"].get("is_vip", False) or nlp.title_contains_disaster_keyword(title)
+        approval_threshold = 15.0 if is_strong_title else 18.0
+
+        if score >= approval_threshold:
+            # [CRITICAL] Require hazard match (rule) or VIP term for auto-approve
+            if diag["signals"].get("hazard_score", 0) > 0 or diag["signals"].get("is_vip", False):
+                status = "approved"
+            else:
+                status = "pending"
+        elif score >= 10.0:
+            status = "pending"
 
     if status == "auto-blacklisted":
         if not db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
