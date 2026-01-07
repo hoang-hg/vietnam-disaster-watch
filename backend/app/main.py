@@ -90,9 +90,9 @@ async def lifespan(app: FastAPI):
         "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
     ]
 
-    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=15, jitter=60), kwargs={"only_sources": tier1_sources}, id="crawl_group1_critical", replace_existing=True)
-    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=45, jitter=120), kwargs={"only_sources": tier2_sources}, id="crawl_group2_major", replace_existing=True)
-    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=120, jitter=300), id="crawl_group3_full", replace_existing=True)
+    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=90, jitter=60), kwargs={"only_sources": tier1_sources}, id="crawl_group1_critical", replace_existing=True)
+    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=180, jitter=120), kwargs={"only_sources": tier2_sources}, id="crawl_group2_major", replace_existing=True)
+    scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=360, jitter=300), id="crawl_group3_full", replace_existing=True)
     
     from .source_monitor import monitor_now
     scheduler.add_job(lambda: asyncio.run(monitor_now()), trigger=IntervalTrigger(minutes=720, jitter=60), id="source_health_monitor", replace_existing=True)
