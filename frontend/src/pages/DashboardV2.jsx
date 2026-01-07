@@ -178,7 +178,7 @@ export default function Dashboard() {
     }
   }
 
-  // Handle URL changes (Back button)
+  // Handle URL changes (Back button) - Prevent infinite loop
   useEffect(() => {
     const urlStart = searchParams.get("start_date") || new Date().toISOString().split('T')[0];
     const urlEnd = searchParams.get("end_date") || "";
@@ -188,14 +188,15 @@ export default function Dashboard() {
     const urlQuick = searchParams.get("quick") || null;
     const urlPage = parseInt(searchParams.get("page")) || 0;
 
-    if (urlStart !== startDate) setStartDate(urlStart);
-    if (urlEnd !== endDate) setEndDate(urlEnd);
-    if (urlType !== hazardType) setHazardType(urlType);
-    if (urlProv !== provQuery) setProvQuery(urlProv);
-    if (urlQ !== searchQuery) setSearchQuery(urlQ);
-    if (urlQuick !== quickFilter) setQuickFilter(urlQuick);
-    if (urlPage !== page) setPage(urlPage);
-  }, [searchParams]);
+    // Use functional updates to avoid dependency hell and prevent infinite loops
+    setStartDate(prev => urlStart !== prev ? urlStart : prev);
+    setEndDate(prev => urlEnd !== prev ? urlEnd : prev);
+    setHazardType(prev => urlType !== prev ? urlType : prev);
+    setProvQuery(prev => urlProv !== prev ? urlProv : prev);
+    setSearchQuery(prev => urlQ !== prev ? urlQ : prev);
+    setQuickFilter(prev => urlQuick !== prev ? urlQuick : prev);
+    setPage(prev => urlPage !== prev ? urlPage : prev);
+  }, [searchParams]); // Only searchParams dependency
 
   useEffect(() => {
     const controller = new AbortController();

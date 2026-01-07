@@ -214,13 +214,23 @@ export default function EventDetail() {
   const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
-    if (user && ev?.id) {
-      getJson(`/api/user/events/${ev.id}/is-following`)
-        .then(data => setIsFollowing(data.is_following))
-        .catch((err) => {
+    if (!user || !ev?.id) return;
+    
+    const controller = new AbortController();
+    
+    getJson(`/api/user/events/${ev.id}/is-following`, { signal: controller.signal })
+      .then(data => {
+        if (!controller.signal.aborted) {
+          setIsFollowing(data.is_following);
+        }
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') {
           showToast(`Không thể tải dữ liệu: ${err.message}`, "error");
-        });
-    }
+        }
+      });
+    
+    return () => controller.abort();
   }, [user, ev?.id]);
 
   const toggleFollow = async () => {

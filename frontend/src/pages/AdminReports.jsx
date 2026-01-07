@@ -7,6 +7,7 @@ import ConfirmModal from "../components/ConfirmModal.jsx";
 export default function AdminReports() {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
 
@@ -46,17 +47,16 @@ export default function AdminReports() {
         }
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
+        setIsExporting(true);
         const token = localStorage.getItem("access_token");
-        // Using fetch with blob to handle auth header if needed, but for simple link click usually token is cookie or query param. 
-        // Since my auth uses Bearer token, I cannot simply use window.location.href unless I put token in query param or use fetch & blob.
-        // Let's use fetch & blob download strategy.
+        // Using fetch with blob to handle auth header if needed
         
-        fetch(`${API_BASE}/api/user/admin/crowdsource/export`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-        .then(response => response.blob())
-        .then(blob => {
+        try {
+            const response = await fetch(`${API_BASE}/api/user/admin/crowdsource/export`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -64,8 +64,12 @@ export default function AdminReports() {
             document.body.appendChild(a);
             a.click();
             a.remove();
-        })
-        .catch(err => setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: "error" }));
+            setToast({ isVisible: true, message: "Xuất dữ liệu thành công!", type: "success" });
+        } catch (err) {
+            setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: "error" });
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (
@@ -79,10 +83,11 @@ export default function AdminReports() {
                 </div>
                 <button 
                     onClick={handleExport}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+                    disabled={isExporting}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    <FileDown className="w-4 h-4" />
-                    Xuất Excel (.xlsx)
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                    {isExporting ? "Đang xuất..." : "Xuất Excel (.xlsx)"}
                 </button>
             </div>
 

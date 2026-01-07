@@ -1,11 +1,14 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from . import auth, models, database, settings
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 class UserCreate(BaseModel):
     email: str
@@ -29,7 +32,8 @@ class Token(BaseModel):
     user: UserOut
 
 @router.post("/register", response_model=UserOut)
-def register(user_in: UserCreate, db: Session = Depends(auth.get_db)):
+@limiter.limit("3/hour")  # Max 3 registrations per hour to prevent spam
+async def register(request: Request, user_in: UserCreate, db: Session = Depends(auth.get_db)):
     db_user = db.query(models.User).filter(models.User.email == user_in.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -61,7 +65,8 @@ def register(user_in: UserCreate, db: Session = Depends(auth.get_db)):
     return new_user
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(auth.get_db)):
+@limiter.limit("5/minute")  # Max 5 login attempts per minute to prevent brute force
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(auth.get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -81,7 +86,8 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     }
 
 @router.get("/me", response_model=UserOut)
-def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
+@limiter.limit("20/minute")  # Reasonable limit for checking user info
+async def read_users_me(request: Request, current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
 class UserUpdate(BaseModel):

@@ -41,16 +41,45 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
     container_name: viet_disaster_redis
     restart: always
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build: 
@@ -77,6 +106,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
@@ -89,7 +131,36 @@ services:
       backend:
         condition: service_healthy
 
+  db-backup:
+    image: postgres:15-alpine
+    container_name: viet_disaster_backup
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-password_change_me}
+      - POSTGRES_DB=${DB_NAME:-viet_disaster}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup-db.sh:/backup.sh:ro
+    command: >
+      sh -c "chmod +x /backup.sh && 
+             while true; do
+               /backup.sh;
+               echo 'Next backup in 24 hours...';
+               sleep 86400;
+             done"
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
 volumes:
   db_data:
   backend_data:
   backend_logs:
+  redis_data:
+

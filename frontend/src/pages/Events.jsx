@@ -58,7 +58,8 @@ export default function Events() {
   const [deleteId, setDeleteId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isExportingSummary, setIsExportingSummary] = useState(false);
+  const [isExportingMonthly, setIsExportingMonthly] = useState(false);
 
   // Toast state
   const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
@@ -127,7 +128,7 @@ export default function Events() {
   };
 
   const handleExportCSV = async () => {
-    setIsExporting(true);
+    setIsExportingSummary(true);
     // [LOGIC REFINEMENT] Use fetch binary download to keep token in headers (more secure than URL)
     const token = localStorage.getItem("access_token");
     let query = ""; // Token passed via headers
@@ -160,12 +161,12 @@ export default function Events() {
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
     } finally {
-        setIsExporting(false);
+        setIsExportingSummary(false);
     }
   };
 
   const handleExportMonthly = async () => {
-    setIsExporting(true);
+    setIsExportingMonthly(true);
     const token = localStorage.getItem("access_token");
     let query = `?month=${exportMonth}&year=${exportYear}`;
     if (type) query += `&type=${type}`;
@@ -187,7 +188,7 @@ export default function Events() {
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
     } finally {
-        setIsExporting(false);
+        setIsExportingMonthly(false);
     }
   };
 
