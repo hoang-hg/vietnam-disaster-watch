@@ -807,9 +807,10 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
             content_text = meta["description"]
             
         return {
-            "text": content_text if len(content_text) > 100 else None,
-            "images": list(dict.fromkeys(images)),
+            "text": content_text,
+            "images": images,
             "final_url": final_url,
+            "meta": meta,
             "is_broken": False
         }
                 

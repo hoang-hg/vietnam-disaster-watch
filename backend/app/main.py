@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
         db = next(auth.get_db())
         
         # Use a secure default from settings or env
-        default_admin_pw = getattr(settings, "default_admin_password", "Admin@123456")
+        default_admin_pw = getattr(settings, "default_admin_password", "admin123")
         
         fixed_admins = [
             ("admin@vdw.com", default_admin_pw),

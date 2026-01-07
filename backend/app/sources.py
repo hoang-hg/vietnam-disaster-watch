@@ -102,7 +102,7 @@ DISASTER_GROUPS = {
         "mưa lớn", "mưa xối xả", "mưa trắng trời", "mưa đá", "lốc", "sét", "phóng điện", "dông", "giông", "lốc xoáy", "gió mạnh", "quật đổ", "tốc mái", "vòi rồng",
         "mưa rất to", "dông lốc", "tố lốc", "sét đánh", "giông sét", "lượng mưa kỷ lục", "mưa trút xuống", "mưa như trút",
         "mưa diện rộng", "mưa cục bộ", "gió giật mạnh", "giông tố", "giông cực mạnh", "gió rít", "trắng trời",
-        "tốc mái"
+        "tốc mái", "mưa trái mùa"
     ],
 
     # 9) Nắng nóng (Heatwave)
@@ -426,7 +426,87 @@ HIGH_PRIORITY_KEYWORDS = [
     r"ngập\s*lụt\s*đặc\s*biệt\s*nguy\s*hiểm", r"sập\s*(?:nhà|cầu|cống|đê|kè|tường)", 
     r"tốc\s*mái", r"vùi\s*lấp", r"cuốn\s*trôi", r"mất\s*tích", r"người\s*chết", 
     r"tử\s*vong", r"ngập\s*úng", r"thiệt\s*hại\s*nặng", r"họp\s*khẩn", 
-    r"ban\s*bố\s*tình\s*trạng\s*khẩn\s*cấp"
+    r"ban\s*bố\s*tình\s*trạng\s*khẩn\s*cấp", r"mưa\s*trái\s*mùa", r"lật\s*(?:ghe|thuyền|xuồng)", 
+    r"chìm\s*(?:ghe|thuyền|xuồng|tàu)", r"tai\s*nạn\s*trên\s*biển", r"lũ\s*cuốn", 
+    r"sạt\s*lở\s*đất\s*vùi\s*lấp", r"cô\s*lập\s*do\s*mưa\s*lũ", r"chia\s*cắt\s*giao\s*thông",
+    r"hư\s*hỏng\s*nghiêm\s*trọng\s*(?:đê|kè|hồ|đập|cầu|cống)",
+    r"thủng\s*(?:thân|đáy)\s*tàu", r"tàu\s*cá\s*gặp\s*nạn", r"chống\s*rét\s*cho\s*(?:gia\s*súc|vật\s*nuôi)",
+    r"băng\s*giá\s*phủ\s*trắng", r"mưa\s*to\s*ngập\s*úng",
+    r"người\s*dân\s*bị\s*cô\s*lập", r"chia\s*cắt\s*do\s*mưa\s*lũ", r"học\s*sinh\s*nghỉ\s*học",
+    r"tàu\s*cá\s*(?:chìm|mất\s*tích|dạt)", r"thi\s*thể\s*ngư\s*dân", r"thông\s*tuyến\s*sạt\s*lở",
+    r"di\s*dời.*tái\s*định\s*cư", r"axit\s*bị\s*lũ\s*cuốn", r"người\s*chết\s*do\s*mưa\s*lũ",
+    r"nghĩa\s*tình\s*(?:vùng|nơi)\s*lũ", r"cứu\s*trợ\s*người\s*dân\s*bị\s*cô\s*lập",
+    r"xây\s*nhà\s*.*vùng\s*lũ", r"thi\s*thể\s*.*đã\s*được\s*tìm\s*thấy", r"khắc\s*phục\s*.*sạt\s*lở",
+    r"cô\s*lập\s*.*hộ\s*dân", r"gãy\s*đôi\s*cầu", r"mất\s*tích\s*trên\s*biển",
+    r"lũ\s*tràn\s*qua\s*đập", r"hư\s*hỏng\s*mặt\s*đường",
+    # GENUINE DISASTER RECOVERY & INCIDENTS (Boosted)
+    r"nứt\s*toác.*di\s*dời", r"lũ.*cô\s*lập.*cứu\s*dân",
+    r"cuộc\s*gọi\s*cầu\s*cứu", r"tiếp\s*tế\s*thực\s*phẩm.*cô\s*lập",
+    r"mưa\s*ngập\s*lịch\s*sử", r"giải\s*cứu.*mắc\s*kẹt",
+    r"xuyên\s*đêm.*cứu.*dân", r"thiệt\s*hại.*do\s*thiên\s*tai",
+    r"khắc\s*phục.*hư\s*hỏng.*cầu", r"sạt\s*lở.*thiệt\s*mạng",
+    r"bờ\s*kè.*đổ\s*sập", r"ngập\s*cầu.*ách\s*tắc",
+    r"sạt\s*lở.*cô\s*lập", r"tìm\s*thấy.*thi\s*thể.*đuối\s*nước",
+    r"trao\s*quà\s*.*thiệt\s*hại\s*.*(?:mưa|lũ|bão)", r"trường\s*học\s*.*thiệt\s*hại\s*.*(?:vùng|do)\s*lũ",
+    r"lốc\s*xoáy\s*.*thiệt\s*hại", r"khắc\s*phục\s*.*khẩn\s*cấp\s*.*kè",
+    r"tìm\s*kiếm\s*.*mất\s*tích\s*.*tàu\s*cá", r"điểm\s*tiếp\s*nhận\s*.*hàng\s*cứu\s*trợ",
+    r"tái\s*thiết\s*.*khu\s*tái\s*định\s*cư", r"đảm\s*bảo\s*.*giao\s*thông\s*.*(?:mưa|lũ)",
+    r"hỗ\s*trợ\s*.*người\s*dân\s*.*bị\s*thiệt\s*hại", r"chủ\s*động\s*ứng\s*phó\s*.*mưa\s*lũ",
+    # ADDITIONAL BOOSTED RECOVERY PHRASES (JAN 7)
+    r"thiên\s*tai.*gây\s*thiệt\s*hại.*tỷ\s*đồng", r"khắc\s*phục.*hồ\s*đập.*hư\s*hỏng",
+    r"chốt\s*chặn.*khu\s*vực.*xung\s*yếu", r"tổng\s*đài.*tiếp\s*nhận.*thiên\s*tai",
+    r"hỗ\s*trợ.*người\s*dân.*vùng\s*lũ",
+    # ADDITIONAL BOOSTED RECOVERY PHRASES (JAN 7 - PART 2)
+    r"bị\s*cô\s*lập", r"chia\s*cắt\s*giao\s*thông", r"rốn\s*lũ",
+    r"tiếp\s*tế\s*lương\s*thực", r"khẩn\s*cấp\s*ứng\s*phó",
+    r"tin\s*bão", r"cảnh\s*báo\s*ngập\s*lụt", r"nối\s*lại\s*giao\s*thông",
+    r"mưa\s*lớn\s*gây\s*ngập", r"ngập\s*sâu.*cô\s*lập",
+    r"hàng\s*ngàn\s*hộ\s*dân.*cô\s*lập", r"xuyên\s*đêm.*cứu",
+    r"áp\s*thấp\s*nhiệt\s*đới", r"gió\s*mùa\s*đông\s*bắc",
+    # JAN 7 - PART 3 (LOG ANALYSIS BOOSTS)
+    r"di\s*dời\s*dân.*sạt\s*lở", r"khắc\s*phục\s*sạt\s*lở",
+    r"khắc\s*phục\s*thủy\s*lợi", r"mất\s*nhà\s*do\s*thiên\s*tai",
+    r"hỗ\s*trợ\s*giống.*vùng\s*lũ", r"tặng\s*cano.*vùng\s*lũ",
+    r"bão.*quần\s*thảo", r"lũ.*vượt\s*mốc",
+    r"chủ\s*động\s*ứng\s*phó.*rét",
+    # JAN 7 - PART 4 (LOG ANALYSIS REFINEMENTS)
+    r"khắc\s*phục.*sạt\s*lở", r"xử\s*lý.*sự\s*cố.*sạt\s*lở",
+    r"vỡ\s*kênh\s*mương", r"xây\s*dựng\s*lại\s*nhà.*sau\s*bão",
+    r"tìm\s*kiếm.*người.*mất\s*tích", r"khẩn\s*trương\s*ứng\s*phó.*mưa\s*lũ",
+    r"hướng\s*về.*đồng\s*bào.*vùng\s*lũ", r"tặng.*suất\s*quà.*vùng\s*lũ",
+    r"hỗ\s*trợ.*đồng\s*bào.*thiên\s*tai", r"chuyển\s*hàng\s*cứu\s*trợ",
+    r"khẩn\s*trương\s*cứu\s*nạn", r"y\s*tế.*ứng\s*phó.*bão",
+    r"sơ\s*tán.*dân.*tránh\s*lũ", r"gia\s*cố.*nhà.*chống\s*bão",
+    r"kích\s*hoạt.*phương\s*án.*ứng\s*phó", r"lịch\s*trực.*phòng\s*chống.*bão",
+    # JAN 7 - PART 5: BOOSTED DIRECTIVES & RECOVERY (Fixing Low Scores)
+    r"ban\s*hành.*công\s*điện", r"công\s*điện.*khẩn",
+    r"khắc\s*phục.*hậu\s*quả", r"công\s*tác.*khắc\s*phục",
+    r"sự\s*cố.*lưới\s*điện.*bão", r"sự\s*cố.*lưới\s*điện.*mưa\s*lũ",
+    r"tìm\s*thấy.*thi\s*thể", r"nạn\s*nhân.*mất\s*tích",
+    r"dân.*bỏ\s*nhà.*sạt\s*lở", r"hỗ\s*trợ.*bị\s*ảnh\s*hưởng",
+    r"họp\s*khẩn.*chỉ\s*đạo",
+    # JAN 7 - PART 6: MAX PRIORITY BOOSTS (Storm Numbers & Urgent Action)
+    r"bão\s*số\s*\d+", r"cơn\s*bão\s*số",
+    r"di\s*dời\s*khẩn", r"sơ\s*tán\s*khẩn",
+    r"sạt\s*lở\s*đất", r"nguy\s*cơ\s*sạt\s*lở",
+    r"mưa\s*lớn\s*kéo\s*dài", r"ngập\s*lụt\s*nghiêm\s*trọng",
+    r"thiệt\s*hại\s*do\s*thiên\s*tai", r"khắc\s*phục\s*hậu\s*quả",
+    r"xuyên\s*đêm.*cứu", r"xuyên\s*đêm.*khắc\s*phục",
+    # JAN 7 - PART 7: OFFICIAL ACTIONS & RECOVERY
+    r"thị\s*sát.*chỉ\s*đạo", r"kiểm\s*tra.*khắc\s*phục",
+    r"lãnh\s*đạo.*thăm.*hỏi", r"ứng\s*phó.*sự\s*cố",
+    r"khẩn\s*trương.*khắc\s*phục", r"khẩn\s*trương.*hỗ\s*trợ",
+    r"sự\s*cố.*đê.*điều", r"sự\s*cố.*hồ.*đập",
+    r"vượt\s*lũ.*cứu", r"xẻ.*lũ",
+    r"ảnh\s*hưởng.*bão\s*số", r"ảnh\s*hưởng.*áp\s*thấp",
+    r"hỗ\s*trợ.*đồng\s*bào.*bão", r"hỗ\s*trợ.*đồng\s*bào.*lũ",
+    # JAN 2026: COLD SURGE & LANDSLIDE BOOSTS
+    r"rét\s*đậm", r"rét\s*hại", r"băng\s*giá", r"tuyết\s*rơi",
+    r"kè\s*chống\s*sạt\s*lở", r"di\s*dời\s*khẩn\s*cấp", 
+    r"chạy\s*lũ", r"sơ\s*tán\s*dân", r"cứu\s*hộ", r"cứu\s*nạn",
+    r"giữ\s*đất", r"giữ\s*nhà", r"sạt\s*trượt",
+    r"xuyên\s*đêm\s*cứu\s*hộ", r"trắng\s*đêm\s*cứu\s*nạn",
+    r"khẩn\s*trương\s*chạy\s*lũ", r"nguy\s*cơ\s*sạt\s*lở\s*đất"
 ]
 
 

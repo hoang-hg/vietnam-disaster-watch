@@ -455,7 +455,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     stat["feed_used"].append(f_type)
                     continue
 
-                feed = entry_list = feedparser.parse(f_data.get("text", "")).entries
+                # [OPTIMIZATION] Run feedparser in executor to avoid blocking the event loop
+                parsed_feed = await asyncio.get_event_loop().run_in_executor(
+                    None, feedparser.parse, f_data.get("text", "")
+                )
+                feed = entry_list = parsed_feed.entries
                 if not entry_list: continue
                 
                 feed_worked = True
@@ -538,6 +542,25 @@ async def _enrich_article_async(db: Session, src, article):
             if res.get("images") and not article.image_url:
                 article.image_url = res["images"][0]
             
+            # [FIX] Attempt to correct publication date from body text or metadata
+            real_date = nlp.extract_publication_date_from_text(txt[:2000])
+            scraper_meta = res.get("meta") or {}
+            if not real_date and scraper_meta.get("published_time"):
+                from dateutil import parser as date_parser
+                try:
+                    dt = date_parser.parse(scraper_meta["published_time"])
+                    if dt.tzinfo: dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                    real_date = dt
+                except Exception: pass
+            
+            if real_date:
+                # Sanity check: valid date and not in future
+                if real_date < datetime.now(timezone.utc) + timedelta(days=1):
+                    # Update if difference is significant (> 1 hour)
+                    if abs((article.published_at - real_date).total_seconds()) > 3600:
+                        # logger.info(f"   [DATE_FIX] {article.title[:30]}... updated date to {real_date}")
+                        article.published_at = real_date
+
             meta = await asyncio.to_thread(nlp.extract_all_metadata, txt, article.summary or "", article.title)
             
             for f in ["deaths", "missing", "injured", "damage_billion_vnd"]:

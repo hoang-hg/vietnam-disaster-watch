@@ -54,6 +54,7 @@ export default function VietnamMap({ points }) {
         url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&hl=vi&gl=vn"
       />
 
+      <MarkerClusterGroup chunkedLoading>
       {points.map((p) => {
         if (typeof p.lat !== 'number' || typeof (p.lon ?? p.lng) !== 'number') return null;
         
@@ -86,6 +87,7 @@ export default function VietnamMap({ points }) {
           </Marker>
         );
       })}
+      </MarkerClusterGroup>
     </MapContainer>
   );
 }

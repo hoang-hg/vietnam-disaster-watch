@@ -156,7 +156,7 @@ def get_base_event_query(db: Session):
 def events(
     request: Request,
     response: Response,
-    limit: int = Query(50, ge=1, le=2000), # Reduced from 2000 to 500 to fit within SQLite variable limits (999) for IN clauses
+    limit: int = Query(50, ge=1, le=1000), # PostgreSQL supports >1000. SQLite limit is 999 variables in IN clause.
     offset: int = Query(0, ge=0),
     after_id: int | None = Query(None, description="Keyset pagination for better performance on large datasets"),
     hours: int | None = Query(None, ge=1, le=720),
