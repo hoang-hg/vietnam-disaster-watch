@@ -216,8 +216,18 @@ def export_crowdsource_reports(db: Session = Depends(get_db), admin: models.User
         
     df = pd.DataFrame(data)
     output = io.BytesIO()
+    sheet_name = 'Báo cáo hiện trường'
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Báo cáo hiện trường')
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        # [OPTIMIZATION] Auto-adjust column widths
+        worksheet = writer.sheets[sheet_name]
+        from openpyxl.utils import get_column_letter
+        for i, column in enumerate(df.columns):
+            col_data_len = df[column].astype(str).map(len).max() if not df[column].empty else 0
+            col_header_len = len(str(column))
+            adjusted_width = min(max(col_data_len, col_header_len) + 3, 60)
+            worksheet.column_dimensions[get_column_letter(i + 1)].width = adjusted_width
+
     output.seek(0)
     
     headers = {'Content-Disposition': 'attachment; filename="bao-cao-hien-truong.xlsx"'}

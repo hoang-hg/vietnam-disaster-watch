@@ -1,38 +1,60 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.websockets import WebSocket
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from contextlib import asynccontextmanager
+import asyncio
+import logging
+from datetime import datetime, timedelta
+import pytz
+
+# Third-party Imports
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# App Imports
 from .settings import settings
 from .api import router as api_router
 from .auth_router import router as auth_router
 from .user_router import router as user_router
-from .crawler import process_once, _process_once_async
+from .crawler import process_once, cleanup_old_pending_articles
+from .source_monitor import monitor_now
+from .log_utils import rotate_logs
+from . import models, database, auth, broadcast, ws, sources
 
-from contextlib import asynccontextmanager
+# --- SCHEDULER SETUP (Global) ---
+job_defaults = {
+    'coalesce': True,
+    'max_instances': 2,
+    'misfire_grace_time': 300
+}
+scheduler = BackgroundScheduler(timezone=settings.app_timezone, job_defaults=job_defaults)
+
+# --- RATE LIMITER SETUP ---
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["100/minute"],
+    storage_uri="memory://"
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
-    # 0. Create database tables if they don't exist
-    from .database import engine, Base
-    from . import models # ensure models are registered
-    Base.metadata.create_all(bind=engine)
+    # 0. Database Initialization
+    database.Base.metadata.create_all(bind=database.engine)
     
-    # 0.1 Seed Fixed Admin Accounts (User request)
+    # 0.1 Seed Fixed Admin Accounts
     try:
-        from . import settings as app_settings
-        from . import auth
         db = next(auth.get_db())
-        
-        # Use a secure default from settings or env
         default_admin_pw = getattr(settings, "default_admin_password", "admin123")
-        
         fixed_admins = [
             ("admin@vdw.com", default_admin_pw),
             ("quantri@vdw.com", default_admin_pw),
             ("root@vdw.com", default_admin_pw)
         ]
-        
+        created_count = 0
         for email, pw in fixed_admins:
             user = db.query(models.User).filter(models.User.email == email).first()
             if not user:
@@ -45,14 +67,14 @@ async def lifespan(app: FastAPI):
                     favorite_province=None
                 )
                 db.add(new_admin)
-                print(f"[SEED] Created Admin: {email} (Password from ENV/Default)")
-        db.commit()
+                created_count += 1
+        if created_count > 0:
+            db.commit()
+            print(f"[SEED] Created {created_count} Admin accounts.")
     except Exception as e:
         print(f"[SEED] Failed to seed admins: {e}")
 
-    # 0.2 Capture Main Loop for Broadcast (Cross-thread SSE)
-    import asyncio
-    from . import broadcast, ws
+    # 0.2 Capture Main Loop for Broadcast
     try:
         loop = asyncio.get_running_loop()
         broadcast.set_main_loop(loop)
@@ -60,26 +82,17 @@ async def lifespan(app: FastAPI):
     except RuntimeError:
         pass
 
-    # 1. Initial full crawl on startup
-    import pytz
-    from datetime import datetime, timedelta
-    tz = pytz.timezone(settings.app_timezone)
-    scheduler.add_job(
-        process_once,
-        'date',
-        run_date=datetime.now(tz) + timedelta(seconds=15),
-        id="startup_crawl"
-    )
-
-    # ... Tiered Scheduler Jobs Configuration ...
-    from .sources import SOURCES
-    tier1_sources = [s.name for s in SOURCES if any(kw in s.name for kw in [
+    # 1. Scheduler Configuration
+    # Tier 1 Sources (Critical)
+    tier1_kws = [
         "KTTV Quốc gia", "KTTV Ninh Bình", "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", 
         "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", "KTTV An Giang", "KTTV Hưng Yên", 
         "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
         "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"
-    ])]
+    ]
+    tier1_sources = [s.name for s in sources.SOURCES if any(kw in s.name for kw in tier1_kws)]
 
+    # Tier 2 Sources (Major News)
     tier2_sources = [
         "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
         "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
@@ -90,23 +103,29 @@ async def lifespan(app: FastAPI):
         "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
     ]
 
+    # Startup Crawl (15s delay)
+    tz = pytz.timezone(settings.app_timezone)
+    scheduler.add_job(
+        process_once,
+        'date',
+        run_date=datetime.now(tz) + timedelta(seconds=15),
+        id="startup_crawl",
+        replace_existing=True
+    )
+
+    # Recurring Jobs
     scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=90, jitter=60), kwargs={"only_sources": tier1_sources}, id="crawl_group1_critical", replace_existing=True)
     scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=180, jitter=120), kwargs={"only_sources": tier2_sources}, id="crawl_group2_major", replace_existing=True)
     scheduler.add_job(process_once, trigger=IntervalTrigger(minutes=360, jitter=300), id="crawl_group3_full", replace_existing=True)
-    
-    from .source_monitor import monitor_now
     scheduler.add_job(lambda: asyncio.run(monitor_now()), trigger=IntervalTrigger(minutes=720, jitter=60), id="source_health_monitor", replace_existing=True)
-    
-    from .log_utils import rotate_logs
     scheduler.add_job(rotate_logs, trigger=IntervalTrigger(hours=12, jitter=60), id="log_rotation", replace_existing=True)
-    
-    from .crawler import cleanup_old_pending_articles
     scheduler.add_job(cleanup_old_pending_articles, trigger=IntervalTrigger(hours=24, jitter=120), id="db_cleanup_pending", replace_existing=True)
 
     scheduler.start()
 
     yield
-    # Shutdown logic
+    
+    # Shutdown
     scheduler.shutdown(wait=False)
 
 app = FastAPI(
@@ -116,26 +135,11 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Rate Limiting Configuration
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["100/minute"],  # Default: 100 requests per minute per IP
-    storage_uri="memory://"  # Use Redis URI if available: settings.redis_url
-)
-
+# Apply Rate Limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Root endpoint redirect
-from fastapi.responses import RedirectResponse
-@app.get("/", include_in_schema=False)
-async def root():
-    return RedirectResponse(url="/docs")
-
+# Middlewares
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -144,45 +148,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom Rate Limiter Middleware (Simple Memory-based) -> REMOVED in favor of slowapi
-from fastapi import Request, Response
-# import time
-# from collections import defaultdict
-# 
-# request_counts = defaultdict(list)
-# RATE_LIMIT = 50  # requests
-# RATE_PERIOD = 60 # seconds
-# 
 @app.middleware("http")
 async def cdn_optimization_middleware(request: Request, call_next):
-    """
-    Ensures optimal caching for CDNs like Cloudflare and safe defaults.
-    """
+    """Ensures optimal caching for CDNs like Cloudflare and safe defaults."""
     response = await call_next(request)
-    
-    # Security: Prevent MIME type sniffing
     response.headers["X-Content-Type-Options"] = "nosniff"
-    
-    # Add Vary header for compression and auth awareness
     response.headers["Vary"] = "Accept-Encoding, Authorization"
-    
-    # Ensure a default Cache-Control if not set
     if not response.headers.get("Cache-Control"):
         if request.url.path.startswith("/api"):
-            # API responses should not be cached by default for security
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
     return response
 
-# @app.middleware("http")
-# async def rate_limit_middleware(request: Request, call_next):
-#     # [REMOVED] Use slowapi for endpoint-specific limits instead of global blanket.
-#     return await call_next(request)
+# Routes
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
-# GLOBAL EXCEPTION HANDLER
-from fastapi.responses import JSONResponse
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "viet-disaster-watch"}
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    try:
+        await ws.manager.connect(websocket)
+        while True:
+            await websocket.receive_text()
+    except Exception:
+        pass
+    finally:
+        ws.manager.disconnect(websocket)
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    import logging
     logging.getLogger("uvicorn.error").error(f"Global Exception: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
@@ -192,38 +190,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(user_router)
-
-# Health check endpoint for Docker/monitoring
-@app.get("/health")
-async def health_check():
-    """Health check endpoint for container orchestration"""
-    return {"status": "healthy", "service": "viet-disaster-watch"}
-
-from .ws import manager
-from fastapi import WebSocket
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    try:
-        await manager.connect(websocket)
-        while True:
-            # Keep connection alive, we don't expect client messages for now
-            await websocket.receive_text()
-    except Exception as e:
-        # Client disconnected or other error
-        pass
-    finally:
-        manager.disconnect(websocket)
-
-# Configure scheduler to handle slow jobs strictly
-# max_instances=2 allows overlap if one is stuck, but mostly fixes the warning.
-# coalesce=True rolls up missed executions into one.
-job_defaults = {
-    'coalesce': True,
-    'max_instances': 2,
-    'misfire_grace_time': 300
-}
-scheduler = BackgroundScheduler(timezone=settings.app_timezone, job_defaults=job_defaults)
 
 
 

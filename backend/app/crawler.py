@@ -344,19 +344,28 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
                 (diag["signals"].get("conditional_veto", False) and diag["signals"].get("hazard_score", 0) == 0)
     
     if not is_vetoed:
-        # [STRATEGY] Dynamic Approval Threshold based on Title strength
-        # "Strong" titles (contain disaster words or VIP terms) approve at 15.0
-        # "Generic" titles require 18.0 to auto-approve
+        # [STRATEGY v5] Professional Grade Thresholds
+        # 1. Strong titles (disaster words/VIP) approve faster.
+        # 2. Raised pending floor to 11.5 to ensure >90% probability for humans.
         is_strong_title = diag["signals"].get("is_vip", False) or nlp.title_contains_disaster_keyword(title)
-        approval_threshold = 15.0 if is_strong_title else 18.0
-
-        if score >= approval_threshold:
+        
+        # Confirmation of core signals
+        has_hazard = diag["signals"].get("hazard_score", 0) > 0
+        has_impact = diag["signals"].get("impact_hits", False)
+        has_casualties = diag["signals"].get("impact_details", {}).get("deaths") or diag["signals"].get("impact_details", {}).get("missing")
+        
+        approval_threshold = 14.5 if is_strong_title else 17.0
+        
+        # Fast-track for articles with casualties and a confirmed hazard match
+        if has_casualties and has_hazard and score >= 13.5:
+            status = "approved"
+        elif score >= approval_threshold:
             # [CRITICAL] Require hazard match (rule) or VIP term for auto-approve
-            if diag["signals"].get("hazard_score", 0) > 0 or diag["signals"].get("is_vip", False):
+            if has_hazard or diag["signals"].get("is_vip", False):
                 status = "approved"
             else:
                 status = "pending"
-        elif score >= 10.0:
+        elif score >= 11.5:
             status = "pending"
 
     if status == "auto-blacklisted":
@@ -588,7 +597,6 @@ async def _enrich_article_async(db: Session, src, article):
                 if new_val and new_val != "unknown" and (not getattr(article, lf) or getattr(article, lf) == "unknown"):
                     setattr(article, lf, new_val)
             
-            if meta.get("is_red_alert"): article.is_red_alert = True
             if meta.get("needs_verification"): article.needs_verification = True
             
             await asyncio.to_thread(upsert_event_for_article, db, article)

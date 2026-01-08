@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Phone, MapPin, Shield, Info, ExternalLink, Search, Plus, Edit2, Trash2, X, Save, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Shield, ExternalLink, Loader2 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { getJson, postJson, putJson, deleteJson } from '../api';
 import { VALID_PROVINCES } from '../provinces';
 import Toast from '../components/Toast.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 
-import { THEME_COLORS, getNationalHotlineStyle } from '../theme';
+import { getNationalHotlineStyle } from '../theme';
 import NationalHotlineCard from '../components/rescue/NationalHotlineCard.jsx';
 import HotlineGridItem from '../components/rescue/HotlineGridItem.jsx';
 import HotlineFilterBar from '../components/rescue/HotlineFilterBar.jsx';
@@ -55,7 +55,7 @@ export default function RescuePage() {
         checkRole();
         window.addEventListener("storage", checkRole);
         
-        // setFilterProvince("Toàn quốc"); // Removed redundant set 
+
         fetchHotlines();
         return () => window.removeEventListener("storage", checkRole);
     }, []);

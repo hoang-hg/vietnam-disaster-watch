@@ -2,7 +2,7 @@ from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, Float, Uniqu
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
-from .database import Base, engine
+from .database import Base
 
 class Article(Base):
     __tablename__ = "articles"

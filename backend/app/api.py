@@ -21,7 +21,6 @@ from .sources import DISASTER_GROUPS
 from .risk_lookup import canon
 from . import broadcast, auth
 from .cache import cache
-import time
 import io
 from typing import Optional, List
 
@@ -1044,6 +1043,11 @@ def post_alert(payload: dict, admin: models.User = Depends(auth.get_current_admi
             pass
     except Exception as e:
         return {'ok': False, 'error': str(e)}
+    try:
+        from .ws import manager
+        manager.broadcast_sync({"type": "ALERT", "data": payload})
+    except Exception: pass
+    
     return {'ok': True}
 
 @router.get("/stats/heatmap")
@@ -1238,8 +1242,20 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
     
     if format == "excel":
         output = io.BytesIO()
+        sheet_name = 'Chi tiết thiệt hại'
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Chi tiết thiệt hại')
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+            # [OPTIMIZATION] Auto-adjust column widths for Vietnamese content
+            worksheet = writer.sheets[sheet_name]
+            from openpyxl.utils import get_column_letter
+            for i, column in enumerate(df.columns):
+                # Calculate max length of data in column (safe for empty df)
+                col_data_len = df[column].astype(str).map(len).max() if not df[column].empty else 0
+                col_header_len = len(str(column))
+                # Set width (header vs content, min 12, max 60 to prevent super wide cols)
+                adjusted_width = min(max(col_data_len, col_header_len) + 3, 60)
+                worksheet.column_dimensions[get_column_letter(i + 1)].width = adjusted_width
+        
         output.seek(0)
         
         headers = {'Content-Disposition': f'attachment; filename="bao-cao-thiet-hai-event-{event_id}.xlsx"'}
@@ -1326,8 +1342,18 @@ def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin:
         
     df = pd.DataFrame(data)
     output = io.BytesIO()
+    sheet_name = f'Báo cáo {date}' if date else 'Báo cáo ngày'
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name=f'Báo cáo {date}')
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        # [OPTIMIZATION] Auto-adjust column widths
+        worksheet = writer.sheets[sheet_name]
+        from openpyxl.utils import get_column_letter
+        for i, column in enumerate(df.columns):
+            col_data_len = df[column].astype(str).map(len).max() if not df[column].empty else 0
+            col_header_len = len(str(column))
+            adjusted_width = min(max(col_data_len, col_header_len) + 3, 60)
+            worksheet.column_dimensions[get_column_letter(i + 1)].width = adjusted_width
+
     output.seek(0)
     
     headers = {'Content-Disposition': f'attachment; filename="bao-cao-ngay-{date}.xlsx"'}
@@ -1407,8 +1433,18 @@ def export_events_summary(
         df = pd.concat([df, pd.DataFrame([summary_row])], ignore_index=True)
 
     output = io.BytesIO()
+    sheet_name = 'Tổng hợp'
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Tổng hợp')
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        # [OPTIMIZATION] Auto-adjust column widths
+        worksheet = writer.sheets[sheet_name]
+        from openpyxl.utils import get_column_letter
+        for i, column in enumerate(df.columns):
+            col_data_len = df[column].astype(str).map(len).max() if not df[column].empty else 0
+            col_header_len = len(str(column))
+            adjusted_width = min(max(col_data_len, col_header_len) + 3, 60)
+            worksheet.column_dimensions[get_column_letter(i + 1)].width = adjusted_width
+
     output.seek(0)
     
     filename = f"bao-cao-thiet-hai-{title_suffix.replace(' ', '_')}.xlsx"

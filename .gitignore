@@ -30,6 +30,7 @@ backend/data/*.db
 
 # Logs
 logs/
+!backend/logs/review_potential_disasters.jsonl
 *.log
 npm-debug.log*
 yarn-debug.log*

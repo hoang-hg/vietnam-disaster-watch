@@ -2,23 +2,16 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import {
-  Search,
-  User,
   Menu,
   X,
   AlertTriangle,
   Bell,
   LogOut,
   ShieldCheck,
-  MapPin,
   Sun,
   Moon,
-  Info,
-  Activity,
   ArrowRight,
-  ShieldAlert,
-  Phone,
-  Key
+  ShieldAlert
 } from "lucide-react";
 
 
@@ -113,6 +106,28 @@ export default function MainLayout({ children }) {
                         }, 8000);
 
                         return [newToast, ...prev].slice(0, 3);
+                    });
+                }
+                
+                // [NEW] Handle Manual Admin Alerts
+                if (msg.type === "ALERT" && msg.data) {
+                    const alert = msg.data;
+                    setToasts(prev => {
+                         const newId = `alert_${Date.now()}`;
+                         const newToast = {
+                             id: newId,
+                             isAlert: true, // Marker for styling
+                             title: alert.title || "THÔNG BÁO KHẨN",
+                             message: alert.message || alert.content || "Có thông báo mới từ hệ thống.",
+                             level: alert.level || "warning"
+                         };
+                         
+                         // Alerts stay longer (15s)
+                         setTimeout(() => {
+                             setToasts(current => current.filter(t => t.id !== newId));
+                         }, 15000);
+                         
+                         return [newToast, ...prev].slice(0, 3);
                     });
                 }
             } catch (e) { console.error("WS parse error", e); }
@@ -518,18 +533,18 @@ export default function MainLayout({ children }) {
         {toasts.map(toast => (
           <div 
             key={toast.id}
-            className="pointer-events-auto bg-white dark:bg-slate-800 border-l-4 border-red-500 rounded-xl shadow-2xl p-4 flex gap-4 animate-in slide-in-from-right duration-500 group relative overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700"
+            className={`pointer-events-auto bg-white dark:bg-slate-800 border-l-4 ${toast.isAlert ? 'border-yellow-500' : 'border-red-500'} rounded-xl shadow-2xl p-4 flex gap-4 animate-in slide-in-from-right duration-500 group relative overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700`}
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 dark:bg-red-500/10 rounded-full translate-x-12 -translate-y-12 blur-2xl" />
+            <div className={`absolute top-0 right-0 w-24 h-24 ${toast.isAlert ? 'bg-yellow-500/5 dark:bg-yellow-500/10' : 'bg-red-500/5 dark:bg-red-500/10'} rounded-full translate-x-12 -translate-y-12 blur-2xl`} />
             
-            <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 flex-none flex items-center justify-center text-red-600 dark:text-red-400">
+            <div className={`w-10 h-10 rounded-full ${toast.isAlert ? 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' : 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400'} flex-none flex items-center justify-center`}>
               <AlertTriangle className="w-5 h-5 animate-bounce" />
             </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-black uppercase tracking-tighter text-red-500 bg-red-50 dark:bg-red-900/50 px-1.5 py-0.5 rounded">
-                  Khẩn cấp
+                <span className={`text-[10px] font-black uppercase tracking-tighter ${toast.isAlert ? 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/50' : 'text-red-500 bg-red-50 dark:bg-red-900/50'} px-1.5 py-0.5 rounded`}>
+                  {toast.isAlert ? "CẢNH BÁO" : "Khẩn cấp"}
                 </span>
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
                   Vừa xong
@@ -538,17 +553,23 @@ export default function MainLayout({ children }) {
               <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
                 {toast.title}
               </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Khu vực: <span className="font-bold text-slate-700 dark:text-slate-200">{toast.province || "Thông tin đang cập nhật..."}</span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium line-clamp-2">
+                {toast.isAlert ? (
+                   toast.message
+                ) : (
+                   <>Khu vực: <span className="font-bold text-slate-700 dark:text-slate-200">{toast.province || "Thông tin đang cập nhật..."}</span></>
+                )}
               </p>
               
-              <Link 
-                to={`/events/${toast.event_id}`}
-                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-                className="mt-2 flex items-center gap-1 text-[10px] font-bold text-[#2fa1b3] hover:text-[#258a9b] dark:text-[#4fd1e3] transition-colors"
-              >
-                XEM CHI TIẾT <ArrowRight className="w-3 h-3" />
-              </Link>
+              {!toast.isAlert && (
+                  <Link 
+                    to={`/events/${toast.event_id}`}
+                    onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                    className="mt-2 flex items-center gap-1 text-[10px] font-bold text-[#2fa1b3] hover:text-[#258a9b] dark:text-[#4fd1e3] transition-colors"
+                  >
+                    XEM CHI TIẾT <ArrowRight className="w-3 h-3" />
+                  </Link>
+              )}
             </div>
 
             <button 

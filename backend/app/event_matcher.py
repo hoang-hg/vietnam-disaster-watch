@@ -279,7 +279,7 @@ def _merge_impact_details(ev: Event, new_details: dict):
 def _finalize_event_upsert(db: Session, ev: Event, article: Article):
     """Final consensus check, confidence scoring, notifications and broadcast."""
     from sqlalchemy import or_
-    from .sources import VIP_TERMS_RE, SENSITIVE_LOCATIONS_RE
+    from .sources import VIP_TERMS_RE
     
     # Batch fetch flat article data in 1 query
     article_data = db.query(Article.domain, Article.source, Article.status, Article.title)\
