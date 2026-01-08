@@ -6,6 +6,9 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from . import models, database, settings as app_settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Password hashing - Explicitly configured for security
 pwd_context = CryptContext(
@@ -65,19 +68,19 @@ def get_current_admin(current_user: models.User = Depends(get_current_user)):
 
 def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[models.User]:
     if not token:
-        print("[AUTH] No token found in request")
+        logger.debug("[AUTH] No token found in request")
         return None
     try:
         payload = jwt.decode(token, app_settings.settings.secret_key, algorithms=[app_settings.settings.algorithm])
         email: str = payload.get("sub")
         if email is None:
-            print("[AUTH] Token payload missing 'sub'")
+            logger.warning("[AUTH] Token payload missing 'sub'")
             return None
     except JWTError as e:
-        print(f"[AUTH] JWT Decode Error: {e}")
+        logger.debug(f"[AUTH] JWT Decode Error: {e}")
         return None
     
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
-        print(f"[AUTH] User not found for email: {email}")
+        logger.warning(f"[AUTH] User not found for email: {email}")
     return user

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import useDebounce from "../hooks/useDebounce";
 import { 
   getJson, 
   fmtType, 
@@ -61,6 +62,11 @@ export default function Dashboard() {
   const [hazardType, setHazardType] = useState(searchParams.get("type") || "all");
   const [provQuery, setProvQuery] = useState(searchParams.get("province") || "");
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  
+  // [OPTIMIZATION] Debounce search inputs to avoid API spam on every keystroke
+  const debouncedProvQuery = useDebounce(provQuery, 400);
+  const debouncedSearchQuery = useDebounce(searchQuery, 400);
+
   const [quickFilter, setQuickFilter] = useState(searchParams.get("quick") || null);
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 0);
   const [loading, setLoading] = useState(true);
@@ -77,6 +83,12 @@ export default function Dashboard() {
           const parsed = JSON.parse(storedUser);
           if (parsed && typeof parsed === 'object' && (parsed.role || parsed.email)) {
             setUser(parsed);
+            
+            // [OPTIMIZATION] Auto-fill favorite province if none is specified in URL
+            if (parsed.favorite_province && !searchParams.get("province") && !provQuery) {
+              setProvQuery(parsed.favorite_province);
+              console.log("[DashboardV2] Auto-applying favorite province:", parsed.favorite_province);
+            }
           } else {
             // Invalid user object, clear it
             setUser(null);
@@ -109,7 +121,7 @@ export default function Dashboard() {
         window.removeEventListener("resize", handleResize);
         observer.disconnect();
     };
-  }, []);
+  }, []); // Only on mount to avoid loops with provQuery state
 
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
   const isAdmin = user?.role === 'admin';
@@ -120,7 +132,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     setPage(0);
-  }, [startDate, endDate, hazardType, provQuery, searchQuery, quickFilter]);
+  }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter]); // Use debounced values here
 
   async function load(signal = null) {
     try {
@@ -129,15 +141,15 @@ export default function Dashboard() {
       let queryParams = `?start_date=${startDate}`;
       if (endDate) queryParams += `&end_date=${endDate}`;
       if (hazardType !== "all") queryParams += `&type=${hazardType}`;
-      if (provQuery) queryParams += `&province=${encodeURIComponent(provQuery)}`;
-      if (searchQuery) queryParams += `&q=${encodeURIComponent(searchQuery)}`;
+      if (debouncedProvQuery) queryParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; // Use debounced value
+      if (debouncedSearchQuery) queryParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; // Use debounced value
       if (quickFilter) queryParams += `&quick=${quickFilter}`;
 
       // Sidebar articles should ideally follow type/province filters too
       let artParams = `?limit=20`;
       if (hazardType !== "all") artParams += `&type=${hazardType}`;
-      if (provQuery) artParams += `&province=${encodeURIComponent(provQuery)}`;
-      if (searchQuery) artParams += `&q=${encodeURIComponent(searchQuery)}`;
+      if (debouncedProvQuery) artParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; // Use debounced value
+      if (debouncedSearchQuery) artParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; // Use debounced value
 
       // Optimized: Fetch summary, recent events (limited), and latest articles in parallel
       const [s, evs, arts] = await Promise.all([
@@ -158,8 +170,8 @@ export default function Dashboard() {
       if (startDate) newParams.start_date = startDate;
       if (endDate) newParams.end_date = endDate;
       if (hazardType !== "all") newParams.type = hazardType;
-      if (provQuery) newParams.province = provQuery;
-      if (searchQuery) newParams.q = searchQuery;
+      if (debouncedProvQuery) newParams.province = debouncedProvQuery; // Use debounced value
+      if (debouncedSearchQuery) newParams.q = debouncedSearchQuery; // Use debounced value
       if (quickFilter) newParams.quick = quickFilter;
       if (page > 0) newParams.page = page;
 
@@ -209,7 +221,7 @@ export default function Dashboard() {
       controller.abort();
       clearInterval(t);
     };
-  }, [startDate, endDate, hazardType, provQuery, searchQuery, quickFilter]);
+  }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter]);
 
   const isToday = startDate === new Date().toISOString().split('T')[0] && !endDate;
 

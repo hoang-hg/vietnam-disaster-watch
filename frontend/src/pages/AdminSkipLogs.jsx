@@ -107,7 +107,11 @@ export default function AdminSkipLogs() {
             comment: "Manual admin reclassification"
         });
         showToast("Đã cập nhật phân loại và lưu Feedback cho AI!");
-        fetchData(); // Refresh list
+        
+        // [OPTIMIZATION] Update local state instead of full refresh
+        setPendingItems(prev => prev.map(item => 
+          item.id === isReclassifying.id ? { ...item, disaster_type: correctedType } : item
+        ));
     } catch (e) {
         setError(e.message);
     } finally {

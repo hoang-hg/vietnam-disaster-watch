@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from .models import Article, Event
 from . import broadcast, nlp
+from .cache import cache
 import re
 
 from .sources import SOURCES
@@ -196,6 +197,7 @@ def _create_new_event(db: Session, article: Article) -> Event:
     db.flush()
     article.event_id = ev.id
     
+
     # Notifications and Broadcast for New Event
     _broadcast_event(ev, is_new=True)
     try:
@@ -204,7 +206,9 @@ def _create_new_event(db: Session, article: Article) -> Event:
     except Exception as e:
         logger.error(f"Error notifying users of new event {ev.id}: {e}")
     
+    _invalidate_event_caches(ev.id)
     return ev
+
 
 def _update_event_from_article(db: Session, ev: Event, article: Article):
     """Update event fields based on new article signals."""
@@ -300,14 +304,10 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
     has_trusted = any(TRUSTED_MAP.get(s, False) for s in all_sources)
     has_strong_metrics = (ev.deaths or 0) > 0 or (ev.missing or 0) > 0 or (ev.damage_billion_vnd or 0) > 0.5
     
-    # Use pre-compiled mega-regex for titles if available
-    has_vip = bool(nlp.sources.RE_RECOVERY.search(article.title)) if hasattr(nlp.sources, 'RE_RECOVERY') else False
-    if not has_vip:
-        title_lower = article.title.lower()
-        for vip_re in VIP_TERMS_RE:
-            if vip_re.search(title_lower): 
-                has_vip = True
-                break
+    # Use pre-compiled mega-regex for titles
+    has_vip = False
+    if VIP_TERMS_RE and VIP_TERMS_RE.search(article.title):
+        has_vip = True
     
     # 3. Smart Confidence Matrix
     if has_vip: ev.confidence = 1.0
@@ -326,7 +326,25 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
     except Exception as e:
         logger.error(f"Error notifying followers for event {ev.id}: {e}")
     
+    
     _broadcast_event(ev, is_new=False)
+    _invalidate_event_caches(ev.id)
+
+def _invalidate_event_caches(event_id: int):
+    """Invalidate all caches related to events."""
+    try:
+        # Invalidate specific event details
+        cache.delete(f"ev_detail_v3_{event_id}_True")
+        cache.delete(f"ev_detail_v3_{event_id}_False")
+        cache.delete_match(f"ev_detail_v3_{event_id}*")
+        
+        # Invalidate lists and stats
+        cache.delete_match("ev_v2_*")
+        cache.delete_match("stats_*")
+        cache.delete_match("articles_latest_*")
+    except Exception as e:
+        logger.error(f"Cache invalidation failed for event {event_id}: {e}")
+
 
 def _broadcast_event(ev: Event, is_new: bool = False):
     """Universal broadcast to real-time channels."""

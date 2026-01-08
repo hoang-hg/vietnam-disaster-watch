@@ -222,6 +222,13 @@ CONTEXT_KEYWORDS = [
 
   # Community / public services
   "đóng cửa trường", "cho nghỉ học", "nghỉ học",
+  
+  # DIRECTIVES / PREPAREDNESS (Added)
+  "công điện", "chỉ thị", "văn bản hỏa tốc", "ý kiến chỉ đạo", "thông báo khẩn",
+  "huy động", "triển khai", "bố trí", "xung kích", "ứng trực", "trực ban", "ra quân", "xuất quân",
+  "đảm bảo an toàn", "tuyệt đối an toàn", "chủ động ứng phó", "phương án", "kịch bản",
+  "hồ đập", "thủy lợi", "đê điều", "kè", "xung yếu",
+  "lương thực", "nhu yếu phẩm", "dự trữ", "tại chỗ"
 ]
 
 
@@ -241,7 +248,12 @@ SENSITIVE_LOCATIONS = [
     # Islands & Disaster-prone Districts
     "Lý Sơn", "Phú Quý", "Bạch Long Vĩ", "Cồn Cỏ", "Thổ Chu", "Quần đảo Hoàng Sa", "Quần đảo Trường Sa",
     "Mù Cang Chải", "Sa Pa", "Mường La", "Kỳ Sơn", "Nam Trà My", "Bắc Trà My",
-    "Mai Châu", "Ngọc Linh", "Đèo Thung Khe", "Hoàng Su Phì", "Bát Xát"
+    "Mai Châu", "Ngọc Linh", "Đèo Thung Khe", "Hoàng Su Phì", "Bát Xát",
+    # Additional Infrastructure
+    "Thủy điện Trị An", "Thủy điện Sơn La", "Thủy điện Hòa Bình", "Thủy điện Thác Bà",
+    "Thủy điện Yaly", "Thủy điện Bản Vẽ", "Cầu Bãi Cháy", "Cầu Tân Vũ", "Cầu Cần Thơ",
+    "Cảng Lạch Huyện", "Cảng Cái Mép", "Sân bay Vân Đồn", "Sân bay Long Thành",
+    "Hầm Hải Vân", "Hầm Đèo Cả", "Đê biển Tây", "Đê biển Gò Công"
 ]
 
 INTERNATIONAL_LOCATIONS = [
@@ -254,17 +266,14 @@ INTERNATIONAL_LOCATIONS = [
 ]
 
 # Pre-compile for Case-Insensitive and Verbose matching
-SENSITIVE_LOCATIONS_RE = []
-for loc in SENSITIVE_LOCATIONS:
-    escaped = re.escape(loc).replace(r'\ ', r'\s+')
-    pattern = rf"(?<!\w){escaped}(?!\w)"
-    SENSITIVE_LOCATIONS_RE.append(re.compile(pattern, re.IGNORECASE | re.VERBOSE))
+def _build_mega_loc_re(locations: List[str]):
+    escaped_list = [re.escape(loc).replace(r'\ ', r'\s+') for loc in locations]
+    # Use capturing group ( ) instead of (?: ) for findall support
+    pattern = rf"(?<!\w)({'|'.join(escaped_list)})(?!\w)"
+    return re.compile(pattern, re.IGNORECASE | re.VERBOSE)
 
-INTERNATIONAL_LOCATIONS_RE = []
-for loc in INTERNATIONAL_LOCATIONS:
-    escaped = re.escape(loc).replace(r'\ ', r'\s+')
-    pattern = rf"(?<!\w){escaped}(?!\w)"
-    INTERNATIONAL_LOCATIONS_RE.append(re.compile(pattern, re.IGNORECASE | re.VERBOSE))
+SENSITIVE_LOCATIONS_RE = _build_mega_loc_re(SENSITIVE_LOCATIONS)
+INTERNATIONAL_LOCATIONS_RE = _build_mega_loc_re(INTERNATIONAL_LOCATIONS)
 
 # VIP Terms (Critical warnings/actions that bypass all filters)
 VIP_TERMS = [
@@ -330,10 +339,7 @@ VIP_TERMS = [
     r"rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)\s*[45IV]",
     r"lũ\s*quét\s*đặc\s*biệt\s*nghiêm\s*trọng",
 ]
-VIP_TERMS_RE = [
-    re.compile(p.replace(" ", r"\s+"), re.IGNORECASE | re.VERBOSE) 
-    for p in VIP_TERMS
-]
+VIP_TERMS_RE = re.compile("|".join(rf"(?:{p})" for p in VIP_TERMS), re.IGNORECASE | re.VERBOSE)
 
 
 # Red Alert (High-danger warning) keywords
@@ -444,6 +450,8 @@ HIGH_PRIORITY_KEYWORDS = [
     r"sạt\s*lở\s*núi", r"tin\s*bão", r"tin\s*lũ", r"tin\s*mưa\s*lớn", r"mưa\s*lũ",
     r"xé\s*đường.*do\s*lũ", r"hàm\s*ếch.*sạt\s*lở", r"cứu\s*\d+\s*người.*trong\s*lũ", r"rốn\s*lũ", r"dựng\s*lại\s*nhà.*sau\s*bão", 
     r"cứu\s*dân.*vùng\s*lũ", r"cứu\s*người.*trong\s*lũ", r"vùng\s*tâm\s*bão", r"lưu\s*thông\s*trở\s*lại.*sau\s*bão",
+    r"sơ\s*tán\s*dân", r"di\s*dời\s*dân", r"xả\s*lũ\s*khẩn\s*cấp", r"vận\s*hành\s*xả\s*lũ",
+    r"chiến\s*dịch\s*quang\s*trung", r"hỗ\s*trợ\s*nhà\s*ở.*sau\s*bão",
     r"công\s*bố\s*tình\s*huống.*khẩn\s*cấp", r"thông\s*tuyến|tìm\s*kiếm.*mất\s*tích.*do\s*lũ", r"hồi\s*sinh.*vùng\s*lũ", 
     r"ngập\s*lụt\s*đặc\s*biệt\s*nguy\s*hiểm", r"sập\s*(?:nhà|cầu|cống|đê|kè|tường).*(?:do|trong)\s*(?:bão|lũ|sạt)", 
     r"tốc\s*mái", r"vùi\s*lấp", r"cuốn\s*trôi", r"mất\s*tích.*do\s*lũ", r"người\s*chết.*do\s*bão", 
@@ -461,6 +469,8 @@ HIGH_PRIORITY_KEYWORDS = [
     r"xây\s*nhà\s*.*vùng\s*lũ", r"thi\s*thể\s*.*đã\s*được\s*tìm\s*thấy.*trong\s*lũ", r"khắc\s*phục\s*.*sạt\s*lở",
     r"cô\s*lập\s*.*hộ\s*dân", r"gãy\s*đôi\s*cầu.*do\s*lũ", r"mất\s*tích\s*trên\s*biển.*do\s*bão",
     r"lũ\s*tràn\s*qua\s*đập", r"hư\s*hỏng\s*mặt\s*đường.*do\s*mưa\s*lũ",
+    r"xe\s*máy\s*hư\s*hỏng.*do\s*ngập", r"hàng\s*nghìn\s*xe.*ngập\s*nước", 
+    r"ô\s*tô\s*hư\s*hỏng.*do\s*ngập", r"phương\s*tiện\s*hư\s*hỏng.*do\s*thiên\s*tai",
     # GENUINE DISASTER RECOVERY & INCIDENTS (Boosted)
     r"nứt\s*toác.*di\s*dời", r"lũ.*cô\s*lập.*cứu\s*dân",
     r"cuộc\s*gọi\s*cầu\s*cứu.*trong\s*lũ", r"tiếp\s*tế\s*thực\s*phẩm.*cô\s*lập",
@@ -523,7 +533,26 @@ HIGH_PRIORITY_KEYWORDS = [
     r"chạy\s*lũ", r"sơ\s*tán\s*dân.*tránh\s*trú", r"cứu\s*hộ.*thiên\s*tai", r"cứu\s*nạn.*thiên\s*tai",
     r"giữ\s*đất.*giữ\s*nhà.*trong\s*lũ", r"sạt\s*trượt",
     r"xuyên\s*đêm\s*cứu\s*hộ", r"trắng\s*đêm\s*cứu\s*nạn",
-    r"khẩn\s*trương\s*chạy\s*lũ", r"nguy\s*cơ\s*sạt\s*lở\s*đất"
+    r"khẩn\s*trương\s*chạy\s*lũ", r"nguy\s*cơ\s*sạt\s*lở\s*đất",
+    r"ngập\s*sâu", r"chìm\s*(?:ghe|thuyền|xuồng|tàu)", r"hỗ\s*trợ\s*khẩn\s*cấp",
+    # JAN 2026: NEW BOOSTS FOR DIRECTIVES & INFRASTRUCTURE
+    r"công\s*điện\s*số", r"chỉ\s*thị\s*số", r"an\s*toàn\s*hồ\s*đập", r"an\s*toàn\s*công\s*trình\s*thủy\s*lợi",
+    r"vận\s*hành\s*xả\s*lũ", r"huy\s*động\s*lực\s*lượng", r"ứng\s*trực", r"trực\s*chiến",
+    r"bố\s*trí\s*lực\s*lượng", r"xung\s*kích", r"phương\s*án\s*ứng\s*phó",
+    r"bảo\s*đảm\s*an\s*toàn", r"tuyệt\s*đối\s*an\s*toàn", r"không\s*để\s*bị\s*động",
+    r"di\s*biến\s*động\s*dân\s*cư", r"kiên\s*quyết\s*sơ\s*tán", r"cưỡng\s*chế\s*di\s*dời",
+    r"xuất\s*quân\s*hỗ\s*trợ", r"trao\s*hỗ\s*trợ.*đồng\s*bào", r"kỹ\s*thuật\s*phòng\s*tránh", r"hướng\s*dẫn\s*ứng\s*phó",
+    r"nước\s*cuốn\s*trôi", r"bị\s*nước\s*cuốn", r"lũ\s*cuốn\s*trôi",
+    r"chỉ\s*đạo\s*di\s*dời", r"kiểm\s*tra\s*công\s*tác\s*ứng\s*phó", r"khẩn\s*trương\s*tìm\s*kiếm",
+    # JAN 7 - PART 6: WARNINGS & DYKE SAFETY
+    r"mực\s*nước.*đạt\s*đỉnh", r"mực\s*nước.*lên\s*nhanh", r"trên\s*báo\s*động",
+    r"nguy\s*cơ\s*vỡ\s*đê", r"sự\s*cố\s*đê", r"tràn\s*đê", r"hộ\s*đê", r"an\s*toàn\s*đê\s*điều",
+    r"xả\s*lũ", r"xả\s*đáy", r"mở\s*cửa\s*xả", r"lệnh\s*xả", r"thủy\s*điện\s*xả",
+    r"công\s*điện\s*khẩn", r"lệnh\s*báo\s*động",
+    # JAN 7 - PART 7: RAINFALL & RECOVERY
+    r"mưa.*\d+\s*mm", r"lượng\s*mưa.*mm",
+    r"tìm\s*thấy\s*nạn\s*nhân", r"tìm\s*thấy\s*thi\s*thể",
+    r"di\s*dời\s*khẩn\s*cấp", r"công\s*điện"
 ]
 
 

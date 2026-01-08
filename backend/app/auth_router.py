@@ -133,6 +133,7 @@ def change_password(
 class ResetPasswordRequest(BaseModel):
     email: str
     new_password: str
+    admin_secret: str
 
 @router.post("/reset-password", status_code=200)
 def reset_password(
@@ -140,9 +141,16 @@ def reset_password(
     db: Session = Depends(auth.get_db)
 ):
     """
-    [INSECURE] Allows resetting password knowing only the email.
-    Intended for development environments or closed internal tools without email service.
+    Allows resetting password knowing the email and the system Secret Key.
+    Ensures some level of security while still allowing emergency resets without email service.
     """
+    # Verify Secret Key
+    if payload.admin_secret != settings.settings.secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Mã bảo mật không đúng."
+        )
+
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
         raise HTTPException(

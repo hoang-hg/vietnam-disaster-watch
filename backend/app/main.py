@@ -46,6 +46,7 @@ async def lifespan(app: FastAPI):
     database.Base.metadata.create_all(bind=database.engine)
     
     # 0.1 Seed Fixed Admin Accounts
+    db = None
     try:
         db = next(auth.get_db())
         default_admin_pw = getattr(settings, "default_admin_password", "admin123")
@@ -70,9 +71,11 @@ async def lifespan(app: FastAPI):
                 created_count += 1
         if created_count > 0:
             db.commit()
-            print(f"[SEED] Created {created_count} Admin accounts.")
+            logger.info(f"[SEED] Created {created_count} Admin accounts.")
     except Exception as e:
-        print(f"[SEED] Failed to seed admins: {e}")
+        logger.error(f"[SEED] Failed to seed admins: {e}")
+    finally:
+        if db: db.close()
 
     # 0.2 Capture Main Loop for Broadcast
     try:

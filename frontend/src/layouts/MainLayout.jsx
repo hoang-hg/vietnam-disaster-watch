@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import {
@@ -46,6 +46,11 @@ export default function MainLayout({ children }) {
       }
   }, [isDark]);
 
+  const userRef = useRef(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   useEffect(() => {
     // Real-time WebSocket connection
     let ws;
@@ -73,12 +78,8 @@ export default function MainLayout({ children }) {
                     // [VISIBILITY FILTER]
                     // Only show 'Khẩn cấp' toasts to Guests/Users if the event is high quality
                     // (Confidence >= 0.8 OR Admin-verified)
-                    const storedUserStr = localStorage.getItem("user");
-                    let role = "guest";
-                    try {
-                        const u = JSON.parse(storedUserStr);
-                        role = u?.role || "guest";
-                    } catch (e) {}
+                    const currentUser = userRef.current;
+                    const role = currentUser?.role || "guest";
 
                     const isHighQuality = (data.confidence >= 0.8) || (data.needs_verification === 0 && data.sources_count >= 2);
                     const isAdmin = role === "admin";

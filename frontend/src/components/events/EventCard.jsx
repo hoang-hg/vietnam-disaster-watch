@@ -86,7 +86,7 @@ const EventCard = ({ event: e, isAdmin, onDelete }) => {
           </div>
           {e.source && (
             <span className="font-bold text-red-500 uppercase ml-auto">
-              {e.source.replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
+              {(e.source || "").replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
             </span>
           )}
         </div>

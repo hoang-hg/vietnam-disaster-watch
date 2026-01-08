@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from typing import Union, Optional, Tuple, Iterable
+from functools import lru_cache
 
 # --- UTILITIES ---
 
@@ -13,6 +14,7 @@ def normalize_text(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
+@lru_cache(maxsize=4096)
 def strip_accents(s: str) -> str:
     s = unicodedata.normalize("NFD", s)
     s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
@@ -31,6 +33,7 @@ ALIASES = [
 # Pre-compile alias regexes
 ALIASES_RE = [(re.compile(pat), repl) for pat, repl in ALIASES]
 
+@lru_cache(maxsize=1024)
 def canon(text: str) -> Tuple[str, str]:
     """
     Returns (t, t0):

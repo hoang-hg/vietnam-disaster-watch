@@ -254,29 +254,49 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
                             if state.get("last_modified"):
                                 local_headers["If-Modified-Since"] = state.get("last_modified")
 
-                        r = await client.get(u, headers=local_headers)
+                        # [OPTIMIZATION] If multiple proxies exist, pick a new one per retry or per URL
+                        # to avoid being stuck on a bad node.
+                        current_client = client
+                        close_client = False
                         
-                        elapsed = time.perf_counter() - start
-
-                        # handle 304 Not Modified
-                        if r.status_code == 304:
-                            return (u, {"not_modified": True, "elapsed": elapsed, "status_code": 304})
-
-                        r.raise_for_status() # successful or raise error
-
-                        # successful fetch, update state
+                        if settings.crawler_proxies and len(settings.crawler_proxies) > 1:
+                            # Use a separate client for this request to use a specific proxy
+                            new_proxy = random.choice(settings.crawler_proxies)
+                            current_client = httpx.AsyncClient(
+                                proxy=new_proxy, 
+                                timeout=timeout, 
+                                follow_redirects=True, 
+                                verify=False,
+                                transport=httpx.AsyncHTTPTransport(retries=0) # We handle retries manually
+                            )
+                            close_client = True
+                        
                         try:
-                            h = {}
-                            if r.headers.get("etag"):
-                                h["etag"] = r.headers.get("etag")
-                            if r.headers.get("last-modified"):
-                                h["last_modified"] = r.headers.get("last-modified")
-                            if h:
-                                feed_state[u] = {**feed_state.get(u, {}), **h, "fetched_at": datetime.now(timezone.utc).isoformat()}
-                        except Exception:
-                            pass
+                            r = await current_client.get(u, headers=local_headers)
+                            elapsed = time.perf_counter() - start
 
-                        return (u, {"text": r.text, "elapsed": elapsed, "status_code": r.status_code})
+                            # handle 304 Not Modified
+                            if r.status_code == 304:
+                                return (u, {"not_modified": True, "elapsed": elapsed, "status_code": 304})
+
+                            r.raise_for_status() # successful or raise error
+
+                            # successful fetch, update state
+                            try:
+                                h = {}
+                                if r.headers.get("etag"):
+                                    h["etag"] = r.headers.get("etag")
+                                if r.headers.get("last-modified"):
+                                    h["last_modified"] = r.headers.get("last-modified")
+                                if h:
+                                    feed_state[u] = {**feed_state.get(u, {}), **h, "fetched_at": datetime.now(timezone.utc).isoformat()}
+                            except Exception:
+                                pass
+
+                            return (u, {"text": r.text, "elapsed": elapsed, "status_code": r.status_code})
+                        finally:
+                            if close_client:
+                                await current_client.aclose()
                         
                     except httpx.HTTPError as e:
                         # if last attempt, return error
@@ -330,7 +350,7 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
             existing.score = score
             # Update meta if it's better now
             meta = await asyncio.to_thread(nlp.extract_all_metadata, summary_raw, summary_raw, title, existing_signals=diag["signals"])
-            await asyncio.to_thread(upsert_event_for_article, db, existing)
+            # [REFACTOR] Event upsert moved to main loop after content check
             _log_to_review_file(src, title, link, published_at, score, diag["reason"], "upgraded_to_approved")
             return existing, "upgraded"
             
@@ -409,9 +429,8 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
     try:
         db.add(article)
         db.flush()
-        await asyncio.to_thread(upsert_event_for_article, db, article)
-        db.commit()
-        db.refresh(article)
+        # [REFACTOR] Event upsert moved to main loop after content check
+        # Commit will be handled by the caller in batches for better performance
         return article, status
     except Exception as e:
         db.rollback()
@@ -498,10 +517,22 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     
                     article, status = await _ingest_article_async(db, src, title, link, pub_at, sum_raw)
                     if article:
-                        new_count += 1
-                        info["added"] += 1
-                        _log_artic_status(src.name, title, status, article.score)
                         await _enrich_article_async(db, src, article)
+                        
+                        # [FIX] Check for empty content (ghost article prevention)
+                        has_content = (article.summary and len(article.summary.strip()) > 10) or \
+                                      (article.full_text and len(article.full_text.strip()) > 50)
+                                      
+                        if not has_content:
+                            logger.warning(f"   [SKIPPING] Empty content: {title[:50]}...")
+                            db.delete(article)
+                        else:
+                            new_count += 1
+                            info["added"] += 1
+                            _log_artic_status(src.name, title, status, article.score)
+                            
+                            # Late binding of event to ensure we don't create ghost events for empty articles
+                            await asyncio.to_thread(upsert_event_for_article, db, article)
 
                 if feed_worked: break
 
@@ -515,10 +546,19 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         for item in scraped[:50]:
                             a, s = await _ingest_article_async(db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", ""))
                             if a:
-                                new_count += 1
-                                info["added"] += 1
-                                _log_artic_status(src.name, item["title"], s, a.score)
                                 await _enrich_article_async(db, src, a)
+                                
+                                # [FIX] Check content
+                                has_content = (a.summary and len(a.summary.strip()) > 10) or \
+                                              (a.full_text and len(a.full_text.strip()) > 50)
+                                if not has_content:
+                                    logger.warning(f"   [SKIPPING] Empty content (scraped): {item['title'][:50]}...")
+                                    db.delete(a)
+                                else:
+                                    new_count += 1
+                                    info["added"] += 1
+                                    _log_artic_status(src.name, item["title"], s, a.score)
+                                    await asyncio.to_thread(upsert_event_for_article, db, a)
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
 
@@ -526,6 +566,15 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             stat["articles_added"] = info["added"]
             stat["feed_used"] = ", ".join(stat["feed_used"])
             per_source_stats.append(stat)
+            
+            # Batch Commit per Source
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                stat["error"] = f"Commit failed: {e}"
+                logger.error(f"Commit failed for {name}: {e}")
+
             _update_source_status(db, name, stat)
 
         await _finalize_crawl(db, new_count, start_total, per_source_stats)
@@ -599,8 +648,8 @@ async def _enrich_article_async(db: Session, src, article):
             
             if meta.get("needs_verification"): article.needs_verification = True
             
-            await asyncio.to_thread(upsert_event_for_article, db, article)
-            db.commit()
+            upsert_event_for_article(db, article)
+            db.flush()
     except Exception: pass
 
 def _update_source_status(db: Session, name, stat):

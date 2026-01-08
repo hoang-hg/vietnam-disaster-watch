@@ -821,26 +821,15 @@ def stats_timeline(
     
     query = query.group_by('hour').order_by('hour')
     
-    results = {row[0]: row[1] for row in query.all()}
+    results = {row[0].strftime('%Y-%m-%d %H:00:00') if hasattr(row[0], 'strftime') else str(row[0]): row[1] for row in query.all()}
     
-    # Fill gaps for 24h view if on a single date
+    # Fill gaps for the entire requested window for a continuous graph
     data = []
-    if date:
-        for i in range(24):
-            h_str = (start + timedelta(hours=i)).strftime('%Y-%m-%d %H:00:00')
-            found = False
-            for k, v in results.items():
-                k_str = k.strftime('%Y-%m-%d %H:00:00') if hasattr(k, 'strftime') else str(k)
-                if k_str == h_str:
-                    data.append({"time": h_str, "events": v})
-                    found = True
-                    break
-            if not found:
-                data.append({"time": h_str, "events": 0})
-    else:
-        for hour, count in results.items():
-            h_str = hour.strftime('%Y-%m-%d %H:00:00') if hasattr(hour, 'strftime') else str(hour)
-            data.append({"time": h_str, "events": count})
+    current_dt = start
+    while current_dt < end:
+        h_str = current_dt.strftime('%Y-%m-%d %H:00:00')
+        data.append({"time": h_str, "events": results.get(h_str, 0)})
+        current_dt += timedelta(hours=1)
     
     res = {"window": date or f"{hours}h", "data": data}
     cache.set(cache_key, res, ttl=300)
@@ -852,23 +841,7 @@ def stats_timeline(
 async def stream_events(request: Request):
     """Server-Sent Events endpoint streaming new events as they are published."""
     q = broadcast.subscribe()
-
-    async def event_publisher():
-        try:
-            # Send initial connection confirmation
-            yield f"data: {{\"type\": \"connected\", \"timestamp\": \"{datetime.now(timezone.utc).isoformat()}\"}}\n\n"
-            while True:
-                if await request.is_disconnected():
-                    break
-                try:
-                    msg = await q.get()
-                    yield f"data: {msg}\n\n"
-                except asyncio.CancelledError:
-                    break
-        finally:
-            broadcast.unsubscribe(q)
-
-    return StreamingResponse(event_publisher(), media_type='text/event-stream')
+    return StreamingResponse(broadcast.event_generator(q, request), media_type='text/event-stream')
 
 
 # Admin logic moved to auth module consistent usage

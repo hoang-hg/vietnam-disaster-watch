@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   getJson,
@@ -25,9 +25,11 @@ import ImpactBreakdown from "../components/event-detail/ImpactBreakdown.jsx";
 import FieldInfoTable from "../components/event-detail/FieldInfoTable.jsx";
 import ArticleTimelineItem from "../components/event-detail/ArticleTimelineItem.jsx";
 
-// Local metadata removed
-
-
+const HAZARD_TYPES = Object.entries(DISASTER_METADATA).map(([id, meta]) => ({
+  id,
+  label: meta.label,
+  tone: meta.tone
+}));
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -276,6 +278,24 @@ export default function EventDetail() {
       }
     })();
   }, [id]);
+
+  const sortedArticles = useMemo(() => {
+    return [...(ev?.articles || [])].sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+  }, [ev?.articles]);
+
+  const { combinedSummary, heroImage } = useMemo(() => {
+    if (!ev?.articles?.length) return { combinedSummary: "", heroImage: null };
+    
+    const combined = ev.articles
+      .map((a) => a.summary || "")
+      .filter(Boolean)
+      .slice(0, 3)
+      .join("<br/><br/>");
+    
+    const hero = ev.articles.find(a => a.image_url && !isJunkImage(a.image_url))?.image_url;
+    
+    return { combinedSummary: combined, heroImage: hero };
+  }, [ev?.articles]);
 
   if (error) {
     return (
@@ -605,24 +625,7 @@ export default function EventDetail() {
       {/* Detailed Impact Breakdown (homes, agriculture, etc.) */}
       <ImpactBreakdown details={ev.details} />
 
-      {ev.articles && ev.articles.length > 0
-        ? (() => {
-            const combined = ev.articles
-              .map((a) => a.summary || "")
-              .filter(Boolean)
-              .slice(0, 3)
-              .join("<br/><br/>"); // Use line breaks for HTML
-            
-            const heroImage = ev.articles.find(a => a.image_url && !isJunkImage(a.image_url))?.image_url;
-            
-            if (!combined && !heroImage) return null;
-            const limit = 800;
-            const short =
-              combined.length > limit && !expandedSummary
-                ? combined.slice(0, limit).trim() + "…"
-                : combined;
-                
-            return (
+      {combinedSummary || heroImage ? (
               <div className="mt-4 text-sm text-gray-700 bg-white p-4 rounded border border-gray-200">
                 <div className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                   <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
@@ -643,10 +646,10 @@ export default function EventDetail() {
                 
                 <div 
                   className="text-sm text-gray-700 leading-relaxed summary-content"
-                  dangerouslySetInnerHTML={{ __html: short }}
+                  dangerouslySetInnerHTML={{ __html: !expandedSummary && combinedSummary.length > 800 ? combinedSummary.slice(0, 800) + "..." : combinedSummary }}
                 />
                 
-                {combined.length > limit ? (
+                {combinedSummary.length > 800 ? (
                   <button
                     className="mt-3 text-sm text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 group/more"
                     onClick={() => setExpandedSummary((s) => !s)}
@@ -656,9 +659,7 @@ export default function EventDetail() {
                   </button>
                 ) : null}
               </div>
-            );
-          })()
-        : null}
+            ) : null}
 
       <div className="mt-6 rounded-2xl border border-gray-300 bg-white p-4">
         <div className="text-sm font-semibold text-gray-900">
@@ -668,10 +669,7 @@ export default function EventDetail() {
           Timeline cập nhật từ các nguồn. Mỗi link mở bài gốc.
         </div>
         <div className="mt-4 space-y-0">
-          {ev.articles
-            ?.sort(
-              (a, b) => new Date(b.published_at) - new Date(a.published_at)
-            )
+          {sortedArticles
             .map((a) => (
               <ArticleTimelineItem 
                 key={a.id} 

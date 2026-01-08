@@ -11,6 +11,9 @@ from urllib.parse import urlparse, parse_qs
 from difflib import SequenceMatcher
 from sqlalchemy.orm import Session, defer
 from .models import Article
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_url(url: str) -> str:
@@ -144,7 +147,7 @@ def find_duplicate_article(
         
         return None
     except Exception as e:
-        print(f"[WARN] dedup check failed: {e}")
+        logger.warning(f"dedup check failed: {e}")
         return None
 
 

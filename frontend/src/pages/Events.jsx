@@ -25,6 +25,8 @@ import EventCard from "../components/events/EventCard.jsx";
 // Local TYPE_TONES removed
 
 
+import useDebounce from "../hooks/useDebounce";
+
 export default function Events() {
   const dateInputRef = useRef(null);
   const [showExportView, setShowExportView] = useState(false);
@@ -41,6 +43,9 @@ export default function Events() {
   const [startDate, setStartDate] = useState(searchParams.get("start_date") || "");
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || "");
   
+  // [OPTIMIZATION] Debounce search input
+  const debouncedQ = useDebounce(q, 400);
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(parseInt(searchParams.get("page")) || 1);
   const itemsPerPage = 20; 
@@ -207,7 +212,7 @@ export default function Events() {
       
       if (type) params.append("type", type);
       if (province) params.append("province", province);
-      if (q) params.append("q", q);
+      if (debouncedQ) params.append("q", debouncedQ);
       
       if (startDate && endDate) {
           params.append("start_date", startDate);
@@ -257,7 +262,7 @@ export default function Events() {
     
     // Sync to URL
     const newParams = {};
-    if (q) newParams.q = q;
+    if (q) newParams.q = q; // We still sync the active typing 'q' to URL so it doesn't "jump" on refresh, but the fetch uses debouncedQ
     if (type) newParams.type = type;
     if (province) newParams.province = province;
     if (startDate) newParams.start_date = startDate;
@@ -274,7 +279,7 @@ export default function Events() {
     }
 
     return () => controller.abort();
-  }, [q, type, province, startDate, endDate, currentPage]);
+  }, [debouncedQ, type, province, startDate, endDate, currentPage]);
 
   // Handle URL changes (Back button)
   useEffect(() => {
@@ -305,7 +310,7 @@ export default function Events() {
       controller.abort();
       clearInterval(interval);
     };
-  }, [q, type, province, startDate, endDate, currentPage]);
+  }, [debouncedQ, type, province, startDate, endDate, currentPage]);
 
   const clearFilters = () => {
     setQ("");
