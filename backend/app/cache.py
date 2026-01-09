@@ -105,5 +105,49 @@ class CacheManager:
         for k in to_delete:
             del self.memory_cache[k]
 
+    def acquire_lock(self, lock_name: str, timeout: int = 600) -> bool:
+        """
+        Try to acquire a distributed lock.
+        Returns True if acquired, False if already locked by another worker.
+        """
+        lock_key = f"lock:{lock_name}"
+        
+        # 1. Redis Lock (Preferred)
+        if self.redis_client:
+            try:
+                # set(nx=True) returns True if set happened, None/False otherwise
+                acquired = self.redis_client.set(lock_key, "locked", nx=True, ex=timeout)
+                return bool(acquired)
+            except Exception as e:
+                logger.error(f"Redis lock acquisition failed: {e}")
+                return False # Fail safe: don't run if Redis error to avoid stampede? Or True? 
+                # Let's return False to be safe in Prod. But wait, if Redis is down, nothing updates.
+                # Actually, duplicate crawling is better than NO crawling in critical times. 
+                # But multiple workers hammering usually is bad. Let's return False for now assuming Redis is stable.
+        
+        # 2. Memory Lock (Fallback for single-process/dev)
+        # Note: This only works within ONE process. If multi-worker without Redis, this invalid.
+        # But usually Multi-worker implies Redis is available in our setup.
+        now = time.time()
+        if lock_key in self.memory_cache:
+            _, expiry = self.memory_cache[lock_key]
+            if now < expiry:
+                return False # Already locked
+        
+        # Acquire
+        self.memory_cache[lock_key] = ("locked", now + timeout)
+        return True
+
+    def release_lock(self, lock_name: str):
+        lock_key = f"lock:{lock_name}"
+        if self.redis_client:
+            try:
+                self.redis_client.delete(lock_key)
+            except Exception as e:
+                logger.error(f"Redis unlock failed: {e}")
+        
+        if lock_key in self.memory_cache:
+            del self.memory_cache[lock_key]
+
 # Singleton instance
 cache = CacheManager()

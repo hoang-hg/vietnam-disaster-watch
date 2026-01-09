@@ -196,15 +196,32 @@ def _create_new_event(db: Session, article: Article) -> Event:
     db.add(ev)
     db.flush()
     article.event_id = ev.id
-    
+    # Notifications and Broadcast for New Event (Async/Background to avoid blocking ingestion)
+    # Fire-and-forget background thread for notifications
+    import threading
+    def _background_notify(evt_id):
+        # Create a dedicated session for the background thread
+        # to avoid race conditions with the main crawler session
+        from .database import SessionLocal
+        bg_db = SessionLocal()
+        try:
+            # Re-fetch event to ensure it's attached to this session
+            bg_ev = bg_db.query(Event).get(evt_id)
+            if bg_ev:
+                from .notifications import notify_users_of_event
+                notify_users_of_event(bg_db, bg_ev)
+        except Exception as e:
+            logger.error(f"Background notification failed for event {evt_id}: {e}")
+        finally:
+            bg_db.close()
 
-    # Notifications and Broadcast for New Event
+    # 1. Broadcast (Fast, in-memory)
     _broadcast_event(ev, is_new=True)
-    try:
-        from .notifications import notify_users_of_event
-        notify_users_of_event(db, ev)
-    except Exception as e:
-        logger.error(f"Error notifying users of new event {ev.id}: {e}")
+    
+    # 2. Notifications (Slow, DB-heavy) -> Offload to thread
+    t = threading.Thread(target=_background_notify, args=(ev.id,))
+    t.daemon = True # Daemon thread ensuring it doesn't block shutdown
+    t.start()
     
     _invalidate_event_caches(ev.id)
     return ev

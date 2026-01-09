@@ -50,16 +50,12 @@ async def lifespan(app: FastAPI):
     try:
         db = next(auth.get_db())
         default_admin_pw = getattr(settings, "default_admin_password", "admin123")
-        fixed_admins = [
-            ("admin@vdw.com", default_admin_pw),
-            ("quantri@vdw.com", default_admin_pw),
-            ("root@vdw.com", default_admin_pw)
-        ]
+        default_admin_pw = getattr(settings, "default_admin_password", "admin123")
         created_count = 0
-        for email, pw in fixed_admins:
+        for email in settings.fixed_admin_emails:
             user = db.query(models.User).filter(models.User.email == email).first()
             if not user:
-                hashed = auth.get_password_hash(pw)
+                hashed = auth.get_password_hash(default_admin_pw)
                 new_admin = models.User(
                     email=email,
                     hashed_password=hashed,

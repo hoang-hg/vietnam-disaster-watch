@@ -52,4 +52,14 @@ class Settings(BaseSettings):
     # Format: ["http://user:pass@host:port", "http://host:port", ...]
     crawler_proxies: list[str] = Field(default=[], validation_alias="CRAWLER_PROXIES")
 
+    # Security & Admin
+    # Use a set for O(1) lookups
+    fixed_admin_emails: set[str] = {
+        "admin@vdw.com",
+        "quantri@vdw.com", 
+        "root@vdw.com" 
+    }
+    # Separate secret for password resets (don't reuse JWT secret)
+    admin_reset_secret: str = Field(default="dev_admin_reset_secret", validation_alias="ADMIN_RESET_SECRET")
+
 settings = Settings()

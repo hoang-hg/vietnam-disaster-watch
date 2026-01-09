@@ -97,6 +97,7 @@ def find_duplicate_article(
         
         # Strategy 0: GLOBAL Check for exact URL match (ignoring time window) 
         # This prevents UniqueConstraint violations for re-scraped old articles.
+        # NOTE: Querying 'url' (Text) is performant because of the compound index 'uq_article_url' (domain, url).
         exact_match = db.query(Article).filter(
             Article.domain == domain,
             Article.url == url # Check raw URL first

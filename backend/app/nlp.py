@@ -6,7 +6,7 @@ from datetime import datetime
 from dateutil import parser as dtparser
 from functools import lru_cache
 from . import sources
-from .sources import DISASTER_KEYWORDS as SOURCE_DISASTER_KEYWORDS
+from .sources import DISASTER_KEYWORDS as SOURCE_DISASTER_KEYWORDS, CONTEXT_KEYWORDS as DISASTER_CONTEXT
 from . import risk_lookup
 
 logger = logging.getLogger(__name__)
@@ -385,18 +385,9 @@ BOILERPLATE_TOKENS = [
     r"\blive\b", r"\bhtv\b", r"\bphoto\b", r"\bupdate\b"
 ]
 
-NEGATION_TERMS = {
-    "deaths": ["không có người chết", "không có thương vong", "chưa ghi nhận thương vong", "không ghi nhận thiệt hại về người", "không có nạn nhân"],
-    "missing": ["không có người mất tích", "không ai mất tích", "chưa ghi nhận mất tích", "không mất tích"],
-    "injured": ["không ai bị thương", "không có người bị thương", "không ghi nhận thương vong", "không bị thương"],
-    "damage": ["không gây thiệt hại", "chưa có thiệt hại", "không có thiệt hại về tài sản", "không ghi nhận thiệt hại", "không có thiệt hại đáng kể", "không ảnh hưởng đến", "không hư hỏng"],
-    "general": ["bác bỏ", "tin đồn", "phi lý", "sai sự thật", "không chính xác"]
-}
 
-PLANNING_PREP_KEYWORDS = [
-    "dự kiến", "kịch bản", "giả định", "diễn tập", "phương án", "chuẩn bị", "ứng phó", "trước khi",
-    "chống chịu", "nâng cao năng lực", "kế hoạch", "tổng kết", "hội thảo"
-]
+
+
 
 def safe_no_accent(pat: str) -> bool:
     """
@@ -1697,7 +1688,7 @@ ABSOLUTE_VETO = [
     '\\b(?:chủ\\s*công|nòng\\s*cốt|xung\\s*kích|tình\\s*nguyện|xung\\s*phong)(?!\\s*(?:cứu\\s*hộ|cứu\\s*nạn|giúp\\s*dân|khắc\\s*phục))\\b',
     '\\b(?:luyện\\s*tập|hợp\\s*luyện|thao\\s*diễn|hội\\s*thao|diễn\\s*tập\\s*khu\\s*vực|bắn\\s*đạn\\s*thật)(?!\\s*(?:thực\\s*tế|trong\\s*mưa\\s*bão))\\b',
     '\\b(?:bật\\s*mí|khả\\s*năng|săn\\s*ngầm|trực\\s*thăng\\s*săn\\s*ngầm|trực\\s*thăng\\s*ka-\\d+|vũ\\s*khí\\s*tối\\s*tân|tiêm\\s*kích)\\b',
-    '\\b(?:kiện\\s*toàn\\s*ban\\s*chỉ\\s*đạo|nghiêm\\s*cấm\\s*lợi\\s*dụng|kiểm\\s*tra\\s*về\\s*phòng\\s*cháy|thực\\s*tập\\s*phương\\s*án|hội\\s*thao\\s*pccc)\\b',
+    r'\b(?:kiện\s*toàn\s*ban\s*chỉ\s*đạo|nghiêm\s*cấm\s*lợi\s*dụng|kiểm\s*tra\s*về\s*phòng\s*cháy|thực\s*tập\s*phương\s*án|hội\s*thao\s*pccc)\b(?!.*(?:cháy\s*rừng|rừng\s*bị\s*cháy))',
     '\\b(?:giá\\s*cà\\s*phê|giá\\s*hồ\\s*tiêu|giá\\s*cao\\s*su|tạm\\s*dừng\\s*đà\\s*tăng|giá\\s*nông\\s*sản)\\b',
     '\\b(?:đại\\s*hội\\s*đảng\\s*bộ|tạm\\s*dừng\\s*tổ\\s*chức\\s*đại\\s*hội|chuẩn\\s*bị\\s*đại\\s*hội|nhân\\s*sự\\s*đại\\s*hội)\\b',
     '\\b(?:mua\\s*bán\\s*người|buôn\\s*bán\\s*người|nạn\\s*nhân\\s*mua\\s*bán|lừa\\s*bán|việc\\s*nhẹ\\s*lương\\s*cao|nạn\\s*nhân\\s*bị\\s*lừa|giải\\s*cứu\\s*nạn\\s*nhân\\s*trafficking)\\b',
@@ -1787,7 +1778,7 @@ CONDITIONAL_VETO = [
 
     # TECH TUTORIALS & SPAM
     r"(?:cách|hướng\s*dẫn|thủ\s*thuật|mẹo).*(?:tách|gộp|nén|chuyển|sửa).*(?:file|tệp|pdf|word|excel|ảnh|video)",
-    r"(?:google|facebook|youtube|tiktok|zalo\s*pay|vneid).*(?:cập\s*nhật|tính\s*năng|ra\s*mắt|lỗi|hướng\s*dẫn)",
+    r"(?:google|facebook|youtube|tiktok|zalo\s*pay|vneid).*(?:cập\s*nhật|tính\s*năng|ra\s*mắt|lỗi|hướng\s*dẫn)(?!.*(?:cứu\s*trợ|ủng\s*hộ|thiên\s*tai|bão|lũ|khẩn\s*cấp))",
     r"how\s*to.*(?:tutorial|template|branding|customize)",
     r"(?:sân\s*bay|hàng\s*không|hạ\s*cánh|cất\s*cánh|phi\s*công|cơ\s*trưởng)(?!.*(?:do|vì|bởi|để|ứng\s*phó)\s*(?:bão|lũ|thiên\s*tai|thời\s*tiết))",
 
@@ -1799,6 +1790,8 @@ CONDITIONAL_VETO = [
     # MOVED: r"\b(?:sự\s*cố|hỏng\s*hóc|bảo\s*trì|ngắt\s*điện|mất\s*điện|cắt\s*điện)\s*(?:lưới\s*điện|trạm\s*biến\s*áp|đường\s*dây|cáp\s*quang|internet|hệ\s*thống)(?!.*(?:do|vì|bởi|khắc\s*phục|xuyên\s*đêm)\s*(?:bão|lũ|thiên\s*tai|sạt\s*lở|mưa))\b",
     r"\b(?:thủng\s*xăm|hỏng\s*xe|chết\s*máy|ùn\s*tắc|kẹt\s*xe|dòng\s*người\s*chen\s*chúc)\b",
     r"\b(?:sập\s*giàn\s*giáo|tai\s*nạn\s*lao\s*động|ngộ\s*độc\s*thực\s*phẩm|cháy\s*nổ\s*bình\s*gas)\b",
+    # Refined Fire Veto: Block building/car fires, allow Forest Fires (cháy rừng)
+    r"\b(?:cháy\s*lớn|vụ\s*cháy|hỏa\s*hoạn|bà\s*hỏa|thiêu\s*rụi|cháy\s*rụi).*(?:nhà\s*dân|cửa\s*hàng|quán|karaoke|chung\s*cư|xưởng|nhà\s*kho|xe\s*khách|xe\s*tải|ô\s*tô|xe\s*máy|chợ|siêu\s*thị|tầng|phòng|căn\s*hộ)(?!.*(?:rừng|thảm\s*thực\s*vật|do\s*sét|trong\s*bão|mưa))",
     
     # ROUTINE URBAN NOISE
     r"\b(?:triều\s*cường\s*(?:rằm|giữa\s*tháng|hàng\s*tháng)|ngập\s*do\s*triều|đỉnh\s*triều|hố\s*ga|nắp\s*cống|vỉ\s*hè|đường\s*hầm)\b",
@@ -1963,47 +1956,7 @@ SOFT_NEGATIVE = [
 DISASTER_NEGATIVE = ABSOLUTE_VETO + CONDITIONAL_VETO + SOFT_NEGATIVE
 
 # Removed old compiled patterns
-POLLUTION_TERMS = [
-    # Tổng quát
-    r"ô\s*nhiễm(?:\s+môi\s*trường|\s+không\s*khí|\s+nguồn\s*nước|\s+nước|\s+đất)?",
-    r"ô\s*nhiễm\s+môi\s*trường",
-    r"môi\s*trường\s*bị\s*ô\s*nhiễm",
 
-    # Không khí / bụi / AQI
-    r"(?:chỉ\s*số\s*)?AQI",
-    r"(?:air\s*quality\s*index)",
-    r"chất\s*lượng\s*không\s*khí",
-    r"PM\s*2\.5|PM2\.5",
-    r"PM\s*10|PM10",
-    r"bụi\s*mịn",
-    r"bụi\s*lơ\s*lửng",
-    r"\bTSP\b",
-    r"\bSO2\b|\bNO2\b|\bCO\b|\bO3\b|\bH2S\b|\bNH3\b",
-    r"khói\s*mù|mù\s*khói|smog",
-    r"sương\s*mù\s*quang\s*hóa",
-
-    # Liên quan thiên tai: cháy rừng/nóng hạn → khói/tro/bụi
-    r"khói\s*cháy\s*rừng|cháy\s*rừng.*khói|khói.*cháy\s*rừng",
-    r"tro\s*bụi|bụi\s*tro|mưa\s*tro",
-
-    # Nước/đất: lũ/ngập/sạt lở → ô nhiễm nguồn nước, nước thải
-    r"ô\s*nhiễm\s*nước|ô\s*nhiễm\s*nguồn\s*nước",
-    r"nguồn\s*nước\s*bị\s*ô\s*nhiễm",
-    r"nước\s*bẩn|nước\s*đen|nước\s*đục|bốc\s*mùi",
-    r"nước\s*thải|xả\s*thải|thải\s*trực\s*tiếp",
-    r"rác\s*thải|rác\s*tràn\s*lan|bãi\s*rác.*tràn",
-
-    # Sự cố môi trường do thiên tai: tràn dầu / hóa chất / khí độc
-    r"tràn\s*dầu|dầu\s*loang|vệt\s*dầu|loang\s*dầu",
-    r"rò\s*rỉ\s*hóa\s*chất|rò\s*rỉ|rò\s*khí|xì\s*khí",
-    r"khí\s*độc|hơi\s*độc",
-    r"hóa\s*chất\s*độc|chất\s*độc|độc\s*hại",
-
-    # Hậu quả sinh thái thường được báo chí dùng
-    r"cá\s*chết\s*hàng\s*loạt|thủy\s*sản\s*chết",
-    r"tảo\s*nở\s*hoa|phú\s*dưỡng",
-    r"kim\s*loại\s*nặng|thủy\s*ngân|asen|cadmi(?:um)?|chì",
-]
 
 # Pre-compute unaccented patterns for matching against t0 (canonical text)
 DISASTER_RULES_NO_ACCENT = []
@@ -2072,7 +2025,7 @@ SOFT_NEGATIVE_RE = build_mega_re(SOFT_NEGATIVE)
 # DISASTER_CONTEXT needs individual matching to identify specific context contributions
 DISASTER_CONTEXT_RE = [re.compile(v_safe(p), RE_FLAGS) for p in DISASTER_CONTEXT]
 
-POLLUTION_TERMS_RE = [re.compile(v_safe(p), RE_FLAGS) for p in POLLUTION_TERMS]
+
 
 # MEGA-REGEX for Source Keywords
 AMBIGUOUS_KEYWORDS = {"cảnh báo", "dự báo", "bản tin", "khuyến cáo"}
@@ -2449,7 +2402,18 @@ def check_veto_status(t_acc: str, t_title_acc: str, has_hazard: bool) -> tuple[b
     negative_matches = []
 
     # 1. Absolute Veto
-    if ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t_acc):
+    # 1. Absolute Veto
+    # [OPTIMIZED] Whitelist / Bypass Veto Check
+    # "Chiến dịch Quang Trung", "xả lũ", "sơ tán", "hỗ trợ khẩn cấp" -> Always allowed
+    whitelist_pattern = r"(?:chiến\s*dịch\s*[\"“]?quang\s*trung[\"”]?|xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*(?:dân|người)|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|hỗ\s*trợ\s*khẩn\s*cấp|cấp\s*bách|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|ban\s*chỉ\s*huy\s*pctt|tìm\s*kiếm\s*cứu\s*nạn|đưa\s*thuyền\s*lên\s*bờ|tránh\s*bão|trú\s*tránh|neo\s*đậu|hố\s*tử\s*thần|sụt\s*lún|chi\s*viện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|tiếp\s*tế|phương\s*tiện\s*cứu\s*trợ|người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh.*vùng\s*lũ|tiêm.*vùng\s*lũ|vắc\s*xin.*vùng\s*lũ|ứng\s*cứu\s*viễn\s*thông|khôi\s*phục\s*liên\s*lạc|cấm\s*lưu\s*thông|phân\s*luồng|khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến|khởi\s*công.*nhà.*vùng\s*lũ|xây\s*dựng.*nhà.*vùng\s*lũ|sửa\s*chữa.*nhà.*vùng\s*lũ|công\s*trình\s*cấp\s*thiết|uav.*cứu\s*trợ|trực\s*thăng.*cứu\s*trợ|tàu\s*hỏa.*cứu\s*trợ|xâm\s*thực|sạt\s*lở\s*bờ\s*sông|gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch.*chạy\s*lũ|bảo\s*vệ.*đê.*kè|sửa\s*chữa.*hư\s*hỏng.*(?:bão|lũ)|học\s*sinh.*nghỉ\s*học|cho\s*học\s*sinh.*nghỉ|trường.*ngập|sách\s*vở.*vùng\s*lũ|hỗ\s*trợ.*giáo\s*dục|vào\s*biển\s*đông|bão.*đổ\s*bộ|cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện|cấm\s*xe|cấm\s*đường|nước\s*cuốn\s*trôi|xuất\s*quân.*hỗ\s*trợ|bộ\s*đội.*vượt\s*lũ|công\s*an.*giúp\s*dân|cảnh\s*sát.*hỗ\s*trợ|cảnh\s*sát.*giúp\s*dân|cảnh\s*sát.*phòng\s*chống|chiến\s*sĩ.*hỗ\s*trợ|chiến\s*sĩ.*giúp\s*dân|tình\s*trạng\s*khẩn\s*cấp|tình\s*huống\s*khẩn\s*cấp|sơ\s*tán\s*dân|di\s*dời\s*khẩn\s*cấp|tái\s*thiết.*thiên\s*tai|khởi\s*công.*nhà.*thiên\s*tai|xây\s*dựng.*nhà.*thiên\s*tai|sửa\s*chữa.*nhà.*thiên\s*tai|khởi\s*công.*hồ|sửa\s*chữa.*hồ|bch\s*phòng\s*chống|ban\s*chỉ\s*huy|tìm\s*kiếm\s*cứu\s*nạn|tkcn|diễn\s*tập.*phòng\s*chống|diễn\s*tập.*cứu\s*nạn|sắc\s*phục\s*cand|công\s*an.*cứu\s*nạn|chiến\s*sĩ.*cứu\s*nạn|binh\s*sĩ.*cứu\s*hộ|csgt.*giải\s*cứu|cảnh\s*sát.*giải\s*cứu|cứu\s*nạn.*khẩn\s*cấp|xây\s*nhà.*sau\s*lũ|sửa\s*nhà.*sau\s*lũ|nhà.*tình\s*nghĩa.*lũ|nghỉ\s*học.*tránh\s*bão|nghỉ\s*học.*chống\s*bão|ứng\s*trực.*(?:bão|lũ)|trực\s*ban.*(?:bão|lũ)|đảm\s*bảo\s*an\s*toàn.*(?:bão|lũ|thiên\s*tai)|tạm\s*dừng.*du\s*lịch|công\s*bố.*tình\s*huống\s*khẩn\s*cấp|công\s*bố.*thiên\s*tai|viện\s*trợ.*khẩn\s*cấp|cháy\s*rừng|kêu\s*cứu\s*khẩn\s*cấp|ứng\s*dụng.*cứu\s*nạn|nâng\s*cao\s*năng\s*lực.*(?:thiên\s*tai|bão|lũ)|bị\s*cô\s*lập|khắc\s*phục.*thiên\s*tai|triển\s*khai.*ứng\s*phó|ứng\s*dụng.*mưa\s*lũ|diễn\s*tập.*ứng\s*phó|sinh\s*viên.*hỗ\s*trợ|thanh\s*niên.*xung\s*kích|an\s*toàn.*(?:hồ\s*đập|hồ\s*chứa|thủy\s*lợi)|dự\s*trữ.*nước|vneid.*cứu\s*trợ|du\s*khách.*mắc\s*kẹt|giải\s*cứu.*du\s*khách|chủ\s*động\s*ứng\s*phó|huy\s*động.*lực\s*lượng.*(?:bão|lũ)|bão\s*số\s*\d+|vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ|di\s*dời.*(?:khỏi.*chung\s*cư|tránh\s*bão|khẩn\s*trương)|nghỉ\s*học.*(?:tránh\s*bão|phòng\s*chống))"
+    
+    is_whitelisted = False
+    if re.search(whitelist_pattern, t_acc, re.IGNORECASE):
+        is_whitelisted = True
+    elif t_title_acc and re.search(whitelist_pattern, t_title_acc, re.IGNORECASE):
+        is_whitelisted = True
+
+    if not is_whitelisted and ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t_acc):
         in_title = t_title_acc and ABSOLUTE_VETO_RE.search(t_title_acc)
         if in_title or not has_hazard:
             absolute_veto = True
@@ -2459,12 +2423,14 @@ def check_veto_status(t_acc: str, t_title_acc: str, has_hazard: bool) -> tuple[b
         return True, False, False, negative_matches
 
     # 2. Conditional Veto
-    if CONDITIONAL_VETO_RE and CONDITIONAL_VETO_RE.search(t_acc):
+    # 2. Conditional Veto
+    if not is_whitelisted and CONDITIONAL_VETO_RE and CONDITIONAL_VETO_RE.search(t_acc):
         conditional_veto = True
         negative_matches.append("CONDITIONAL_VETO_MATCH")
 
     # 3. Soft Negative
-    if SOFT_NEGATIVE_RE and SOFT_NEGATIVE_RE.search(t_acc):
+    # 3. Soft Negative
+    if not is_whitelisted and SOFT_NEGATIVE_RE and SOFT_NEGATIVE_RE.search(t_acc):
         soft_negative = True
         negative_matches.append("SOFT_NEGATIVE_MATCH")
 
@@ -2672,7 +2638,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     if event_stage == "RECOVERY":
         stage_bonus += 1.5
     elif event_stage == "FORECAST":
-        stage_bonus += 0.5
+        stage_bonus += 1.5
 
     # [OPTIMIZATION] Magnitude Scaling: Bonus for extreme values
     extreme_bonus = stage_bonus
@@ -2749,9 +2715,7 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
         if pat_re.search(t_acc):
             context_hits.append(DISASTER_CONTEXT[i])
 
-    # Pollution Terms (Optimized)
-    for pat_re in POLLUTION_TERMS_RE:
-        if pat_re.search(t_acc): context_hits.append("pollution_term") # Just marker
+
 
     # Sensitive Locations Check (Metadata)
     sensitive_found = []
@@ -2773,10 +2737,18 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     
     # Regex checks for [Hazard] + [Preposition] + [Proper Noun Location OR Geographical feature]
     # Allow "sông", "suối", "đèo", "cầu" as location markers to capture "Sạt lở bờ sông Lô"
-    diamond_pattern = re.search(r"(?:bão|lũ|sạt lở|vỡ đê|ngập|động đất|sóng thần).*?(?:tại|ở|khu vực|tỉnh|thành phố|huyện|xã|sông|suối|đèo|cầu|bờ).*?\s([A-ZĐ][a-zà-ỹ]+)", t_title_acc, re.IGNORECASE)
+    # [FIX] Enhanced accuracy: Ensure extraction actually found a location in the title
+    # old loose regex: diamond_pattern = re.search(r"...", t_title_acc, re.IGNORECASE)
     
-    if rule_score > 0 and diamond_pattern:
-        gold_boost += 8.0 # Almost guaranteed Auto-Approve
+    title_has_geo = False
+    if best_prov != "unknown":
+        # Check if this best_prov matches something in the title
+        # best_prov comes from prov_hits which prioritizes title matches (H2: Title Match)
+        if best_prov.lower() in t_title_acc:
+            title_has_geo = True
+            
+    if rule_score > 0 and title_has_geo:
+        gold_boost += 8.0 # High confidence boost for [Hazard in Title] + [Location in Title]
         
     # Condition B: TRUSTED WARNING (Official Sources emitting Warnings)
     # If it's a trusted source giving a forecast/warning -> Auto Approve
@@ -2828,6 +2800,15 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     # [FIX] Conditional Veto Penalty
     if conditional_veto and rule_score == 0.0:
         score -= 10.0 # Effectively kill the score if it's a conditional veto (accident/fire) with no disaster rule match
+        
+    # [OPTIMIZATION] International News Filter
+    # If article mentions international locations (e.g. Philippines, Japan) but NO Vietnamese location/region
+    # We deprioritize it heavily unless it explicitly mentions "Biển Đông" (covered by Storm rules) or "Việt Nam"
+    # Note: location_found = (prov_hits OR sensitive_hits)
+    if len(international_hits) > 0 and not location_found:
+        # Check for explicit "Việt Nam" mention just to be safe
+        if "việt nam" not in t_acc and "viet nam" not in t_acc:
+             score -= 10.0
     
     if score < 0: score = 0.0
     
@@ -3016,7 +2997,7 @@ def title_contains_disaster_keyword(title: str) -> bool:
     # "xả lũ", "sơ tán": Critical actions that must pass
     if "Chiến dịch Quang Trung" in t or "chiến dịch Quang Trung" in t:
          pass # Skip Veto check
-    elif re.search(r"(?:xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*dân|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa))", t, re.IGNORECASE):
+    elif re.search(r"(?:xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*dân|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|chằng\s*chống\s*nhà|đưa\s*thuyền\s*lên\s*bờ|tránh\s*bão|trú\s*tránh|hố\s*tử\s*thần|sụt\s*lún|chi\s*viện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|tiếp\s*tế|người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh.*vùng\s*lũ|tiêm.*vùng\s*lũ|vắc\s*xin.*vùng\s*lũ|ứng\s*cứu\s*viễn\s*thông|khôi\s*phục\s*liên\s*lạc|cấm\s*lưu\s*thông|phân\s*luồng|khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến|khởi\s*công.*nhà.*vùng\s*lũ|xây\s*dựng.*nhà.*vùng\s*lũ|sửa\s*chữa.*nhà.*vùng\s*lũ|công\s*trình\s*cấp\s*thiết|uav.*cứu\s*trợ|trực\s*thăng.*cứu\s*trợ|tàu\s*hỏa.*cứu\s*trợ|xâm\s*thực|sạt\s*lở\s*bờ\s*sông|gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch.*chạy\s*lũ|bảo\s*vệ.*đê.*kè|sửa\s*chữa.*hư\s*hỏng.*(?:bão|lũ)|học\s*sinh.*nghỉ\s*học|cho\s*học\s*sinh.*nghỉ|trường.*ngập|sách\s*vở.*vùng\s*lũ|hỗ\s*trợ.*giáo\s*dục|vào\s*biển\s*đông|bão.*đổ\s*bộ|cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện|cấm\s*xe|cấm\s*đường|nước\s*cuốn\s*trôi|xuất\s*quân.*hỗ\s*trợ|bộ\s*đội.*vượt\s*lũ|công\s*an.*giúp\s*dân|cảnh\s*sát.*hỗ\s*trợ|cảnh\s*sát.*giúp\s*dân|cảnh\s*sát.*phòng\s*chống|chiến\s*sĩ.*hỗ\s*trợ|chiến\s*sĩ.*giúp\s*dân|tình\s*trạng\s*khẩn\s*cấp|tình\s*huống\s*khẩn\s*cấp|sơ\s*tán\s*dân|di\s*dời\s*khẩn\s*cấp|tái\s*thiết.*thiên\s*tai|khởi\s*công.*nhà.*thiên\s*tai|xây\s*dựng.*nhà.*thiên\s*tai|sửa\s*chữa.*nhà.*thiên\s*tai|khởi\s*công.*hồ|sửa\s*chữa.*hồ|bch\s*phòng\s*chống|ban\s*chỉ\s*huy|tìm\s*kiếm\s*cứu\s*nạn|tkcn|diễn\s*tập.*phòng\s*chống|diễn\s*tập.*cứu\s*nạn|sắc\s*phục\s*cand|công\s*an.*cứu\s*nạn|chiến\s*sĩ.*cứu\s*nạn|binh\s*sĩ.*cứu\s*hộ|csgt.*giải\s*cứu|cảnh\s*sát.*giải\s*cứu|cứu\s*nạn.*khẩn\s*cấp|xây\s*nhà.*sau\s*lũ|sửa\s*nhà.*sau\s*lũ|nhà.*tình\s*nghĩa.*lũ|nghỉ\s*học.*tránh\s*bão|nghỉ\s*học.*chống\s*bão|ứng\s*trực.*(?:bão|lũ)|trực\s*ban.*(?:bão|lũ)|đảm\s*bảo\s*an\s*toàn.*(?:bão|lũ|thiên\s*tai)|tạm\s*dừng.*du\s*lịch|công\s*bố.*tình\s*huống\s*khẩn\s*cấp|công\s*bố.*thiên\s*tai|viện\s*trợ.*khẩn\s*cấp|cháy\s*rừng|kêu\s*cứu\s*khẩn\s*cấp|ứng\s*dụng.*cứu\s*nạn|nâng\s*cao\s*năng\s*lực.*(?:thiên\s*tai|bão|lũ)|bị\s*cô\s*lập|khắc\s*phục.*thiên\s*tai|triển\s*khai.*ứng\s*phó|ứng\s*dụng.*mưa\s*lũ|diễn\s*tập.*ứng\s*phó|sinh\s*viên.*hỗ\s*trợ|thanh\s*niên.*xung\s*kích|an\s*toàn.*(?:hồ\s*đập|hồ\s*chứa|thủy\s*lợi)|dự\s*trữ.*nước|vneid.*cứu\s*trợ|du\s*khách.*mắc\s*kẹt|giải\s*cứu.*du\s*khách|chủ\s*động\s*ứng\s*phó|huy\s*động.*lực\s*lượng.*(?:bão|lũ)|bão\s*số\s*\d+|vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ|di\s*dời.*(?:khỏi.*chung\s*cư|tránh\s*bão|khẩn\s*trương)|nghỉ\s*học.*(?:tránh\s*bão|phòng\s*chống))",,,, t, re.IGNORECASE):
          pass # Skip Veto check for critical actions
     elif ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t):
         return False

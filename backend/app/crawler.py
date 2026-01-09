@@ -64,6 +64,7 @@ from . import nlp
 from .dedup import find_duplicate_article, get_article_hash, normalize_url
 from .event_matcher import upsert_event_for_article
 from .html_scraper import HTMLScraper, fetch_article_full_text_async, extract_metadata
+from .cache import cache
 
 Base.metadata.create_all(bind=engine)
 
@@ -242,6 +243,7 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
                 
                 # Retry loop
                 for attempt in range(3):
+                    temp_client = None
                     try:
                         # Rotate User-Agent
                         current_ua = random.choice(settings.user_agents)
@@ -254,25 +256,28 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
                             if state.get("last_modified"):
                                 local_headers["If-Modified-Since"] = state.get("last_modified")
 
-                        # [OPTIMIZATION] If multiple proxies exist, pick a new one per retry or per URL
-                        # to avoid being stuck on a bad node.
-                        current_client = client
-                        close_client = False
+                        # [OPTIMIZATION] Scalable Proxy Logic
+                        # Attempt 0: Use default client (shared pool) -> Efficient
+                        # Attempt 1+: If we have proxies, spawn a temp client to rotate IP -> Robust
+                        active_client = client
                         
-                        if settings.crawler_proxies and len(settings.crawler_proxies) > 1:
-                            # Use a separate client for this request to use a specific proxy
+                        should_rotate_proxy = (attempt > 0) and settings.crawler_proxies and len(settings.crawler_proxies) > 1
+                        
+                        if should_rotate_proxy:
+                            # Create a temporary single-use client for this retry
                             new_proxy = random.choice(settings.crawler_proxies)
-                            current_client = httpx.AsyncClient(
+                            temp_client = httpx.AsyncClient(
                                 proxy=new_proxy, 
                                 timeout=timeout, 
                                 follow_redirects=True, 
                                 verify=False,
-                                transport=httpx.AsyncHTTPTransport(retries=0) # We handle retries manually
+                                transport=httpx.AsyncHTTPTransport(retries=0)
                             )
-                            close_client = True
+                            active_client = temp_client
                         
                         try:
-                            r = await current_client.get(u, headers=local_headers)
+                            # Perform Request
+                            r = await active_client.get(u, headers=local_headers)
                             elapsed = time.perf_counter() - start
 
                             # handle 304 Not Modified
@@ -295,8 +300,9 @@ async def _fetch_all_feeds(feed_urls: list[str], headers: dict, timeout_seconds:
 
                             return (u, {"text": r.text, "elapsed": elapsed, "status_code": r.status_code})
                         finally:
-                            if close_client:
-                                await current_client.aclose()
+                            # Only close the temp client if we created one
+                            if temp_client:
+                                await temp_client.aclose()
                         
                     except httpx.HTTPError as e:
                         # if last attempt, return error
@@ -691,7 +697,28 @@ async def _finalize_crawl(db, new_count, start_time, per_source):
         except Exception: pass
 
 def process_once(force: bool = False, only_sources: list[str] = None) -> dict:
-    return asyncio.run(_process_once_async(force_update=force, only_sources=only_sources))
+    # Generate a lock key unique to this job configuration
+    # This prevents multiple Gunicorn workers from running the exact same crawl job simultaneously
+    lock_suffix = "full"
+    if only_sources:
+        import hashlib
+        # Hash the sorted list of sources to create a deterministic key
+        key_str = ",".join(sorted(only_sources))
+        lock_suffix = hashlib.md5(key_str.encode()).hexdigest()
+    
+    lock_name = f"crawl_job_{lock_suffix}"
+    
+    # Try to acquire lock with 45 minutes TTL (crawls shouldn't take longer than this)
+    if not cache.acquire_lock(lock_name, timeout=2700):
+        # Lock acquisition failed = logic is running on another worker
+        logger.info(f"[SCHEDULER] Skipping job {lock_name} - Locked by another worker.")
+        return {"status": "skipped", "reason": "locked"}
+
+    try:
+        return asyncio.run(_process_once_async(force_update=force, only_sources=only_sources))
+    finally:
+        # Always release the lock so next run can proceed
+        cache.release_lock(lock_name)
 
 def cleanup_old_pending_articles():
     db = SessionLocal()

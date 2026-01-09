@@ -130,6 +130,8 @@ export default function Dashboard() {
 
   const events = rawEvents; // Rely on server-side filtering
 
+  const [hotspotsData, setHotspotsData] = useState([]);
+
   useEffect(() => {
     setPage(0);
   }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter]); // Use debounced values here
@@ -138,30 +140,54 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
+      
+      // 1. Construct Main Query (Locked to all filters)
       let queryParams = `?start_date=${startDate}`;
       if (endDate) queryParams += `&end_date=${endDate}`;
       if (hazardType !== "all") queryParams += `&type=${hazardType}`;
-      if (debouncedProvQuery) queryParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; // Use debounced value
-      if (debouncedSearchQuery) queryParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; // Use debounced value
+      if (debouncedProvQuery) queryParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; 
+      if (debouncedSearchQuery) queryParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; 
       if (quickFilter) queryParams += `&quick=${quickFilter}`;
 
-      // Sidebar articles should ideally follow type/province filters too
+      // 2. Construct Context Query (For Hotspots Sidebar - Excludes Province Filter)
+      // This ensures the sidebar shows "Context" (e.g. other provinces) even when drilling down into one.
+      let contextParams = `?start_date=${startDate}`;
+      if (endDate) contextParams += `&end_date=${endDate}`;
+      if (hazardType !== "all") contextParams += `&type=${hazardType}`;
+      if (debouncedSearchQuery) contextParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`;
+      if (quickFilter) contextParams += `&quick=${quickFilter}`;
+      // Note: We purposely OMIT &province here
+
+      // Sidebar articles
       let artParams = `?limit=20`;
       if (hazardType !== "all") artParams += `&type=${hazardType}`;
-      if (debouncedProvQuery) artParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; // Use debounced value
-      if (debouncedSearchQuery) artParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; // Use debounced value
+      if (debouncedProvQuery) artParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; 
+      if (debouncedSearchQuery) artParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; 
 
-      // Optimized: Fetch summary, recent events (limited), and latest articles in parallel
-      const [s, evs, arts] = await Promise.all([
-        getJson(`/api/stats/summary${queryParams}`, { signal }),
-        getJson(`/api/events${queryParams}&limit=100`, { signal }), 
-        getJson(`/api/articles/latest${artParams}`, { signal })
-      ]);
+      const needsContextFetch = !!debouncedProvQuery; // Only fetch extra stats if we are actually filtering by province
+
+      const promises = [
+        getJson(`/api/stats/summary${queryParams}`, { signal }), // Main Stats (Cards)
+        getJson(`/api/events${queryParams}&limit=100`, { signal }), // Events List
+        getJson(`/api/articles/latest${artParams}`, { signal }) // Articles
+      ];
+
+      if (needsContextFetch) {
+          promises.push(getJson(`/api/stats/summary${contextParams}`, { signal })); // Context Stats (Sidebar)
+      }
+
+      const results = await Promise.all(promises);
       
       if (signal?.aborted) return;
 
+      const s = results[0];
+      const evs = results[1];
+      const arts = results[2];
+      const contextS = needsContextFetch ? results[3] : s;
+
       setStats(s);
-      setRawEvents(evs); // Filtered by server already
+      setHotspotsData(contextS.by_province || []); // Use context stats for sidebar
+      setRawEvents(evs); 
       setArticles(arts);
       setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
 
@@ -170,8 +196,8 @@ export default function Dashboard() {
       if (startDate) newParams.start_date = startDate;
       if (endDate) newParams.end_date = endDate;
       if (hazardType !== "all") newParams.type = hazardType;
-      if (debouncedProvQuery) newParams.province = debouncedProvQuery; // Use debounced value
-      if (debouncedSearchQuery) newParams.q = debouncedSearchQuery; // Use debounced value
+      if (debouncedProvQuery) newParams.province = debouncedProvQuery; 
+      if (debouncedSearchQuery) newParams.q = debouncedSearchQuery; 
       if (quickFilter) newParams.quick = quickFilter;
       if (page > 0) newParams.page = page;
 
@@ -201,7 +227,6 @@ export default function Dashboard() {
     const urlQuick = searchParams.get("quick") || null;
     const urlPage = parseInt(searchParams.get("page")) || 0;
 
-    // Use functional updates to avoid dependency hell and prevent infinite loops
     setStartDate(prev => urlStart !== prev ? urlStart : prev);
     setEndDate(prev => urlEnd !== prev ? urlEnd : prev);
     setHazardType(prev => urlType !== prev ? urlType : prev);
@@ -209,13 +234,13 @@ export default function Dashboard() {
     setSearchQuery(prev => urlQ !== prev ? urlQ : prev);
     setQuickFilter(prev => urlQuick !== prev ? urlQuick : prev);
     setPage(prev => urlPage !== prev ? urlPage : prev);
-  }, [searchParams]); // Only searchParams dependency
+  }, [searchParams]);
 
   useEffect(() => {
     const controller = new AbortController();
     load(controller.signal);
     
-    const t = setInterval(() => load(controller.signal), 300_000); // Tự động cập nhật mỗi 5 phút
+    const t = setInterval(() => load(controller.signal), 300_000); 
     
     return () => {
       controller.abort();
@@ -235,10 +260,7 @@ export default function Dashboard() {
     setPage(0);
   };
 
-
-
   const chartData = useMemo(() => {
-    // [OPTIMIZATION] Use server-side aggregated stats if available
     if (stats && stats.by_type) {
        return Object.entries(stats.by_type)
             .map(([k, v]) => ({ 
@@ -249,7 +271,6 @@ export default function Dashboard() {
             .sort((a, b) => b.count - a.count);
     }
     
-    // Fallback: Client-side aggregation (slower / truncated)
     const agg = {
       storm: 0, flood: 0, flash_flood: 0, landslide: 0, subsidence: 0, 
       drought: 0, salinity: 0, extreme_weather: 0, heatwave: 0, cold_surge: 0,
@@ -269,12 +290,12 @@ export default function Dashboard() {
   }, [events, stats]);
 
   const riskiestHotspots = useMemo(() => {
-    // [OPTIMIZATION] Use server-side aggregated stats if available
-    if (stats && stats.by_province) {
-        return stats.by_province || [];
+    // [OPTIMIZATION] Use separate hotspots data to maintain context during filtering
+    if (hotspotsData && hotspotsData.length > 0) {
+        return hotspotsData;
     }
 
-    // Fallback
+    // Fallback if data explicitly empty or not loaded yet
     const counts = {};
     events.forEach(e => {
         if (e.province && VALID_PROVINCES.includes(e.province)) {
@@ -284,7 +305,7 @@ export default function Dashboard() {
     return Object.entries(counts)
         .map(([province, count]) => ({ province, events: count }))
         .sort((a, b) => b.events - a.events);
-  }, [events, stats]);
+  }, [events, hotspotsData]);
 
   const favoriteEvents = useMemo(() => {
     if (!favoriteProvince) return [];

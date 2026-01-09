@@ -41,14 +41,9 @@ async def register(request: Request, user_in: UserCreate, db: Session = Depends(
     # Fixed Admin Accounts Configuration
     # Only these specific emails will be granted Admin privileges upon registration.
     # You can modify this list to change who gets admin access.
-    FIXED_ADMIN_EMAILS = {
-        "admin@vdw.com",
-        "quantri@vdw.com", 
-        "root@vdw.com" 
-    }
     
     role = "user"
-    if user_in.email in FIXED_ADMIN_EMAILS:
+    if user_in.email in settings.settings.fixed_admin_emails:
         role = "admin"
 
     hashed_pw = auth.get_password_hash(user_in.password)
@@ -145,7 +140,7 @@ def reset_password(
     Ensures some level of security while still allowing emergency resets without email service.
     """
     # Verify Secret Key
-    if payload.admin_secret != settings.settings.secret_key:
+    if payload.admin_secret != settings.settings.admin_reset_secret:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Mã bảo mật không đúng."
