@@ -38,6 +38,7 @@ export const THEME_COLORS = {
   recovery: "#10b981",         // Emerald 500
   
   unknown: "#94a3b8",          // Slate 400
+  community: "#a855f7",        // Purple 500
 };
 
 export const DISASTER_METADATA = {
@@ -57,7 +58,8 @@ export const DISASTER_METADATA = {
     wildfire: { label: "Cháy rừng", tone: "rose", color: THEME_COLORS.wildfire },
     erosion: { label: "Xói lở", tone: "pink", color: THEME_COLORS.erosion },
     warning_forecast: { label: "Cảnh báo, dự báo", tone: "yellow", color: THEME_COLORS.warning_forecast },
-    recovery: { label: "Khắc phục hậu quả", tone: "emerald", color: THEME_COLORS.recovery },
+    recovery: { label: "Phục hồi, Khắc phục", tone: "emerald", color: THEME_COLORS.recovery },
+    community: { label: "Cộng đồng báo cáo", tone: "violet", color: THEME_COLORS.community },
     unknown: { label: "Chưa phân loại", tone: "slate", color: THEME_COLORS.unknown },
 };
 

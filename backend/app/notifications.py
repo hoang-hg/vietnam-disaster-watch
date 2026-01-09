@@ -18,15 +18,20 @@ def notify_followers_of_article(db: Session, event: models.Event, article: model
         notifications = []
         # Safe slice for title and handle potential None
         event_title = (event.title or "")[:50]
-        article_title = (article.title or "")[:100]
-        source_name = article.source or "Nguồn tin"
+        
+        if article:
+            article_title = (article.title or "")[:100]
+            source_name = article.source or "Nguồn tin"
+            msg = f"Báo {source_name} vừa đăng: {article_title}..."
+        else:
+            msg = "Sự kiện vừa có thêm thông tin mới..."
 
         for (user_id,) in follower_ids:
             notif = models.Notification(
                 user_id=user_id,
-                type="new_article",
+                type="new_article" if article else "event_update",
                 title=f"Cập nhật mới: {event_title}...",
-                message=f"Báo {source_name} vừa đăng: {article_title}...",
+                message=msg,
                 link=f"/events/{event.id}",
                 created_at=datetime.now(timezone.utc)
             )

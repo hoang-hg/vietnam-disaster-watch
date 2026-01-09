@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "./layouts/MainLayout.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { useAuth } from "./contexts/AuthContext.jsx";
 
 // [OPTIMIZATION] Lazy load pages to reduce initial bundle size
 const Dashboard = lazy(() => import("./pages/DashboardV2.jsx"));
@@ -24,17 +25,12 @@ const PageLoader = () => (
   </div>
 );
 
-function ProtectedRoute({ children, roleRequired }) {
-  const storedUser = localStorage.getItem("user");
-  let user = null;
-  if (storedUser) {
-    try {
-      user = JSON.parse(storedUser);
-    } catch (e) {
-      user = null;
-    }
-  }
 
+function ProtectedRoute({ children, roleRequired }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+  
   const isAuthenticated = !!(user && user.role && user.role !== "guest");
   const currentRole = (user?.role || "").trim().toLowerCase();
 

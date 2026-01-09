@@ -8,23 +8,28 @@ export default function NotificationDropdown({ isOpen, setIsOpen, user }) {
     const [loading, setLoading] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = async (signal = null) => {
         if (!user) return;
         setLoading(true);
         try {
-            const data = await getJson("/api/user/notifications");
+            const data = await getJson("/api/user/notifications", { signal });
+            if (signal?.aborted) return;
             setNotifications(data);
-            const countRes = await getJson("/api/user/notifications/unread-count");
+            const countRes = await getJson("/api/user/notifications/unread-count", { signal });
+            if (signal?.aborted) return;
             setUnreadCount(countRes.count);
         } catch (err) {
+            if (err.name === 'AbortError') return;
             console.error("Failed to fetch notifications", err);
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (isOpen) fetchNotifications();
+        const controller = new AbortController();
+        if (isOpen) fetchNotifications(controller.signal);
+        return () => controller.abort();
     }, [isOpen]);
 
     useEffect(() => {
@@ -147,9 +152,7 @@ export default function NotificationDropdown({ isOpen, setIsOpen, user }) {
                 )}
             </div>
             
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 text-center border-t border-slate-100 dark:border-slate-800">
-                <Link to="/profile?tab=notifications" className="text-[10px] font-black text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 uppercase tracking-widest transition-colors">Xem tất cả thông báo</Link>
-            </div>
+            {/* Footer removed until Profile page is implemented */}
         </div>
     );
 }

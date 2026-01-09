@@ -54,6 +54,7 @@ const LEGEND_ITEMS = [
     { key: "quake_tsunami", color: THEME_COLORS.earthquake, label: "Động đất / Sóng thần" },
     { key: "warning_forecast", color: THEME_COLORS.warning_forecast, label: DISASTER_METADATA.warning_forecast.label },
     { key: "recovery", color: THEME_COLORS.recovery, label: DISASTER_METADATA.recovery.label },
+    { key: "community", color: THEME_COLORS.community, label: DISASTER_METADATA.community.label },
 ];
 
 const MAPPING = {
@@ -98,7 +99,10 @@ export default function MapPage() {
             if (startDate) query += `&start_date=${startDate}`;
             if (endDate) query += `&end_date=${endDate}`;
             
-            const evs = await getJson(query, { signal: controller.signal });
+            const [evs, crowd] = await Promise.all([
+                getJson(query, { signal: controller.signal }),
+                getJson("/api/user/crowdsource/approved", { signal: controller.signal })
+            ]);
             if (controller.signal.aborted) return;
             
             // Enrich events with coordinates from province if missing
@@ -115,8 +119,24 @@ export default function MapPage() {
               return e; // will be filtered out next step if still no coords
             });
 
+            // Process Crowd Reports: add a special type "community"
+            const communityPoints = (crowd || []).map(r => ({
+                id: `c_${r.id}`,
+                title: `[Cộng đồng] ${r.description.substring(0, 50)}${r.description.length > 50 ? '...' : ''}`,
+                lat: r.lat,
+                lon: r.lon,
+                disaster_type: 'community',
+                started_at: r.created_at,
+                source: 'Cộng đồng',
+                is_community: true
+            }));
+
             // Keep valid ones
-            setDataEvents(enrichedEvents.filter(e => e.lat != null && e.lon != null));
+            const allPoints = [
+                ...enrichedEvents.filter(e => e.lat != null && e.lon != null),
+                ...communityPoints.filter(p => p.lat != null && p.lon != null)
+            ];
+            setDataEvents(allPoints);
             
             // Sync to URL
             const newParams = {};

@@ -50,9 +50,11 @@ export default function CrowdsourceModal({ isOpen, onClose, user }) {
         if (!formData.description) return setToast({ isVisible: true, message: "Vui lòng nhập mô tả tình hình", type: "error" });
         if (!formData.province) return setToast({ isVisible: true, message: "Vui lòng chọn tỉnh thành", type: "error" });
 
+        const controller = new AbortController();
         setLoading(true);
         try {
-            await postJson("/api/user/crowdsource/submit", formData);
+            await postJson("/api/user/crowdsource/submit", formData, { signal: controller.signal });
+            if (controller.signal.aborted) return;
             setSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -63,9 +65,10 @@ export default function CrowdsourceModal({ isOpen, onClose, user }) {
                 });
             }, 3000);
         } catch (err) {
+            if (err.name === 'AbortError') return;
             setToast({ isVisible: true, message: "Lỗi: " + err.message, type: "error" });
         } finally {
-            setLoading(false);
+            if (!controller.signal.aborted) setLoading(false);
         }
     };
 

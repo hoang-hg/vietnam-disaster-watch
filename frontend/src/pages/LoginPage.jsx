@@ -87,7 +87,10 @@ function ResetPasswordForm({ onSuccess }) {
   );
 }
 
+import { useAuth } from "../contexts/AuthContext";
+
 export default function LoginPage() {
+  const { user, login } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
@@ -100,16 +103,10 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   React.useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-        try {
-            const user = JSON.parse(storedUser);
-            if (user && user.role !== "guest") {
-                navigate(user.role === "admin" ? "/admin/logs" : "/");
-            }
-        } catch(e) {}
+    if (user && user.role !== "guest") {
+        navigate(user.role === "admin" ? "/admin/logs" : "/");
     }
-  }, [navigate]);
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -124,17 +121,10 @@ export default function LoginPage() {
              throw new Error("No user data received");
         }
 
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        console.log("LocalStorage set:", localStorage.getItem("user"));
+        login(data.user, data.access_token);
         
-        // Dispatch event for same-tab components to see the login
-        window.dispatchEvent(new Event("storage"));
-        
-        // Small delay to ensure storage propagates
-        setTimeout(() => {
-             navigate("/");
-        }, 100);
+        // Navigation will be handled by useEffect, or we can force it here
+        navigate(data.user.role === "admin" ? "/admin/logs" : "/");
     } catch (err) {
         setError(err.message);
     } finally {

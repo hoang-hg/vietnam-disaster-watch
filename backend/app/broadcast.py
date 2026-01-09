@@ -95,7 +95,7 @@ def publish_event_sync(data: dict) -> None:
     # Dispatch memory update and disk sync to main loop
     if _main_loop and not _main_loop.is_closed():
         def _dispatch():
-            _memory_buffer.append(msg)
+            # _memory_buffer.append(msg) # Duplicated in _append_to_buffer_background
             for q in list(_subscribers):
                 try: q.put_nowait(msg)
                 except Exception: pass

@@ -715,7 +715,6 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
     
     # 0. Decode Google News URL if possible
     decoded_url = decode_gnews_url(url)
-    is_gnews = (decoded_url == url and "news.google.com" in url)
     url = decoded_url
     
     # Use a very browser-like header set
@@ -764,8 +763,14 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
     if not html_content:
         return None
 
+    # Offload heavy parsing to thread
+    return await asyncio.to_thread(_parse_article_sync, html_content, final_url)
+
+
+def _parse_article_sync(html_content: str, final_url: str) -> dict:
+    """Sync helper to parse full text and metadata using BS4."""
     try:
-        soup = await asyncio.to_thread(BeautifulSoup, html_content, "html.parser")
+        soup = BeautifulSoup(html_content, "html.parser")
         meta = extract_metadata(soup)
         
         # 1. Image Extraction
@@ -797,7 +802,8 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
                 content_text = container.get_text(separator="\n", strip=True)
                 if len(content_text) > 200:
                     break
-                    
+        
+        # Fallback: Paragraph extraction
         if len(content_text) < 200:
             paragraphs = [p.get_text(strip=True) for p in soup.find_all("p") if len(p.get_text(strip=True)) > 40]
             content_text = "\n".join(paragraphs)
@@ -805,19 +811,21 @@ async def fetch_article_full_text_async(url: str, timeout: int = 15) -> Optional
         # 3. Meta Description Fallback
         if len(content_text) < 150 and meta["description"]:
             content_text = meta["description"]
-            
+
         return {
             "text": content_text,
             "images": images,
             "final_url": final_url,
-            "meta": meta,
-            "is_broken": False
+            "is_broken": len(content_text) < 100 
         }
-                
     except Exception as e:
-        logger.error(f"Error parsing final HTML from {url}: {e}")
-        return None
-
+        logger.error(f"Error parsing article HTML: {e}")
+        return {
+            "text": "",
+            "images": [],
+            "final_url": final_url,
+            "is_broken": True
+        }
 def fetch_article_full_text(url: str, timeout: int = 15) -> Optional[str]:
     """Synchronous wrapper for fetching full article text."""
     try:

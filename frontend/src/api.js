@@ -18,7 +18,20 @@ async function request(path, options = {}) {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(API_BASE + path, { ...options, headers });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+  
+  let res;
+  try {
+    res = await fetch(API_BASE + path, { 
+      ...options, 
+      headers, 
+      signal: options.signal || controller.signal 
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
 
   if (!res.ok) {
     let errorDetail = "";
@@ -34,6 +47,7 @@ async function request(path, options = {}) {
       
       localStorage.removeItem("access_token");
       localStorage.removeItem("user");
+      window.dispatchEvent(new Event("auth:logout"));
       window.dispatchEvent(new Event("storage"));
     }
     

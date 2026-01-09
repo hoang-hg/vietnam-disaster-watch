@@ -82,6 +82,7 @@ class EventUpdate(BaseModel):
     injured: int | None = None
     damage_billion_vnd: float | None = None
     needs_verification: bool | None = None
+    started_at: datetime | None = None
 
 class CrowdsourcedReportOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

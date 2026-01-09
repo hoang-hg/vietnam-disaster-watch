@@ -25,6 +25,8 @@ import ImpactBreakdown from "../components/event-detail/ImpactBreakdown.jsx";
 import FieldInfoTable from "../components/event-detail/FieldInfoTable.jsx";
 import ArticleTimelineItem from "../components/event-detail/ArticleTimelineItem.jsx";
 
+import { useAuth } from "../contexts/AuthContext";
+
 const HAZARD_TYPES = Object.entries(DISASTER_METADATA).map(([id, meta]) => ({
   id,
   label: meta.label,
@@ -32,33 +34,12 @@ const HAZARD_TYPES = Object.entries(DISASTER_METADATA).map(([id, meta]) => ({
 }));
 
 export default function EventDetail() {
+  const { user, isAdmin } = useAuth();
   const { id } = useParams();
   const [ev, setEv] = useState(null);
   const [error, setError] = useState(null);
   const [expandedSummary, setExpandedSummary] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const checkRole = () => {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const u = JSON.parse(storedUser);
-          setUser(u);
-          setIsAdmin(u?.role === 'admin');
-        } catch (e) {
-          // Session errors are expected when logged out
-        }
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
-    };
-    checkRole();
-    window.addEventListener("storage", checkRole);
-    return () => window.removeEventListener("storage", checkRole);
-  }, []);
+  
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const navigate = useNavigate();
@@ -493,7 +474,19 @@ export default function EventDetail() {
             </div>
             <span className="flex items-center gap-1.5">
                <Calendar className="w-3.5 h-3.5 text-slate-400" />
-               Bắt đầu: {fmtDate(ev.started_at)}
+               {isEditing ? (
+                 <div className="flex items-center gap-1">
+                   <span>Bắt đầu:</span>
+                   <input 
+                    type="date"
+                    value={editForm.started_at ? editForm.started_at.split('T')[0] : ""}
+                    onChange={e => setEditForm({...editForm, started_at: e.target.value})}
+                    className="bg-transparent border-b border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold px-1 px-0 py-0"
+                   />
+                 </div>
+               ) : (
+                 <>Bắt đầu: {fmtDate(ev.started_at)}</>
+               )}
             </span>
             <span className="text-slate-300">|</span>
             <span className="flex items-center gap-1.5 italic text-xs">

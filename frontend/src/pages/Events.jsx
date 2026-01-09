@@ -27,7 +27,12 @@ import EventCard from "../components/events/EventCard.jsx";
 
 import useDebounce from "../hooks/useDebounce";
 
+import { useAuth } from "../contexts/AuthContext";
+
+// ... existing imports
+
 export default function Events() {
+  const { user, isAdmin } = useAuth();
   const dateInputRef = useRef(null);
   const [showExportView, setShowExportView] = useState(false);
   const [events, setEvents] = useState([]);
@@ -52,8 +57,7 @@ export default function Events() {
   const [totalEvents, setTotalEvents] = useState(0);
   
   const [error, setError] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState(null);
+  
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
@@ -65,6 +69,8 @@ export default function Events() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isExportingSummary, setIsExportingSummary] = useState(false);
   const [isExportingMonthly, setIsExportingMonthly] = useState(false);
+  // Alias for spinner
+  const isExporting = isExportingSummary || isExportingMonthly;
 
   // Toast state
   const [toast, setToast] = useState({ isVisible: false, message: '', type: 'success' });
@@ -72,23 +78,6 @@ export default function Events() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkRole = () => {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const u = JSON.parse(storedUser);
-          setUser(u);
-          setIsAdmin(u?.role === 'admin');
-        } catch (e) {
-          // Session errors are expected when logged out, no need to notify
-        }
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
-    };
-    checkRole();
-
     // Check for toast in URL
     const params = new URLSearchParams(location.search);
     if (params.get('deleted')) {
@@ -96,9 +85,6 @@ export default function Events() {
       // Remove the param from URL without refreshing
       navigate(location.pathname, { replace: true });
     }
-
-    window.addEventListener("storage", checkRole);
-    return () => window.removeEventListener("storage", checkRole);
   }, []);
 
   const handleDelete = (e, eventId) => {

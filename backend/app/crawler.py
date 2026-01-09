@@ -62,7 +62,7 @@ from .models import Article, Blacklist, CrawlerStatus
 from .sources import SOURCES, build_gnews_rss, CONFIG
 from . import nlp
 from .dedup import find_duplicate_article, get_article_hash, normalize_url
-from .event_matcher import upsert_event_for_article
+from .event_matcher import upsert_event_for_article, emit_event_notifications
 from .html_scraper import HTMLScraper, fetch_article_full_text_async, extract_metadata
 from .cache import cache
 
@@ -335,6 +335,10 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
     """
     article_hash = get_article_hash(title, src.domain)
     
+    # 0. Junk / Landing Page Check (Skip without blacklisting)
+    if nlp.is_junk_title(title):
+        return None, "junk-ignored"
+    
     # 0. Blacklist Check
     if db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
         return None, "blacklisted"
@@ -395,8 +399,16 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
             status = "pending"
 
     if status == "auto-blacklisted":
-        if not db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
-            db.add(Blacklist(news_hash=article_hash, title=title, reason=f"Low Score: {score:.1f}"))
+        # Check database first
+        exists = db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first()
+        if not exists:
+            # [FIX] Also check what's already added in the current session batch
+            in_session = any(
+                isinstance(obj, Blacklist) and getattr(obj, "news_hash", None) == article_hash 
+                for obj in db.new
+            )
+            if not in_session:
+                db.add(Blacklist(news_hash=article_hash, title=title, reason=f"Low Score: {score:.1f}"))
         
         if score >= 3.0 or diag["signals"].get("rule_matches"):
             _log_to_review_file(src, title, link, published_at, score, diag["reason"], "auto_blacklisted", diag["signals"])
@@ -489,6 +501,7 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
         for name, info in sources_info.items():
             src = info["source"]
             stat = {"source": name, "feed_used": [], "elapsed": 0.0, "error": None, "articles_added": 0}
+            events_to_notify = [] # [NEW] Collect events for post-commit notification
             feed_worked = False
 
             for f_type, f_url in info["feeds"]:
@@ -538,7 +551,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             _log_artic_status(src.name, title, status, article.score)
                             
                             # Late binding of event to ensure we don't create ghost events for empty articles
-                            await asyncio.to_thread(upsert_event_for_article, db, article)
+                            ev, is_new = await asyncio.to_thread(upsert_event_for_article, db, article)
+                            if ev: events_to_notify.append((ev.id, is_new))
 
                 if feed_worked: break
 
@@ -564,7 +578,8 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                     new_count += 1
                                     info["added"] += 1
                                     _log_artic_status(src.name, item["title"], s, a.score)
-                                    await asyncio.to_thread(upsert_event_for_article, db, a)
+                                    ev, is_new = await asyncio.to_thread(upsert_event_for_article, db, a)
+                                    if ev: events_to_notify.append((ev.id, is_new))
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
 
@@ -573,9 +588,20 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             stat["feed_used"] = ", ".join(stat["feed_used"])
             per_source_stats.append(stat)
             
+
             # Batch Commit per Source
             try:
                 db.commit()
+                # [OPTIMIZATION] Emit notifications AFTER successful commit to avoid race conditions
+                # where background threads query DB before commit.
+                if events_to_notify:
+                    for ev_id, is_new in events_to_notify:
+                        try:
+                            # Use run_in_executor to avoid blocking the crawler loop with API calls
+                            # Although emit_event_notifications is mostly async/threaded, safe measure.
+                            emit_event_notifications(db, ev_id, is_new=is_new)
+                        except Exception as e:
+                            logger.error(f"Failed to emit post-commit notification: {e}")
             except Exception as e:
                 db.rollback()
                 stat["error"] = f"Commit failed: {e}"
@@ -654,8 +680,12 @@ async def _enrich_article_async(db: Session, src, article):
             
             if meta.get("needs_verification"): article.needs_verification = True
             
-            upsert_event_for_article(db, article)
-            db.flush()
+
+            
+            # [OPTIMIZATION]
+            # Redundant upsert removed. The caller (craler loop) handles event upsert/updates.
+            # await asyncio.to_thread(upsert_event_for_article, db, article)
+            # db.flush()
     except Exception: pass
 
 def _update_source_status(db: Session, name, stat):

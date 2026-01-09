@@ -14,23 +14,16 @@ import HotlineEditModal from '../components/rescue/HotlineEditModal.jsx';
 
 const ALL_PROVINCES = ["Toàn quốc", ...VALID_PROVINCES];
 
-// Custom Hook for debouncing
-function useDebounce(value, delay) {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-    useEffect(() => {
-        const handler = setTimeout(() => setDebouncedValue(value), delay);
-        return () => clearTimeout(handler);
-    }, [value, delay]);
-    return debouncedValue;
-}
+import useDebounce from "../hooks/useDebounce";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function RescuePage() {
+    const { user, isAdmin } = useAuth();
     const [hotlines, setHotlines] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filterProvince, setFilterProvince] = useState("Toàn quốc");
     const [searchTerm, setSearchTerm] = useState("");
     const debouncedSearch = useDebounce(searchTerm, 300);
-    const [user, setUser] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     
     // Modal State
@@ -46,26 +39,20 @@ export default function RescuePage() {
 
     const ITEMS_per_PAGE = 12;
 
-    useEffect(() => {
-        const checkRole = () => {
-            const u = localStorage.getItem("user");
-            if (u) setUser(JSON.parse(u));
-            else setUser(null);
-        };
-        checkRole();
-        window.addEventListener("storage", checkRole);
-        
 
-        fetchHotlines();
-        return () => window.removeEventListener("storage", checkRole);
-    }, []);
 
     // Reset pagination when filtering
     useEffect(() => {
         setCurrentPage(1);
     }, [filterProvince, debouncedSearch]);
 
-    const fetchHotlines = async () => {
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchHotlines(controller.signal);
+        return () => controller.abort();
+    }, [filterProvince, debouncedSearch]);
+
+    const fetchHotlines = async (signal = null) => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -73,12 +60,14 @@ export default function RescuePage() {
             if (debouncedSearch) params.append("q", debouncedSearch);
             params.append("limit", "1000"); // Safety limit
 
-            const data = await getJson(`/api/user/rescue/hotlines?${params.toString()}`);
+            const data = await getJson(`/api/user/rescue/hotlines?${params.toString()}`, { signal });
+            if (signal?.aborted) return;
             setHotlines(data);
         } catch (err) {
+            if (err.name === 'AbortError') return;
             showToast("Không thể tải danh sách cứu hộ: " + err.message, "error");
         } finally {
-            setLoading(false);
+            if (!signal?.aborted) setLoading(false);
         }
     };
 
@@ -89,11 +78,6 @@ export default function RescuePage() {
     // Separate Data for display
     const nationalHotlines = hotlines.filter(h => h.province === "Toàn quốc");
     const otherHotlines = hotlines.filter(h => h.province !== "Toàn quốc");
-
-    // Re-fetch when filters change (server-side)
-    useEffect(() => {
-        fetchHotlines();
-    }, [filterProvince, debouncedSearch]);
 
     // Handle pagination on filtered set (only if still many items)
     const totalPages = Math.ceil(otherHotlines.length / ITEMS_per_PAGE);
@@ -160,7 +144,7 @@ export default function RescuePage() {
         }
     };
 
-    const isAdmin = user?.role === 'admin';
+
 
     return (
         <div className="max-w-6xl mx-auto px-4 py-8 relative">

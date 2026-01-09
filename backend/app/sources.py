@@ -351,6 +351,7 @@ DANGER_SIGS = [
     r"đặc\s*biệt\s*lớn", r"nguy\s*hiểm\s*cao", r"báo\s*động\s*đỏ", r"cảnh\s*báo\s*đỏ",
     r"khốc\s*liệt", r"dữ\s*dội", r"thảm\s*khốc", r"tang\s*thương", r"trắng\s*trời"
 ]
+DANGER_RE = re.compile("|".join(rf"(?:{p})" for p in DANGER_SIGS), re.IGNORECASE | re.VERBOSE)
 # High Priority Keywords indicative of high-impact events
 
 HAZARD_ANCHOR = r"(?:bão|áp\s*thấp|lũ|ngập|sạt\s*lở|nắng\s*nóng|hạn\s*hán|xâm\s*nhập\s*mặn|gió\s*mạnh|sương\s*mù|cháy\s*rừng|động\s*đất|sóng\s*thần|triều\s*cường|nước\s*dâng|mưa\s*lớn|chìm\s*tàu|tài\s*cá\s*gặp\s*nạn|thuyền\s*viên|mất\s*tích)"
@@ -607,8 +608,10 @@ HIGH_PRIORITY_KEYWORDS = [
     r"khẩn\s*trương\s*di\s*dời", r"khẩn\s*cấp\s*di\s*dời", r"cấm\s*biển",
     r"nghỉ\s*học.*(?:bão|lũ|thiên\s*tai|tránh\s*bão)", r"vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ",
     r"nứt\s*đất", r"sụt\s*lún\s*đất", r"tin\s*cảnh\s*báo.*(?:bão|lũ|thiên\s*tai|thủy\s*văn)",
-    r"tin\s*dự\s*báo.*(?:bão|lũ|thiên\s*tai|thủy\s*văn)"
+    r"tin\s*dự\s*báo.*(?:bão|lũ|thiên\s*tai|thủy\s*văn)",
+    r"lũ\s*lịch\s*sử", r"ngập\s*sâu(?!\s*diện\s*rộng)", r"ngập\s*úng", r"áp\s*thấp\s*nhiệt\s*đới", r"bão\s*số", r"cháy\s*rừng\s*cấp"
 ]
+HIGH_PRIORITY_RE = re.compile("|".join(rf"(?:{p})" for p in HIGH_PRIORITY_KEYWORDS), re.IGNORECASE | re.VERBOSE)
 
 
 @dataclass(frozen=True)

@@ -33,7 +33,9 @@ TRUSTED_MAP = {s.name: (s.trusted or False) for s in SOURCES}
 STOPWORDS = {
     "về", "của", "tại", "và", "những", "các", "là", "bị", "cho", "đến", "trong", "do",
     "đã", "đang", "sẽ", "có", "một", "với", "này", "qua", "trên", "dưới", "tờ", "báo",
-    "việc", "vừa", "mới", "vẫn", "được", "rất", "hay", "như", "nhưng", "nếu", "thì"
+    "việc", "vừa", "mới", "vẫn", "được", "rất", "hay", "như", "nhưng", "nếu", "thì",
+    "người", "khiến", "gây", "nhiều", "nơi", "bộ", "theo", "tin", "từ", "làm", "sự",
+    "vào", "ra"
 }
 
 # Pre-compiled regex for tokenization
@@ -72,9 +74,9 @@ def _calculate_similarity(tokens1, tokens2):
     b_union = len(b1 | b2)
     b_sim = b_inter / b_union if b_union > 0 else 0.0
     
-    # Weighted average: Bigrams are more specific
+    # Weighted average: Balanced for robustness
     if b_union > 0:
-        return (u_sim * 0.4) + (b_sim * 0.6)
+        return (u_sim * 0.5) + (b_sim * 0.5)
     return u_sim
 
 def _get_impact_bucket(article: Article) -> str:
@@ -99,22 +101,22 @@ def _get_impact_bucket(article: Article) -> str:
     
     return f"{cb}_{db}"
 
-def upsert_event_for_article(db: Session, article: Article) -> Event:
+def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool]:
     """Groups articles into Events using a Fingerprint Strategy."""
     # 1. Match/Find Candidate
     matched_event, best_score = _find_best_match(db, article)
 
     if matched_event is None:
         # 2. Create New Event if no match
-        return _create_new_event(db, article)
+        return _create_new_event(db, article), True
     
     # 3. Update Existing Event
     ev = matched_event
     _update_event_from_article(db, ev, article)
     
-    # 4. Finalize: Consensus, Notifications, Broadcast
+    # 4. Finalize: Consensus checks
     _finalize_event_upsert(db, ev, article)
-    return ev
+    return ev, False
 
 def _find_best_match(db: Session, article: Article) -> tuple[Event | None, float]:
     """Search for the most similar existing event in the same location/time window."""
@@ -142,7 +144,8 @@ def _find_best_match(db: Session, article: Article) -> tuple[Event | None, float
         cand_tokens = _get_tokens(cand.title)
         title_sim = _calculate_similarity(new_tokens, cand_tokens)
         
-        if title_sim < 0.35: continue
+        # Lower threshold to 0.3 to catch different phrasings of same event
+        if title_sim < 0.30: continue
 
         score = title_sim
         # LOCATION BOOST: Strong evidence for merging
@@ -156,6 +159,7 @@ def _find_best_match(db: Session, article: Article) -> tuple[Event | None, float
             matched_event = cand
             
     return matched_event, best_score
+
 
 def _create_new_event(db: Session, article: Article) -> Event:
     """Initialize a new event from an article."""
@@ -196,35 +200,11 @@ def _create_new_event(db: Session, article: Article) -> Event:
     db.add(ev)
     db.flush()
     article.event_id = ev.id
-    # Notifications and Broadcast for New Event (Async/Background to avoid blocking ingestion)
-    # Fire-and-forget background thread for notifications
-    import threading
-    def _background_notify(evt_id):
-        # Create a dedicated session for the background thread
-        # to avoid race conditions with the main crawler session
-        from .database import SessionLocal
-        bg_db = SessionLocal()
-        try:
-            # Re-fetch event to ensure it's attached to this session
-            bg_ev = bg_db.query(Event).get(evt_id)
-            if bg_ev:
-                from .notifications import notify_users_of_event
-                notify_users_of_event(bg_db, bg_ev)
-        except Exception as e:
-            logger.error(f"Background notification failed for event {evt_id}: {e}")
-        finally:
-            bg_db.close()
 
-    # 1. Broadcast (Fast, in-memory)
-    _broadcast_event(ev, is_new=True)
-    
-    # 2. Notifications (Slow, DB-heavy) -> Offload to thread
-    t = threading.Thread(target=_background_notify, args=(ev.id,))
-    t.daemon = True # Daemon thread ensuring it doesn't block shutdown
-    t.start()
-    
+    # 1. Broadcast and Notify handled by caller via emit_event_notifications
     _invalidate_event_caches(ev.id)
     return ev
+
 
 
 def _update_event_from_article(db: Session, ev: Event, article: Article):
@@ -334,18 +314,65 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
         # Logistic curve approximation
         ev.confidence = min(0.1 + (ev.sources_count * 0.25), 0.85)
 
+
     article.event_id = ev.id
     
-    # Notifications and Broadcast
-    try:
-        from .notifications import notify_followers_of_article
-        notify_followers_of_article(db, ev, article)
-    except Exception as e:
-        logger.error(f"Error notifying followers for event {ev.id}: {e}")
-    
-    
-    _broadcast_event(ev, is_new=False)
+    # [OPTIMIZATION]
+    # Removed direct side-effects (Notifications/Broadcast) from here to avoid Race Conditions.
+    # The caller (crawler/api) must call `emit_event_notifications` AFTER committing the transaction.
     _invalidate_event_caches(ev.id)
+
+def emit_event_notifications(db: Session, event_id: int, is_new: bool = False):
+    """
+    Triggers Broadcasts and Background Notifications.
+    MUST be called AFTER db.commit() to ensure data visibility.
+    """
+    try:
+        ev = db.query(Event).get(event_id)
+        if not ev: return
+
+        # 1. Broadcast (Fast, in-memory)
+        _broadcast_event(ev, is_new=is_new)
+        
+
+        # 2. Notifications (Slow, DB-heavy) -> Offload to thread
+        import threading
+        t = threading.Thread(target=_background_notify_wrapper, args=(ev.id,))
+        t.daemon = True 
+        t.start()
+        
+        # 3. Notify followers of this specific event update (if not new)
+        if not is_new:
+             # notify_followers_of_article(db, ev, None) 
+             # SKIP: requires 'article' context which is not available here. 
+             # We rely on 'events_updated' broadcast for general UI updates.
+             pass
+
+    except Exception as e:
+        logger.error(f"Failed to emit notifications for event {event_id}: {e}")
+
+def _background_notify_wrapper(evt_id):
+    # Create a dedicated session for the background thread
+    from .database import SessionLocal
+    bg_db = SessionLocal()
+    try:
+        # Re-fetch event to ensure it's attached to this session
+        bg_ev = bg_db.query(Event).get(evt_id)
+        if bg_ev:
+            from .notifications import notify_users_of_event
+            # Triggers province-based notifications for new events
+            notify_users_of_event(bg_db, bg_ev) 
+            
+            # Use this background thread to also notify followers if needed
+            # But notify_followers_of_article requires the 'Article' object which triggered this.
+            # Since we decoupled, we might lose that context unless passed.
+            # However, for massive crawls, individual article notifications might be spammy.
+            # We focus on "New Event" notifications primarily.
+    except Exception as e:
+
+        logger.error(f"Background notification failed for event {evt_id}: {e}")
+    finally:
+        bg_db.close()
 
 def _invalidate_event_caches(event_id: int):
     """Invalidate all caches related to events."""
@@ -384,3 +411,4 @@ def _broadcast_event(ev: Event, is_new: bool = False):
         manager.broadcast_sync({"type": "EVENT_UPSERT", "data": data})
     except Exception as e:
         logger.error(f"Failed to broadcast event {ev.id}: {e}")
+

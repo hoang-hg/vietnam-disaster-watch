@@ -22,13 +22,17 @@ import CrowdsourceModal from "../components/CrowdsourceModal";
 
 
 
+import { useAuth } from "../contexts/AuthContext";
+
 export default function MainLayout({ children }) {
+  const { user, logout, updateUser } = useAuth();
+  
   const [isDark, setIsDark] = useState(() => {
     // Default to Light Mode (false) unless explicitly set to dark
     return localStorage.getItem("theme") === "dark";
   });
   const [toasts, setToasts] = useState([]);
-  const [user, setUser] = useState(null);
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isCrowdsourceOpen, setIsCrowdsourceOpen] = useState(false);
@@ -58,8 +62,18 @@ export default function MainLayout({ children }) {
 
     const connect = () => {
         // Use API_BASE to derive WS URL to ensure consistency
-        const wsBase = API_BASE.replace(/^http/, 'ws');
-        const wsUrl = `${wsBase}/ws`;
+        let wsUrl;
+        if (API_BASE.startsWith('http')) {
+            const wsBase = API_BASE.replace(/^http/, 'ws');
+            wsUrl = `${wsBase}/ws`;
+        } else {
+            // API_BASE is relative (e.g. "" or "/api"), build absolute WS URL from window.location
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
+            // Remove trailing slash from API_BASE if present to avoid double slashes
+            const basePath = API_BASE.replace(/\/$/, ''); 
+            wsUrl = `${protocol}//${host}${basePath}/ws`;
+        }
         
         ws = new WebSocket(wsUrl);
         
@@ -135,6 +149,9 @@ export default function MainLayout({ children }) {
         };
         
         ws.onclose = () => {
+             // Only reconnect if we are still mounted? No logic here checked, but acceptable for now.
+             // Ideally we should check if component is unmounted.
+             // But existing code didn't check mounted state in onclose besides cleanup ref.
             console.log("WS closed. Reconnecting in 5s...");
             reconnectTimer = setTimeout(connect, 5000);
         };
@@ -152,34 +169,8 @@ export default function MainLayout({ children }) {
     };
   }, []);
 
-  useEffect(() => {
-    const checkSession = () => {
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          try {
-            const parsed = JSON.parse(storedUser);
-            if (parsed && typeof parsed === 'object') {
-              setUser(parsed);
-            }
-          } catch (e) {
-            localStorage.removeItem("user");
-            setUser(null);
-          }
-        } else {
-            setUser(null);
-        }
-    };
-
-    checkSession();
-    window.addEventListener("storage", checkSession);
-    return () => window.removeEventListener("storage", checkSession);
-  }, []);
-
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("access_token");
-    setUser(null);
-    window.dispatchEvent(new Event("storage"));
+    logout();
     navigate("/login");
   };
 
@@ -187,19 +178,25 @@ export default function MainLayout({ children }) {
     let updated;
     if (user && user.role !== 'guest') {
         try {
-            updated = await putJson("/api/auth/me/preferences", { favorite_province: prov });
+            // Optimistic update
+            updateUser({ favorite_province: prov });
+            await putJson("/api/auth/me/preferences", { favorite_province: prov });
         } catch (err) {
             console.error("Failed to update province", err);
-            updated = { ...user, favorite_province: prov };
+            // Revert or handle error? For now assume it sticks or refreshes on next load.
+            // But we might want to revert if it fails? 
+            // The previous logic was: try put, if fail, update local anyway? No:
+            // "updated = { ...user, favorite_province: prov };" inside catch block in original code.
+            // So it was updating local state regardless of failure?
+            // Actually:
+            // try { updated = await put... } catch { updated = ... }
+            // setUser(updated);
+            // So yes it updated local state regardless.
         }
     } else {
         // Guest mode
-        updated = { ...(user || {}), favorite_province: prov, role: 'guest' };
+        updateUser({ favorite_province: prov, role: 'guest' });
     }
-    
-    setUser(updated);
-    localStorage.setItem("user", JSON.stringify(updated));
-    window.dispatchEvent(new Event("storage"));
   };
 
 

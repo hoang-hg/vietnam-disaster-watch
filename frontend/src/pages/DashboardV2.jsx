@@ -48,7 +48,12 @@ import { Helmet } from "react-helmet-async";
 
 // No local TYPE_TONES needed anymore
 
+import { useAuth } from "../contexts/AuthContext";
+
+// ... existing imports
+
 export default function Dashboard() {
+  const { user } = useAuth();
   const dateInputRef = useRef(null);
   const [stats, setStats] = useState(null);
   const [rawEvents, setRawEvents] = useState([]);
@@ -71,42 +76,23 @@ export default function Dashboard() {
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
+  
   const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString('vi-VN'));
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
+  // [OPTIMIZATION] Auto-fill favorite province if none is specified in URL
+  const initializedFav = useRef(false);
   useEffect(() => {
-    const handleStorage = () => {
-      const storedUser = localStorage.getItem("user");
-      if (storedUser) {
-        try {
-          const parsed = JSON.parse(storedUser);
-          if (parsed && typeof parsed === 'object' && (parsed.role || parsed.email)) {
-            setUser(parsed);
-            
-            // [OPTIMIZATION] Auto-fill favorite province if none is specified in URL
-            if (parsed.favorite_province && !searchParams.get("province") && !provQuery) {
-              setProvQuery(parsed.favorite_province);
-              console.log("[DashboardV2] Auto-applying favorite province:", parsed.favorite_province);
-            }
-          } else {
-            // Invalid user object, clear it
-            setUser(null);
-            console.warn("[DashboardV2] Invalid user object detected, clearing session", parsed);
-            localStorage.removeItem("user");
-          }
-        } catch (e) {
-          // Invalid JSON, clear corrupted data
-          setUser(null);
-          localStorage.removeItem("user");
+    if (user?.favorite_province && !initializedFav.current) {
+        if (!searchParams.get("province") && !provQuery) {
+            setProvQuery(user.favorite_province);
+            console.log("[DashboardV2] Auto-applying favorite province:", user.favorite_province);
         }
-      } else {
-        setUser(null);
-      }
-    };
-    handleStorage();
-    window.addEventListener("storage", handleStorage);
+        initializedFav.current = true;
+    }
+  }, [user]);
 
+  useEffect(() => {
     // Theme observer for charts reactive to MainLayout toggle
     const observer = new MutationObserver(() => {
         setIsDark(document.documentElement.classList.contains('dark'));
@@ -117,11 +103,10 @@ export default function Dashboard() {
     window.addEventListener("resize", handleResize);
 
     return () => {
-        window.removeEventListener("storage", handleStorage);
         window.removeEventListener("resize", handleResize);
         observer.disconnect();
     };
-  }, []); // Only on mount to avoid loops with provQuery state
+  }, []);
 
   const [isDark, setIsDark] = useState(document.documentElement.classList.contains('dark'));
   const isAdmin = user?.role === 'admin';
@@ -434,7 +419,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <StatCard
           title={isToday ? "Sự kiện mới (24h)" : `Sự kiện ngày ${startDate}`}
           value={stats?.events_count || 0}

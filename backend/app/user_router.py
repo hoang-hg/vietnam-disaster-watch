@@ -5,6 +5,7 @@ from .database import get_db
 from . import models, schemas, auth
 from datetime import datetime, timezone
 from typing import List
+from .api import get_date_range
 
 router = APIRouter(prefix="/api/user", tags=["user"])
 
@@ -142,12 +143,19 @@ def mark_all_notifications_read(
 # Admin Endpoints for Crowdsourcing
 @router.get("/admin/crowdsource/pending", response_model=List[schemas.CrowdsourcedReportOut])
 def get_pending_reports(
+    start_date: str | None = None,
+    end_date: str | None = None,
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_current_admin)
 ):
-    return db.query(models.CrowdsourcedReport).filter(
+    query = db.query(models.CrowdsourcedReport).filter(
         models.CrowdsourcedReport.status == "pending"
-    ).order_by(models.CrowdsourcedReport.created_at.asc()).all()
+    )
+    if start_date or end_date:
+        d_start, d_end = get_date_range(0, None, start_date, end_date)
+        query = query.filter(models.CrowdsourcedReport.created_at >= d_start, models.CrowdsourcedReport.created_at < d_end)
+        
+    return query.order_by(models.CrowdsourcedReport.created_at.asc()).all()
 
 @router.patch("/admin/crowdsource/{report_id}/approve")
 def approve_report(
@@ -174,6 +182,8 @@ def approve_report(
         db.add(notif)
         
     db.commit()
+    from .cache import cache
+    cache.delete_match("stats_*")
     return {"ok": True}
 
 @router.patch("/admin/crowdsource/{report_id}/reject")
@@ -190,15 +200,27 @@ def reject_report(
         raise HTTPException(status_code=404, detail="Report not found")
         
     db.commit()
+    from .cache import cache
+    cache.delete_match("stats_*")
     return {"ok": True}
-
 @router.get("/admin/crowdsource/export")
-def export_crowdsource_reports(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
+def export_crowdsource_reports(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    db: Session = Depends(get_db), 
+    admin: models.User = Depends(auth.get_current_admin)
+):
     import pandas as pd
     import io
     from fastapi.responses import StreamingResponse
+    from sqlalchemy import and_
 
-    reports = db.query(models.CrowdsourcedReport).all()
+    query = db.query(models.CrowdsourcedReport)
+    if start_date or end_date:
+        d_start, d_end = get_date_range(0, None, start_date, end_date)
+        query = query.filter(models.CrowdsourcedReport.created_at >= d_start, models.CrowdsourcedReport.created_at < d_end)
+            
+    reports = query.order_by(models.CrowdsourcedReport.created_at.desc()).all()
     
     data = []
     for r in reports:

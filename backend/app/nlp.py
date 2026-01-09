@@ -11,6 +11,25 @@ from . import risk_lookup
 
 logger = logging.getLogger(__name__)
 
+def is_junk_title(title: str) -> bool:
+    """
+    Check if the title is a generic landing page or SEO noise rather than an actual article.
+    Helps avoid blacklisting thousands of 'Search Results' pages.
+    """
+    title_low = title.lower()
+    junk_patterns = [
+        r"kết quả tin tức cho từ khóa",
+        r"trang chủ - ",
+        r"tìm kiếm - ",
+        r"kết quả tìm kiếm",
+        r"search results for",
+        r"news results for",
+    ]
+    for p in junk_patterns:
+        if re.search(p, title_low):
+            return True
+    return False
+
 # CONSTANTS & CONFIG
 def dedupe_keep_order(items):
     seen = set()
@@ -372,6 +391,35 @@ IMPACT_KEYWORDS = {
     },
 
 
+}
+
+# Negation terms to avoid false positives in impact extraction
+NEGATION_TERMS = {
+    "general": [
+        "không", "chưa", "không có", "chưa có", "không gây", "không làm", "chưa ghi nhận",
+        "không thiệt hại", "tránh", "thoát", "không bị", "chưa bị", "hạn chế", "ngăn chặn",
+        "phòng ngừa", "đối phó", "ứng phó", "chuẩn bị", "dự báo", "cảnh báo"
+    ],
+    "deaths": [
+        "không có người chết", "không gây thiệt mạng", "không có thương vong",
+        "may mắn không có", "không tử vong", "chưa có người chết"
+    ],
+    "missing": [
+        "đã tìm thấy", "đã liên lạc được", "không còn mất tích", "đã cứu sống",
+        "đã được cứu", "không có người mất tích"
+    ],
+    "injured": [
+        "không ai bị thương", "không có người bị thương", "may mắn thoát nạn",
+        "xây xát nhẹ", "không nguy hiểm tính mạng"
+    ],
+    "damage": [
+        "không thiệt hại về tài sản", "không gây hư hỏng", "không bị ảnh hưởng",
+        "không sập", "không tốc mái", "chưa có thiệt hại"
+    ],
+    "agriculture": [
+        "không ảnh hưởng mùa màng", "không gây ngập", "không thiệt hại lúa",
+        "đã thu hoạch xong", "chủ động thu hoạch"
+    ]
 }
 
 # Deduplicate impact terms to avoid biased scoring and reduce CPU overhead
@@ -836,9 +884,9 @@ DISASTER_RULES = [
 ]
 
 # High-priority keywords are now centralized in sources.py
-HIGH_PRIORITY_RE = [re.compile(p, re.IGNORECASE) for p in sources.HIGH_PRIORITY_KEYWORDS + ["lũ lịch sử", "lũ ống", "lũ quét", "ngập sâu", "ngập úng", "sạt lở đất", "áp thấp nhiệt đới", "bão số", "siêu bão", "hố tử thần", "cháy rừng cấp"]]
-
-DANGER_RE = [re.compile(p, re.IGNORECASE) for p in sources.DANGER_SIGS + ["lũ lịch sử", "áp thấp nhiệt đới", "khẩn cấp"]]
+# High-priority keywords are now centralized in sources.py
+HIGH_PRIORITY_RE = sources.HIGH_PRIORITY_RE
+DANGER_RE = sources.DANGER_RE
 
 # Risk Level Patterns (Decision 18 Art 4)
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp|mức)?\s*([1-5I-V])", re.IGNORECASE)
@@ -2012,7 +2060,7 @@ for label, pats in DISASTER_RULES:
     # Only append accented versions
     DISASTER_RULES_RE.append((label, compiled_acc))
 
-HIGH_PRIORITY_RE = build_mega_re(sources.HIGH_PRIORITY_KEYWORDS)
+# HIGH_PRIORITY_RE is already imported from sources
 RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấp\s*)?([1-5|I-V|V])", re.IGNORECASE)
 
 
@@ -2021,6 +2069,10 @@ RISK_LEVEL_RE = re.compile(r"cấp\s*độ\s*rủi\s*ro\s*thiên\s*tai\s*(?:cấ
 ABSOLUTE_VETO_RE = build_mega_re(ABSOLUTE_VETO)
 CONDITIONAL_VETO_RE = build_mega_re(CONDITIONAL_VETO)
 SOFT_NEGATIVE_RE = build_mega_re(SOFT_NEGATIVE)
+
+# [OPTIMIZED] Whitelist Pattern for Pre-compilation
+WHITELIST_PATTERN_STR = r"(?:chiến\s*dịch\s*[\"“]?quang\s*trung[\"”]?|xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*(?:dân|người)|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|hỗ\s*trợ\s*khẩn\s*cấp|cấp\s*bách|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|ban\s*chỉ\s*huy\s*pctt|tìm\s*kiếm\s*cứu\s*nạn|đưa\s*thuyền\s*lên\s*bờ|tránh\s*bão|trú\s*tránh|neo\s*đậu|hố\s*tử\s*thần|sụt\s*lún|chi\s*viện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|tiếp\s*tế|phương\s*tiện\s*cứu\s*trợ|người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh.*vùng\s*lũ|tiêm.*vùng\s*lũ|vắc\s*xin.*vùng\s*lũ|ứng\s*cứu\s*viễn\s*thông|khôi\s*phục\s*liên\s*lạc|cấm\s*lưu\s*thông|phân\s*luồng|khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến|khởi\s*công.*nhà.*vùng\s*lũ|xây\s*dựng.*nhà.*vùng\s*lũ|sửa\s*chữa.*nhà.*vùng\s*lũ|công\s*trình\s*cấp\s*thiết|uav.*cứu\s*trợ|trực\s*thăng.*cứu\s*trợ|tàu\s*hỏa.*cứu\s*trợ|xâm\s*thực|sạt\s*lở\s*bờ\s*sông|gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch.*chạy\s*lũ|bảo\s*vệ.*đê.*kè|sửa\s*chữa.*hư\s*hỏng.*(?:bão|lũ)|học\s*sinh.*nghỉ\s*học|cho\s*học\s*sinh.*nghỉ|trường.*ngập|sách\s*vở.*vùng\s*lũ|hỗ\s*trợ.*giáo\s*dục|vào\s*biển\s*đông|bão.*đổ\s*bộ|cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện|cấm\s*xe|cấm\s*đường|nước\s*cuốn\s*trôi|xuất\s*quân.*hỗ\s*trợ|bộ\s*đội.*vượt\s*lũ|công\s*an.*giúp\s*dân|cảnh\s*sát.*hỗ\s*trợ|cảnh\s*sát.*giúp\s*dân|cảnh\s*sát.*phòng\s*chống|chiến\s*sĩ.*hỗ\s*trợ|chiến\s*sĩ.*giúp\s*dân|tình\s*trạng\s*khẩn\s*cấp|tình\s*huống\s*khẩn\s*cấp|sơ\s*tán\s*dân|di\s*dời\s*khẩn\s*cấp|tái\s*thiết.*thiên\s*tai|khởi\s*công.*nhà.*thiên\s*tai|xây\s*dựng.*nhà.*thiên\s*tai|sửa\s*chữa.*nhà.*thiên\s*tai|khởi\s*công.*hồ|sửa\s*chữa.*hồ|bch\s*phòng\s*chống|ban\s*chỉ\s*huy|tìm\s*kiếm\s*cứu\s*nạn|tkcn|diễn\s*tập.*phòng\s*chống|diễn\s*tập.*cứu\s*nạn|sắc\s*phục\s*cand|công\s*an.*cứu\s*nạn|chiến\s*sĩ.*cứu\s*nạn|binh\s*sĩ.*cứu\s*hộ|csgt.*giải\s*cứu|cảnh\s*sát.*giải\s*cứu|cứu\s*nạn.*khẩn\s*cấp|xây\s*nhà.*sau\s*lũ|sửa\s*nhà.*sau\s*lũ|nhà.*tình\s*nghĩa.*lũ|nghỉ\s*học.*tránh\s*bão|nghỉ\s*học.*chống\s*bão|ứng\s*trực.*(?:bão|lũ)|trực\s*ban.*(?:bão|lũ)|đảm\s*bảo\s*an\s*toàn.*(?:bão|lũ|thiên\s*tai)|tạm\s*dừng.*du\s*lịch|công\s*bố.*tình\s*huống\s*khẩn\s*cấp|công\s*bố.*thiên\s*tai|viện\s*trợ.*khẩn\s*cấp|cháy\s*rừng|kêu\s*cứu\s*khẩn\s*cấp|ứng\s*dụng.*cứu\s*nạn|nâng\s*cao\s*năng\s*lực.*(?:thiên\s*tai|bão|lũ)|bị\s*cô\s*lập|khắc\s*phục.*thiên\s*tai|triển\s*khai.*ứng\s*phó|ứng\s*dụng.*mưa\s*lũ|diễn\s*tập.*ứng\s*phó|sinh\s*viên.*hỗ\s*trợ|thanh\s*niên.*xung\s*kích|an\s*toàn.*(?:hồ\s*đập|hồ\s*chứa|thủy\s*lợi)|dự\s*trữ.*nước|vneid.*cứu\s*trợ|du\s*khách.*mắc\s*kẹt|giải\s*cứu.*du\s*khách|chủ\s*động\s*ứng\s*phó|huy\s*động.*lực\s*lượng.*(?:bão|lũ)|bão\s*số\s*\d+|vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ|di\s*dời.*(?:khỏi.*chung\s*cư|tránh\s*bão|khẩn\s*trương)|nghỉ\s*học.*(?:tránh\s*bão|phòng\s*chống))"
+WHITELIST_RE = re.compile(WHITELIST_PATTERN_STR, re.IGNORECASE)
 
 # DISASTER_CONTEXT needs individual matching to identify specific context contributions
 DISASTER_CONTEXT_RE = [re.compile(v_safe(p), RE_FLAGS) for p in DISASTER_CONTEXT]
@@ -2404,13 +2456,10 @@ def check_veto_status(t_acc: str, t_title_acc: str, has_hazard: bool) -> tuple[b
     # 1. Absolute Veto
     # 1. Absolute Veto
     # [OPTIMIZED] Whitelist / Bypass Veto Check
-    # "Chiến dịch Quang Trung", "xả lũ", "sơ tán", "hỗ trợ khẩn cấp" -> Always allowed
-    whitelist_pattern = r"(?:chiến\s*dịch\s*[\"“]?quang\s*trung[\"”]?|xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*(?:dân|người)|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|hỗ\s*trợ\s*khẩn\s*cấp|cấp\s*bách|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|ban\s*chỉ\s*huy\s*pctt|tìm\s*kiếm\s*cứu\s*nạn|đưa\s*thuyền\s*lên\s*bờ|tránh\s*bão|trú\s*tránh|neo\s*đậu|hố\s*tử\s*thần|sụt\s*lún|chi\s*viện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|tiếp\s*tế|phương\s*tiện\s*cứu\s*trợ|người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh.*vùng\s*lũ|tiêm.*vùng\s*lũ|vắc\s*xin.*vùng\s*lũ|ứng\s*cứu\s*viễn\s*thông|khôi\s*phục\s*liên\s*lạc|cấm\s*lưu\s*thông|phân\s*luồng|khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến|khởi\s*công.*nhà.*vùng\s*lũ|xây\s*dựng.*nhà.*vùng\s*lũ|sửa\s*chữa.*nhà.*vùng\s*lũ|công\s*trình\s*cấp\s*thiết|uav.*cứu\s*trợ|trực\s*thăng.*cứu\s*trợ|tàu\s*hỏa.*cứu\s*trợ|xâm\s*thực|sạt\s*lở\s*bờ\s*sông|gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch.*chạy\s*lũ|bảo\s*vệ.*đê.*kè|sửa\s*chữa.*hư\s*hỏng.*(?:bão|lũ)|học\s*sinh.*nghỉ\s*học|cho\s*học\s*sinh.*nghỉ|trường.*ngập|sách\s*vở.*vùng\s*lũ|hỗ\s*trợ.*giáo\s*dục|vào\s*biển\s*đông|bão.*đổ\s*bộ|cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện|cấm\s*xe|cấm\s*đường|nước\s*cuốn\s*trôi|xuất\s*quân.*hỗ\s*trợ|bộ\s*đội.*vượt\s*lũ|công\s*an.*giúp\s*dân|cảnh\s*sát.*hỗ\s*trợ|cảnh\s*sát.*giúp\s*dân|cảnh\s*sát.*phòng\s*chống|chiến\s*sĩ.*hỗ\s*trợ|chiến\s*sĩ.*giúp\s*dân|tình\s*trạng\s*khẩn\s*cấp|tình\s*huống\s*khẩn\s*cấp|sơ\s*tán\s*dân|di\s*dời\s*khẩn\s*cấp|tái\s*thiết.*thiên\s*tai|khởi\s*công.*nhà.*thiên\s*tai|xây\s*dựng.*nhà.*thiên\s*tai|sửa\s*chữa.*nhà.*thiên\s*tai|khởi\s*công.*hồ|sửa\s*chữa.*hồ|bch\s*phòng\s*chống|ban\s*chỉ\s*huy|tìm\s*kiếm\s*cứu\s*nạn|tkcn|diễn\s*tập.*phòng\s*chống|diễn\s*tập.*cứu\s*nạn|sắc\s*phục\s*cand|công\s*an.*cứu\s*nạn|chiến\s*sĩ.*cứu\s*nạn|binh\s*sĩ.*cứu\s*hộ|csgt.*giải\s*cứu|cảnh\s*sát.*giải\s*cứu|cứu\s*nạn.*khẩn\s*cấp|xây\s*nhà.*sau\s*lũ|sửa\s*nhà.*sau\s*lũ|nhà.*tình\s*nghĩa.*lũ|nghỉ\s*học.*tránh\s*bão|nghỉ\s*học.*chống\s*bão|ứng\s*trực.*(?:bão|lũ)|trực\s*ban.*(?:bão|lũ)|đảm\s*bảo\s*an\s*toàn.*(?:bão|lũ|thiên\s*tai)|tạm\s*dừng.*du\s*lịch|công\s*bố.*tình\s*huống\s*khẩn\s*cấp|công\s*bố.*thiên\s*tai|viện\s*trợ.*khẩn\s*cấp|cháy\s*rừng|kêu\s*cứu\s*khẩn\s*cấp|ứng\s*dụng.*cứu\s*nạn|nâng\s*cao\s*năng\s*lực.*(?:thiên\s*tai|bão|lũ)|bị\s*cô\s*lập|khắc\s*phục.*thiên\s*tai|triển\s*khai.*ứng\s*phó|ứng\s*dụng.*mưa\s*lũ|diễn\s*tập.*ứng\s*phó|sinh\s*viên.*hỗ\s*trợ|thanh\s*niên.*xung\s*kích|an\s*toàn.*(?:hồ\s*đập|hồ\s*chứa|thủy\s*lợi)|dự\s*trữ.*nước|vneid.*cứu\s*trợ|du\s*khách.*mắc\s*kẹt|giải\s*cứu.*du\s*khách|chủ\s*động\s*ứng\s*phó|huy\s*động.*lực\s*lượng.*(?:bão|lũ)|bão\s*số\s*\d+|vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ|di\s*dời.*(?:khỏi.*chung\s*cư|tránh\s*bão|khẩn\s*trương)|nghỉ\s*học.*(?:tránh\s*bão|phòng\s*chống))"
-    
     is_whitelisted = False
-    if re.search(whitelist_pattern, t_acc, re.IGNORECASE):
+    if WHITELIST_RE.search(t_acc):
         is_whitelisted = True
-    elif t_title_acc and re.search(whitelist_pattern, t_title_acc, re.IGNORECASE):
+    elif t_title_acc and WHITELIST_RE.search(t_title_acc):
         is_whitelisted = True
 
     if not is_whitelisted and ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t_acc):
@@ -2997,7 +3046,7 @@ def title_contains_disaster_keyword(title: str) -> bool:
     # "xả lũ", "sơ tán": Critical actions that must pass
     if "Chiến dịch Quang Trung" in t or "chiến dịch Quang Trung" in t:
          pass # Skip Veto check
-    elif re.search(r"(?:xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*dân|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|chằng\s*chống\s*nhà|đưa\s*thuyền\s*lên\s*bờ|tránh\s*bão|trú\s*tránh|hố\s*tử\s*thần|sụt\s*lún|chi\s*viện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|tiếp\s*tế|người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh.*vùng\s*lũ|tiêm.*vùng\s*lũ|vắc\s*xin.*vùng\s*lũ|ứng\s*cứu\s*viễn\s*thông|khôi\s*phục\s*liên\s*lạc|cấm\s*lưu\s*thông|phân\s*luồng|khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến|khởi\s*công.*nhà.*vùng\s*lũ|xây\s*dựng.*nhà.*vùng\s*lũ|sửa\s*chữa.*nhà.*vùng\s*lũ|công\s*trình\s*cấp\s*thiết|uav.*cứu\s*trợ|trực\s*thăng.*cứu\s*trợ|tàu\s*hỏa.*cứu\s*trợ|xâm\s*thực|sạt\s*lở\s*bờ\s*sông|gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch.*chạy\s*lũ|bảo\s*vệ.*đê.*kè|sửa\s*chữa.*hư\s*hỏng.*(?:bão|lũ)|học\s*sinh.*nghỉ\s*học|cho\s*học\s*sinh.*nghỉ|trường.*ngập|sách\s*vở.*vùng\s*lũ|hỗ\s*trợ.*giáo\s*dục|vào\s*biển\s*đông|bão.*đổ\s*bộ|cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện|cấm\s*xe|cấm\s*đường|nước\s*cuốn\s*trôi|xuất\s*quân.*hỗ\s*trợ|bộ\s*đội.*vượt\s*lũ|công\s*an.*giúp\s*dân|cảnh\s*sát.*hỗ\s*trợ|cảnh\s*sát.*giúp\s*dân|cảnh\s*sát.*phòng\s*chống|chiến\s*sĩ.*hỗ\s*trợ|chiến\s*sĩ.*giúp\s*dân|tình\s*trạng\s*khẩn\s*cấp|tình\s*huống\s*khẩn\s*cấp|sơ\s*tán\s*dân|di\s*dời\s*khẩn\s*cấp|tái\s*thiết.*thiên\s*tai|khởi\s*công.*nhà.*thiên\s*tai|xây\s*dựng.*nhà.*thiên\s*tai|sửa\s*chữa.*nhà.*thiên\s*tai|khởi\s*công.*hồ|sửa\s*chữa.*hồ|bch\s*phòng\s*chống|ban\s*chỉ\s*huy|tìm\s*kiếm\s*cứu\s*nạn|tkcn|diễn\s*tập.*phòng\s*chống|diễn\s*tập.*cứu\s*nạn|sắc\s*phục\s*cand|công\s*an.*cứu\s*nạn|chiến\s*sĩ.*cứu\s*nạn|binh\s*sĩ.*cứu\s*hộ|csgt.*giải\s*cứu|cảnh\s*sát.*giải\s*cứu|cứu\s*nạn.*khẩn\s*cấp|xây\s*nhà.*sau\s*lũ|sửa\s*nhà.*sau\s*lũ|nhà.*tình\s*nghĩa.*lũ|nghỉ\s*học.*tránh\s*bão|nghỉ\s*học.*chống\s*bão|ứng\s*trực.*(?:bão|lũ)|trực\s*ban.*(?:bão|lũ)|đảm\s*bảo\s*an\s*toàn.*(?:bão|lũ|thiên\s*tai)|tạm\s*dừng.*du\s*lịch|công\s*bố.*tình\s*huống\s*khẩn\s*cấp|công\s*bố.*thiên\s*tai|viện\s*trợ.*khẩn\s*cấp|cháy\s*rừng|kêu\s*cứu\s*khẩn\s*cấp|ứng\s*dụng.*cứu\s*nạn|nâng\s*cao\s*năng\s*lực.*(?:thiên\s*tai|bão|lũ)|bị\s*cô\s*lập|khắc\s*phục.*thiên\s*tai|triển\s*khai.*ứng\s*phó|ứng\s*dụng.*mưa\s*lũ|diễn\s*tập.*ứng\s*phó|sinh\s*viên.*hỗ\s*trợ|thanh\s*niên.*xung\s*kích|an\s*toàn.*(?:hồ\s*đập|hồ\s*chứa|thủy\s*lợi)|dự\s*trữ.*nước|vneid.*cứu\s*trợ|du\s*khách.*mắc\s*kẹt|giải\s*cứu.*du\s*khách|chủ\s*động\s*ứng\s*phó|huy\s*động.*lực\s*lượng.*(?:bão|lũ)|bão\s*số\s*\d+|vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ|di\s*dời.*(?:khỏi.*chung\s*cư|tránh\s*bão|khẩn\s*trương)|nghỉ\s*học.*(?:tránh\s*bão|phòng\s*chống))",,,, t, re.IGNORECASE):
+    elif re.search(r"(?:xả\s*lũ|xả\s*đáy|sơ\s*tán|di\s*dời\s*dân|cứu\s*hộ|cứu\s*nạn|khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|chằng\s*chống\s*nhà|đưa\s*thuyền\s*lên\s*bờ|tránh\s*bão|trú\s*tránh|hố\s*tử\s*thần|sụt\s*lún|chi\s*viện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|tiếp\s*tế|người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh.*vùng\s*lũ|tiêm.*vùng\s*lũ|vắc\s*xin.*vùng\s*lũ|ứng\s*cứu\s*viễn\s*thông|khôi\s*phục\s*liên\s*lạc|cấm\s*lưu\s*thông|phân\s*luồng|khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến|khởi\s*công.*nhà.*vùng\s*lũ|xây\s*dựng.*nhà.*vùng\s*lũ|sửa\s*chữa.*nhà.*vùng\s*lũ|công\s*trình\s*cấp\s*thiết|uav.*cứu\s*trợ|trực\s*thăng.*cứu\s*trợ|tàu\s*hỏa.*cứu\s*trợ|xâm\s*thực|sạt\s*lở\s*bờ\s*sông|gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch.*chạy\s*lũ|bảo\s*vệ.*đê.*kè|sửa\s*chữa.*hư\s*hỏng.*(?:bão|lũ)|học\s*sinh.*nghỉ\s*học|cho\s*học\s*sinh.*nghỉ|trường.*ngập|sách\s*vở.*vùng\s*lũ|hỗ\s*trợ.*giáo\s*dục|vào\s*biển\s*đông|bão.*đổ\s*bộ|cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện|cấm\s*xe|cấm\s*đường|nước\s*cuốn\s*trôi|xuất\s*quân.*hỗ\s*trợ|bộ\s*đội.*vượt\s*lũ|công\s*an.*giúp\s*dân|cảnh\s*sát.*hỗ\s*trợ|cảnh\s*sát.*giúp\s*dân|cảnh\s*sát.*phòng\s*chống|chiến\s*sĩ.*hỗ\s*trợ|chiến\s*sĩ.*giúp\s*dân|tình\s*trạng\s*khẩn\s*cấp|tình\s*huống\s*khẩn\s*cấp|sơ\s*tán\s*dân|di\s*dời\s*khẩn\s*cấp|tái\s*thiết.*thiên\s*tai|khởi\s*công.*nhà.*thiên\s*tai|xây\s*dựng.*nhà.*thiên\s*tai|sửa\s*chữa.*nhà.*thiên\s*tai|khởi\s*công.*hồ|sửa\s*chữa.*hồ|bch\s*phòng\s*chống|ban\s*chỉ\s*huy|tìm\s*kiếm\s*cứu\s*nạn|tkcn|diễn\s*tập.*phòng\s*chống|diễn\s*tập.*cứu\s*nạn|sắc\s*phục\s*cand|công\s*an.*cứu\s*nạn|chiến\s*sĩ.*cứu\s*nạn|binh\s*sĩ.*cứu\s*hộ|csgt.*giải\s*cứu|cảnh\s*sát.*giải\s*cứu|cứu\s*nạn.*khẩn\s*cấp|xây\s*nhà.*sau\s*lũ|sửa\s*nhà.*sau\s*lũ|nhà.*tình\s*nghĩa.*lũ|nghỉ\s*học.*tránh\s*bão|nghỉ\s*học.*chống\s*bão|ứng\s*trực.*(?:bão|lũ)|trực\s*ban.*(?:bão|lũ)|đảm\s*bảo\s*an\s*toàn.*(?:bão|lũ|thiên\s*tai)|tạm\s*dừng.*du\s*lịch|công\s*bố.*tình\s*huống\s*khẩn\s*cấp|công\s*bố.*thiên\s*tai|viện\s*trợ.*khẩn\s*cấp|cháy\s*rừng|kêu\s*cứu\s*khẩn\s*cấp|ứng\s*dụng.*cứu\s*nạn|nâng\s*cao\s*năng\s*lực.*(?:thiên\s*tai|bão|lũ)|bị\s*cô\s*lập|khắc\s*phục.*thiên\s*tai|triển\s*khai.*ứng\s*phó|ứng\s*dụng.*mưa\s*lũ|diễn\s*tập.*ứng\s*phó|sinh\s*viên.*hỗ\s*trợ|thanh\s*niên.*xung\s*kích|an\s*toàn.*(?:hồ\s*đập|hồ\s*chứa|thủy\s*lợi)|dự\s*trữ.*nước|vneid.*cứu\s*trợ|du\s*khách.*mắc\s*kẹt|giải\s*cứu.*du\s*khách|chủ\s*động\s*ứng\s*phó|huy\s*động.*lực\s*lượng.*(?:bão|lũ)|bão\s*số\s*\d+|vận\s*chuyển.*(?:hàng)?\s*cứu\s*trợ|di\s*dời.*(?:khỏi.*chung\s*cư|tránh\s*bão|khẩn\s*trương)|nghỉ\s*học.*(?:tránh\s*bão|phòng\s*chống))", t, re.IGNORECASE):
          pass # Skip Veto check for critical actions
     elif ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t):
         return False

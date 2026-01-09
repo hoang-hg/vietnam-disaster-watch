@@ -12,7 +12,7 @@ from .schemas import ArticleOut, EventOut, EventDetailOut, EventUpdate
 from datetime import datetime, timedelta, timezone
 from fastapi import Response, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
-from .event_matcher import upsert_event_for_article
+from .event_matcher import upsert_event_for_article, emit_event_notifications
 import asyncio
 from pathlib import Path
 import json
@@ -70,7 +70,14 @@ def get_date_range(hours: int, date: str | None, start_date: str | None, end_dat
         try:
             # Create aware datetimes to match database standards
             start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc) if start_date else datetime.min.replace(tzinfo=timezone.utc)
-            end = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=timezone.utc) if end_date else datetime.now(timezone.utc)
+            
+            # [LOGIC CHANGE] If start_date is provided but end_date is NOT, treat as a single day filter
+            # instead of "accumulating until current time".
+            if start_date and not end_date:
+                end = start + timedelta(days=1)
+            else:
+                end = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=timezone.utc) if end_date else datetime.now(timezone.utc)
+            
             return start, end
         except ValueError:
             pass # Fallback to default
@@ -431,19 +438,36 @@ def update_event(
     except: pass
 
     # Apply changes
+    old_started_at = ev.started_at
     for field, value in update_data.items():
         setattr(ev, field, value)
     
+    # Propagate date change to articles if started_at changed
+    # This ensures consistency in Dashboard metrics and grouping
+    if 'started_at' in update_data and update_data['started_at']:
+        try:
+            new_date = update_data['started_at']
+            if isinstance(new_date, str):
+                new_date = datetime.fromisoformat(new_date.replace("Z", "+00:00"))
+            
+            # Update all linked articles published_at to match the new start date
+            # We preserve the time part if possible, but for 'về' fixes, usually just same day
+            db.query(models.Article).filter(models.Article.event_id == event_id).update({
+                models.Article.published_at: new_date
+            }, synchronize_session=False)
+        except Exception as e:
+            logger.error(f"Failed to propagate date change to articles: {e}")
+
     ev.last_updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(ev)
     
     # Invalidate cache
-    cache.delete(f"ev_detail_v3_{event_id}_True")
-    cache.delete(f"ev_detail_v3_{event_id}_False")
     cache.delete_match(f"ev_detail_v3_{event_id}*")
     cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
+    cache.delete_match("timeline_*")
+    cache.delete_match("articles_latest_*")
     
     return ev
 
@@ -635,6 +659,19 @@ def stats_summary(
     start, end = get_date_range(hours, date, start_date, end_date)
 
 
+    # 1. Crowdsourced reports count (approved)
+    community_reports_q = db.query(func.count(models.CrowdsourcedReport.id)).filter(
+        models.CrowdsourcedReport.status == "approved"
+    )
+    if start_date: community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.created_at >= start_date)
+    if end_date:
+        if len(end_date) == 10:
+            community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.created_at <= f"{end_date} 23:59:59")
+        else:
+            community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.created_at <= end_date)
+    if province: community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.province == province)
+    community_reports_count = community_reports_q.scalar() or 0
+
     # 1. New articles count (total & needs verify)
     # [OPTIMIZATION] Combined two queries into one
     art_stats_q = db.query(
@@ -773,6 +810,7 @@ def stats_summary(
         "needs_verification_count": needs_verification_count,
         "events_count": events_count,
         "provinces_count": provinces_count,
+        "community_reports_count": community_reports_count,
         "impacts": {
             "deaths": int(total_deaths),
             "missing": int(total_missing),
@@ -908,8 +946,11 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
         
     article.status = "approved"
     # Update events
-    upsert_event_for_article(db, article)
+    ev, is_new = upsert_event_for_article(db, article)
     db.commit()
+    
+    # Emit notifications post-commit
+    emit_event_notifications(db, ev.id, is_new=is_new)
     # Invalidate event detail cache
     if article.event_id:
         cache.delete(f"ev_detail_v3_{article.event_id}_True")
@@ -1145,8 +1186,7 @@ def restart_system(admin: models.User = Depends(auth.get_current_admin)):
         return {"ok": True, "message": "Backend restart triggered (reloader)."}
     return {"ok": False, "message": "Main file not found, restart failed."}
 
-    cache.delete_match("stats_*")
-    return {"ok": True}
+
 
 @router.post("/admin/ai-feedback")
 def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):

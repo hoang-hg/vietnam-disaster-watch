@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { 
   MapPin, Clock, FileText, Zap, Users, Activity, DollarSign, Filter, Trash2
 } from "lucide-react";
@@ -8,12 +9,61 @@ import {
 import Badge from "../Badge.jsx";
 import logoIge from "../../assets/logo_ige.png";
 
-const EventCard = ({ event: e, isAdmin, onDelete }) => {
+const DamageBadges = ({ e }) => {
+  const prioritized = [];
+  const details = e.details || {};
+  
+  if (e.deaths > 0) prioritized.push({ type: 'deaths', label: `${e.deaths} chết`, priority: 100, color: 'red', icon: Zap });
+  if (e.missing > 0) prioritized.push({ type: 'missing', label: `${e.missing} mất tích`, priority: 90, color: 'orange', icon: Users });
+  if (e.injured > 0) prioritized.push({ type: 'injured', label: `${e.injured} bị thương`, priority: 80, color: 'yellow', icon: Activity });
+  if (e.damage_billion_vnd > 0) prioritized.push({ type: 'damage', label: fmtVndBillion(e.damage_billion_vnd), priority: 70, color: 'blue', icon: DollarSign });
+  
+  if (details.homes && details.homes.length > 0) {
+    const best = details.homes.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.homes[0]);
+    prioritized.push({ type: 'homes', label: `${best.num} ${best.unit || 'nhà'}`, priority: 60, color: 'indigo', icon: MapPin });
+  }
+  if (details.disruption && details.disruption.length > 0) {
+    const best = details.disruption.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.disruption[0]);
+    prioritized.push({ type: 'disruption', label: `${best.num} ${best.unit || 'di dời'}`, priority: 55, color: 'slate', icon: Users });
+  }
+  if (details.agriculture && details.agriculture.length > 0) {
+    const best = details.agriculture.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.agriculture[0]);
+    prioritized.push({ type: 'agriculture', label: `${best.num} ${best.unit || 'ha'}`, priority: 50, color: 'green', icon: Filter });
+  }
+  
+  prioritized.sort((a, b) => b.priority - a.priority);
+  
+  return (
+    <div className="flex flex-wrap gap-2 mb-4 min-h-[32px]">
+      {prioritized.slice(0, 2).map((item) => {
+        const Icon = item.icon;
+        const colorClass = { 
+          red: "text-red-700 bg-red-50 border border-red-100",
+          orange: "text-orange-700 bg-orange-50 border border-orange-100",
+          yellow: "text-yellow-700 bg-yellow-50 border border-yellow-100",
+          blue: "text-blue-700 bg-blue-50 border border-blue-100", 
+          indigo: "text-indigo-700 bg-indigo-50 border border-indigo-100", 
+          slate: "text-slate-700 bg-slate-50 border border-slate-100",
+          green: "text-emerald-700 bg-emerald-50 border border-emerald-100"
+        }[item.color] || "text-slate-700 bg-slate-50";
+        
+        return (
+          <div key={item.type} className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm ${colorClass}`}>
+            <Icon className="w-3.5 h-3.5" />
+            <span>{item.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
   const meta = getDisasterMeta(e.disaster_type);
   
   return (
-    <a
-      href={`/events/${e.id}`}
+    <Link
+      to={`/events/${e.id}`}
       className={`block group bg-white rounded-2xl border-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm ${e.disaster_type === 'warning_forecast' ? 'border-dashed' : 'border-solid'}`}
       style={{ borderColor: meta.color }}
     >
@@ -91,52 +141,7 @@ const EventCard = ({ event: e, isAdmin, onDelete }) => {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-4 min-h-[32px]">
-          {(() => {
-            const prioritized = [];
-            const details = e.details || {};
-            
-            if (e.deaths > 0) prioritized.push({ type: 'deaths', label: `${e.deaths} chết`, priority: 100, color: 'red', icon: Zap });
-            if (e.missing > 0) prioritized.push({ type: 'missing', label: `${e.missing} mất tích`, priority: 90, color: 'orange', icon: Users });
-            if (e.injured > 0) prioritized.push({ type: 'injured', label: `${e.injured} bị thương`, priority: 80, color: 'yellow', icon: Activity });
-            if (e.damage_billion_vnd > 0) prioritized.push({ type: 'damage', label: fmtVndBillion(e.damage_billion_vnd), priority: 70, color: 'blue', icon: DollarSign });
-            
-            if (details.homes && details.homes.length > 0) {
-              const best = details.homes.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.homes[0]);
-              prioritized.push({ type: 'homes', label: `${best.num} ${best.unit || 'nhà'}`, priority: 60, color: 'indigo', icon: MapPin });
-            }
-            if (details.disruption && details.disruption.length > 0) {
-              const best = details.disruption.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.disruption[0]);
-              prioritized.push({ type: 'disruption', label: `${best.num} ${best.unit || 'di dời'}`, priority: 55, color: 'slate', icon: Users });
-            }
-            if (details.agriculture && details.agriculture.length > 0) {
-              const best = details.agriculture.reduce((prev, curr) => (curr.num > prev.num ? curr : prev), details.agriculture[0]);
-              prioritized.push({ type: 'agriculture', label: `${best.num} ${best.unit || 'ha'}`, priority: 50, color: 'green', icon: Filter });
-            }
-            
-            prioritized.sort((a, b) => b.priority - a.priority);
-            
-            return prioritized.slice(0, 2).map((item) => {
-              const Icon = item.icon;
-              const colorClass = { 
-                red: "text-red-700 bg-red-50 border border-red-100",
-                orange: "text-orange-700 bg-orange-50 border border-orange-100",
-                yellow: "text-yellow-700 bg-yellow-50 border border-yellow-100",
-                blue: "text-blue-700 bg-blue-50 border border-blue-100", 
-                indigo: "text-indigo-700 bg-indigo-50 border border-indigo-100", 
-                slate: "text-slate-700 bg-slate-50 border border-slate-100",
-                green: "text-emerald-700 bg-emerald-50 border border-emerald-100"
-              }[item.color] || "text-slate-700 bg-slate-50";
-              
-              return (
-                <div key={item.type} className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm ${colorClass}`}>
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{item.label}</span>
-                </div>
-              );
-            });
-          })()}
-        </div>
+        <DamageBadges e={e} />
 
         <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
           <div className="flex items-center gap-1">
@@ -146,8 +151,8 @@ const EventCard = ({ event: e, isAdmin, onDelete }) => {
           <span>{new Date(e.started_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
         </div>
       </div>
-    </a>
+    </Link>
   );
-};
+});
 
 export default EventCard;

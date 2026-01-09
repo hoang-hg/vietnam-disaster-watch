@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getJson, patchJson, API_BASE } from "../api";
-import { Check, X, FileDown, MapPin, Phone, User, Loader2 } from "lucide-react";
+import { Check, X, FileDown, MapPin, Phone, User, Loader2, XCircle, RotateCcw } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 
@@ -9,13 +10,39 @@ export default function AdminReports() {
     const [loading, setLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [toast, setToast] = useState({ isVisible: false, message: "", type: "success" });
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, action: 'approve' });
+    const [searchParams, setSearchParams] = useSearchParams();
+    
+    const [startDate, setStartDate] = useState(() => {
+        const urlDate = searchParams.get("start_date");
+        if (urlDate) return urlDate;
+        
+        const d = new Date();
+        d.setDate(d.getDate() - 30); // Default to last 30 days
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(searchParams.get("end_date") || new Date().toISOString().split('T')[0]);
+
+    const handleReset = () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        setStartDate(d.toISOString().split('T')[0]);
+        setEndDate(new Date().toISOString().split('T')[0]);
+    };
 
     const fetchReports = async () => {
         setLoading(true);
         try {
-            const data = await getJson("/api/user/admin/crowdsource/pending");
-            setReports(data);
+            let url = "/api/user/admin/crowdsource/pending";
+            const params = new URLSearchParams();
+            if (startDate) params.append("start_date", startDate);
+            if (endDate) params.append("end_date", endDate);
+            
+            const queryString = params.toString();
+            if (queryString) url += `?${queryString}`;
+            
+            const data = await getJson(url);
+            setReports(data || []);
         } catch (err) {
             setToast({ isVisible: true, message: `Không thể tải danh sách: ${err.message}`, type: "error" });
         } finally {
@@ -25,7 +52,20 @@ export default function AdminReports() {
 
     useEffect(() => {
         fetchReports();
-    }, []);
+        
+        // Sync to URL
+        const newParams = {};
+        if (startDate) newParams.start_date = startDate;
+        if (endDate) newParams.end_date = endDate;
+        
+        const currentParams = Object.fromEntries(searchParams.entries());
+        const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
+                          Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+        
+        if (isDifferent) {
+            setSearchParams(newParams, { replace: true });
+        }
+    }, [startDate, endDate]);
 
     const handleApprove = async (id) => {
         try {
@@ -50,16 +90,21 @@ export default function AdminReports() {
     const handleExport = async () => {
         setIsExporting(true);
         const token = localStorage.getItem("access_token");
-        // Using fetch with blob to handle auth header if needed
         
         try {
-            const response = await fetch(`${API_BASE}/api/user/admin/crowdsource/export`, {
+            const params = new URLSearchParams();
+            if (startDate) params.append("start_date", startDate);
+            if (endDate) params.append("end_date", endDate);
+            
+            const url = `${API_BASE}/api/user/admin/crowdsource/export?${params.toString()}`;
+            
+            const response = await fetch(url, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
+            const urlBlob = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
+            a.href = urlBlob;
             a.download = `bao_cao_hien_truong_${new Date().toISOString().split('T')[0]}.xlsx`;
             document.body.appendChild(a);
             a.click();
@@ -74,21 +119,53 @@ export default function AdminReports() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                      <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
                         DUYỆT TIN HIỆN TRƯỜNG
                     </h1>
                     <p className="text-slate-500 text-sm">Quản lý các báo cáo đóng góp từ cộng đồng</p>
                 </div>
-                <button 
-                    onClick={handleExport}
-                    disabled={isExporting}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
-                    {isExporting ? "Đang xuất..." : "Xuất Excel (.xlsx)"}
-                </button>
+                
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 shadow-sm">
+                        <div className="relative group">
+                            <input 
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="bg-transparent border-none text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0"
+                            />
+                            <div className="absolute -top-2 left-2 px-1 bg-white dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase">Từ ngày</div>
+                        </div>
+                        <div className="relative group">
+                            <input 
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="bg-transparent border-none text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-0 p-0"
+                            />
+                            <div className="absolute -top-2 left-2 px-1 bg-white dark:bg-slate-800 text-[10px] text-slate-400 font-bold uppercase">Đến ngày</div>
+                        </div>
+                        
+                        <button 
+                            onClick={handleReset}
+                            title="Xóa bộ lọc"
+                            className="p-1 text-slate-400 hover:text-[#2fa1b3] transition-colors"
+                        >
+                            <RotateCcw className="w-3 h-3" />
+                        </button>
+                    </div>
+
+                    <button 
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileDown className="w-4 h-4" />}
+                        <span className="text-sm">Xuất Excel</span>
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -182,11 +259,11 @@ export default function AdminReports() {
             />
             <ConfirmModal 
                 isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal({ isOpen: false, id: null })}
+                onClose={() => setConfirmModal({ isOpen: false, id: null, action: confirmModal.action })}
                 onConfirm={() => {
                     if (confirmModal.action === 'approve') handleApprove(confirmModal.id);
                     if (confirmModal.action === 'reject') handleReject(confirmModal.id);
-                    setConfirmModal({ isOpen: false, id: null });
+                    setConfirmModal({ isOpen: false, id: null, action: confirmModal.action });
                 }}
                 title={confirmModal.action === 'approve' ? "Xác nhận duyệt" : "Xác nhận từ chối"}
                 message={confirmModal.action === 'approve' ? "Bạn có chắc chắn muốn duyệt báo cáo này và đưa nó lên hệ thống?" : "Bạn có chắc chắn muốn từ chối báo cáo này?"}
