@@ -122,6 +122,12 @@ export default function MainLayout({ children }) {
 
                         return [newToast, ...prev].slice(0, 3);
                     });
+                    // [SYNC] Dispatch global event for pages to refresh data
+                    window.dispatchEvent(new CustomEvent("news:update", { detail: msg }));
+                }
+
+                if (msg.type === "EVENT_DELETE") {
+                    window.dispatchEvent(new CustomEvent("news:update", { detail: msg }));
                 }
                 
                 // [NEW] Handle Manual Admin Alerts

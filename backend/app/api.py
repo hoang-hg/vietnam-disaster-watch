@@ -493,6 +493,10 @@ def update_event(
     db.commit()
     db.refresh(ev)
     
+    # [SYNC] Broadcast update to all clients
+    from .event_matcher import emit_event_notifications
+    emit_event_notifications(db, ev.id, is_new=False)
+
     # Invalidate cache
     cache.delete_match(f"ev_detail_v3_{event_id}*")
     cache.delete_match("ev_v2_*")
@@ -553,6 +557,10 @@ def delete_event(
     db.delete(ev)
     db.commit()
     
+    # [SYNC] Broadcast delete signal
+    from .ws import manager
+    manager.broadcast_sync({"type": "EVENT_DELETE", "id": event_id})
+
     # Comprehensive cache invalidation
     cache.delete(f"ev_detail_v3_{event_id}_True")  # Admin detail
     cache.delete(f"ev_detail_v3_{event_id}_False") # Public detail
@@ -1075,13 +1083,18 @@ def reject_article(article_id: int, db: Session = Depends(get_db), admin: models
         if remaining == 0:
             db.query(models.Event).filter(models.Event.id == old_event_id).delete()
             db.commit()
+            
+            # [SYNC] Broadcast delete
+            from .ws import manager
+            manager.broadcast_sync({"type": "EVENT_DELETE", "id": old_event_id})
+
             cache.delete_match(f"ev_detail_v3_{old_event_id}*")
-            # Should also broadcast DELETE? Currently UI handles 'missing' via refresh. Consider doing nothing or sending a delete signal later.
         else:
             # Recalculate metrics for the remaining event
             recalculate_event_metrics(db, old_event_id)
             
             # [OPTIMIZATION] Real-time broadcast for Rejection updates (e.g. death count changes)
+            from .event_matcher import emit_event_notifications
             emit_event_notifications(db, old_event_id)
 
             cache.delete(f"ev_detail_v3_{old_event_id}_True")

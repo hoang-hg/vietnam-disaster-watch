@@ -11,7 +11,6 @@ from .sources import (
     DISASTER_CONTEXT,
     SCORING_WEIGHTS as SW,
     RE_CRITICAL_ACTIONS,
-    DISASTER_PRIORITY,
     DISASTER_PRIORITY_ORDER,
     NEGATION_TERMS,
     NUMBER_WORDS,
@@ -24,10 +23,13 @@ from .sources import (
     NUM_HARD, QUAL, UNIT, DEATH_WORD, INJ_WORD, MISS_WORD, CARE_WORD,
     IMPACT_KEYWORDS,
     ABSOLUTE_VETO_RE, CONDITIONAL_VETO_RE, SOFT_NEGATIVE_RE,
-    PLANNING_PREP_KEYWORDS, RE_PLANNING
+    PLANNING_PREP_KEYWORDS, RE_PLANNING,
+    DISASTER_PRIORITY_MAP,
+    AMBIGUOUS_KEYWORDS
 )
-# Re-export SCORING_WEIGHTS for external modules (e.g. crawler)
+# Re-export key constants for external modules
 SCORING_WEIGHTS = SW
+DISASTER_PRIORITY_MAP = DISASTER_PRIORITY_MAP
 
 from . import risk_lookup
 
@@ -38,11 +40,10 @@ def is_junk_title(title: str) -> bool:
     Check if the title is a generic landing page or SEO noise rather than an actual article.
     Helps avoid blacklisting thousands of 'Search Results' pages.
     """
-    title_low = title.lower()
-    # Use centralized junk patterns
-    for p in sources.JUNK_TITLE_PATTERNS:
-        if re.search(p, title_low):
-            return True
+    if not title: return False
+    # Use centralized pre-compiled junk pattern
+    if sources.JUNK_TITLE_RE and sources.JUNK_TITLE_RE.search(title.lower()):
+        return True
     return False
 
 # Pre-compiled patterns for location and metadata extraction
@@ -435,8 +436,7 @@ _context_sorted = sorted(DISASTER_CONTEXT, key=len, reverse=True)
 _context_pattern = "|".join(f"(?:{v_safe(p)})" for p in _context_sorted)
 DISASTER_CONTEXT_RE = re.compile(_context_pattern, RE_FLAGS)
 
-# MEGA-REGEX for Source Keywords
-AMBIGUOUS_KEYWORDS = {"cảnh báo", "dự báo", "bản tin", "khuyến cáo"}
+# MEGA-REGEX for Source Keywords (Cleaned)
 CLEAN_SOURCE_KEYWORDS = [kw.lower() for kw in SOURCE_DISASTER_KEYWORDS if kw.lower() not in AMBIGUOUS_KEYWORDS]
 
 # Accented (All keywords)
@@ -519,13 +519,29 @@ def _parse_unified_value(gd: dict) -> dict:
     # 1. Hard Digits
     if any(c.isdigit() for c in s):
         res["precision"] = 10 # Highest priority
+        
+        # [REFINED] Smart normalization: 
+        # Convert "1,5" to "1.5" if it looks like a decimal
+        # Remove thousands separators if it looks like "1.000" or "1,000"
+        s_clean = s
+        if re.search(r"\d[.,]\d{1,2}(?!\d)", s):
+            # Likely decimal (e.g. 1.5 or 1,50)
+            s_clean = s.replace(",", ".")
+        else:
+            # Likely thousands separator or range
+            s_clean = s.replace(".", "").replace(",", "")
+
         # Handle Ranges (e.g. 5-7)
-        nums = re.findall(r"\d+", s.replace(".", "").replace(",", ""))
+        nums = re.findall(r"[\d.]+", s_clean)
         if len(nums) >= 2:
-            res["min"] = int(nums[0])
-            res["max"] = int(nums[1])
+            try:
+                res["min"] = float(nums[0])
+                res["max"] = float(nums[1])
+            except ValueError: pass
         elif nums:
-            res["min"] = res["max"] = int(nums[0])
+            try:
+                res["min"] = res["max"] = float(nums[0])
+            except ValueError: pass
 
         # Apply Qualifiers
         if "ít nhất" in qual_str or "hơn" in qual_str or "trên" in qual_str:
@@ -1136,7 +1152,8 @@ def compute_disaster_signals(text: str, title: str = "", trusted_source: bool = 
     # [OPTIMIZATION] Title Inconsistency Penalty: 
     major_hazard_titles = ["bão", "siêu bão", "lũ ống", "lũ quét", "ngập sâu", "sạt lở"]
     if any(kh in (title or "").lower() for kh in major_hazard_titles):
-        if not (impact_found or real_metrics_found):
+        # Skip this penalty for recovery articles as they are justified in mentioning the hazard in title
+        if not (impact_found or real_metrics_found) and event_stage != "RECOVERY":
             score += SW["penalty_title_clickbait"]
             
     # [OPTIMIZATION] Silent Hazard Boost: If high impact is found in title even without hazard rule match
@@ -1284,7 +1301,7 @@ def determine_event_stage(text: str, impact_detected: bool = False, t_acc: str =
     # Final decision
     if scores["RECOVERY"] >= 2 and scores["RECOVERY"] >= scores["INCIDENT"]:
         return "RECOVERY"
-    if scores["FORECAST"] > scores["INCIDENT"]:
+    if scores["FORECAST"] >= 2 and scores["FORECAST"] >= scores["INCIDENT"]:
         return "FORECAST"
 
     return "INCIDENT"
@@ -1381,67 +1398,75 @@ def diagnose(text: str, title: str = "", authority_level: int = 1) -> dict:
     reason = f"Score {sig['score']:.1f}"
     
     if sig["absolute_veto"]: 
-        reason = "Negative keyword match (Veto)"
+        reason = "Veto (Absolute)"
     elif sig["conditional_veto"] and sig["hazard_score"] == 0:
-        reason = "Conditional Veto (No disaster hazard match)"
-    elif sig["score"] >= 15.0: 
-        reason = "Passed (Approved)"
-    elif sig["score"] >= SW["threshold_pending"]:
-        reason = "Passed (Pending Review)"
-    elif sig.get("rule_matches"): 
-        reason = f"Low Score ({sig['score']:.1f}). Met: {sig['rule_matches']}"
+        reason = "Veto (Conditional - No hazard)"
+    else:
+        # Align with crawler's tiered approval logic
+        is_strong_title = sig.get("is_vip", False) or \
+                          (HIGH_PRIORITY_RE and title and HIGH_PRIORITY_RE.search(title.lower())) or \
+                          title_contains_disaster_keyword(title)
+        
+        has_hazard = sig.get("hazard_score", 0) > 0
+        has_impact = sig.get("impact_hits", False)
+        has_casualties = sig.get("impact_details", {}).get("deaths") or \
+                         sig.get("impact_details", {}).get("missing")
+        
+        approval_threshold = SW["threshold_approve_strong"] if is_strong_title else SW["threshold_approve_strict"]
+        score = sig["score"]
+        
+        if has_casualties and has_hazard and score >= (approval_threshold - 1.0):
+             reason = "Approved (High impact casualty)"
+        elif score >= approval_threshold:
+            if has_hazard or sig.get("is_vip", False):
+                reason = "Approved (Strong signals)"
+            else:
+                reason = "Pending (Audit hazard match)"
+        elif score >= SW["threshold_pass"]:
+            reason = "Pending (Verification needed)"
+        elif authority_level >= 2 and score >= SW["threshold_official"]:
+            reason = f"Pending (Official Source Fallback - Score {score:.1f})"
+        elif sig.get("rule_matches"):
+            reason = f"Rejected (Low score {score:.1f})"
+        else:
+            reason = "Rejected (Insignificant content)"
     
     return {"score": sig["score"], "signals": sig, "reason": reason}
 
 def title_contains_disaster_keyword(title: str) -> bool:
     """
-    Stricter title check using regex word boundaries and negative veto.
+    Stricter title check using pre-compiled disaster rules (DISASTER_RULES_RE).
+    Ensures consistency between title-level filtering and classification.
     """
     if not title: return False
-    t = title.lower()
+    title_low = title.lower()
     
-    # Negative veto first
-    # [OPTIMIZED] Only use ABSOLUTE_VETO for titles. 
-    # Do NOT use Soft/Conditional veto here because titles like "Khởi công hồ chứa" (Soft Neg) might be relevant.
-    # [OPTIMIZED] Whitelist / Bypass Veto
-    # Specific government campaigns or critical phrases that might trigger vetoes
-    if RE_CRITICAL_ACTIONS.search(t):
-         pass # Skip Veto check for critical actions
-    elif ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(t):
+    # 1. Official Bypass (Critical Actions)
+    if RE_CRITICAL_ACTIONS.search(title_low):
+         return True # High confidence phrases
+         
+    # 2. Negative Veto (Absolute Veto)
+    # Only use ABSOLUTE_VETO for titles. 
+    if ABSOLUTE_VETO_RE and ABSOLUTE_VETO_RE.search(title_low):
         return False
             
-    # [OPTIMIZATION] Pre-classify keywords once (Memoization logic inline or global)
-    # Ideally this should be global, but to avoid circular imports or scope issues, we use a cached attribute fn
-    if not hasattr(title_contains_disaster_keyword, "_cache"):
-        # Deduplicate and lower
-        unique_kws = set(k.lower() for k in SOURCE_DISASTER_KEYWORDS)
-        
-        # Split into short (need boundary) and long (substring)
-        # Threshold 4 is from original logic.
-        short = [k for k in unique_kws if len(k) <= 4]
-        long_kws = [k for k in unique_kws if len(k) > 4]
-        
-        # Build mega-regex for short keywords: \b(lũ|bão|sạt)\b
-        # Use re.escape to be safe
-        if short:
-            pattern_str = r"\b(" + "|".join(re.escape(k) for k in short) + r")\b"
-            title_contains_disaster_keyword._short_re = re.compile(pattern_str, re.IGNORECASE)
-        else:
-            title_contains_disaster_keyword._short_re = None
-            
-        title_contains_disaster_keyword._long_kws = long_kws
-        title_contains_disaster_keyword._cache = True
+    # 3. Rule Matching (Sophisticated Regex from DISASTER_RULES)
+    # This ensures consistency: a title is "disaster-related" if it matches a classification rule.
+    for label, compiled_list in DISASTER_RULES_RE:
+        for pat_re in compiled_list:
+            if pat_re.search(title_low):
+                return True
 
-    # 1. Fast Regex Check (Short keywords)
-    if title_contains_disaster_keyword._short_re:
-        if title_contains_disaster_keyword._short_re.search(t):
-            return True
-
-    # 2. Substring Check (Long keywords)
-    # Check "long" phrases which are safer without word boundaries
-    for kl in title_contains_disaster_keyword._long_kws:
-        if kl in t:
-            return True
+    # 4. Fallback for common bulletin headers (since labels might be too specific)
+    # [OPTIMIZATION] "Bản tin" or "Dự báo" usually indicates high value if it has a keyword
+    if "dự báo thời tiết" in title_low or "bản tin" in title_low or "cảnh báo" in title_low:
+        # Use simple keywords as fallback for general weather titles
+        # This keeps the 'Disaster Groups' keyword list relevant for broad detection.
+        for kw in SOURCE_DISASTER_KEYWORDS:
+            if len(kw) > 4 and kw.lower() in title_low:
+                return True
+            elif len(kw) <= 4 and re.search(rf"\b{re.escape(kw.lower())}\b", title_low):
+                return True
 
     return False
 
@@ -1796,7 +1821,9 @@ def extract_impact_details(text: str, t_acc: str = None) -> dict:
     fused = []
     for cand in candidates:
         is_conflict = False
-        for f in fused:
+        to_replace = -1
+        
+        for i, f in enumerate(fused):
             # Check for significant overlap with existing fused match
             s1, e1 = cand["span"]
             s2, e2 = f["span"]
@@ -1805,16 +1832,16 @@ def extract_impact_details(text: str, t_acc: str = None) -> dict:
             if overlap > 0:
                 # If same type or strongly overlapping, keep the more precise one
                 if cand["precision"] > f["precision"]:
-                    fused.remove(f)
-                    fused.append(cand)
+                    to_replace = i
                 elif cand["precision"] == f["precision"] and (e1-s1) > (e2-s2):
-                    fused.remove(f)
-                    fused.append(cand)
+                    to_replace = i
                 
                 is_conflict = True
                 break
         
-        if not is_conflict:
+        if to_replace >= 0:
+            fused[to_replace] = cand
+        elif not is_conflict:
             fused.append(cand)
             
     # 3. Organize final results

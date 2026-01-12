@@ -338,6 +338,12 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
     # 0. Junk / Landing Page Check (Skip without blacklisting)
     if nlp.is_junk_title(title):
         return None, "junk-ignored"
+
+    # 0.1 Title Relevance Check (Strict User Request)
+    # Article title MUST contain a disaster keyword or be a critical action/VIP term.
+    # This filters out high-scoring but irrelevant news (e.g. financial reports with "billion VND").
+    if not nlp.title_contains_disaster_keyword(title):
+        return None, "ignored-title-weak"
     
     # 0. Blacklist Check
     if db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first():
@@ -402,6 +408,10 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
                 status = "pending"
         elif score >= CONF["threshold_pass"]:
             status = "pending"
+        elif (src.authority_level >= 2 or src.trusted) and score >= CONF["threshold_official"]:
+            # [SAFETY NET] Official/Trusted sources are kept even with lower scores
+            status = "pending"
+            diag["reason"] = f"Pending (Official Source Fallback - Score {score:.1f})"
 
     if status == "auto-blacklisted":
         # Check database first
@@ -428,6 +438,7 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
         status=status, score=score,
         disaster_type=meta["disaster_type"],
         province=meta["province"],
+        canonical_url=normalize_url(link),
         summary=meta["summary"],
         stage=meta["stage"],
         needs_verification=meta["needs_verification"],
@@ -682,6 +693,10 @@ async def _enrich_article_async(db: Session, src, article):
                     if dt.tzinfo: dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
                     real_date = dt
                 except Exception: pass
+            
+            # Update Canonical URL if found in metadata
+            if scraper_meta.get("canonical"):
+                article.canonical_url = normalize_url(scraper_meta["canonical"])
             
             if real_date:
                 # Sanity check: valid date and not in future

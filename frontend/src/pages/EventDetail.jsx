@@ -87,6 +87,10 @@ export default function EventDetail() {
         setDeleteModal({ open: false, type: null, id: null });
     }
   };
+  
+  const showToast = (message, type = 'success') => {
+    setToast({ isVisible: true, message, type });
+  };
 
   const handleApproveArticle = async (e, articleId) => {
     e.preventDefault();

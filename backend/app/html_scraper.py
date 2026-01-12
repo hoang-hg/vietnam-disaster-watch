@@ -30,13 +30,8 @@ try:
 except ImportError:
     _HAS_PLAYWRIGHT = False
 
-# Import Standardized Disaster Groups and Negative Patterns from nlp.py
-from .nlp import DISASTER_RULES as NLP_DISASTER_RULES, DISASTER_NEGATIVE as NLP_DISASTER_NEGATIVE
-
-# Convert NLP_DISASTER_RULES (tuple list) to simple regex list for internal keyword check if needed
-# or just use the rules directly.
-DISASTER_RULES = NLP_DISASTER_RULES
-DISASTER_NEGATIVE = NLP_DISASTER_NEGATIVE
+# Standardized Disaster Groups and Negative Patterns are handled via nlp module calls directly
+# to avoid circular imports and stale references.
 
 def extract_metadata(soup: BeautifulSoup) -> dict:
     """
@@ -46,7 +41,8 @@ def extract_metadata(soup: BeautifulSoup) -> dict:
         "image": None,
         "description": None,
         "title": None,
-        "published_time": None
+        "published_time": None,
+        "canonical": None
     }
     
     if not soup: return meta_data
@@ -104,6 +100,11 @@ def extract_metadata(soup: BeautifulSoup) -> dict:
         if tag and tag.get("content"):
             meta_data["published_time"] = tag["content"]
             break
+
+    # 5. Canonical URL
+    canon_tag = soup.find("link", rel="canonical")
+    if canon_tag and canon_tag.get("href"):
+        meta_data["canonical"] = canon_tag["href"]
 
     return meta_data
 

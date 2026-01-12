@@ -235,13 +235,21 @@ export default function Dashboard() {
     const controller = new AbortController();
     load(controller.signal);
     
+    // [REAL-TIME] Listen for global refresh signals from WebSocket (via MainLayout)
+    const handleRefresh = () => {
+        console.log("[DashboardV2] Real-time signal received, reloading...");
+        load(); // Trigger refresh without aborting previous (unless we want to be strict)
+    };
+    window.addEventListener("news:update", handleRefresh);
+
     const t = setInterval(() => load(controller.signal), 300_000); 
     
     return () => {
       controller.abort();
       clearInterval(t);
+      window.removeEventListener("news:update", handleRefresh);
     };
-  }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter]);
+  }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter, page]);
 
   const isToday = startDate === new Date().toISOString().split('T')[0] && !endDate;
 
@@ -381,7 +389,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title={isToday ? "Sự kiện mới (24h)" : `Sự kiện ngày ${startDate}`}
           value={stats?.events_count || 0}

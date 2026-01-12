@@ -118,6 +118,10 @@ export default function Events() {
     }
   };
 
+  const showToast = (message, type = 'success') => {
+    setToast({ isVisible: true, message, type });
+  };
+
   const handleExportCSV = async () => {
     setIsExportingSummary(true);
     // [LOGIC REFINEMENT] Use fetch binary download to keep token in headers (more secure than URL)
@@ -266,6 +270,16 @@ export default function Events() {
   // Auto-refresh every 5 minutes (only updates standard list if on page 1)
   useEffect(() => {
     const controller = new AbortController();
+    
+    // [REAL-TIME] Listen for global refresh signals from WebSocket (via MainLayout)
+    const handleRefresh = () => {
+        console.log("[Events] Real-time signal received, reloading...");
+        if (currentPage === 1) {
+            fetchEvents(true, 1); // Background refresh for page 1
+        }
+    };
+    window.addEventListener("news:update", handleRefresh);
+
     const interval = setInterval(() => {
       if (currentPage === 1) {
           fetchEvents(true, 1, controller.signal);
@@ -274,6 +288,7 @@ export default function Events() {
     return () => {
       controller.abort();
       clearInterval(interval);
+      window.removeEventListener("news:update", handleRefresh);
     };
   }, [debouncedQ, type, province, startDate, endDate, currentPage]);
 

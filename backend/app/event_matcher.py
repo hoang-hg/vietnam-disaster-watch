@@ -306,9 +306,14 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
     
     ev.sources_count = len(all_sources)
 
-    # 1. Consensus Promotion
+    # 1. Consensus Promotion (3+ different media domains reporting)
     if len(all_domains) >= 3:
+        # Batch update existing pending articles
         db.query(Article).filter(Article.event_id == ev.id, Article.status == "pending").update({"status": "approved"})
+        # Ensure current article and event are promoted immediately
+        article.status = "approved"
+        ev.confidence = 1.0
+        ev.needs_verification = False
 
     # 2. Strong Signal Checks
     has_trusted = any(TRUSTED_MAP.get(s, False) for s in all_sources)
@@ -320,11 +325,9 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
         has_vip = True
     
     # 3. Smart Confidence Matrix
-    # [LOGIC CHANGE] Admin Approved overrides all algorithm scores
-    if article.status == "approved":
+    if article.status == "approved" or has_vip:
         ev.confidence = 1.0
         ev.needs_verification = False
-    elif has_vip: ev.confidence = 1.0
     elif has_trusted: ev.confidence = 0.95 if ev.sources_count >= 2 else 0.9
     elif has_strong_metrics: ev.confidence = 0.8 if ev.sources_count >= 2 else 0.6
     else:
@@ -406,6 +409,8 @@ def _invalidate_event_caches(event_id: int):
         cache.delete_match("stats_*")
         cache.delete_match("articles_latest_*")
         cache.delete_match("map_*")
+        cache.delete_match("heatmap_*")
+        cache.delete_match("timeline_*")
     except Exception as e:
         logger.error(f"Cache invalidation failed for event {event_id}: {e}")
 

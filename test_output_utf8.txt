@@ -1,9 +1,0 @@
-
-STDERR:
-Traceback (most recent call last):
-  File "d:\viet-disaster-watch\backend\tests\test_disaster_filtering.py", line 15, in <module>
-    from app.nlp import contains_disaster_keywords, extract_disaster_metrics, classify_disaster
-  File "d:\viet-disaster-watch\backend\app\nlp.py", line 1136
-    ABSOLUTE_VETO = [
-                    ^
-SyntaxError: '[' was never closed

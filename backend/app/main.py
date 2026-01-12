@@ -10,6 +10,8 @@ import logging
 from datetime import datetime, timedelta
 import pytz
 
+logger = logging.getLogger(__name__)
+
 # Third-party Imports
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
