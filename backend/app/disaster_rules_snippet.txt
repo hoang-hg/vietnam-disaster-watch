@@ -1,0 +1,727 @@
+DISASTER_RULES = [
+  # 1) Bão & áp thấp nhiệt đới (Storm/Tropical Cyclone)
+    ("storm", [
+        rf"\b(?<!báo\s)(?<!tin\s)(?<!thông\stin\s)(?<!tình\shình\s)(?<!đi\s)(?<!dự\s)(?<!tờ\s)(?<!đọc\s)(?<!thông\s)(?<!cảnh\s)(?<!tình\s)(?<!khai\s)(?<!đảm\s)(?<!nhà\s)(?<!đăng\s)(?<!viết\s)(?<!bài\s)(?<!gây\s)(?<!tâm\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\ssale)(?!\skhuyến\s)(?!\schấn\s)(?!\ssa\s)(?!\struyền\s)(?!\s*chí)(?!\s*cáo)(?!\s*hiểm)(?!\s*vệ)(?!\s*đảm)(?!\s*tàng)(?!\s*toàn)(?!\s*quản)(?!\s*trì)(?!\s*hành)(?!\s*mật)(?!\s*gồm)(?!\s*phủ)(?!\s*quát)(?!\s*trọn)(?!\s*bì)(?!\s*vây)(?!\s*nhiêu)(?!\s*lâu)(?!\s*xa)(?!\s*giờ)(?!\s*lao\s*động)(?!\s*thanh\s*niên)(?!\s*tiền\s*phong)(?!\s*tin\s*tức)(?!\s*công\s*an)(?!\s*phụ\s*nữ)(?!\s*đầu\s*tư)(?!\s*pháp\s*luật)(?!\s*giáo\s*dục)(?!\s*nhân\s*dân)(?!\s*điện\s*tử)(?!\s*vietnamnet)(?!\s*dân\s*trí)(?!\s*vnexpress)(?!\s*công\s*lý)(?!\s*văn\s*hóa)(?!\s*quốc\s*tế)(?!\s*thù)(?!\s*đáp)(?!\s*công)(?!\s*hại)(?!\s*bệnh)(?!\s*lửa)(?!\s*dư\s*luận)(?!\s*chấn\s*thương)(?!\s*đơn)(?!\s*deal)(?!\s*like)(?!\s*view)(?!\s*cấp(?!\s*\d))\b",
+        r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
+        r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"ATND", r"xoáy\s*thuận\s*nhiệt\s*đới",
+        r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"gió\s*bão", r"bão\s*khẩn\s*cấp",
+        r"đổ\s*bộ", r"tiến\s*vào\s*biển\s*đông", r"tin\s*bão",
+        # Named Storms: Stricter, and we'll manually ensure this doesn't pass safe_no_accent if it's too risky
+        r"\bbão\s+[A-ZĐ][a-zà-ỹ]{3,}\b",
+        r"vùng\s*tâm\s*bão", r"áp\s*sát\s*ven\s*biển", r"hoàn\s*lưu\s*sau\s*bão", r"gió\s*xoáy", r"phong\s*ba", r"mưa\s*lũ", r"mưa\s*bão",
+        r"bão\s*tăng\s*tốc", r"thần\s*tốc\s*tiến\s*vào", r"hồi\s*sức\s*sau\s*bão",
+        r"\bbão\s*số\s*\d{1,2}\b",
+        r"\b(?:siêu\s*bão|bão\s*rất\s*mạnh|bão\s*mạnh|bão\s*nhiệt\s*đới|siêu\s*bão\s*nhiệt\s*đới)\b",
+
+        r"\báp\s*thấp\s*nhiệt\s*đới\b",
+        r"\b(?:atnđ|atnd|a\.?\s*t\.?\s*n\.?\s*đ)\b",
+        r"\b(?:xoáy\s*thuận\s*nhiệt\s*đới|nhiễu\s*động\s*nhiệt\s*đới)\b",
+
+        r"\b(?:tâm|mắt)\s*bão\b",
+        r"\bhoàn\s*lưu\s*bão\b",
+        r"\bbán\s*kính\s*gió\s*mạnh\b",
+        r"\bvùng\s*gió\s*mạnh\b",
+
+        r"\b(?:beaufort|thang\s*beaufort)\b",
+
+        r"\báp\s*suất\s*(?:trung\s*tâm|tối\s*thiểu|thấp\s*nhất)(?:\s*giảm)?\b",
+
+        r"\b(?:đổ\s*bộ|đổ\s*bộ\s*trực\s*tiếp|áp\s*sát\s*ven\s*biển|tiến\s*gần\s*đất\s*liền)\b",
+        r"\b(?:tiến\s*vào|đi\s*vào)\s*biển\s*đông\b",
+        r"\b(?:vịnh\s*bắc\s*bộ|vịnh\s*thái\s*lan|quần\s*đảo\s*hoàng\s*sa|quần\s*đảo\s*trường\s*sa)\b",
+
+        # Bão có tên: hỗ trợ cả TitleCase và ALLCAPS (YAGI, NORU, MOLAVE...)
+        r"\bbão\s+(?:[A-ZĐ][a-zà-ỹ]{2,}|[A-Z]{3,})\b",
+
+        r"\b(?:tin\s*bão|bản\s*tin\s*bão|cảnh\s*báo\s*bão|tin\s*bão\s*khẩn\s*cấp|dự\s*báo\s*bão|cập\s*nhật\s*bão)\b",
+        r"\b(?:tin\s*áp\s*thấp|bản\s*tin\s*áp\s*thấp\s*nhiệt\s*đới)\b",
+        r"\b(?:hướng\s*di\s*chuyển|quỹ\s*đạo\s*bão|đường\s*đi\s*của\s*bão|hành\s*lang\s*bão)\b",
+        r"\b(?:tọa\s*độ\s*tâm\s*bão|kinh\s*độ\s*tâm\s*bão|vĩ\s*độ\s*tâm\s*bão|tọa\s*độ\s*tâm\s*áp\s*thấp)\b",
+        r"\b(?:mưa\s*do\s*hoàn\s*lưu|mưa\s*do\s*hoàn\s*lưu\s*bão|mưa\s*to\s*do\s*bão|mưa\s*rất\s*to\s*do\s*bão)\b",
+        r"\b(?:nước\s*biển\s*dâng\s*do\s*bão|nước\s*dâng\s*do\s*bão|triều\s*dâng\s*do\s*bão|sóng\s*tràn\s*do\s*bão)\b",
+    ]),
+
+  # 2) Lũ lụt (Flood) - User Cat 2
+  ("flood", [
+    r"lũ\s*lụt", r"ngập\s*lụt", r"ngập\s*úng", r"xả\s*lũ",
+    r"lũ\s*lên", r"lũ\s*xuống", r"lũ\s*về", r"nước\s*lũ",
+    r"đỉnh\s*lũ", r"mực\s*nước\s*vượt\s*báo\s*động", r"lưu\s*lượng\s*về\s*hồ",
+    r"lũ\s*trên\s*các\s*sông", r"vỡ\s*đê", r"tràn\s*đê", r"vỡ\s*đập", r"vỡ\s*hồ", r"hồ\s*chứa\s*(?:(?!\.).)*\s*vỡ", r"sự\s*cố\s*hồ", r"xả\s*tràn",
+    r"tin\s*lũ", r"báo\s*động\s*(?:1|2|3|I|II|III)",
+    r"lũ\s*lịch\s*sử", r"ngập\s*lụt\s*cục\s*bộ", r"ngập\s*sâu", r"vùng\s*trũng\s*thấp", r"\blũ(?!\s*trẻ)\b", r"vùng\s*lũ", r"rốn\s*lũ", r"chạy\s*lũ",
+    r"điều\s*tiết\s*lũ", r"thủy\s*điện\s*(?:xả|điều\s*tiết)\s*lũ", r"vượt\s*lũ\s*lịch\s*sử", r"đợt\s*lũ\s*mới",
+    # Core flood terms (high precision)
+    r"\b(?:lũ\s*lụt|ngập\s*lụt|ngập\s*úng|lụt\s*nặng|lụt\s*diện\s*rộng|lụt\s*lịch\s*sử)\b",
+    r"\b(?:lũ\s*lịch\s*sử|đỉnh\s*lũ\s*lịch\s*sử|đỉnh\s*lũ|lũ\s*đạt\s*đỉnh|lũ\s*vượt\s*đỉnh)\b",
+
+    # Water level / alert levels
+    r"\bmực\s*nước(?:\s*(?:sông|hồ|hạ\s*du|thượng\s*nguồn))?\s*(?:dâng|lên|tăng|đạt\s*đỉnh|vượt\s*ngưỡng|biến\s*động)\b",
+    r"\b(?:mực\s*nước\s*báo\s*động|vượt\s*(?:mức\s*)?báo\s*động|trên\s*báo\s*động\s*3)\b",
+    r"\bbáo\s*động\s*(?:1|2|3|I|II|III)\b",
+
+    # Dike/dam incidents
+    r"\b(?:vỡ|tràn)\s*(?:đê|đê\s*bao|kè|bờ|bờ\s*sông)\b",
+    r"\b(?:vỡ|sự\s*cố)\s*(?:đập|hồ|hồ\s*đập|hồ\s*chứa)\b",
+    r"\b(?:thẩm\s*lậu|mạch\s*đùn|mạch\s*sủi|rò\s*rỉ\s*(?:thân|chân)\s*đê|nứt\s*(?:đê|thân\s*đê|mặt\s*đê))\b",
+
+    # Reservoir operation / discharge
+    r"\bxả\s*(?:lũ|tràn|điều\s*tiết)\b",
+    r"\bmở\s*cửa\s*xả(?:\s*lũ)?\b",
+    r"\b(?:vận\s*hành|điều\s*tiết)\s*(?:hồ\s*chứa|liên\s*hồ(?:\s*chứa)?)\b",
+    r"\blưu\s*lượng\s*(?:về\s*hồ|nước\s*về\s*hồ|xả(?:\s*lũ)?|qua\s*(?:đập|tràn))\b",
+
+  # Urban drainage overload (very characteristic in news)
+    r"\b(?:thoát\s*nước\s*quá\s*tải|hệ\s*thống\s*thoát\s*nước\s*quá\s*tải|cống\s*(?:nghẹt|bị\s*nghẹt|quá\s*tải)|hố\s*ga\s*trào\s*nước|miệng\s*cống\s*trào\s*nước)\b",
+    r"\b(?:tiêu\s*úng|tiêu\s*thoát\s*úng|bơm\s*chống\s*ngập|trạm\s*bơm\s*chống\s*ngập|bơm\s*tiêu\s*úng)\b",
+    # Inundation phrases (anchor "ngập" vào đối tượng cụ thể để giảm nhiễu)
+    r"\bngập\s*(?:nhà|đường|phố|quốc\s*lộ|khu\s*dân\s*cư|hầm|hầm\s*chui|đường\s*hầm|cầu\s*vượt\s*thấp)\b",
+    r"\bngập\s*(?:sâu|nặng|diện\s*rộng|cục\s*bộ|kéo\s*dài|nghiêm\s*trọng|tới\s*nóc|lút|ngang\s*ngực|quá\s*đầu\s*gối)\b",
+    r"\b(?:ngập\s*tràn\s*vào\s*nhà|nước\s*tràn\s*vào\s*nhà|nước\s*tràn\s*qua\s*đường)\b",
+
+    # Isolation / transport failure due to inundation
+    r"\b(?:chia\s*cắt|cô\s*lập|tê\s*liệt\s*giao\s*thông)(?:\s*do\s*ngập)?\b",
+    r"\b(?:xe\s*(?:chết\s*máy|tắt\s*máy)|ô\s*tô\s*chết\s*máy|xe\s*máy\s*chết\s*máy)\s*(?:do|vì)\s*ngập\b",
+    r"\b(?:kẹt\s*xe|tắc\s*đường)\s*(?:do|vì)\s*ngập\b",
+
+    # “lũ” đã có ngữ cảnh thủy văn (không phải lũ người/lũ bạn)
+    r"\blũ\s*(?:sông|trên\s*sông|thượng\s*nguồn|thượng\s*lưu|hạ\s*lưu|hạ\s*du|nội\s*đồng|đô\s*thị|lưu\s*vực)\b",
+    r"\blũ\s*(?:lên|lên\s*nhanh|rút|rút\s*chậm|dâng|dâng\s*cao|kéo\s*dài|bất\s*thường|trái\s*mùa|kép|chồng\s*lũ|hai\s*đỉnh)\b",
+    r"\bmưa\s*(?:gây\s*lũ|gây\s*ngập|gây\s*ngập\s*lụt)\b",
+  ]),
+
+  # 3) Lũ quét/Lũ ống (Flash Flood) - User Cat 3
+  ("flash_flood", [
+    r"lũ\s*quét", r"lũ\s*ống", r"lũ\s*bùn(?:\s*đá)?", r"lũ\s*đá", r"nghẽn\s*dòng",
+    r"tin\s*cảnh\s*báo\s*lũ\s*quét", r"nguy\s*cơ\s*lũ\s*quét", r"lũ\s*dữ",
+    r"lũ\s*cuồn\s*cuộn", r"dòng\s*lũ\s*chảy\s*xiết", r"đất\s*đá\s*đổ\s*về", r"trôi\s*cầu",
+    # Direct identifiers
+    r"\blũ\s*quét\b",
+    r"\blũ\s*ống\b",
+    r"\blũ\s*bùn(?:\s*đá)?\b",
+    r"\blũ\s*quét\s*bùn\s*đá\b",
+
+    # Strong official phrasing
+    r"\b(?:cảnh\s*báo|tin\s*cảnh\s*báo|cảnh\s*báo\s*nguy\s*cơ)\s*(?:lũ\s*quét|lũ\s*ống)\b",
+    r"\b(?:nguy\s*cơ|nguy\s*cơ\s*cao|điểm\s*nguy\s*cơ|khu\s*vực|vùng)\s*(?:có\s*)?nguy\s*cơ\s*(?:lũ\s*quét|lũ\s*ống)\b",
+    # Sudden onset / kinetics (anchor bằng "lũ" hoặc "dòng lũ")
+    r"\b(?:lũ|dòng\s*lũ|nước\s*lũ)\s*(?:ập\s*(?:đến|xuống)|đổ\s*ập\s*xuống|đổ\s*về|dâng\s*đột\s*ngột|dâng\s*nhanh|cuồn\s*cuộn)\b",
+    r"\b(?:trong\s*tích\s*tắc|trong\s*vài\s*phút|bất\s*ngờ)\s*(?:xảy\s*ra|ập\s*xuống|ập\s*đến)\b",
+
+    # “Dòng chảy xiết” but anchored to flood context
+    r"\b(?:dòng\s*lũ\s*chảy\s*xiết|dòng\s*lũ\s*xiết|nước\s*lũ\s*chảy\s*xiết)\b",
+    r"\b(?:dòng\s*chảy\s*xiết|nước\s*chảy\s*xiết)(?:(?=[^\.\n]{0,60}\b(?:khe\s*suối|suối|thượng\s*nguồn|bùn\s*đá|đất\s*đá|bản|làng)\b))\b",
+
+    # Terrain signals: khe suối/suối dâng nhanh -> often used in flash flood narratives
+    r"\b(?:khe\s*suối|khe|suối)\s*(?:dâng\s*cao|dâng\s*nhanh|dâng\s*đột\s*ngột|biến\s*thành\s*dòng\s*lũ)\b",
+    r"\b(?:suối\s*nhỏ\s*thành\s*lũ|suối\s*cạn\s*thành\s*lũ|khe\s*suối\s*biến\s*thành\s*dòng\s*lũ)\b",
+    r"\bnước\s*(?:từ\s*)?thượng\s*nguồn\s*đổ\s*về\b",
+
+    # Mud/rock/debris flow phrases
+    r"\b(?:dòng\s*bùn(?:\s*đá)?|bùn(?:\s*đá)?|đất\s*đá)\s*(?:ập\s*xuống|tràn\s*ập|ào\s*ạt|đổ\s*về|tràn\s*vào\s*nhà|mang\s*theo)\b",
+    r"\b(?:đất\s*đá\s*chắn\s*ngang\s*đường|đất\s*đá\s*bịt\s*kín\s*đường)\b",
+
+    # Damage / isolation typical of flash floods (anchored)
+    r"\b(?:lũ\s*quét|lũ\s*ống|nước\s*lũ)\s*(?:cuốn\s*trôi|cuốn\s*phăng|cuốn\s*sập|vùi\s*lấp|tàn\s*phá)\b",
+    r"\b(?:đứt\s*đường|trôi\s*cầu|cuốn\s*trôi\s*cầu|cầu\s*tạm\s*bị\s*cuốn)(?:(?=[^\.\n]{0,60}\b(?:lũ\s*quét|lũ\s*ống|nước\s*lũ|bùn\s*đá)\b))\b",
+  ]),
+
+  # 4) Sạt lở (Landslide) - User Cat 4
+  ("landslide", [
+    r"sạt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))", r"trượt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))", r"lở\s*núi", r"sập\s*taluy",
+    r"đá\s*đổ", r"đá\s*lăn", r"đá\s*rơi", r"sụt\s*trượt", r"vết\s*nứt(?!\s*(?:tường|nhà))",
+    r"đất\s*đá\s*vùi\s*lấp", r"đứt\s*gãy", r"sụp\s*đổ\s*địa\s*chất", r"sạt\s*taluy",
+    r"\bsạt\s*lở(?!\s*bờ\s*(?:sông|biển|kè))\b",
+    r"\bsạt\s*lở\s*(?:đất|núi)\b",
+    r"\blở\s*núi\b",
+    r"\b(?:trượt\s*lở\s*đất|trượt\s*đất|trượt\s*lở)(?!\s*bờ\s*(?:sông|biển|kè))\b",
+    r"\b(?:sạt\s*trượt|trượt\s*sạt|sụt\s*trượt)\s*(?:đất|sườn\s*núi|mái\s*dốc)?\b",
+
+    # Taluy / ta luy (biến thể chính tả)
+    r"\b(?:sập|sạt)\s*(?:ta[-\s]*luy|taluy)\b",
+    r"\b(?:sạt\s*lở|sạt\s*trượt|trượt\s*lở)\s*(?:ta[-\s]*luy|taluy)\b",
+    r"\b(?:ta[-\s]*luy|taluy)\s*(?:dương|âm)\s*(?:bị\s*)?(?:sạt|sập|trượt|lở)\b",
+
+    # Cảnh báo / nguy cơ / điểm sạt lở
+    r"\b(?:cảnh\s*báo|nguy\s*cơ)\s*(?:sạt\s*lở|sạt\s*trượt|trượt\s*lở)\b",
+    r"\bđiểm\s*(?:sạt\s*lở|sạt\s*trượt|trượt\s*lở)\b",
+    r"\b(?:phát\s*sinh|xuất\s*hiện)\s*điểm\s*(?:sạt\s*lở|sạt\s*trượt)\b",
+
+    # Đường bị sạt lở (hạ tầng)
+    r"\bsạt\s*lở\s*đường\b",
+    r"\b(?:đường|tuyến\s*đường|quốc\s*lộ|tỉnh\s*lộ|đèo)\s*(?:bị\s*)?sạt\s*lở\b",
+    r"\b(?:đứt|sập)\s*đường\s*do\s*sạt\s*lở\b",
+    r"\b(?:tắc\s*đường|ách\s*tắc|phong\s*tỏa|chia\s*cắt)\s*(?:do\s*)?sạt\s*lở\b",
+    # Đất đá/bùn đất vùi lấp/tràn xuống
+    r"\b(?:đất\s*đá|bùn\s*đất)\s*(?:vùi\s*lấp|đổ\s*ập\s*xuống|sạt\s*xuống|tràn\s*xuống|tràn\s*ra\s*đường)\b",
+    r"\b(?:đất\s*đá|bùn\s*đất)\s*(?:phủ\s*kín|vùi\s*lấp)\s*(?:mặt\s*đường|đường)\b",
+
+    # Đá rơi/đá lăn/đá đổ: chỉ nhận khi có hậu quả gần kề (≤ 60 ký tự)
+    r"\b(?:đá\s*(?:rơi|lăn|đổ)|rơi\s*đá)(?=(?:[^\.\n]{0,60}\b(?:xuống\s*đường|vào\s*nhà|liên\s*tiếp|nguy\s*hiểm|vùi\s*lấp|tắc\s*đường|ách\s*tắc)\b))\b",
+
+    # Nứt: chỉ nhận khi gắn với núi/sườn dốc/taluy (loại nứt nhà/tường)
+    r"\b(?:vết\s*nứt|khe\s*nứt)\s*(?:núi|sườn\s*núi|sườn\s*dốc|mái\s*dốc|mặt\s*dốc|(?:ta[-\s]*luy|taluy))\b",
+    r"\bvết\s*nứt(?!\s*(?:tường|nhà|móng|công\s*trình))\b(?=(?:[^\.\n]{0,60}\b(?:sườn\s*núi|mái\s*dốc|taluy|ta\s*luy)\b))",
+
+    # Thuật ngữ kỹ thuật trượt
+    r"\b(?:khối\s*trượt|mặt\s*trượt|cung\s*trượt|vết\s*trượt|vệt\s*trượt)\b",
+
+    # Nguyên nhân hay xuất hiện trong báo (tuỳ chọn)
+    r"\bmưa\s*(?:lớn|kéo\s*dài)\s*gây\s*(?:sạt\s*lở|sạt\s*trượt|trượt\s*lở)\b",
+  ]),
+
+  # 5) Sụt lún đất (Land Subsidence) - User Cat 5
+  ("subsidence", [
+    r"sụt\s*lún(?:\s*đất)?", r"sụp\s*lún", r"hố\s*sụt", r"hố\s*tử\s*thần", r"nghiêng\s*lún", r"sập\s*đổ",
+    r"nứt\s*toác", r"sụt\s*lún\s*hạ\s*tầng", r"biến\s*dạng\s*mặt\s*đường", r"lún\s*xụt",
+    r"sập\s*hầm\s*lò", r"sập\s*mỏ",
+    # STRONG: match là rất chắc
+    r"\bsụt\s*lún(?:\s*đất)?\b",
+    r"\bsụp\s*lún\b",
+    r"\b(?:lún\s*sụt|lún\s*xụt)\b",
+    r"\bsụt\s*nền(?:\s*(?:đường|nhà|công\s*trình))?\b",
+    r"\bsụt\s*đường\b",
+    r"\b(?:đường|mặt\s*đường|nền\s*đường)\s*(?:bị\s*)?(?:lún|sụt|võng|sụp)\b",
+    r"\b(?:mặt\s*đường)\s*(?:lún\s*sâu|võng\s*xuống|sụt\s*xuống|sụp\s*xuống)\b",
+
+    # Sinkhole terms
+    r"\bhố\s*sụt(?:\s*lún)?\b",
+    r"\bhố\s*tử\s*thần\b",
+    r"\bhố\s*sập\b",
+    r"\bhố\s*sụt\s*(?:khổng\s*lồ|giữa\s*đường|trên\s*mặt\s*đường|lan\s*rộng|mở\s*rộng|nuốt\s*chửng)\b",
+
+    # Infrastructure-specific failures strongly associated with subsidence
+    r"\b(?:sập|sụt)\s*hố\s*ga\b",
+    r"\bhố\s*ga\s*(?:sập|sụt|lún)\b",
+    r"\b(?:cống\s*ngầm|cống|hầm\s*ngầm)\s*(?:sập|sụt|lún)\b",
+    r"\bsụt\s*lún\s*(?:hạ\s*tầng|công\s*trình)\b",
+    r"\bbiến\s*dạng\s*(?:mặt\s*đường|nền)\b",
+    r"\btách\s*lớp\s*mặt\s*đường\b",
+    # Nghiêng/lún lệch: chỉ nhận nếu có "lún/sụt/nền/móng" trong phạm vi gần
+    r"\b(?:nghiêng\s*lún|lún\s*nghiêng|lún\s*lệch|lún\s*chênh(?:\s*lệch)?|lún\s*không\s*(?:đều|đồng\s*đều))\b",
+    r"\b(?:nhà|tường|cột|công\s*trình|sàn)\s*(?:bị\s*)?nghiêng\b(?=(?:[^\.\n]{0,80}\b(?:lún|sụt|móng|nền|hố\s*sụt)\b))",
+
+    # Nứt: chỉ nhận nếu có neo "lún/sụt/móng/nền/mặt đường" gần đó
+    r"\bnứt\s*toác\b(?=(?:[^\.\n]{0,80}\b(?:lún|sụt|nền|móng|mặt\s*đường|hố\s*sụt)\b))",
+    r"\b(?:nứt\s*(?:đất|nền|mặt\s*đường|móng|tường|nhà))\b(?=(?:[^\.\n]{0,80}\b(?:lún|sụt|sụt\s*lún|hố\s*sụt)\b))",
+    r"\bnứt\s*lún(?:\s*(?:nền|mặt\s*đường|nhà\s*cửa|công\s*trình))?\b",
+
+    # "hàm ếch": chỉ nhận nếu đi với đường/nền/mặt đường (không ăn bờ sông)
+    r"\bhàm\s*ếch(?:\s*hóa)?\b(?=(?:[^\.\n]{0,60}\b(?:mặt\s*đường|đường|nền|nền\s*đường)\b))",
+
+    # Cơ chế ngầm thường được mô tả
+    r"\b(?:khoang\s*rỗng\s*dưới\s*đường|hốc\s*rỗng|rỗng\s*nền|nền\s*rỗng|rỗng\s*hóa\s*nền)\b",
+    r"\bxói\s*ngầm(?:\s*(?:nền|dưới\s*đường|nền\s*đường))?\b",
+    r"\bsụt\s*lún\s*do\s*(?:xói\s*ngầm|rỗng\s*nền|nền\s*yếu|địa\s*chất\s*yếu|rò\s*rỉ\s*nước|vỡ\s*ống\s*nước|vỡ\s*cống|sụp\s*cống)\b",
+
+    # Warning / zoning / closures
+    r"\b(?:cảnh\s*báo|nguy\s*cơ)\s*sụt\s*lún\b",
+    r"\b(?:khoanh\s*vùng|rào\s*chắn|phong\s*tỏa|đóng\s*đường)\s*(?:khu\s*vực\s*)?sụt\s*lún\b",
+    r"\b(?:điểm|ổ)\s*sụt\s*lún\b",
+  ]),
+
+  # 6) Hạn hán (Drought) - User Cat 6
+  ("drought", [
+    r"hạn\s*hán", r"khô\s*hạn", r"thiếu\s*nước(?:\s*sinh\s*hoạt)?", r"đất\s*nứt\s*nẻ", r"khô\s*cằn", r"cạn\s*trơ", r"cây\s*héo",
+    r"hạn\s*mặn", r"thiếu\s*hụt\s*nguồn\s*nước", r"dòng\s*chảy\s*kiệt", r"mùa\s*cạn",
+    r"vùng\s*hạn", r"chống\s*hạn", r"thiếu\s*hụt\s*mưa", r"mực\s*nước\s*chết",
+    # STRONG: Neo hạn/khô hạn (rất chắc)
+    r"\bhạn\s*hán(?:\s*(?:kéo\s*dài|nghiêm\s*trọng|gay\s*gắt|cực\s*đoan|kỷ\s*lục|chưa\s*từng\s*có))?\b",
+    r"\bkhô\s*hạn(?:\s*(?:kéo\s*dài|nghiêm\s*trọng|gay\s*gắt|cực\s*đoan|diện\s*rộng|trên\s*diện\s*rộng))?\b",
+    r"\bnắng\s*hạn(?:\s*kéo\s*dài)?\b",
+    r"\b(?:đại\s*hạn|hạn\s*cực\s*đoan|hạn\s*kỷ\s*lục)\b",
+    r"\bhạn\s*mặn\b",  # nếu bạn muốn drought cũng “bắt” hạn mặn (hoặc để salinity bắt riêng)
+
+    # Thiếu mưa / mùa khô
+    r"\b(?:thiếu\s*hụt\s*mưa|mưa\s*thiếu\s*hụt|ít\s*mưa|không\s*mưa\s*kéo\s*dài|không\s*mưa\s*trong\s*nhiều\s*(?:ngày|tuần))\b",
+    r"\b(?:mùa\s*khô|mùa\s*cạn)(?:\s*(?:gay\s*gắt|khốc\s*liệt|kéo\s*dài))?\b",
+
+    # STRONG: Thủy văn kiệt (rất đặc trưng hạn)
+    r"\b(?:dòng\s*chảy|lưu\s*lượng)\s*(?:kiệt|cạn\s*kiệt|suy\s*kiệt|giảm\s*mạnh|xuống\s*thấp)\b",
+    r"\bmực\s*nước\s*(?:chết|xuống\s*thấp|hạ\s*thấp|giảm\s*sâu|tụt\s*thấp)\b",
+    r"\b(?:hồ|ao|đập|kênh|mương|sông|suối|lòng\s*sông|lòng\s*suối)\s*(?:cạn|khô|trơ\s*đáy|cạn\s*trơ)\b",
+    r"\b(?:nguồn\s*nước|mạch\s*nước\s*ngầm|nước\s*ngầm)\s*(?:suy\s*giảm|cạn|tụt|hạ\s*thấp|khan\s*hiếm)\b",
+    r"\b(?:giếng\s*(?:khoan|đào)?\s*(?:cạn|khô|trơ\s*đáy)|tụt\s*mực\s*nước\s*ngầm|mực\s*nước\s*ngầm\s*hạ\s*thấp)\b",
+    # STRONG: Nông nghiệp & sinh kế (đặc trưng hạn)
+    r"\b(?:đất|ruộng|đồng\s*ruộng)\s*(?:nứt\s*nẻ|khô\s*nẻ|nứt\s*toác|nứt\s*chân\s*chim)\b",
+    r"\b(?:cây|cây\s*trồng)\s*(?:héo\s*úa|héo|chết\s*khô)\b",
+    r"\b(?:cháy\s*lá|lá\s*khô\s*cháy\s*xém|cỏ\s*cháy\s*khô|khô\s*cháy\s*đồng\s*ruộng)\b",
+    r"\b(?:bỏ\s*vụ\s*do\s*hạn|mất\s*mùa\s*do\s*hạn|mất\s*trắng\s*do\s*hạn)\b",
+    r"\b(?:thiếu\s*nước\s*tưới|không\s*(?:đủ|có)\s*nước\s*tưới|ngưng\s*tưới|cắt\s*giảm\s*tưới)\b",
+
+    # CONDITIONAL: Thiếu nước sinh hoạt / xe bồn / cúp nước (dễ nhiễu)
+    # => chỉ match khi có “neo hạn” trong phạm vi gần
+    r"\b(?:thiếu\s*nước\s*(?:sinh\s*hoạt|ăn\s*uống|sạch)?|nước\s*sinh\s*hoạt\s*khan\s*hiếm|khủng\s*hoảng\s*nước|khẩn\s*cấp\s*về\s*nước)\b"
+    r"(?=(?:[^\.\n]{0,120}\b(?:hạn|khô\s*hạn|thiếu\s*mưa|mùa\s*khô|mùa\s*cạn|dòng\s*chảy\s*kiệt|mực\s*nước\s*chết)\b))",
+
+    r"\b(?:cúp\s*nước(?:\s*kéo\s*dài)?|mất\s*nước\s*sinh\s*hoạt|hết\s*nước\s*sinh\s*hoạt)\b"
+    r"(?=(?:[^\.\n]{0,120}\b(?:hạn|khô\s*hạn|thiếu\s*mưa|mùa\s*khô|mùa\s*cạn)\b))",
+
+    r"\b(?:xe\s*(?:bồn|téc)\s*(?:chở|cấp)\s*nước|cấp\s*nước\s*bằng\s*xe\s*(?:bồn|téc)|phát\s*nước(?:\s*miễn\s*phí)?|xếp\s*hàng\s*lấy\s*nước|đi\s*lấy\s*nước\s*sinh\s*hoạt)\b"
+    r"(?=(?:[^\.\n]{0,160}\b(?:hạn|khô\s*hạn|thiếu\s*mưa|mùa\s*khô|mùa\s*cạn)\b))",
+
+    # Ứng phó / chống hạn (khá an toàn)
+    r"\b(?:chống\s*hạn|ứng\s*phó\s*hạn\s*hán|kế\s*hoạch\s*chống\s*hạn|phương\s*án\s*chống\s*hạn|tích\s*trữ\s*nước|trữ\s*nước|tưới\s*(?:tiết\s*kiệm|nhỏ\s*giọt|luân\s*phiên))\b",
+  ]),
+
+  # 7) Xâm nhập mặn (Salinity Intrusion) - User Cat 7
+  ("salinity", [
+    r"xâm\s*nhập\s*mặn", r"nhiễm\s*phèn", r"nhiễm\s*mặn", r"ngăn\s*mặn", r"ranh\s*mặn", r"độ\s*mặn\s*cao", r"hạn\s*mặn",
+    r"cống\s*ngăn\s*mặn", r"đẩy\s*mặn", r"nước\s*nhiễm\s*mặn", r"\d+(?:[.,]\d+)?\s*(?:‰|%o|g\/l)\b",
+    r"nước\s*lợ", r"độ\s*mặn\s*vượt\s*ngưỡng", r"mặn\s*bủa\s*vây",
+    # STRONG: Neo xâm nhập mặn (cực chắc)
+    r"\bxâm\s*nhập\s*mặn(?:\s*(?:tăng\s*cao|gay\s*gắt|nghiêm\s*trọng|kéo\s*dài|diện\s*rộng|trên\s*diện\s*rộng))?\b",
+    r"\b(?:hạn\s*mặn|đợt\s*hạn\s*mặn)\b",
+    r"\b(?:mặn\s*xâm\s*nhập|nước\s*mặn\s*xâm\s*nhập)\b",
+    r"\b(?:mặn\s*lấn\s*sâu|mặn\s*lan\s*sâu|mặn\s*lan\s*rộng|mặn\s*vào\s*sâu)\b",
+
+    # Ranh mặn
+    r"\branh\s*mặn(?:\s*(?:lấn\s*sâu|ăn\s*sâu|tiến\s*sâu|vào\s*sâu|dịch\s*chuyển|mở\s*rộng|tăng\s*nhanh|thay\s*đổi))?\b",
+
+    # STRONG: Độ mặn / nồng độ muối (có ngữ cảnh)
+    r"\bđộ\s*mặn(?:\s*(?:tăng\s*cao|tăng\s*mạnh|tăng\s*nhanh|đạt\s*đỉnh|vượt\s*ngưỡng|vượt\s*chuẩn|đột\s*biến|bất\s*thường|dao\s*động|biến\s*động))?\b",
+    r"\b(?:nồng\s*độ\s*muối|chỉ\s*số\s*độ\s*mặn)(?:\s*(?:tăng|cao|vượt\s*ngưỡng))?\b",
+
+    # Số liệu độ mặn có đơn vị — phải “gần” từ khóa mặn/độ mặn/ranh mặn để tránh nhiễu
+    # Ví dụ: "độ mặn 4‰", "ranh mặn 4 g/l", "độ mặn đo được 1.2 ppt"
+    r"(?:(?:độ\s*mặn\s)|(?:ranh\s*mặn\s)|(?:nước\s*mặn\s))"
+    r"\d+(?:[.,]\d+)?\s*(?:‰|%o|ppt|g\/l|g\/L|mg\/l|mg\/L)\b",
+
+    # Hoặc: số liệu + đơn vị nằm trước, rồi sau đó có “độ mặn/ranh mặn” trong phạm vi gần
+    r"\d+(?:[.,]\d+)?\s*(?:‰|%o|ppt|g\/l|g\/L|mg\/l|mg\/L)\b"
+    r"(?=(?:[^\.\n]{0,60}\b(?:độ\s*mặn|ranh\s*mặn|nước\s*mặn)\b))",
+    # STRONG: Nước lợ / nước nhiễm mặn
+    r"\bnước\s*lợ\b",
+    r"\b(?:nước\s*(?:nhiễm|bị)\s*mặn|nguồn\s*nước\s*(?:sinh\s*hoạt\s*)?nhiễm\s*mặn|nước\s*máy\s*bị\s*nhiễm\s*mặn)\b",
+    r"\b(?:giếng\s*(?:bị\s*)?nhiễm\s*mặn|nước\s*giếng\s*nhiễm\s*mặn)\b",
+
+    # STRONG: Biện pháp/ vận hành công trình (rất đặc trưng ĐBSCL)
+    r"\b(?:cống\s*ngăn\s*mặn|đập\s*ngăn\s*mặn|đập\s*tạm\s*ngăn\s*mặn)\b",
+    r"\b(?:đóng\s*cống\s*(?:ngăn\s*mặn|chống\s*mặn|giữ\s*ngọt)(?:\s*khẩn\s*cấp)?|mở\s*cống\s*(?:lấy|đón)\s*(?:nước\s*)?ngọt)\b",
+    r"\b(?:ngăn\s*mặn|đẩy\s*mặn|trữ\s*ngọt|giữ\s*ngọt|bảo\s*vệ\s*(?:nguồn\s*nước\s*)?ngọt)\b",
+    r"\b(?:lấy\s*nước\s*(?:khi|lúc)\s*triều\s*thấp|lấy\s*nước\s*theo\s*triều|đóng\s*mở\s*cống\s*theo\s*triều|canh\s*con\s*nước\s*lấy\s*ngọt)\b",
+
+    # Rửa mặn / thau chua
+    r"\b(?:rửa\s*mặn(?:\s*(?:đất|ruộng))?|xả\s*rửa\s*mặn|thau\s*chua\s*rửa\s*mặn|cải\s*tạo\s*đất\s*(?:nhiễm\s*)?mặn)\b",
+
+    # CONDITIONAL: Phèn/mặn-phèn (phèn đơn lẻ dễ lệch)
+    # Bắt “phèn mặn” chắc; còn “nhiễm phèn” chỉ tính nếu gần neo mặn/xâm nhập mặn/độ mặn
+    r"\b(?:phèn\s*mặn|xì\s*phèn)\b",
+    r"\b(?:nhiễm\s*phèn|đất\s*nhiễm\s*phèn|nước\s*nhiễm\s*phèn|phèn\s*bùng\s*phát|nước\s*phèn|rửa\s*phèn|thau\s*chua)\b"
+    r"(?=(?:[^\.\n]{0,120}\b(?:mặn|xâm\s*nhập\s*mặn|độ\s*mặn|ranh\s*mặn|hạn\s*mặn)\b))",
+  ]),
+
+  # 8) Mưa lớn/Mưa đá/Lốc/Sét (Rain/Hail/Tornado/Lightning) - User Cat 8
+  # Renamed back to 'extreme_weather' to match Frontend theme.js
+  ("extreme_weather", [
+    # Rain
+    r"mưa\s*lớn", r"mưa\s*xối\s*xả", r"mưa\s*trắng\s*trời", r"mưa\s*to", r"mưa\s*rất\s*to", r"lượng\s*mưa", r"mưa\s*kỷ\s*lục", r"mưa\s*trái\s*mùa",
+    # Hail/Tornado/Lightning/Wind
+    r"mưa\s*đá", r"lốc(?!\s*xoáy)", r"sấm\s*sét", r"sét\s*đánh", r"phóng\s*điện", r"dông", r"giông", r"lốc\s*xoáy", r"gió\s*mạnh", r"quật\s*đổ", r"tốc\s*mái", r"vòi\s*rồng",
+    r"tố\s*lốc", r"giông\s*sét", r"tia\s*sét",
+    r"giông\s*cực\s*mạnh", r"gió\s*rít", r"gió\s*giật", r"gió\s*lốc", r"đợt\s*mưa\s*mới",
+    # RAIN: mưa lớn/cực đoan (neo chắc)
+    r"\bmưa\s*(?:rất\s*to|to\s*đến\s*rất\s*to|cực\s*lớn|kỷ\s*lục|lịch\s*sử)\b",
+    r"\bmưa\s*(?:xối\s*xả|như\s*trút|trắng\s*trời|tầm\s*tã|dồn\s*dập|nặng\s*hạt)\b",
+    r"\b(?:mưa\s*diện\s*rộng|mưa\s*cục\s*bộ|mưa\s*trái\s*mùa|mưa\s*cực\s*đoan)\b",
+
+    # “mưa lớn trong thời gian ngắn / cường suất lớn” — rất đặc trưng bản tin KTTV
+    r"\bmưa\s*lớn\s*(?:trong\s*(?:thời\s*gian\s*)?ngắn|trong\s*(?:ít|vài)\s*giờ)\b",
+    r"\b(?:mưa\s*cường\s*suất\s*lớn|cường\s*suất\s*mưa\s*lớn)\b",
+
+    # “mưa rào và dông/giông” (cụm forecast hay dùng)
+    r"\bmưa\s*rào(?:\s*(?:và|kèm)\s*(?:dông|giông)(?:\s*sét)?)?\b",
+    r"\bmưa\s*(?:dông|giông)(?:\s*diện\s*rộng)?\b",
+
+    # THUNDERSTORM / LIGHTNING
+    r"\b(?:dông|giông)(?:\s*(?:lốc|tố|cực\s*mạnh|mạnh))?\b",
+    r"\b(?:sét|tia\s*sét|giông\s*sét|dông\s*sét|phóng\s*điện)\b",
+    r"\bsét\s*đánh(?:\s*(?:trúng|liên\s*tiếp|dồn\s*dập|gây\s*(?:cháy|hỏa\s*hoạn|mất\s*điện|thương\s*vong)))?\b",
+
+    # HAIL
+    r"\bmưa\s*đá(?:\s*(?:dữ\s*dội|dày\s*đặc|bất\s*ngờ|cục\s*bộ|trên\s*diện\s*rộng|kèm\s*(?:dông\s*lốc|gió\s*lốc|sét)))?\b",
+    r"\bmưa\s*đá\s*(?:kích\s*thước\s*lớn|to|rơi\s*dày|kéo\s*dài)\b",
+    # TORNADO / SQUALL / WIND GUST
+    # Lốc: tránh “lốc cốc / lốc xoáy” tuỳ bạn muốn. Ở đây: cho bắt cả “lốc”, “lốc xoáy”, “tố lốc”, “vòi rồng”
+    r"\b(?:tố\s*lốc|vòi\s*rồng|lốc\s*xoáy)\b",
+    # “lốc” đơn: chặn một số nhiễu phổ biến (bạn có thể mở rộng blacklist theo corpus)
+    r"\blốc(?!\s*cốc)(?!\s*xoáy)\b",
+
+    r"\bgió\s*(?:giật(?:\s*(?:mạnh|rất\s*mạnh|dữ\s*dội|liên\s*hồi|từng\s*cơn|cục\s*bộ))?|mạnh|lốc|rít)\b",
+
+    # IMPACT words (hậu quả do mưa dông/lốc/sét)
+    r"\b(?:tốc\s*mái(?:\s*tôn)?|bay\s*mái\s*tôn|bung\s*mái\s*tôn|sập\s*mái|sập\s*tường\s*rào)\b",
+    r"\b(?:đổ\s*cây|cây\s*đổ|cây\s*bật\s*gốc|cây\s*gãy\s*đổ|gãy\s*cành|gãy\s*nhánh)\b",
+    r"\b(?:đổ\s*cột\s*điện|gãy\s*cột\s*điện|đứt\s*dây\s*điện|đứt\s*dây\s*cáp|đổ\s*trụ\s*điện|gãy\s*trụ\s*điện)\b",
+    r"\b(?:đổ\s*biển\s*quảng\s*cáo|đổ\s*giàn\s*giáo|đổ\s*rạp\s*nhà\s*tạm)\b",
+
+    # Secondary: mưa gây hệ quả nhanh (ngập/sạt sau mưa)
+    r"\b(?:mưa\s*lớn\s*gây\s*ngập(?:\s*cục\s*bộ|\s*nhanh)?|ngập\s*nhanh\s*sau\s*mưa|đường\s*ngập\s*sau\s*mưa)\b",
+    r"\b(?:sạt\s*lở\s*sau\s*mưa|sạt\s*trượt\s*sau\s*mưa|đá\s*rơi\s*sau\s*mưa)\b",
+  ]),
+
+  # 9) Nắng nóng (Heatwave) - User Cat 9
+  ("heatwave", [
+    r"nắng\s*nóng", r"thiêu\s*đốt", r"nhiệt\s*độ\s*cao", r"sốc\s*nhiệt", r"trú\s*nóng",
+    r"nắng\s*nóng\s*gay\s*gắt", r"nắng\s*nóng\s*đặc\s*biệt\s*gay\s*gắt", r"nhiệt\s*độ\s*kỷ\s*lục",
+    r"chỉ\s*số\s*tia\s*cực\s*tím", r"chỉ\s*số\s*UV", r"đợt\s*nắng\s*nóng", r"nhiệt\s*độ\s*cao\s*nhất",
+    r"nắng\s*cháy\s*da", r"nóng\s*rát", r"nắng\s*hạn",
+    # CORE HEATWAVE PHRASES (neo chắc)
+    r"\b(?:nắng\s*nóng|đợt\s*nắng\s*nóng|đợt\s*nóng)\b",
+    r"\bnắng\s*nóng\s*(?:gay\s*gắt|đặc\s*biệt\s*gay\s*gắt|kéo\s*dài|diện\s*rộng|cục\s*bộ|cực\s*đoan|khốc\s*liệt|dữ\s*dội|nghiêm\s*trọng|tăng\s*cường|tái\s*diễn|quay\s*trở\s*lại)\b",
+
+    # “nắng như đổ lửa / thiêu đốt”
+    r"\b(?:nắng\s*như\s*đổ\s*lửa|nóng\s*như\s*thiêu(?:\s*như\s*đốt)?|thiêu\s*đốt)\b",
+    # TEMPERATURE / BASELINE HEAT (định lượng + cụm KTTV
+    # Nhiệt độ cao nhất / nền nhiệt / duy trì cao
+    r"\b(?:nhiệt\s*độ\s*cao\s*nhất|nền\s*nhiệt(?:\s*(?:tăng|cao|duy\s*trì\s*cao|cao\s*kéo\s*dài))?)\b",
+    r"\b(?:nhiệt\s*độ\s*(?:tăng\s*(?:nhanh|mạnh|vọt)|duy\s*trì\s*trên\s*cao|phổ\s*biến))\b",
+    r"\b(?:đêm\s*nóng|đêm\s*oi\s*bức|nhiệt\s*độ\s*ban\s*đêm\s*cao)\b",
+
+    # Nhiệt độ vượt ngưỡng “38/39/40 độ”, “trên 40 độ”
+    r"\bnhiệt\s*độ\s*vượt\s*(?:38|39|40)\s*độ\b",
+    r"\b(?:trên|xấp\s*xỉ|khoảng)\s*(?:38|39|40|41|42|43|44|45)\s*độ(?:\s*C)?\b",
+
+    # Pattern số + °C / độ C (bắt tin dạng “37-39°C”, “40°C”)
+    r"\b\d{2}(?:\s*[-–]\s*\d{2})?\s*(?:°\s*C|°C|độ\s*C|độ\s*c)\b",
+
+    # “cảm giác như 40 độ / nhiệt độ cảm nhận / cảm giác nhiệt”
+    r"\b(?:nhiệt\s*độ\s*cảm\s*nhận|cảm\s*giác\s*nhiệt|cảm\s*giác\s*như)\s*(?:\d{2}\s*(?:°\s*C|°C|độ))?\b",
+    r"\bcảm\s*giác\s*như\s*(?:40|41|42|43|44|45|46|47|48|49|50)\s*độ(?:\s*C)?\b",
+    # UV / HEAT RISK WARNING
+    r"\b(?:chỉ\s*số\s*UV|UV)(?:\s*(?:rất\s*cao|cao|nguy\s*hiểm|tăng\s*cao|ở\s*mức\s*(?:rất\s*cao|nguy\s*hiểm)))?\b",
+    r"\b(?:tia\s*UV|tia\s*cực\s*tím|tia\s*cực\s*tím\s*mạnh)\b",
+
+    # “cảnh báo nắng nóng / cấp độ rủi ro / mức cảnh báo”
+    r"\b(?:cảnh\s*báo|dự\s*báo|khuyến\s*cáo)\s*(?:nắng\s*nóng|nóng|nền\s*nhiệt\s*cao)\b",
+    r"\b(?:cấp\s*độ\s*rủi\s*ro(?:\s*do)?\s*nắng\s*nóng|rủi\s*ro\s*do\s*nắng\s*nóng|mức\s*cảnh\s*báo\s*nắng\s*nóng)\b",
+    # HEALTH / IMPACT SIGNALS (neo hậu quả
+    r"\b(?:say\s*nắng|say\s*nóng|sốc\s*nhiệt|đột\s*quỵ\s*(?:do\s*nóng|nhiệt)|kiệt\s*sức\s*(?:do|vì)\s*(?:nóng|nắng\s*nóng)|mất\s*nước(?:\s*do\s*nắng\s*nóng)?)\b",
+    r"\b(?:ngất(?:\s*xỉu)?\s*(?:do\s*nóng|vì\s*nắng)|nhập\s*viện\s*vì\s*nắng\s*nóng|tử\s*vong\s*do\s*nắng\s*nóng)\b",
+    r"\b(?:cháy\s*nắng|bỏng\s*nắng|da\s*bỏng\s*rát|rộp\s*da\s*do\s*nắng)\b",
+    # POWER/WATER STRESS (hay xuất hiện trong tin nắng nóng
+    r"\b(?:quá\s*tải\s*điện|lưới\s*điện\s*quá\s*tải|tải\s*điện\s*tăng\s*cao|nhu\s*cầu\s*điện\s*tăng\s*vọt|cắt\s*điện\s*luân\s*phiên|cúp\s*điện\s*do\s*quá\s*tải)\b",
+    r"\b(?:thiếu\s*nước\s*sinh\s*hoạt\s*do\s*nắng\s*nóng|khuyến\s*cáo\s*uống\s*đủ\s*nước|bổ\s*sung\s*nước|bù\s*nước)\b",
+  ]),
+
+  # 10) Rét hại/Sương muối (Cold/Frost) - User Cat 10
+  ("cold_surge", [
+    r"trời\s*rét", r"rét\s*hại", r"rét\s*đậm", r"rét\s*khô", r"rét\s*tê\s*tái", r"sương\s*muối", r"băng\s*giá", r"đóng\s*băng", r"tuyết\s*rơi", r"tuyết\s*phủ",
+    r"rét\s*đậm\s*rét\s*hại", r"nhiệt\s*độ\s*xuống\s*dưới\s*0",
+    r"rét\s*buốt", r"mưa\s*tuyết",
+    r"không\s*khí\s*lạnh\s*tăng\s*cường", r"gió\s*mùa\s*đông\s*bắc",
+    r"(?:sưởi\s*ấm|đốt\s*lửa|quấn\s*chăn|chống\s*rét).*(?:vật\s*nuôi|gia\s*súc|đàn\s*bò|đàn\s*trâu|đàn\s*lợn)",
+    # CORE “RÉT” PHRASES (neo chắc
+    r"\b(?:rét\s*đậm|rét\s*hại|rét\s*đậm\s*rét\s*hại)\b",
+    r"\b(?:đợt\s*rét|đợt\s*rét\s*mạnh|rét\s*tăng\s*cường|rét\s*kỷ\s*lục|lạnh\s*kỷ\s*lục)\b",
+    r"\b(?:rét\s*buốt|rét\s*tê\s*tái|lạnh\s*cắt\s*da\s*cắt\s*thịt|giá\s*rét|rét\s*sâu)\b",
+    r"\b(?:trời\s*rét|trời\s*chuyển\s*rét|trời\s*rét\s*buốt)\b",
+    # COLD AIR / MONSOON (văn phong KTTV
+    r"\b(?:không\s*khí\s*lạnh|đợt\s*không\s*khí\s*lạnh|khối\s*không\s*khí\s*lạnh)(?:\s*(?:tăng\s*cường|mạnh|bổ\s*sung|liên\s*tiếp|tràn\s*về|tràn\s*xuống|ảnh\s*hưởng|bao\s*trùm|suy\s*yếu))?\b",
+    r"\b(?:gió\s*mùa\s*đông\s*bắc|gió\s*mùa|gió\s*bấc)(?:\s*(?:mạnh|tăng\s*cường|tràn\s*về|hoạt\s*động\s*mạnh))?\b",
+    r"\b(?:mưa\s*phùn|mưa\s*nhỏ|mưa\s*phùn\s*gió\s*bấc|ẩm\s*lạnh|lạnh\s*ẩm|sương\s*mù(?:\s*dày)?)\b",
+    # FROST / ICE / SNOW ANCHOR
+    r"\b(?:sương\s*muối(?:\s*(?:dày|dày\s*đặc|phủ\s*trắng|xuất\s*hiện|gây\s*hại))?)\b",
+    r"\b(?:băng\s*giá(?:\s*(?:dày|phủ\s*trắng|xuất\s*hiện))?|bám\s*băng|đóng\s*băng|băng\s*phủ)\b",
+    r"\b(?:tuyết\s*rơi(?:\s*dày)?|tuyết\s*phủ(?:\s*trắng)?|mưa\s*tuyết)\b",
+    # TEMPERATURE THRESHOLDS / QUANT (rất quan trọng
+    # “nhiệt độ dưới 10/5/0 độ”, “xuống 0 độ”, “âm 1-2 độ”, “-2°C”
+    r"\bnhiệt\s*độ\s*(?:xuống|giảm|dưới)\s*(?:10|5|0)\s*độ(?:\s*C)?\b",
+    r"\b(?:dưới|xuống)\s*(?:10|5|0)\s*độ(?:\s*C)?\b",
+    r"\b(?:âm|-\s*)\d{1,2}\s*(?:°\s*C|°C|độ\s*C|độ)\b",
+    # dạng “3-6°C”, “0-2°C”
+    r"\b\d{1,2}\s*[-–]\s*\d{1,2}\s*(?:°\s*C|°C|độ\s*C|độ)\b",
+    # IMPACT / AGRI-LIVESTOCK SIGNALS (neo hậu quả
+    r"\b(?:gia\s*súc|vật\s*nuôi|đàn\s*trâu|đàn\s*bò|đàn\s*lợn|gia\s*cầm)\s*(?:chết\s*rét|bị\s*rét|thiệt\s*hại\s*do\s*rét)\b",
+    r"\b(?:cây\s*trồng|hoa\s*màu)\s*(?:chết\s*rét|bị\s*rét|thiệt\s*hại\s*do\s*rét|cháy\s*lá|hư\s*hại)\b",
+    r"\b(?:ủ\s*ấm|che\s*chắn\s*chuồng\s*trại|phòng\s*chống\s*rét|chống\s*rét\s*cho\s*(?:cây\s*trồng|gia\s*súc))\b",
+    # OPTIONAL: “nền nhiệt xuống thấp/duy trì thấp” (KTTV hay dùng
+    r"\b(?:nền\s*nhiệt)\s*(?:giảm\s*(?:sâu|mạnh)?|xuống\s*thấp|duy\s*trì\s*thấp|thấp)\b",
+  ]),
+
+  # 11) Động đất (Earthquake) - User Cat 11
+  ("earthquake", [
+    r"\bđộng\s*đất\b",
+    r"\b(?:địa\s*chấn|rung\s*chấn|dư\s*chấn|tâm\s*chấn|chấn\s*tiêu)\b",
+    r"\b(?:rung\s*lắc|rung\s*chuyển|chấn\s*động|rung\s*động)(?:\s*mạnh)?\b",
+    # MEASUREMENT / SCALE ANCHORS (giảm nhiễu mạnh
+    # Richter / Magnitude / M5.2 / độ lớn 4.3
+    r"\b(?:thang\s*)?richter\b",
+    r"\bmagnitude\b",
+    r"\bđộ\s*lớn(?:\s*động\s*đất)?\s*(?:m\s*)?\d+(?:[.,]\d+)?\b",
+    r"\bM\s*\d+(?:[.,]\d+)?\b",        # M5, M 5.2
+    r"\bM\d+(?:[.,]\d+)?\b",           # M5.2 (liền)
+
+    # Mercalli
+    r"\b(?:thang\s*)?mercalli\b",
+
+    # Depth: "độ sâu chấn tiêu 10 km", "sâu khoảng 15km"
+    r"\bđộ\s*sâu\s*(?:tâm\s*chấn|chấn\s*tiêu)\s*(?:khoảng|ước|tầm)?\s*\d+(?:[.,]\d+)?\s*km\b",
+    r"\b(?:chấn\s*tiêu\s*(?:nông|sâu)|tâm\s*chấn\s*(?:nông|sâu))\b",
+    r"\b\d+(?:[.,]\d+)?\s*km\s*(?:dưới\s*mặt\s*đất|độ\s*sâu)\b",
+
+    # Coordinates: vĩ độ / kinh độ / tọa độ
+    r"\b(?:vĩ\s*độ|kinh\s*độ|tọa\s*độ)\b",
+    # dạng số độ thập phân "21.34N 105.82E" hoặc "21.34, 105.82"
+    r"\b\d{1,2}(?:[.,]\d+)?\s*[°]?\s*(?:N|B)\b.*?\d{1,3}(?:[.,]\d+)?\s*[°]?\s*(?:E|Đ)\b",
+    r"\b\d{1,2}(?:[.,]\d+)?\s*[,/;]\s*\d{1,3}(?:[.,]\d+)?\b",
+    # INSTITUTION / REPORTIN
+    r"\bviện\s*vật\s*lý\s*địa\s*cầu\b",
+    r"\btrung\s*tâm\s*báo\s*tin\s*động\s*đất\b",
+    r"\b(?:thông\s*báo|ghi\s*nhận|cảnh\s*báo)\s*động\s*đất\b",
+    # GEOLOGICAL CONTEXT (tăng recall nhưng vẫn đúng lĩnh vực
+    r"\b(?:đứt\s*gãy|đới\s*đứt\s*gãy|hoạt\s*động\s*đứt\s*gãy|mảng\s*kiến\s*tạo|chuyển\s*động\s*kiến\s*tạo)\b",
+    r"\b(?:sóng\s*P|sóng\s*S|sóng\s*mặt|sóng\s*địa\s*chấn|bản\s*ghi\s*địa\s*chấn)\b",
+    # HUMAN IMPACT / FEELING REPORTS (hữu ích cho báo chí
+    r"\b(?:người\s*dân\s*cảm\s*nhận|cảm\s*nhận\s*rung\s*lắc|cảm\s*nhận\s*động\s*đất)\b",
+    r"\b(?:nhà\s*cửa|chung\s*cư|nhà\s*cao\s*tầng|đồ\s*vật)\s*(?:rung\s*lắc|rung\s*chuyển)\b",
+]),
+
+  # 12) Sóng thần (Tsunami) - User Cat 12
+  ("tsunami", [
+    r"sóng\s*thần", r"sóng\s*lớn", r"động\s*đất\s*dưới\s*biển",
+    r"tsunami", r"cấp\s*báo\s*động\s*sóng\s*thần", r"tin\s*cảnh\s*báo\s*sóng\s*thần",
+    r"sóng\s*cao\s*hàng\s*chục\s*mét", r"thảm\s*họa\s*sóng\s*thần",
+    # CORE (neo chắc
+    r"\bsóng\s*thần\b",
+    r"\btsunami\b",
+    # WARNING / BULLETIN / STATUS CHANG
+    r"\b(?:cảnh\s*báo|tin\s*cảnh\s*báo|bản\s*tin|dự\s*báo)\s*sóng\s*thần\b",
+    r"\b(?:phát|ban\s*hành|cập\s*nhật|nâng\s*cấp|hạ\s*cấp|hủy|dỡ\s*bỏ)\s*cảnh\s*báo\s*sóng\s*thần\b",
+    r"\b(?:trạng\s*thái|mức|cấp)\s*(?:cảnh\s*báo\s*)?sóng\s*thần\b",
+    r"\bcấp\s*báo\s*động\s*sóng\s*thần\b",
+    # NATURAL SIGNALS (rất đặc thù
+    r"\b(?:nước\s*biển|biển)\s*rút\s*(?:bất\s*thường|nhanh|mạnh|sâu)\b",
+    r"\bmực\s*nước\s*biển\s*(?:dâng|rút)\s*(?:bất\s*thường|nhanh|đột\s*ngột)\b",
+    r"\b(?:dao\s*động|biến\s*động)\s*mực\s*nước(?:\s*biển)?\s*(?:mạnh|bất\s*thường)\b",
+    r"\b(?:biển)\s*(?:dâng|rút)\s*(?:bất\s*thường|nhanh)\b",
+    # SOURCE / CAUSE (offshore quake / seabed
+    r"\bđộng\s*đất\s*(?:dưới\s*biển|ngoài\s*khơi|dưới\s*đáy\s*biển|đáy\s*biển)\b",
+    r"\b(?:tâm\s*chấn)\s*(?:ngoài\s*khơi|ngoài\s*biển|trên\s*biển)\b",
+    r"\b(?:trượt\s*lở|sạt\s*lở)\s*đáy\s*biển\b",
+    r"\bnúi\s*lửa\s*dưới\s*biển\b",
+    # EVACUATION / PUBLIC ADVIC
+    r"\b(?:sơ\s*tán|di\s*tản)\s*(?:do|tránh|ứng\s*phó)\s*sóng\s*thần\b",
+    r"\brút\s*lên\s*cao\s*(?:tránh|để\s*tránh)\s*sóng\s*thần\b",
+    r"\b(?:khuyến\s*cáo|yêu\s*cầu)\s*(?:tránh\s*xa|rời\s*khỏi)\s*(?:bờ\s*biển|vùng\s*ven\s*biển)\b",
+    r"\b(?:đóng\s*cửa|tạm\s*dừng)\s*(?:bãi\s*biển|hoạt\s*động\s*ven\s*biển)\b",
+    r"\bcấm\s*(?:xuống\s*biển|tắm\s*biển)(?:\s*do\s*sóng\s*thần)?\b",
+    # MONITORING / INSTRUMENTATIO
+    r"\btrung\s*tâm\s*(?:cảnh\s*báo|báo\s*tin)\s*sóng\s*thần\b",
+    r"\b(?:giám\s*sát|quan\s*trắc|theo\s*dõi)\s*(?:diễn\s*biến\s*)?sóng\s*thần\b",
+    r"\b(?:phao|cảm\s*biến|trạm)\s*(?:cảnh\s*báo\s*)?sóng\s*thần\b",
+    r"\btrạm\s*quan\s*trắc\s*mực\s*nước\b",
+    # ARRIVAL TIME / WAVE HEIGHT (định lượng
+    r"\b(?:thời\s*gian|thời\s*điểm|giờ)\s*sóng\s*đến\b",
+    r"\b(?:chiều\s*cao\s*sóng\s*thần|độ\s*cao\s*sóng)\b",
+    r"\bsóng\s*cao\s*hàng\s*chục\s*mét\b",
+    # DAMAGE / INUNDATION (bổ trợ
+    r"\b(?:sóng\s*thần)\s*(?:tàn\s*phá|gây\s*ngập|phá\s*hủy|cuốn\s*trôi)\b",
+    r"\bngập\s*lụt\s*do\s*sóng\s*thần\b",
+  ]),
+
+  # 13) Nước dâng (Storm Surge) - User Cat 13
+  ("storm_surge", [
+    r"triều\s*cường", r"nước\s*dâng", r"sóng\s*tràn",
+    r"nước\s*dâng\s*do\s*bão", r"nước\s*biển\s*dâng", r"ngập\s*lụt\s*do\s*triều",
+    # CORE ANCHORS (đặc thù
+    r"\btriều\s*cường\b",
+    r"\b(?:triều\s*dâng|thủy\s*triều\s*dâng|mực\s*triều)\b",
+    r"\b(?:nước\s*dâng|nước\s*biển\s*dâng)\b",
+    r"\bsóng\s*tràn(?:\s*bờ)?\b",
+    # SEA/COAST/ESTUARY CONTEXT (gating
+    r"\b(?:ven\s*biển|bờ\s*biển|khu\s*vực\s*ven\s*biển|dải\s*ven\s*biển)\b",
+    r"\b(?:cửa\s*sông|vùng\s*cửa\s*sông|cửa\s*biển)\b",
+    r"\b(?:ngoài\s*khơi|trên\s*biển|biển\s*động|biển\s*động\s*mạnh)\b",
+    # OVERTOPPING / DEFENSE STRUCTURE
+    r"\b(?:vượt|tràn\s*qua)\s*(?:kè|đê)\s*biển\b",
+    r"\b(?:sóng\s*vượt|sóng\s*tràn\s*qua)\s*(?:kè|đê)\b",
+    r"\b(?:tràn\s*kè|vỡ\s*kè\s*biển|tràn\s*đê\s*biển)\b",
+    r"\b(?:kè\s*biển|đê\s*biển|kè\s*chắn\s*sóng|đê\s*chắn\s*sóng)\b",
+    # LEVEL / PEAK phrasin
+    r"\b(?:đỉnh\s*triều|mực\s*triều\s*(?:dâng\s*cao|vượt\s*ngưỡng|đạt\s*đỉnh))\b",
+    r"\btriều\s*cường\s*(?:đạt\s*đỉnh|vượt\s*mức|tăng\s*mạnh|bất\s*thường)\b",
+    r"\bnước\s*dâng\s*(?:đạt\s*đỉnh|cao\s*bất\s*thường|đột\s*biến)\b",
+    # IMPACT / COASTAL FLOODIN
+    r"\bngập(?:\s*sâu)?\s*(?:ven\s*biển|khu\s*dân\s*cư\s*ven\s*biển|đường\s*ven\s*biển)\b",
+    r"\bngập\s*lụt\s*do\s*triều(?:\s*cường)?\b",
+    r"\bngập\s*do\s*nước\s*dâng\b",
+    # EROSION / SCOUR (coastal
+    r"\b(?:xâm\s*thực|xói\s*lở)\s*(?:bờ\s*biển|do\s*sóng)\b",
+    r"\b(?:xói\s*chân\s*kè|hở\s*chân\s*kè|sạt\s*chân\s*kè)\b",
+    # WARNING / ADVIC
+    r"\bcảnh\s*báo\s*(?:triều\s*cường|nước\s*dâng|triều\s*dâng|mực\s*triều)\b",
+    r"\b(?:đóng\s*đường|cấm\s*đường)\s*ven\s*biển\b",
+  ]),
+
+  # 14) Cháy rừng (Wildfire) - User Cat 14
+  ("wildfire", [
+    r"cháy\s*rừng", r"cháy\s*tán", r"cháy\s*ngầm", r"cháy\s*thực\s*bì", r"lửa\s*rừng", 
+    r"nguy\s*cơ\s*cháy\s*rừng", r"cấp\s*dự\s*báo\s*cháy\s*rừng", r"PCCCR", 
+    r"giặc\s*lửa\s*rừng", r"dập\s*lửa\s*rừng", r"chữa\s*cháy\s*rừng",
+    r"đám\s*cháy\s*(?:lớn|lan)\s*(?:tại|ở|trong)\s*rừng",
+    r"huy\s*động\s*dập\s*lửa\s*rừng", r"đốt\s*thực\s*bì",
+    # CORE: explicit wildfire term
+    r"\bcháy\s*rừng(?:\s*(?:phòng\s*hộ|đặc\s*dụng|sản\s*xuất))?\b",
+    r"\bcháy\s*(?:thực\s*bì|thảm\s*thực\s*bì)\b",
+    r"\b(?:cháy\s*dưới\s*tán|cháy\s*tán|cháy\s*ngầm)\b",
+    r"\blửa\s*rừng\b",
+    r"\bgiặc\s*lửa\b",
+    # FORESTRY org / wildfire prevention lexico
+    r"\bPCCCR\b",
+    r"\bphòng\s*cháy\s*chữa\s*cháy\s*rừng\b",
+    r"\bcấp\s*dự\s*báo\s*cháy\s*rừng(?:\s*cấp\s*(?:IV|V|4|5))?\b",
+    r"\bcảnh\s*báo\s*cháy\s*rừng(?:\s*cấp\s*(?:IV|V|4|5))?\b",
+    r"\bkiểm\s*lâm\b",
+    # FIRELINE / containment techniques (very specific
+    r"\b(?:đường\s*băng|băng|đường\s*ranh)\s*cản\s*lửa\b",
+    r"\b(?:cắt\s*đường\s*lửa|tạo\s*vành\s*đai\s*cản\s*lửa|khoanh\s*vùng\s*đám\s*cháy)\b",
+    r"\b(?:khống\s*chế|dập\s*tắt|dập\s*lửa|chữa\s*cháy)\s*(?:cháy\s*rừng|đám\s*cháy\s*rừng)?\b",
+    # AREA / SCALE markers (hectares
+    r"\b(?:cháy|thiêu\s*rụi)\s*(?:hàng\s*chục|hàng\s*trăm|\d{1,4})\s*ha\b",
+    r"\b\d{1,4}\s*ha\s*(?:rừng|thực\s*bì)\s*(?:bị\s*)?(?:cháy|thiêu\s*rụi)\b",
+    # SMOKE / impact but with forest contex
+    r"\b(?:cột\s*khói|khói\s*mù|khói\s*dày\s*đặc)\b(?=(?:[^\.\n]{0,60}\b(?:rừng|khu\s*rừng|thực\s*bì|đồi|núi|kiểm\s*lâm|PCCCR)\b))",
+  ]),
+
+  # 15) Xói lở (Erosion) - User Cat 15
+  ("erosion", [
+    r"xói\s*lở", r"sạt\s*lở\s*bờ\s*(?:sông|biển)", r"hàm\s*ếch", r"mương\s*xói", r"rãnh\s*xói", r"xâm\s*thực", r"xói\s*mòn",
+    r"sập\s*bờ\s*kè", r"vỡ\s*bờ\s*kè", r"vỡ\s*kè",
+    # Core erosion words
+    r"\bxói\s*lở\b",
+    r"\bxói\s*mòn(?:\s*đất)?\b",
+    r"\bxâm\s*thực(?:\s*(?:biển|bờ\s*biển|bờ\s*sông))?\b",
+
+    # Bank/coast specific (strong discriminator vs landslide)
+    r"\b(?:xói\s*lở|sạt\s*lở|lở)\s*bờ\s*(?:sông|biển|kè|rạch|kênh|suối)\b",
+    r"\bxói\s*lở\s*(?:cửa\s*sông|bãi\s*bồi|cù\s*lao)\b",
+    r"\b(?:lở|sụt)\s*bờ(?:\s*(?:sông|biển))?\b",
+    r"\bhàm\s*ếch(?:\s*bờ\s*(?:sông|biển))?\b",
+
+    # Undercutting / toe erosion
+    r"\b(?:khoét|xói)\s*(?:chân\s*)?(?:bờ|kè|đê)\b",
+    r"\bxói\s*lở\s*(?:ăn\s*sâu|tiến\s*sát|khoét\s*sâu|ăn\s*sát)\b",
+
+    # Levee/embankment revetment failures (erosion-like in reports)
+    r"\b(?:sạt|sập|vỡ)\s*kè\b",
+    r"\bkè\s*(?:bị\s*)?(?:sạt|xói|sập|hư\s*hỏng)\b",
+    r"\b(?:gia\s*cố|xử\s*lý|khẩn\s*cấp\s*xử\s*lý)\s*(?:bờ|kè|đê)\b",
+    r"\b(?:kè\s*tạm|kè\s*tạm\s*chống\s*xói|chống\s*xói)\b",
+
+    # Erosion features
+    r"\b(?:mương\s*xói|rãnh\s*xói)\b",
+
+    # Warnings / risk
+    r"\b(?:cảnh\s*báo|nguy\s*cơ)\s*xói\s*lở\b",
+    # "dòng chảy xiết/mạnh" -> chỉ tính erosion nếu có bờ/kè/khúc cua...
+    r"\bdòng\s*chảy\s*(?:xiết|mạnh|khoét\s*bờ|xói\s*bờ)\b"
+    r"(?=(?:[^\.\n]{0,80}\b(?:bờ|kè|ven\s*sông|ven\s*biển|cửa\s*sông|bãi\s*bồi|khúc\s*cua)\b))",
+
+    # "triều cường/sóng" -> chỉ tính erosion nếu có xói/lở/khoét hoặc bờ/kè gần đó
+    r"\b(?:triều\s*cường|sóng\s*(?:biển|lớn))\b"
+    r"(?=(?:[^\.\n]{0,80}\b(?:xói\s*lở|xâm\s*thực|khoét\s*bờ|bờ\s*biển|kè|bờ\s*sông)\b))",
+
+    # "mất đất" -> chỉ tính erosion nếu có ven sông/ven biển/bờ/kè
+    r"\bmất\s*đất\b"
+    r"(?=(?:[^\.\n]{0,80}\b(?:ven\s*sông|ven\s*biển|bờ\s*sông|bờ\s*biển|bãi\s*bồi|cù\s*lao|kè)\b))",
+  ]),
+
+
+  # 16) Tin cảnh báo, dự báo (Warning/Forecast)
+  ("warning_forecast", [
+    r"bản\s*tin\s*dự\s*báo", r"tin\s*cảnh\s*báo", r"dự\s*báo\s*thời\s*tiết", r"cảnh\s*báo\s*thiên\s*tai",
+    r"bản\s*tin\s*khẩn\s*cấp", r"thông\s*báo\s*khẩn", r"đài\s*khí\s*tượng", r"cảnh\s*báo\s*cực\s*đoan",
+    # A) BULLETINS / FORECASTS (high precision)
+    r"\bbản\s*tin\s*(?:dự\s*báo|cảnh\s*báo|thời\s*tiết|khí\s*tượng|KTTV|khí\s*tượng\s*thủy\s*văn)\b",
+    r"\btin\s*(?:dự\s*báo|cảnh\s*báo|KTTV|khí\s*tượng|thời\s*tiết)\b",
+    r"\b(?:dự\s*báo|cảnh\s*báo)\s*(?:khí\s*tượng|thời\s*tiết|KTTV|khí\s*tượng\s*thủy\s*văn)\b",
+    r"\bcảnh\s*báo\s*thiên\s*tai\b",
+    r"\b(?:bản\s*tin|tin)\s*khẩn\s*cấp\b",
+    r"\b(?:thông\s*báo|cảnh\s*báo)\s*khẩn(?:\s*cấp)?\b",
+
+    # B) MET AGENCIES / AUTHORITIES (anchors)
+    r"\b(?:đài|trung\s*tâm)\s*(?:khí\s*tượng|KTTV|khí\s*tượng\s*thủy\s*văn)\b",
+    r"\btrung\s*tâm\s*dự\s*báo\s*(?:khí\s*tượng\s*thủy\s*văn)?\s*quốc\s*gia\b",
+    r"\btrung\s*tâm\s*khí\s*tượng\s*thủy\s*văn\s*quốc\s*gia\b",
+    r"\bNCHMF\b",
+    r"\btổng\s*cục\s*khí\s*tượng\s*thủy\s*văn\b",
+    r"\bcơ\s*quan\s*khí\s*tượng\b",
+    r"\b(?:đài\s*KTTV\s*khu\s*vực|đài\s*KTTV\s*tỉnh|trạm\s*khí\s*tượng|trạm\s*đo\s*mưa)\b",
+
+    # C) RISK LEVEL / MAP / AFFECTED AREA (very characteristic)
+    r"\bcấp\s*độ\s*rủi\s*ro\s*thiên\s*tai(?:\s*cấp)?\s*(?:1|2|3|4|5|I|II|III|IV|V)\b",
+    r"\b(?:mức|cấp)\s*rủi\s*ro\s*thiên\s*tai\b",
+    r"\b(?:bản\s*đồ|vùng|khu\s*vực)\s*(?:cảnh\s*báo|dự\s*báo|nguy\s*cơ|rủi\s*ro)\b",
+    r"\b(?:phạm\s*vi\s*ảnh\s*hưởng|khu\s*vực\s*chịu\s*ảnh\s*hưởng|vùng\s*nguy\s*hiểm|khu\s*vực\s*nguy\s*hiểm)\b",
+    r"\bcảnh\s*báo\s*(?:vùng|khu\s*vực)\s*nguy\s*hiểm\b",
+    r"\bcảnh\s*báo\s*(?:trên\s*biển|ven\s*biển|đất\s*liền)\b",
+
+    # D) RESTRICTIONS / ADVISORIES (still fairly precise)
+    r"\b(?:lệnh\s*)?cấm\s*biển\b",
+    r"\bcấm\s*tàu\s*thuyền\s*ra\s*khơi\b",
+    r"\btạm\s*dừng\s*ra\s*khơi\b",
+    r"\b(?:cấm|đóng)\s*cửa\s*biển\b",
+    r"\b(?:cấm\s*đường|đóng\s*đường|cấm\s*phương\s*tiện|hạn\s*chế\s*phương\s*tiện|phân\s*luồng\s*giao\s*thông)\b",
+    r"\b(?:đóng\s*cửa\s*trường\s*học|cho\s*học\s*sinh\s*nghỉ\s*học|tạm\s*dừng\s*học)\b",
+    r"\bđường\s*dây\s*nóng|số\s*điện\s*thoại\s*đường\s*dây\s*nóng\b",
+
+    # E) DIRECTIVES / OFFICIAL DISPATCHES (needs anchoring but often decisive)
+    r"\bcông\s*điện(?:\s*(?:khẩn|hỏa\s*tốc))?\b",
+    r"\b(?:điện\s*khẩn|văn\s*bản\s*chỉ\s*đạo|chỉ\s*thị|lệnh\s*điều\s*hành|thông\s*báo\s*chỉ\s*đạo)\b",
+    r"\b(?:ban\s*chỉ\s*đạo|ban\s*chỉ\s*huy)\s*(?:PCTT|phòng\s*chống\s*thiên\s*tai|PCTT\s*và\s*TKCN|PCTT\s*&\s*TKCN|TKCN)\b",
+    r"\bphương\s*án\s*(?:ứng\s*phó|sơ\s*tán)|kịch\s*bản\s*ứng\s*phó|kế\s*hoạch\s*ứng\s*phó\b",
+    r"\bphương\s*châm\s*4\s*tại\s*chỗ\b",
+    # Khuyến cáo / đề nghị / cảnh giác ... chỉ tính nếu gần thiên tai/KTTV
+    r"\b(?:khuyến\s*cáo|đề\s*nghị|đề\s*phòng|cảnh\s*giác)\b"
+    r"(?=(?:[^\.\n]{0,120}\b(?:thiên\s*tai|KTTV|khí\s*tượng|mưa\s*lũ|bão|lũ|triều\s*cường|nắng\s*nóng|rét\s*hại)\b))",
+
+    # Chỉ đạo khẩn / yêu cầu khẩn trương ... chỉ tính nếu gần PCTT/TKCN/thiên tai
+    r"\b(?:chỉ\s*đạo\s*khẩn|yêu\s*cầu\s*khẩn\s*trương|đề\s*nghị\s*khẩn\s*trương)\b"
+    r"(?=(?:[^\.\n]{0,160}\b(?:PCTT|TKCN|thiên\s*tai|bão|lũ|mưa\s*lớn|sạt\s*lở|lũ\s*quét)\b))",
+  ]),
+
+  # 17) Khắc phục hậu quả (Recovery)
+  ("recovery", [
+    r"khắc\s*phục\s*hậu\s*quả", r"khắc\s*phục\s*sự\s*cố", r"khôi\s*phục\s*giao\s*thông",
+    r"thống\s*kê\s*thiệt\s*hại", r"ủng\s*hộ\s*đồng\s*bào", r"cứu\s*trợ", r"tiếp\s*tế",
+    r"dọn\s*dẹp\s*sau\s*bão", r"viện\s*trợ", r"hỗ\s*trợ\s*khẩn\s*cấp",
+    r"tái\s*thiết\s*sau\s*(?:bão|lũ)", r"ổn\s*định\s*đời\s*sống\s*sau\s*(?:bão|lũ)",
+    r"khôi\s*phục\s*sản\s*xuất", r"quỹ\s*phòng\s*chống", r"hỗ\s*trợ\s*người\s*dân\s*vùng",
+    r"nghĩa\s*tình\s*(?:vùng|nơi)\s*lũ", r"cứu\s*trợ\s*người\s*dân\s*bị\s*cô\s*lập",
+    r"xây\s*nhà\s*.*vùng\s*lũ", r"thi\s*thể\s*.*đã\s*được\s*tìm\s*thấy", r"khắc\s*phục\s*.*sạt\s*lở",
+    r"cô\s*lập\s*.*hộ\s*dân", r"gãy\s*đôi\s*cầu", r"mất\s*tích\s*trên\s*biển",
+    r"lũ\s*tràn\s*qua\s*đập", r"hư\s*hỏng\s*mặt\s*đường",
+    # GENUINE DISASTER RECOVERY & INCIDENTS (High Priority)
+    r"nứt\s*toác.*di\s*dời", r"lũ.*cô\s*lập.*cứu\s*dân",
+    r"cuộc\s*gọi\s*cầu\s*cứu", r"tiếp\s*tế\s*thực\s*phẩm.*cô\s*lập",
+    r"mưa\s*ngập\s*lịch\s*sử", r"giải\s*cứu.*mắc\s*kẹt",
+    r"xuyên\s*đêm.*cứu.*dân", r"thiệt\s*hại.*do\s*thiên\s*tai",
+    r"khắc\s*phục.*hư\s*hỏng.*cầu", r"sạt\s*lở.*thiệt\s*mạng",
+    r"bờ\s*kè.*đổ\s*sập", r"ngập\s*cầu.*ách\s*tắc",
+    r"sạt\s*lở.*cô\s*lập", r"tìm\s*thấy.*thi\s*thể.*đuối\s*nước(?=.*(?:mưa|lũ|bão|sóng|ngập|sạt))",
+    r"trao\s*quà\s*.*thiệt\s*hại\s*.*(?:mưa|lũ|bão)", r"trường\s*học\s*.*thiệt\s*hại\s*.*(?:vùng|do)\s*lũ",
+    r"lốc\s*xoáy\s*.*thiệt\s*hại", r"khắc\s*phục\s*.*khẩn\s*cấp\s*.*kè",
+    r"tìm\s*kiếm\s*.*mất\s*tích\s*.*tàu\s*cá", r"điểm\s*tiếp\s*nhận\s*.*hàng\s*cứu\s*trợ",
+    r"tái\s*thiết\s*.*khu\s*tái\s*định\s*cư", r"đảm\s*bảo\s*.*giao\s*thông\s*.*(?:mưa|lũ)",
+    r"hỗ\s*trợ\s*.*người\s*dân\s*.*bị\s*thiệt\s*hại", r"chủ\s*động\s*ứng\s*phó\s*.*mưa\s*lũ",
+    # ADDITIONAL BOOSTED RECOVERY PHRASES
+    r"khắc\s*phục.*hạ\s*tầng.*giao\s*thông", r"hỗ\s*trợ.*đoàn\s*viên.*mưa\s*lũ",
+    r"xây.*nhà.*vùng\s*lũ", r"học\s*sinh.*vùng\s*lũ.*trở\s*lại\s*trường",
+    r"chuyến\s*hàng.*cứu\s*trợ.*xã\s*đảo", r"gia\s*cố.*bờ\s*kè.*hư\s*hỏng",
+    r"khôi\s*phục.*đường\s*sắt.*trôi\s*nền", r"sửa\s*chữa.*kênh\s*mương.*bão\s*lũ",
+    r"bơi.*vào.*cứu\s*trợ", r"bơi.*xuồng.*nhận\s*cứu\s*trợ",
+    r"drone.*vận\s*chuyển.*cứu\s*trợ", r"trực\s*thăng.*thả\s*hàng",
+    r"quỹ\s*cứu\s*trợ.*tiếp\s*nhận",
+    r"tốc\s*mái\s*.*(?:bão|lốc)", r"sửa\s*.*(?:nhà|kênh\s*mương)\s*.*sau\s*(?:bão|lũ)",
+    r"hư\s*hỏng\s*.*(?:cầu|đường|trường|công\s*trình)\s*.*do\s*(?:bão|lũ)",
+    r"thiếu\s*nước\s*sạch\s*.*vùng\s*lũ", r"phục\s*hồi\s*.*sau\s*(?:bão|lũ)",
+    r"tái\s*thiết\s*.*(?:cuộc\s*sống|sau\s*bão)", r"nhà\s*bị\s*sập\s*.*(?:mưa|lũ|bão)",
+    r"cứu\s*hộ\s*biển",
+    r"hỗ\s*trợ\s*.*(?:xây|sửa)\s*nhà\s*.*(?:bão|lũ)", r"rét\s*dưới\s*.*độ",
+    r"thăm\s*hỏi\s*hỗ\s*trợ\s*.*(?:mưa|lũ|thiên\s*tai)", r"ngăn\s*nước\s*lũ",
+    r"cứu\s*hộ\s*ngư\s*dân\s*trôi\s*dạt",
+    r"hỗ\s*trợ\s*kinh\s*phí\s*khắc\s*phục",
+    r"ổn\s*định\s*đời\s*sống", r"khôi\s*phục\s*sản\s*xuất", r"tái\s*thiết", r"hỗ\s*trợ\s*dân\s*sinh", r"bình\s*ổn\s*thị\s*trường",
+    r"tìm\s*kiếm\s*cứu\s*nạn", r"tìm\s*kiếm\s*người\s*mất\s*tích", r"truy\s*tìm\s*nạn\s*nhân", r"trục\s*vớt\s*tàu", r"hỗ\s*trợ\s*nạn\s*nhân"
+  ]),
+]

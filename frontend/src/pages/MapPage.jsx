@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getJson } from "../api";
 import VietnamMap from "../components/VietnamMap";
+import DateFilter from "../components/DateFilter";
 import { Filter, Calendar, Layers } from "lucide-react";
 import { THEME_COLORS, DISASTER_METADATA } from "../theme";
 import { PROVINCE_COORDINATES } from "../provinces";
@@ -202,24 +203,20 @@ export default function MapPage() {
                         <span>BẢN ĐỒ TỔNG HỢP RỦI RO THIÊN TAI</span>
                      </div>
                      
-                     <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-3 py-1.5 shadow-sm">
-                        <Calendar className="w-4 h-4 text-blue-500" />
-                        <div className="flex items-center gap-1">
-                            <input 
-                                type="date"
-                                value={startDate} 
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="bg-transparent border-none text-xs font-semibold text-slate-700 focus:ring-0 p-0 w-[115px]"
-                            />
-                            {endDate && <span className="text-slate-400 font-bold px-0.5">→</span>}
-                            <input 
-                                type="date"
-                                placeholder="Đến ngày"
-                                value={endDate} 
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="bg-transparent border-none text-xs font-semibold text-slate-700 focus:ring-0 p-0 w-[115px]"
-                            />
-                        </div>
+                     <div className="flex items-center gap-2">
+                        <DateFilter 
+                            dateTime={startDate}
+                            onChange={setStartDate}
+                            placeholder="Từ ngày"
+                            className="w-[120px]"
+                        />
+                        <span className="text-slate-400 font-bold">→</span>
+                        <DateFilter 
+                            dateTime={endDate}
+                            onChange={setEndDate}
+                            placeholder="Đến ngày"
+                            className="w-[120px]"
+                        />
                     </div>
                 </div>
 

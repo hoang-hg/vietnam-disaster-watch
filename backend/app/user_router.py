@@ -181,9 +181,53 @@ def approve_report(
         )
         db.add(notif)
         
+    # [FEATURE] Auto-convert approved report to an Event
+    if not report.event_id:
+        # Generate a unique key
+        event_key = f"community_{report.id}_{int(report.created_at.timestamp())}"
+        
+        # Determine title
+        evt_title = f"Tin báo cộng đồng: {report.description[:60]}"
+        if len(report.description) > 60:
+            evt_title += "..."
+            
+        new_event = models.Event(
+            key=event_key,
+            title=evt_title,
+            disaster_type="other",
+            province=report.province or "Toàn quốc",
+            started_at=report.created_at,
+            last_updated_at=datetime.now(timezone.utc),
+            lat=report.lat,
+            lon=report.lon,
+            confidence=1.0, # Admin approved
+            sources_count=1,
+            needs_verification=False,
+            image_url=report.image_url,
+            details={
+                "source": "community", 
+                "reporter_name": report.name,
+                "full_description": report.description
+            }
+        )
+        db.add(new_event)
+        db.flush() # Generate ID
+        report.event_id = new_event.id
+        
     db.commit()
+    
+    # [OPTIMIZATION] Real-time broadcast for Community Event
+    # Must run AFTER commit so background threads can see the data
+    try:
+        from .event_matcher import emit_event_notifications
+        emit_event_notifications(db, new_event.id, is_new=True)
+    except ImportError:
+        pass
+
     from .cache import cache
     cache.delete_match("stats_*")
+    cache.delete_match("map_*")
+    cache.delete_match("ev_v2_*")
     return {"ok": True}
 
 @router.patch("/admin/crowdsource/{report_id}/reject")

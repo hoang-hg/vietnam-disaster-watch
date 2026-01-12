@@ -11,6 +11,7 @@ import NationalHotlineCard from '../components/rescue/NationalHotlineCard.jsx';
 import HotlineGridItem from '../components/rescue/HotlineGridItem.jsx';
 import HotlineFilterBar from '../components/rescue/HotlineFilterBar.jsx';
 import HotlineEditModal from '../components/rescue/HotlineEditModal.jsx';
+import Pagination from '../components/Pagination.jsx';
 
 const ALL_PROVINCES = ["Toàn quốc", ...VALID_PROVINCES];
 
@@ -231,20 +232,13 @@ export default function RescuePage() {
                 
                 {/* Pagination */}
                 {!loading && totalPages > 1 && (
-                    <div className="p-4 border-t border-slate-100 flex justify-center gap-2">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                            <button
-                                key={p}
-                                onClick={() => setCurrentPage(p)}
-                                className={`w-8 h-8 rounded-lg text-sm font-bold transition-all ${
-                                    currentPage === p 
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/20" 
-                                        : "bg-slate-50 text-slate-500 hover:bg-slate-100"
-                                }`}
-                            >
-                                {p}
-                            </button>
-                        ))}
+                    <div className="p-4 border-t border-slate-100 flex justify-center">
+                        <Pagination 
+                            currentPage={currentPage}
+                            totalItems={otherHotlines.length}
+                            itemsPerPage={ITEMS_per_PAGE}
+                            onPageChange={setCurrentPage}
+                        />
                     </div>
                 )}
             </div>

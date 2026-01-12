@@ -50,7 +50,6 @@ async def lifespan(app: FastAPI):
     try:
         db = next(auth.get_db())
         default_admin_pw = getattr(settings, "default_admin_password", "admin123")
-        default_admin_pw = getattr(settings, "default_admin_password", "admin123")
         created_count = 0
         for email in settings.fixed_admin_emails:
             user = db.query(models.User).filter(models.User.email == email).first()
@@ -82,25 +81,9 @@ async def lifespan(app: FastAPI):
         pass
 
     # 1. Scheduler Configuration
-    # Tier 1 Sources (Critical)
-    tier1_kws = [
-        "KTTV Quốc gia", "KTTV Ninh Bình", "KTTV Thanh Hóa", "Cục PCTT (MARD)", "PCTT Hà Nội", 
-        "Cục Kiểm lâm (PCCCR)", "Viện Vật lý Địa cầu", "KTTV An Giang", "KTTV Hưng Yên", 
-        "KTTV Yên Bái", "Cục Quản lý đê điều", "VMRCC (Cứu nạn hàng hải)",
-        "Tạp chí Khí tượng Thủy văn", "Ủy ban Sông Mê Công Việt Nam", "Báo Biên phòng"
-    ]
-    tier1_sources = [s.name for s in sources.SOURCES if any(kw in s.name for kw in tier1_kws)]
-
-    # Tier 2 Sources (Major News)
-    tier2_sources = [
-        "VnExpress", "Tuổi Trẻ", "Thanh Niên", "Dân Trí", "SGGP", "Lao Động", 
-        "VietnamPlus", "Báo Tin tức", "CAND", "QĐND", "VTV News", "Pháp luật TP.HCM",
-        "VietNamNet", "Nhân Dân", "Tiền Phong", "Người Lao Động", "Quân đội Nhân dân", "Báo Chính Phủ", 
-        "Nông Nghiệp & Môi trường", "Báo Dân tộc và Phát triển","Báo Giao thông", "Cổng TTĐT Chính phủ (Công báo)",
-        "Bnews", "Báo Nông nghiệp VN", "Tạp chí Giao thông", "Báo Công lý", "Báo Văn hóa", "Báo Xây dựng",
-        "VnEconomy", "VTC News", "Báo Quốc tế", "Dân Việt", "VOV", "Báo Công Thương", "Vietnam.vn",
-        "Báo Thanh tra", "Bộ Công an", "Giáo dục & Thời đại"
-    ]
+    # Optimized: Use Source.tier directly instead of string matching
+    tier1_sources = [s.name for s in sources.SOURCES if s.tier == 1]
+    tier2_sources = [s.name for s in sources.SOURCES if s.tier == 2]
 
     # Startup Crawl (15s delay)
     tz = pytz.timezone(settings.app_timezone)
@@ -126,6 +109,10 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     scheduler.shutdown(wait=False)
+    # Close shared resources
+    from .html_scraper import HTMLScraper
+    await HTMLScraper.close_client()
+    logger.info("Application shutdown complete.")
 
 app = FastAPI(
     title="Viet Disaster Watch API",

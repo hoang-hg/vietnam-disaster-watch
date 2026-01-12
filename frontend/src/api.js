@@ -114,10 +114,11 @@ export async function changePassword(currentPassword, newPassword) {
   });
 }
 
-export async function resetPassword(email, newPassword) {
+export async function resetPassword(email, newPassword, secret) {
   return postJson("/api/auth/reset-password", { 
     email: email, 
-    new_password: newPassword 
+    new_password: newPassword,
+    admin_secret: secret
   });
 }
 
@@ -197,4 +198,32 @@ export function fmtTimeAgo(s) {
   if (days < 7) return `${days} ngày trước`;
 
   return fmtDate(s);
+}
+
+/**
+ * Helper to download binary files (Excel, PDF) securely with Auth token
+ * @param {string} endpoint - The API endpoint (e.g., /api/export)
+ * @param {string} filename - The desired filename for the download
+ */
+export async function downloadBlob(endpoint, filename) {
+  const token = localStorage.getItem("access_token");
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE}${endpoint}`, { headers });
+  
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.detail || json.message || `Download failed: ${res.status}`);
+  }
+
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
 }

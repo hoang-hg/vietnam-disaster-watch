@@ -1,7 +1,6 @@
-import json
 import asyncio
 from fastapi import WebSocket
-from typing import List, Set
+from typing import Set
 import logging
 
 logger = logging.getLogger(__name__)

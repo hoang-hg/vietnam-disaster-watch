@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getJson, API_BASE } from "../api";
+import StatCard from "../components/StatCard";
 import { 
   Activity, 
   CheckCircle, 
@@ -15,7 +16,6 @@ import {
   BarChart3,
   Server
 } from "lucide-react";
-
 export default function CrawlerDashboard() {
   const [statusData, setStatusData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,11 +89,11 @@ export default function CrawlerDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-            <StatCard label="TỔNG NGUỒN" value={stats.total} icon={<Globe className="w-5 h-5" />} color="blue" />
-            <StatCard label="ỔN ĐỊNH" value={stats.success} icon={<CheckCircle className="w-5 h-5" />} color="green" />
-            <StatCard label="DÙNG DỰ PHÒNG" value={stats.warning} icon={<AlertTriangle className="w-5 h-5" />} color="yellow" />
-            <StatCard label="SỰ CỐ" value={stats.error} icon={<XCircle className="w-5 h-5" />} color="red" />
-            <StatCard label="ĐỘ TRỄ TB" value={`${stats.avg_latency}ms`} icon={<Zap className="w-5 h-5" />} color="indigo" />
+            <StatCard title="TỔNG NGUỒN" value={stats.total} icon={Globe} color="blue" />
+            <StatCard title="ỔN ĐỊNH" value={stats.success} icon={CheckCircle} color="green" />
+            <StatCard title="DÙNG DỰ PHÒNG" value={stats.warning} icon={AlertTriangle} color="yellow" />
+            <StatCard title="SỰ CỐ" value={stats.error} icon={XCircle} color="red" />
+            <StatCard title="ĐỘ TRỄ TB" value={`${stats.avg_latency}ms`} icon={Zap} color="indigo" />
         </div>
 
         {/* Filter Section */}
@@ -216,27 +216,6 @@ export default function CrawlerDashboard() {
   );
 }
 
-function StatCard({ label, value, icon, color }) {
-    const colors = {
-        blue: "bg-blue-600 shadow-blue-500/20",
-        green: "bg-green-600 shadow-green-500/20",
-        yellow: "bg-yellow-500 shadow-yellow-500/10",
-        red: "bg-red-600 shadow-red-500/20",
-        indigo: "bg-indigo-600 shadow-indigo-500/20"
-    };
-    
-    return (
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between group hover:scale-[1.02] transition-transform">
-            <div className={`w-10 h-10 rounded-xl ${colors[color]} flex items-center justify-center text-white mb-4 shadow-lg group-hover:rotate-12 transition-transform`}>
-                {icon}
-            </div>
-            <div>
-                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
-                <p className="text-2xl font-black text-slate-800 dark:text-white mt-1 leading-none">{value}</p>
-            </div>
-        </div>
-    );
-}
 
 function StatusBadge({ status }) {
     if (status === 'success') {

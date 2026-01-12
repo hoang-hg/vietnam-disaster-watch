@@ -1,3 +1,4 @@
+import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
@@ -37,7 +38,7 @@ function getIcon(type) {
   return iconCache[key];
 }
 
-export default function VietnamMap({ points }) {
+const VietnamMap = ({ points }) => {
   const center = [16.5, 107.0]; 
 
   return (
@@ -90,4 +91,6 @@ export default function VietnamMap({ points }) {
       </MarkerClusterGroup>
     </MapContainer>
   );
-}
+};
+
+export default React.memo(VietnamMap);

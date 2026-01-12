@@ -14,6 +14,7 @@ import { THEME_COLORS, DISASTER_METADATA } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
 import Badge from "../components/Badge.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
+import DateFilter from "../components/DateFilter.jsx";
 import {
   BarChart,
   Bar,
@@ -23,12 +24,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  LabelList,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Legend
+  LabelList
 } from "recharts";
 import {
   Activity,
@@ -49,12 +45,12 @@ import { Helmet } from "react-helmet-async";
 // No local TYPE_TONES needed anymore
 
 import { useAuth } from "../contexts/AuthContext";
+import Pagination from "../components/Pagination.jsx";
 
 // ... existing imports
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const dateInputRef = useRef(null);
   const [stats, setStats] = useState(null);
   const [rawEvents, setRawEvents] = useState([]);
   const [articles, setArticles] = useState([]);
@@ -74,6 +70,7 @@ export default function Dashboard() {
 
   const [quickFilter, setQuickFilter] = useState(searchParams.get("quick") || null);
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 0);
+  const [totalEvents, setTotalEvents] = useState(0); // [NEW] Added for server-side pagination
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -153,7 +150,8 @@ export default function Dashboard() {
 
       const promises = [
         getJson(`/api/stats/summary${queryParams}`, { signal }), // Main Stats (Cards)
-        getJson(`/api/events${queryParams}&limit=100`, { signal }), // Events List
+        // [OPTIMIZATION] Server-Side Pagination
+        getJson(`/api/events${queryParams}&limit=10&offset=${page * 10}&wrapper=true`, { signal }), // Events List with Total Count
         getJson(`/api/articles/latest${artParams}`, { signal }) // Articles
       ];
 
@@ -166,13 +164,25 @@ export default function Dashboard() {
       if (signal?.aborted) return;
 
       const s = results[0];
-      const evs = results[1];
+      const evsData = results[1];
       const arts = results[2];
       const contextS = needsContextFetch ? results[3] : s;
 
       setStats(s);
       setHotspotsData(contextS.by_province || []); // Use context stats for sidebar
-      setRawEvents(evs); 
+      
+      // Handle wrapped response { total, items } vs legacy array
+      if (evsData.items) {
+          setRawEvents(evsData.items);
+          setTotalEvents(evsData.total);
+      } else if (Array.isArray(evsData)) {
+          setRawEvents(evsData);
+          setTotalEvents(evsData.length); // Fallback if API wrapper missing
+      } else {
+          setRawEvents([]);
+          setTotalEvents(0);
+      }
+      
       setArticles(arts);
       setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
 
@@ -256,60 +266,23 @@ export default function Dashboard() {
             .sort((a, b) => b.count - a.count);
     }
     
-    const agg = {
-      storm: 0, flood: 0, flash_flood: 0, landslide: 0, subsidence: 0, 
-      drought: 0, salinity: 0, extreme_weather: 0, heatwave: 0, cold_surge: 0,
-      earthquake: 0, tsunami: 0, storm_surge: 0, wildfire: 0, erosion: 0,
-      warning_forecast: 0, recovery: 0
-    };
-    events.forEach((e) => {
-        if (agg[e.disaster_type] !== undefined) agg[e.disaster_type]++;
-    });
-    return Object.entries(agg)
-        .map(([k, v]) => ({ 
-            name: fmtType(k), 
-            count: v,
-            fill: THEME_COLORS[k] || THEME_COLORS.unknown
-        }))
-        .sort((a, b) => b.count - a.count);
-  }, [events, stats]);
+    // [FIX] Removed fallback logic that used paginated 'events' to represent global stats.
+    // If stats.by_type is missing, we prefer showing empty/loading state rather than misleading partial data.
+    return [];
+  }, [stats]);
 
   const riskiestHotspots = useMemo(() => {
     // [OPTIMIZATION] Use separate hotspots data to maintain context during filtering
     if (hotspotsData && hotspotsData.length > 0) {
         return hotspotsData;
     }
-
-    // Fallback if data explicitly empty or not loaded yet
-    const counts = {};
-    events.forEach(e => {
-        if (e.province && VALID_PROVINCES.includes(e.province)) {
-            counts[e.province] = (counts[e.province] || 0) + 1;
-        }
-    });
-    return Object.entries(counts)
-        .map(([province, count]) => ({ province, events: count }))
-        .sort((a, b) => b.events - a.events);
-  }, [events, hotspotsData]);
+    return [];
+  }, [hotspotsData]);
 
   const favoriteEvents = useMemo(() => {
     if (!favoriteProvince) return [];
     return rawEvents.filter(e => e.province === favoriteProvince).slice(0, 3);
   }, [rawEvents, favoriteProvince]);
-
-  // [NEW] Impact Trend Calculation
-  const impactTrendData = useMemo(() => {
-    const daily = {};
-    events.forEach(e => {
-        const date = new Date(e.started_at).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-        if (!daily[date]) daily[date] = { date, deaths: 0, missing: 0, injured: 0 };
-        daily[date].deaths += (e.deaths || 0);
-        daily[date].missing += (e.missing || 0);
-        daily[date].injured += (e.injured || 0);
-    });
-    // Sort by date (naive string match works for display if data is chronological)
-    return Object.values(daily).slice(-15); // Show last 15 days of data
-  }, [events]);
 
   return (
     <div className="space-y-6">
@@ -381,25 +354,14 @@ export default function Dashboard() {
               <Filter className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
-            <div 
-              onClick={() => dateInputRef.current?.showPicker()}
-              className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-1.5 shadow-sm relative group hover:border-blue-300 dark:hover:border-blue-500 transition-all cursor-pointer min-w-[140px] justify-center"
-            >
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                 {startDate.split('-').reverse().join('/')}
-              </span>
-              <Calendar className="w-4 h-4 text-[#2fa1b3] group-hover:scale-110 transition-transform" />
-              <input 
-                  ref={dateInputRef}
-                  type="date"
-                  value={startDate} 
-                  onChange={(e) => {
-                     setStartDate(e.target.value);
-                     setEndDate(""); 
-                  }}
-                  className="absolute inset-0 opacity-0 -z-10 pointer-events-none"
-              />
-            </div>
+            <DateFilter 
+              dateTime={startDate}
+              onChange={(val) => {
+                  setStartDate(val);
+                  setEndDate("");
+              }}
+              className="min-w-[140px]"
+            />
 
             <button 
               onClick={() => load()}
@@ -500,7 +462,8 @@ export default function Dashboard() {
                 </div>
               )}
               
-              {events.slice(page * 10, (page + 1) * 10).map((event) => (
+            {/* Removed client-side slicing .slice(page * 10, (page + 1) * 10) - server returns correct page now */}
+              {events.map((event) => (
                 <div key={event.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group relative border-l-4 border-transparent hover:border-blue-500/30">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
@@ -538,58 +501,14 @@ export default function Dashboard() {
             </div>
 
             {/* Pagination Controls - Fixed at Bottom */}
-            {events.length > 0 && (
-              <div className="mt-auto p-4 border-t border-slate-100 flex justify-center items-center gap-2 bg-slate-50/30">
-                <button
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Trước
-                </button>
-                
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const totalPages = Math.ceil(events.length / 10);
-                    const currentPage = page + 1;
-                    const items = [];
-                    for (let i = 1; i <= totalPages; i++) {
-                      const showPage = i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1;
-                      if (!showPage) {
-                        if (i === 2 && currentPage > 3) {
-                           items.push(<span key="d1" className="px-1 text-slate-400">...</span>);
-                           i = currentPage - 2;
-                        } else if (i === currentPage + 2 && i < totalPages) {
-                           items.push(<span key="d2" className="px-1 text-slate-400">...</span>);
-                           i = totalPages - 1;
-                        }
-                        continue;
-                      }
-                      items.push(
-                        <button
-                          key={i}
-                          onClick={() => setPage(i - 1)}
-                          className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
-                            i === currentPage
-                              ? 'bg-[#2fa1b3] text-white shadow-md scale-110 z-10'
-                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                          }`}
-                        >
-                          {i}
-                        </button>
-                      );
-                    }
-                    return items;
-                  })()}
-                </div>
-
-                <button
-                  onClick={() => setPage(p => Math.min(Math.ceil(events.length / 10) - 1, p + 1))}
-                  disabled={page >= Math.ceil(events.length / 10) - 1}
-                  className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Tiếp
-                </button>
+            {totalEvents > 10 && (
+              <div className="mt-auto p-4 border-t border-slate-100 flex justify-center bg-slate-50/30">
+                <Pagination 
+                  currentPage={page + 1} // Pagination component uses 1-index
+                  totalItems={totalEvents}
+                  itemsPerPage={10}
+                  onPageChange={(p) => setPage(p - 1)} // API uses 0-index
+                />
               </div>
             )}
           </div>

@@ -9,6 +9,8 @@ from .sources import SOURCES
 import logging
 import asyncio
 
+logger = logging.getLogger(__name__)
+
 # Clusters of related disaster types to allow cross-matching (e.g. Storm causes Flood)
 DISASTER_CLUSTERS = {
     "storm": ["storm", "extreme_weather", "storm_surge", "flood"],
@@ -175,6 +177,9 @@ def _create_new_event(db: Session, article: Article) -> Event:
     from .nlp import PROVINCE_COORDINATES
     coords = PROVINCE_COORDINATES.get(article.province, [None, None])
 
+    # [LOGIC CHANGE] Admin Approved = Verified & High Confidence
+    is_approved = article.status == "approved"
+
     ev = Event(
         key=unique_key,
         title=article.title,
@@ -187,10 +192,10 @@ def _create_new_event(db: Session, article: Article) -> Event:
         missing=article.missing,
         injured=article.injured,
         damage_billion_vnd=article.damage_billion_vnd,
-        confidence=0.5 if article.deaths or article.needs_verification else 0.3,
+        confidence=1.0 if is_approved else (0.5 if article.deaths or article.needs_verification else 0.3),
         sources_count=1,
         lat=coords[0], lon=coords[1],
-        needs_verification=article.needs_verification,
+        needs_verification=False if is_approved else article.needs_verification,
         commune=article.commune, village=article.village,
         route=article.route, landmark=article.landmark,
         location_description=article.location_description,
@@ -270,7 +275,15 @@ def _merge_impact_details(ev: Event, new_details: dict):
             seen, unique = set(), []
             for x in combined:
                 if isinstance(x, dict):
-                    sig = f"{x.get('num')}_{x.get('unit', '').lower().strip()}"
+                    num = x.get('num')
+                    if num is not None:
+                        sig = f"{num}_{x.get('unit', '').lower().strip()}"
+                    else:
+                        # Fallback for metrics or generic dicts: Deterministic JSON string
+                        # Sort keys to ensure {"a":1, "b":2} == {"b":2, "a":1}
+                        import json
+                        sig = json.dumps(x, sort_keys=True)
+                        
                     if sig not in seen:
                         seen.add(sig); unique.append(x)
                 else: unique.append(x)
@@ -307,7 +320,11 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
         has_vip = True
     
     # 3. Smart Confidence Matrix
-    if has_vip: ev.confidence = 1.0
+    # [LOGIC CHANGE] Admin Approved overrides all algorithm scores
+    if article.status == "approved":
+        ev.confidence = 1.0
+        ev.needs_verification = False
+    elif has_vip: ev.confidence = 1.0
     elif has_trusted: ev.confidence = 0.95 if ev.sources_count >= 2 else 0.9
     elif has_strong_metrics: ev.confidence = 0.8 if ev.sources_count >= 2 else 0.6
     else:
@@ -362,6 +379,7 @@ def _background_notify_wrapper(evt_id):
             from .notifications import notify_users_of_event
             # Triggers province-based notifications for new events
             notify_users_of_event(bg_db, bg_ev) 
+            bg_db.commit() # [FIX] Ensure notifications are persisted
             
             # Use this background thread to also notify followers if needed
             # But notify_followers_of_article requires the 'Article' object which triggered this.
@@ -369,6 +387,7 @@ def _background_notify_wrapper(evt_id):
             # However, for massive crawls, individual article notifications might be spammy.
             # We focus on "New Event" notifications primarily.
     except Exception as e:
+        bg_db.rollback() # Ensure rollback on error
 
         logger.error(f"Background notification failed for event {evt_id}: {e}")
     finally:
@@ -386,6 +405,7 @@ def _invalidate_event_caches(event_id: int):
         cache.delete_match("ev_v2_*")
         cache.delete_match("stats_*")
         cache.delete_match("articles_latest_*")
+        cache.delete_match("map_*")
     except Exception as e:
         logger.error(f"Cache invalidation failed for event {event_id}: {e}")
 

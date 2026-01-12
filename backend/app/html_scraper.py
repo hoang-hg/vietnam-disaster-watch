@@ -136,6 +136,13 @@ class HTMLScraper:
             )
         return HTMLScraper._shared_client
 
+    @classmethod
+    async def close_client(cls):
+        """Close the shared httpx client."""
+        if cls._shared_client and not cls._shared_client.is_closed:
+            await cls._shared_client.aclose()
+            cls._shared_client = None
+
     async def _get_with_retry(self, url: str) -> Optional[str]:
         """Fetch URL with retries, random User-Agent, and Playwright fallback."""
         

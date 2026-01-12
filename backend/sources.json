@@ -1,6 +1,15 @@
 {
   "sources": [
     {
+      "name": "Trung tâm Dự báo KTTV Quốc gia",
+      "domain": "nchmf.gov.vn",
+      "primary_rss": null,
+      "backup_rss": null,
+      "note": "Cơ quan báo tin thời tiết quốc gia - Authority Level 3",
+      "trusted": true,
+      "authority_level": 3
+    },
+    {
       "name": "Thanh Niên",
       "domain": "thanhnien.vn",
       "primary_rss": "https://thanhnien.vn/rss/thoi-su.rss",

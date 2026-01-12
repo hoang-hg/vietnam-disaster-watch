@@ -2,8 +2,8 @@ import logging
 from fastapi import APIRouter, Depends, Query
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import desc, func, or_, and_, case
-from sqlalchemy.orm import Session, joinedload, defer
+from sqlalchemy import desc, func, or_, case
+from sqlalchemy.orm import Session, defer
 from sqlalchemy.sql import text
 from .database import get_db, engine
 from . import models
@@ -27,17 +27,25 @@ from typing import Optional, List
 
 
 # Unified filtering rules for Dashboard/Stats (Decision 18/2021/QĐ-TTg)
+def get_dec18_filter():
+    """Returns the SQLAlchemy filter condition for Decision 18."""
+    major_hazards = list(DISASTER_GROUPS.keys())
+    return or_(
+        Event.disaster_type.in_(major_hazards),
+        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
+         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0,
+        Event.confidence >= 1.0 # Include Admin/Community verified events 
+    )
+
 def apply_dashboard_filters(query, db: Session):
     """Applies Decision 18 filters directly to a SQLAlchemy query."""
     major_hazards = list(DISASTER_GROUPS.keys())
     
 
-    dec18_filter = or_(
-        Event.disaster_type.in_(major_hazards),
-        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
-         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
-    )
-    return query.filter(Event.disaster_type.notin_(["unknown", "other"]))\
+    dec18_filter = get_dec18_filter()
+    
+    # Remove 'other' from strict exclusion so verified 'other' events can pass via dec18_filter
+    return query.filter(Event.disaster_type != "unknown")\
                 .filter(Event.sources_count > 0)\
                 .filter(dec18_filter)
 
@@ -68,31 +76,40 @@ def get_date_range(hours: int, date: str | None, start_date: str | None, end_dat
     """Standardizes date range parsing for all stats endpoints."""
     if start_date or end_date:
         try:
-            # Create aware datetimes to match database standards
-            start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc) if start_date else datetime.min.replace(tzinfo=timezone.utc)
+            # Create NAIVE datetimes to match database standards (which stores naive UTC)
+            # We treat the input YYYY-MM-DD as UTC midnight.
+            
+            if start_date:
+                start = datetime.strptime(start_date, "%Y-%m-%d")
+            else:
+                start = datetime.min
             
             # [LOGIC CHANGE] If start_date is provided but end_date is NOT, treat as a single day filter
-            # instead of "accumulating until current time".
             if start_date and not end_date:
                 end = start + timedelta(days=1)
             else:
-                end = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=timezone.utc) if end_date else datetime.now(timezone.utc)
+                if end_date:
+                    end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                else:
+                    end = datetime.now(timezone.utc).replace(tzinfo=None)
             
             return start, end
         except ValueError:
             pass # Fallback to default
     elif date:
         try:
+            # Treat specific date as UTC midnight range
             target = datetime.strptime(date, "%Y-%m-%d")
-            start = target.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
+            start = target
             end = start + timedelta(days=1)
             return start, end
         except ValueError:
             pass # Fallback
 
-    # Default logic
-    start = datetime.now(timezone.utc) - timedelta(hours=hours)
-    end = datetime.now(timezone.utc)
+    # Default logic (Naive UTC)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    start = now - timedelta(hours=hours)
+    end = now
     return start, end
 
 def get_visibility_filter(query, is_admin: bool):
@@ -185,9 +202,11 @@ def events(
     cached = cache.get(cache_key)
     if cached:
         response.headers["X-Cache"] = "HIT"
-        # Since we use public cache, ensure we don't leak admin-only fields if that becomes a concern,
-        # but currently logic is consistent.
-        response.headers["Cache-Control"] = "public, max-age=60"
+        # [OPTIMIZATION] Reduce cache time or disable for admins to ensure instant feedback
+        if is_admin:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=10"
         return cached
 
     query = db.query(Event)
@@ -206,9 +225,10 @@ def events(
         # BUT we must respect the original 'hours' param default of None
         # So we only apply if they are present.
         d_start, d_end = get_date_range(hours or 24, date, start_date, end_date)
-        query = query.filter(Event.started_at >= d_start, Event.started_at < d_end)
+        # [OPTIMIZATION] Show events that were active/updated in the window, not just started
+        query = query.filter(Event.last_updated_at >= d_start, Event.started_at < d_end)
     elif hours:
-        since = datetime.now(timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
         query = query.filter(Event.last_updated_at >= since)
 
     if type: query = query.filter(Event.disaster_type == type)
@@ -258,7 +278,7 @@ def events(
         Article.status == "approved"
     )
     if hours:
-        h_start = datetime.now(timezone.utc) - timedelta(hours=hours)
+        h_start = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
         count_q = count_q.filter(Article.published_at >= h_start)
     
     counts_map = {row[0]: row[1] for row in count_q.group_by(Article.event_id).all()}
@@ -315,12 +335,18 @@ def events(
     
     if wrapper:
         result = {"items": final_result, "total": total_count}
-        cache.set(cache_key, result, ttl=300)
-        response.headers["Cache-Control"] = "public, max-age=300"
+        cache.set(cache_key, result, ttl=60) # Reduced from 300
+        if is_admin:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=10"
         return result
     else:
-        cache.set(cache_key, final_result, ttl=300)
-        response.headers["Cache-Control"] = "public, max-age=300"
+        cache.set(cache_key, final_result, ttl=60) # Reduced from 300
+        if is_admin:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=10"
         return final_result
 
 # Lightweight SVGs (stable CDN, pinned version)
@@ -443,18 +469,23 @@ def update_event(
         setattr(ev, field, value)
     
     # Propagate date change to articles if started_at changed
-    # This ensures consistency in Dashboard metrics and grouping
     if 'started_at' in update_data and update_data['started_at']:
         try:
             new_date = update_data['started_at']
             if isinstance(new_date, str):
                 new_date = datetime.fromisoformat(new_date.replace("Z", "+00:00"))
             
+            # Ensure new_date is timezone aware (UTC) if naive, to match DB expectation
+            if new_date.tzinfo is None:
+                new_date = new_date.replace(tzinfo=timezone.utc)
+            
             # Update all linked articles published_at to match the new start date
-            # We preserve the time part if possible, but for 'về' fixes, usually just same day
-            db.query(models.Article).filter(models.Article.event_id == event_id).update({
+            # This aligns the event timeline
+            res = db.query(models.Article).filter(models.Article.event_id == event_id).update({
                 models.Article.published_at: new_date
             }, synchronize_session=False)
+            logger.info(f"Propagated event date {new_date} to {res} articles for event {event_id}")
+            
         except Exception as e:
             logger.error(f"Failed to propagate date change to articles: {e}")
 
@@ -468,6 +499,8 @@ def update_event(
     cache.delete_match("stats_*")
     cache.delete_match("timeline_*")
     cache.delete_match("articles_latest_*")
+    cache.delete_match("map_*")
+    cache.delete_match("heatmap_*")
     
     return ev
 
@@ -691,15 +724,10 @@ def stats_summary(
     needs_verification_count = art_stats_res[1] or 0
 
     # 2. Events Aggregation (With Decision 18 Filtering)
-    # 2. Events Aggregation (With Decision 18 Filtering)
-    major_hazards = list(DISASTER_GROUPS.keys())
+
     
-    from sqlalchemy import or_
-    dec18_filter = or_(
-        Event.disaster_type.in_(major_hazards),
-        (func.coalesce(Event.deaths, 0) + func.coalesce(Event.missing, 0) + 
-         func.coalesce(Event.injured, 0) + func.coalesce(Event.damage_billion_vnd, 0)) > 0
-    )
+    # [OPTIMIZATION] Reused centralized filter definition
+    dec18_filter = get_dec18_filter()
 
     # Calculate Aggregates using SQL
     
@@ -726,9 +754,9 @@ def stats_summary(
     
     # Reuse the same filter base logic for aggregation
     agg_q = db.query(*columns).filter(
-        Event.started_at >= start, 
+        Event.last_updated_at >= start, 
         Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
+        Event.disaster_type != "unknown",
         Event.sources_count > 0,
         dec18_filter
     )
@@ -885,25 +913,45 @@ async def stream_events(request: Request):
 # Admin logic moved to auth module consistent usage
 
 @router.get('/admin/skip-logs')
-def get_skip_logs(limit: int = Query(200, ge=1, le=5000), admin: models.User = Depends(auth.get_current_admin)):
-    from collections import deque
+def get_skip_logs(
+    skip: int = Query(0, ge=0), 
+    limit: int = Query(50, ge=1, le=200), 
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    """
+    Fetch skipped/dropped articles from log file.
+    Pagination supported via skip/limit.
+    Items are returned in reverse chronological order (latest first).
+    """
     logs_dir = Path(__file__).resolve().parents[1] / 'logs'
     log_file = logs_dir / 'review_potential_disasters.jsonl'
     
     if not log_file.exists():
         return []
         
-    out = deque(maxlen=limit)
     try:
+        # Read all lines (assuming log file < 50MB is manageable in RAM)
         with log_file.open('r', encoding='utf-8') as f:
-            for line in f:
-                try:
-                    out.append(json.loads(line))
-                except Exception:
-                    continue
-    except Exception:
+            lines = f.readlines()
+            
+        # Reverse to get latest first
+        lines.reverse()
+        
+        # Paginate
+        start = skip
+        end = skip + limit
+        sliced_lines = lines[start:end]
+        
+        out = []
+        for line in sliced_lines:
+            try:
+                out.append(json.loads(line))
+            except Exception:
+                continue
+        return out
+    except Exception as e:
+        logger.error(f"Error reading skip logs: {e}")
         return []
-    return list(out)
 
 
 @router.post('/admin/label')
@@ -960,6 +1008,7 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
     cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
     cache.delete_match("articles_latest_*")
+    cache.delete_match("map_*")
         
     return {"ok": True, "message": "Article approved and event updated"}
 
@@ -979,11 +1028,16 @@ def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.Us
     ).update({"status": "approved"}, synchronize_session=False)
     
     db.commit()
+    
+    # [OPTIMIZATION] Real-time broadcast for Event Approval
+    emit_event_notifications(db, event_id)
+
     # Invalidate cache
     cache.delete(f"ev_detail_v3_{event_id}_True")
     cache.delete(f"ev_detail_v3_{event_id}_False")
     cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
+    cache.delete_match("map_*")
     
     return {"ok": True, "message": "Event and its articles approved"}
 
@@ -1022,9 +1076,14 @@ def reject_article(article_id: int, db: Session = Depends(get_db), admin: models
             db.query(models.Event).filter(models.Event.id == old_event_id).delete()
             db.commit()
             cache.delete_match(f"ev_detail_v3_{old_event_id}*")
+            # Should also broadcast DELETE? Currently UI handles 'missing' via refresh. Consider doing nothing or sending a delete signal later.
         else:
             # Recalculate metrics for the remaining event
             recalculate_event_metrics(db, old_event_id)
+            
+            # [OPTIMIZATION] Real-time broadcast for Rejection updates (e.g. death count changes)
+            emit_event_notifications(db, old_event_id)
+
             cache.delete(f"ev_detail_v3_{old_event_id}_True")
             cache.delete(f"ev_detail_v3_{old_event_id}_False")
         
@@ -1034,6 +1093,7 @@ def reject_article(article_id: int, db: Session = Depends(get_db), admin: models
     # Global consistency
     cache.delete_match("stats_*")
     cache.delete_match("articles_latest_*")
+    cache.delete_match("map_*")
 
     return {"ok": True, "message": "Article rejected, blacklisted, and event updated"}
 
@@ -1082,7 +1142,7 @@ def stats_heatmap(
     start, end = get_date_range(hours, date, start_date, end_date)
 
     query = db.query(Event.province, func.count(Event.id))
-    query = query.filter(Event.started_at >= start, Event.started_at < end)
+    query = query.filter(Event.last_updated_at >= start, Event.started_at < end)
     
     query = get_visibility_filter(query, is_admin)
     query = apply_dashboard_filters(query, db)

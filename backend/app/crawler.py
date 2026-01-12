@@ -360,7 +360,6 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
             existing.score = score
             # Update meta if it's better now
             meta = await asyncio.to_thread(nlp.extract_all_metadata, summary_raw, summary_raw, title, existing_signals=diag["signals"])
-            # [REFACTOR] Event upsert moved to main loop after content check
             _log_to_review_file(src, title, link, published_at, score, diag["reason"], "upgraded_to_approved")
             return existing, "upgraded"
             
@@ -374,28 +373,34 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
                 (diag["signals"].get("conditional_veto", False) and diag["signals"].get("hazard_score", 0) == 0)
     
     if not is_vetoed:
-        # [STRATEGY v5] Professional Grade Thresholds
+        # [STRATEGY v6] Standardized Thresholds via SCORING_WEIGHTS
+        from .sources import SCORING_WEIGHTS as CONF
+        
         # 1. Strong titles (disaster words/VIP) approve faster.
-        # 2. Raised pending floor to 11.5 to ensure >90% probability for humans.
-        is_strong_title = diag["signals"].get("is_vip", False) or nlp.title_contains_disaster_keyword(title)
+        is_strong_title = diag["signals"].get("is_vip", False) or \
+                          (nlp.HIGH_PRIORITY_RE and nlp.HIGH_PRIORITY_RE.search(title)) or \
+                          nlp.title_contains_disaster_keyword(title)
         
         # Confirmation of core signals
         has_hazard = diag["signals"].get("hazard_score", 0) > 0
         has_impact = diag["signals"].get("impact_hits", False)
-        has_casualties = diag["signals"].get("impact_details", {}).get("deaths") or diag["signals"].get("impact_details", {}).get("missing")
+        has_casualties = diag["signals"].get("impact_details", {}).get("deaths") or \
+                         diag["signals"].get("impact_details", {}).get("missing")
         
-        approval_threshold = 14.5 if is_strong_title else 17.0
+        # Determine strictness based on title strength
+        approval_threshold = CONF["threshold_approve_strong"] if is_strong_title else CONF["threshold_approve_strict"]
         
-        # Fast-track for articles with casualties and a confirmed hazard match
-        if has_casualties and has_hazard and score >= 13.5:
-            status = "approved"
+        # Fast-track Logic
+        if has_casualties and has_hazard and score >= (approval_threshold - 1.0):
+             # Bonus leniency for casualty reports with clear hazard context
+             status = "approved"
         elif score >= approval_threshold:
             # [CRITICAL] Require hazard match (rule) or VIP term for auto-approve
             if has_hazard or diag["signals"].get("is_vip", False):
                 status = "approved"
             else:
                 status = "pending"
-        elif score >= 11.5:
+        elif score >= CONF["threshold_pass"]:
             status = "pending"
 
     if status == "auto-blacklisted":
@@ -430,7 +435,7 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
         missing=_get_impact_value(meta["impacts"]["missing"]),
         injured=_get_impact_value(meta["impacts"]["injured"]),
         damage_billion_vnd=_get_impact_value(meta["impacts"]["damage_billion_vnd"]),
-        impact_details=meta["impact_details"],
+        impact_details={**meta["impact_details"], "metrics": [meta["metrics"]]} if meta.get("metrics") else meta["impact_details"],
         commune=meta["impacts"].get("commune"),
         village=meta["impacts"].get("village"),
         route=meta["impacts"].get("route"),
@@ -447,8 +452,6 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
     try:
         db.add(article)
         db.flush()
-        # [REFACTOR] Event upsert moved to main loop after content check
-        # Commit will be handled by the caller in batches for better performance
         return article, status
     except Exception as e:
         db.rollback()
@@ -475,6 +478,35 @@ def _log_to_review_file(src, title, link, published_at, score, reason, action, s
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception: pass
 
+async def _process_article_logic(db, src, title, link, pub_at, summary):
+    """
+    Shared logic for ingesting, enriching, and saving an article.
+    Used by both RSS and HTML scraper paths to ensure consistent validation.
+    """
+    article, status = await _ingest_article_async(db, src, title, link, pub_at, summary)
+    
+    if not article:
+        return None, False, False, status
+
+    await _enrich_article_async(db, src, article)
+    
+    # [FIX] Check for empty content (ghost article prevention)
+    has_content = (article.summary and len(article.summary.strip()) > 10) or \
+                  (article.full_text and len(article.full_text.strip()) > 50)
+                  
+    if not has_content:
+        # logger.warning(f"   [SKIPPING] Empty content: {title[:50]}...")
+        db.delete(article)
+        return None, False, False, "empty_content"
+    
+    # Log status
+    _log_artic_status(src.name, title, status, article.score)
+    
+    # Event Upsert
+    ev, is_new = await asyncio.to_thread(upsert_event_for_article, db, article)
+    return ev, is_new, True, status
+
+
 async def _process_once_async(force_update: bool = False, only_sources: list[str] = None) -> dict:
     """Async implementation of a single crawl run."""
     db: Session = SessionLocal()
@@ -495,35 +527,49 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
             sources_info[src.name] = {"source": src, "feeds": feeds, "added": 0}
             all_feed_urls.extend([url for _, url in feeds])
 
-        headers = {"User-Agent": settings.user_agent}
-        fetched = await _fetch_all_feeds(all_feed_urls, headers, settings.request_timeout_seconds, force_update=force_update)
-
+        # 1. BATCH FETCH ALL FEEDS
+        # This is the optimization: Fetch 50+ RSS feeds concurrently in one HTTPX session
+        feed_results = await _fetch_all_feeds(all_feed_urls, headers={"User-Agent": settings.user_agent}, timeout_seconds=30, force_update=force_update)
+        
+        events_to_notify = [] # List of (event_id, is_new)
+        
+        # 2. PROCESS PER SOURCE
         for name, info in sources_info.items():
             src = info["source"]
-            stat = {"source": name, "feed_used": [], "elapsed": 0.0, "error": None, "articles_added": 0}
-            events_to_notify = [] # [NEW] Collect events for post-commit notification
+            feeds = info["feeds"]
+            
+            stat = {"source": src.name, "articles_added": 0, "status": "pending", "error": None, "feed_used": [], "elapsed": 0}
             feed_worked = False
-
-            for f_type, f_url in info["feeds"]:
-                f_data = fetched.get(f_url)
-                if not f_data or f_data.get("error"): continue
+            
+            # Prioritize: Primary -> Backup -> GNews
+            for f_type, f_url in feeds:
+                res = feed_results.get(f_url)
+                if not res or res.get("error"):
+                    continue
                 
-                stat["elapsed"] += f_data.get("elapsed", 0.0)
-                if f_data.get("not_modified"):
+                if res.get("not_modified"):
+                    # Nothing new
                     feed_worked = True
                     stat["feed_used"].append(f_type)
-                    continue
-
-                # [OPTIMIZATION] Run feedparser in executor to avoid blocking the event loop
-                parsed_feed = await asyncio.get_event_loop().run_in_executor(
-                    None, feedparser.parse, f_data.get("text", "")
-                )
-                feed = entry_list = parsed_feed.entries
+                    # Even if not modified, we consider it "working" (no error)
+                    break
+                    
+                content = res.get("text", "")
+                if not content: continue
+                
+                # Parse
+                entry_list = []
+                try:
+                    parsed = feedparser.parse(content)
+                    entry_list = parsed.entries
+                except Exception: continue
+                
                 if not entry_list: continue
                 
                 feed_worked = True
                 stat["feed_used"].append(f_type)
                 
+                # Process Entries
                 for entry in entry_list[:(50 if f_type == "gnews" else 200)]:
                     title = html.unescape(html.unescape(getattr(entry, "title", ""))).strip()
                     title = re.sub(r"\s+", " ", title)
@@ -534,28 +580,17 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     raw_sum = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
                     sum_raw = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(html.unescape(raw_sum)))).strip()
                     
-                    article, status = await _ingest_article_async(db, src, title, link, pub_at, sum_raw)
-                    if article:
-                        await _enrich_article_async(db, src, article)
-                        
-                        # [FIX] Check for empty content (ghost article prevention)
-                        has_content = (article.summary and len(article.summary.strip()) > 10) or \
-                                      (article.full_text and len(article.full_text.strip()) > 50)
-                                      
-                        if not has_content:
-                            logger.warning(f"   [SKIPPING] Empty content: {title[:50]}...")
-                            db.delete(article)
-                        else:
-                            new_count += 1
-                            info["added"] += 1
-                            _log_artic_status(src.name, title, status, article.score)
-                            
-                            # Late binding of event to ensure we don't create ghost events for empty articles
-                            ev, is_new = await asyncio.to_thread(upsert_event_for_article, db, article)
-                            if ev: events_to_notify.append((ev.id, is_new))
+                    ev, is_new, added, status = await _process_article_logic(db, src, title, link, pub_at, sum_raw)
+                    
+                    if added:
+                        new_count += 1
+                        info["added"] += 1
+                        if ev: events_to_notify.append((ev.id, is_new))
 
+                # If primary worked, we don't need backup/gnews
                 if feed_worked: break
-
+                
+            # HTML Scraper Fallback
             force_html = any(x in src.domain for x in ["thoitietvietnam", "nchmf", "kttv"])
             if not feed_worked or force_html:
                 try:
@@ -564,49 +599,42 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         stat["feed_used"].append("html_scraper")
                         feed_worked = True
                         for item in scraped[:50]:
-                            a, s = await _ingest_article_async(db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", ""))
-                            if a:
-                                await _enrich_article_async(db, src, a)
-                                
-                                # [FIX] Check content
-                                has_content = (a.summary and len(a.summary.strip()) > 10) or \
-                                              (a.full_text and len(a.full_text.strip()) > 50)
-                                if not has_content:
-                                    logger.warning(f"   [SKIPPING] Empty content (scraped): {item['title'][:50]}...")
-                                    db.delete(a)
-                                else:
-                                    new_count += 1
-                                    info["added"] += 1
-                                    _log_artic_status(src.name, item["title"], s, a.score)
-                                    ev, is_new = await asyncio.to_thread(upsert_event_for_article, db, a)
-                                    if ev: events_to_notify.append((ev.id, is_new))
+                             ev, is_new, added, status = await _process_article_logic(
+                                db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", "")
+                            )
+                             if added:
+                                new_count += 1
+                                info["added"] += 1
+                                if ev: events_to_notify.append((ev.id, is_new))
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
-
+            
             if not feed_worked: stat["error"] = "all sources failed"
             stat["articles_added"] = info["added"]
             stat["feed_used"] = ", ".join(stat["feed_used"])
             per_source_stats.append(stat)
             
-
-            # Batch Commit per Source
+            # Batch Commit
             try:
                 db.commit()
-                # [OPTIMIZATION] Emit notifications AFTER successful commit to avoid race conditions
-                # where background threads query DB before commit.
+                # Notifications
                 if events_to_notify:
+                    unique_events = {}
                     for ev_id, is_new in events_to_notify:
+                        if ev_id not in unique_events: unique_events[ev_id] = is_new
+                        elif is_new: unique_events[ev_id] = True
+                    
+                    for ev_id, is_new in unique_events.items():
                         try:
-                            # Use run_in_executor to avoid blocking the crawler loop with API calls
-                            # Although emit_event_notifications is mostly async/threaded, safe measure.
+                            # Safely emit notifications (threaded/async handled inside)
                             emit_event_notifications(db, ev_id, is_new=is_new)
-                        except Exception as e:
-                            logger.error(f"Failed to emit post-commit notification: {e}")
+                        except Exception: pass
+                    events_to_notify = [] # clear for next source
+
             except Exception as e:
                 db.rollback()
                 stat["error"] = f"Commit failed: {e}"
-                logger.error(f"Commit failed for {name}: {e}")
-
+            
             _update_source_status(db, name, stat)
 
         await _finalize_crawl(db, new_count, start_total, per_source_stats)

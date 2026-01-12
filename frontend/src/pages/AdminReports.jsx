@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getJson, patchJson, API_BASE } from "../api";
+import { getJson, patchJson, downloadBlob, API_BASE } from "../api";
 import { Check, X, FileDown, MapPin, Phone, User, Loader2, XCircle, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast.jsx";
@@ -89,26 +89,12 @@ export default function AdminReports() {
 
     const handleExport = async () => {
         setIsExporting(true);
-        const token = localStorage.getItem("access_token");
-        
         try {
             const params = new URLSearchParams();
             if (startDate) params.append("start_date", startDate);
             if (endDate) params.append("end_date", endDate);
             
-            const url = `${API_BASE}/api/user/admin/crowdsource/export?${params.toString()}`;
-            
-            const response = await fetch(url, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            const blob = await response.blob();
-            const urlBlob = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = urlBlob;
-            a.download = `bao_cao_hien_truong_${new Date().toISOString().split('T')[0]}.xlsx`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            await downloadBlob(`/api/user/admin/crowdsource/export?${params.toString()}`, `bao_cao_hien_truong_${new Date().toISOString().split('T')[0]}.xlsx`);
             setToast({ isVisible: true, message: "Xuất dữ liệu thành công!", type: "success" });
         } catch (err) {
             setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: "error" });

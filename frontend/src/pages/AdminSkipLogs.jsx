@@ -3,6 +3,7 @@ import {
   getJson, 
   postJson, 
   patchJson,
+  downloadBlob,
   API_BASE 
 } from "../api";
 import { 
@@ -25,6 +26,7 @@ import { VALID_PROVINCES } from "../provinces";
 import { DISASTER_METADATA } from "../theme.js";
 import Toast from "../components/Toast.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
+import Pagination from "../components/Pagination.jsx";
 
 export default function AdminSkipLogs() {
   const [activeTab, setActiveTab] = useState("pending"); // "pending" | "skipped" | "reports" | "crawler"
@@ -62,7 +64,8 @@ export default function AdminSkipLogs() {
         const data = await getJson("/api/admin/crawler-status", { signal });
         setCrawlerStatus(data || []);
       } else {
-        const data = await getJson(`/api/admin/skip-logs?limit=200`, { signal }); // API doesn't support skip/offset for this file-based log
+        const skip = (page - 1) * ITEMS_PER_PAGE;
+        const data = await getJson(`/api/admin/skip-logs?skip=${skip}&limit=${ITEMS_PER_PAGE}`, { signal }); 
         setSkippedItems(Array.isArray(data) ? data : []);
       }
     } catch (e) {
@@ -74,20 +77,9 @@ export default function AdminSkipLogs() {
   }
 
   async function handleExportDaily() {
-    const token = localStorage.getItem("access_token");
     const date = new Date().toISOString().split('T')[0];
     try {
-        const response = await fetch(`${API_BASE}/api/admin/export/daily?date=${date}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `bao_cao_ngay_${date}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        await downloadBlob(`/api/admin/export/daily?date=${date}`, `bao_cao_ngay_${date}.xlsx`);
     } catch (err) {
         setError("Lỗi tải báo cáo: " + err.message);
     }
@@ -559,8 +551,8 @@ export default function AdminSkipLogs() {
           ))}
         </div>
         
-        {/* Pagination Controls - Only for Pending articles as skip/offset is supported */}
-        {activeTab === "pending" && pendingItems.length > 0 && (
+        {/* Pagination Controls */}
+        {(activeTab === "pending" || activeTab === "skipped") && (activeTab === "pending" ? pendingItems : skippedItems).length > 0 && (
           <div className="mt-8 flex justify-center items-center gap-4">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -575,7 +567,7 @@ export default function AdminSkipLogs() {
             <button
                onClick={() => setPage(p => p + 1)}
                disabled={
-                 activeTab === "pending" ? pendingItems.length < ITEMS_PER_PAGE : skippedItems.length < ITEMS_PER_PAGE
+                 (activeTab === "pending" ? pendingItems : skippedItems).length < ITEMS_PER_PAGE
                }
                className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
             >
@@ -598,7 +590,9 @@ export default function AdminSkipLogs() {
                 <div className="p-6">
                     <p className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Chọn loại thiên tai chính xác:</p>
                     <div className="grid grid-cols-2 gap-2">
-                        {Object.entries(DISASTER_METADATA).map(([id, meta]) => (
+                        {Object.entries(DISASTER_METADATA)
+                            .filter(([id]) => id !== 'community')
+                            .map(([id, meta]) => (
                             <button
                                 key={id}
                                 onClick={() => submitReclassification(id)}

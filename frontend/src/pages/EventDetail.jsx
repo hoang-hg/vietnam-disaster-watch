@@ -11,6 +11,7 @@ import {
   fmtVndBillion,
   isJunkImage,
   getDisasterMeta,
+  downloadBlob,
   API_BASE
 } from "../api.js";
 import { DISASTER_METADATA } from "../theme.js";
@@ -173,19 +174,8 @@ export default function EventDetail() {
 
   const handleExportExcel = async () => {
     setIsExporting(true);
-    const token = localStorage.getItem("access_token");
     try {
-        const response = await fetch(`${API_BASE}/api/admin/export/event/${ev.id}?format=excel`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `su_kien_${ev.id}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        await downloadBlob(`/api/admin/export/event/${ev.id}?format=excel`, `su_kien_${ev.id}.xlsx`);
         setToast({ isVisible: true, message: 'Đã xuất dữ liệu thành công!', type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
@@ -670,6 +660,7 @@ export default function EventDetail() {
                 isAdmin={isAdmin} 
                 handleApprove={handleApproveArticle}
                 handleDelete={handleDeleteArticle}
+                onReclassify={setIsReclassifying}
                 isApproving={isApproving}
               />
             ))}
@@ -694,7 +685,7 @@ export default function EventDetail() {
                                 key={type.id}
                                 onClick={() => submitReclassification(type.id)}
                                 className={`px-4 py-3 rounded-xl border-2 transition-all font-bold text-sm text-left ${
-                                    isReclassifying.currentType === type.id 
+                                    isReclassifying.disaster_type === type.id 
                                     ? "bg-slate-800 text-white border-slate-800 shadow-lg" 
                                     : "border-slate-100 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
                                 }`}

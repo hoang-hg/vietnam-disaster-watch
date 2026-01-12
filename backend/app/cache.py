@@ -44,12 +44,14 @@ class CacheManager:
                     # For simplicity in this app, we'll assume we store JSON
                     return json.loads(val)
             except Exception:
-                return None
+                pass # Fallback to memory on Redis error
         
         # 2. Fallback to local memory (Per-worker cache)
         if key in self.memory_cache:
             val, expiry = self.memory_cache[key]
             if time.time() < expiry:
+                # [FIX] Move to end to mark as recently used (True LRU)
+                self.memory_cache.move_to_end(key)
                 return val
             else:
                 del self.memory_cache[key]

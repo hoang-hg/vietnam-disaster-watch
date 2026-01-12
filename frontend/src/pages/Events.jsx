@@ -10,17 +10,18 @@ import {
   isJunkImage,
   normalizeStr,
   getDisasterMeta,
+  downloadBlob,
   API_BASE
 } from "../api.js";
-import Badge from "../components/Badge.jsx";
+import Pagination from "../components/Pagination.jsx";
 import { THEME_COLORS, DISASTER_METADATA } from "../theme.js";
-import { MapPin, Clock, FileText, Zap, DollarSign, Users, Activity, Filter, X, CloudRainWind, Waves, Sun, Flame, Wind, Mountain, AlertTriangle, ArrowRight, Calendar, Trash2, Printer, Download, Loader2 } from "lucide-react";
-import logoIge from "../assets/logo_ige.png";
+import { Filter, Trash2, Printer, Download, Loader2 } from "lucide-react";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
 import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import EventCard from "../components/events/EventCard.jsx";
+import DateFilter from "../components/DateFilter.jsx";
 
 // Local TYPE_TONES removed
 
@@ -33,7 +34,6 @@ import { useAuth } from "../contexts/AuthContext";
 
 export default function Events() {
   const { user, isAdmin } = useAuth();
-  const dateInputRef = useRef(null);
   const [showExportView, setShowExportView] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -137,17 +137,7 @@ export default function Events() {
     if (province) query += `&province=${province}`;
     
     try {
-        const response = await fetch(`${API_BASE}/api/admin/export/summary${query}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `thong_ke_thien_tai_${new Date().toISOString().split('T')[0]}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        await downloadBlob(`/api/admin/export/summary${query}`, `thong_ke_thien_tai_${new Date().toISOString().split('T')[0]}.xlsx`);
         setToast({ isVisible: true, message: "Tải xuống thành công", type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
@@ -158,23 +148,12 @@ export default function Events() {
 
   const handleExportMonthly = async () => {
     setIsExportingMonthly(true);
-    const token = localStorage.getItem("access_token");
     let query = `?month=${exportMonth}&year=${exportYear}`;
     if (type) query += `&type=${type}`;
     if (province) query += `&province=${province}`;
 
     try {
-        const response = await fetch(`${API_BASE}/api/admin/export/summary${query}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `bao_cao_thang_${exportMonth}_${exportYear}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        await downloadBlob(`/api/admin/export/summary${query}`, `bao_cao_thang_${exportMonth}_${exportYear}.xlsx`);
         setToast({ isVisible: true, message: "Tải xuống báo cáo tháng thành công", type: 'success' });
     } catch (err) {
         setToast({ isVisible: true, message: "Lỗi tải xuống: " + err.message, type: 'error' });
@@ -467,36 +446,17 @@ export default function Events() {
                 </select>
             </div>
             {/* Date Pill (Dashboard Style) */}
-            <div className="flex items-center gap-2">
-                <div 
-                    onClick={() => dateInputRef.current?.showPicker()}
-                    className="flex-1 flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 hover:border-blue-400 hover:bg-white transition-all cursor-pointer shadow-sm group"
-                >
-                    <span className="text-sm font-bold text-slate-700">
-                        {startDate ? startDate.split('-').reverse().join('/') : "Tất cả thời gian"}
-                    </span>
-                    <Calendar className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
-                    <input 
-                        ref={dateInputRef}
-                        type="date"
-                        value={startDate} 
-                        onChange={(e) => {
-                            setStartDate(e.target.value);
-                            setEndDate(""); 
-                        }}
-                        className="absolute opacity-0 pointer-events-none"
-                    />
-                </div>
-                {hasFilters && (
-                    <button 
-                         onClick={clearFilters}
-                         className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-slate-200 shadow-sm"
-                         title="Xóa bộ lọc"
-                    >
-                         <X className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
+            <DateFilter 
+                dateTime={startDate}
+                onChange={(val) => {
+                    setStartDate(val);
+                    setEndDate(""); 
+                }}
+                onClear={clearFilters}
+                showClear={hasFilters}
+                placeholder="Tất cả thời gian"
+                className="flex-1"
+            />
         </div>
       </div>
 
@@ -613,68 +573,13 @@ export default function Events() {
 
       {/* Pagination Controls (Standard) */}
       {!loading && events.length > 0 && Math.ceil(totalEvents / itemsPerPage) > 1 && !showExportView && (
-        <div className="mt-8 flex justify-center items-center gap-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Quay lại
-          </button>
-          
-          <div className="hidden sm:flex gap-1">
-            {(() => {
-               const totalPages = Math.ceil(totalEvents / itemsPerPage);
-               const pageNumbers = [];
-               const delta = 2; // number of pages around current
-               
-               if (totalPages <= 7) {
-                   for (let i = 1; i <= totalPages; i++) pageNumbers.push(i);
-               } else {
-                   // Always show first, last, and window around current
-                   pageNumbers.push(1);
-                   if (currentPage > 1 + delta + 1) pageNumbers.push('...');
-                   
-                   let start = Math.max(2, currentPage - delta);
-                   let end = Math.min(totalPages - 1, currentPage + delta);
-                   
-                   for (let i = start; i <= end; i++) pageNumbers.push(i);
-                   
-                   if (currentPage < totalPages - delta - 1) pageNumbers.push('...');
-                   pageNumbers.push(totalPages);
-               }
-
-               return pageNumbers.map((p, idx) => (
-                <button
-                    key={idx}
-                    onClick={() => typeof p === 'number' ? handlePageChange(p) : null}
-                    disabled={typeof p !== 'number'}
-                    className={`min-w-[36px] h-9 px-2 rounded-lg text-sm font-bold transition-colors ${
-                      p === currentPage 
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                        : typeof p === 'number' 
-                           ? "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
-                           : "text-slate-400 border-none bg-transparent cursor-default"
-                    }`}
-                >
-                    {p}
-                </button>
-               ));
-            })()}
-          </div>
-          
-          {/* Mobile simple display */}
-          <span className="sm:hidden text-sm font-bold text-slate-600">
-             {currentPage} / {Math.ceil(totalEvents / itemsPerPage)}
-          </span>
-
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === Math.ceil(totalEvents / itemsPerPage)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Tiếp theo
-          </button>
+        <div className="mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalEvents}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+          />
         </div>
       )}
 

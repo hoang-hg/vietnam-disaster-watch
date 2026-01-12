@@ -28,6 +28,7 @@ class ArticleOut(BaseModel):
     is_broken: bool = False
     image_url: str | None = None
     event_id: int | None = None
+    impact_details: dict | None = None
     needs_verification: bool = False
     status: str | None = None
     score: float | None = None

@@ -1,11 +1,11 @@
-import React from "react";
-import { Check, Trash2, ChevronRight } from "lucide-react";
+import { Check, Trash2, ChevronRight, Tag } from "lucide-react";
 import { fmtTimeAgo, fmtType, isJunkImage } from "../../api.js";
 
 const ArticleTimelineItem = ({ 
   article, 
   handleApprove, 
-  handleDelete, 
+  handleDelete,
+  onReclassify,
   isApproving, 
   isAdmin 
 }) => {
@@ -57,6 +57,13 @@ const ArticleTimelineItem = ({
                title="Xóa bài báo"
             >
                <Trash2 className="w-4 h-4" />
+            </button>
+            <button
+               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReclassify(article); }}
+               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+               title="Phân loại lại (AI Feedback)"
+            >
+               <Tag className="w-4 h-4" />
             </button>
           </div>
         )}

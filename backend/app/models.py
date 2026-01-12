@@ -47,7 +47,7 @@ class Article(Base):
     needs_verification: Mapped[bool] = mapped_column(Boolean, default=False) # 0=no, 1=yes
     
     # 3-Tier filtering status
-    status: Mapped[str] = mapped_column(String(20), default="approved", index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     score: Mapped[float | None] = mapped_column(Float, nullable=True)
     
     # Unique identifier for content to prevent re-crawling rejected news
@@ -153,8 +153,8 @@ class CrowdsourcedReport(Base):
 class EventFollow(Base):
     __tablename__ = "event_follows"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    event_id: Mapped[int] = mapped_column(ForeignKey("events.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     __table_args__ = (
@@ -164,7 +164,7 @@ class EventFollow(Base):
 class Notification(Base):
     __tablename__ = "notifications"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     type: Mapped[str] = mapped_column(String(50), index=True) # "new_article", "report_approved", etc.
     title: Mapped[str] = mapped_column(String(255))
     message: Mapped[str] = mapped_column(Text)

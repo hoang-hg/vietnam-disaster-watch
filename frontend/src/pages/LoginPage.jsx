@@ -7,6 +7,7 @@ function ResetPasswordForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [secret, setSecret] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", content: "" });
 
@@ -20,7 +21,7 @@ function ResetPasswordForm({ onSuccess }) {
     setLoading(true);
     setMsg({ type: "", content: "" });
     try {
-      await resetPassword(email, newPassword);
+      await resetPassword(email, newPassword, secret);
       setMsg({ type: "success", content: "Đặt lại mật khẩu thành công!" });
       setTimeout(() => {
         onSuccess?.();
@@ -50,6 +51,24 @@ function ResetPasswordForm({ onSuccess }) {
           onChange={e => setEmail(e.target.value)}
           placeholder="admin@example.com"
         />
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Mã bảo mật hệ thống</label>
+        <div className="relative">
+             <input 
+              type="password" 
+              required 
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]"
+              value={secret}
+              onChange={e => setSecret(e.target.value)}
+              placeholder="Nhập mã bí mật..."
+            />
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+            </div>
+        </div>
+        <p className="text-[10px] text-slate-500 mt-1 italic">* Liên hệ quản trị viên cấp cao để lấy mã này.</p>
       </div>
 
       <div>
@@ -115,7 +134,7 @@ export default function LoginPage() {
     
     try {
         const data = await apiLogin(formData.email, formData.password);
-        console.log("LOGIN SUCCESS:", data);
+        
         
         if (!data.user) {
              throw new Error("No user data received");
