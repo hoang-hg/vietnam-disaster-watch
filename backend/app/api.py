@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Response, Request, HTTPException, status
 from fastapi.responses import StreamingResponse
 from .event_matcher import upsert_event_for_article, emit_event_notifications
+from .log_utils import log_audit
 import asyncio
 from pathlib import Path
 import json
@@ -44,7 +45,7 @@ def apply_dashboard_filters(query, db: Session):
 
     dec18_filter = get_dec18_filter()
     
-    # Remove 'other' from strict exclusion so verified 'other' events can pass via dec18_filter
+    # Remove 'community' from strict exclusion so verified community events can pass via dec18_filter
     return query.filter(Event.disaster_type != "unknown")\
                 .filter(Event.sources_count > 0)\
                 .filter(dec18_filter)
@@ -69,48 +70,57 @@ TYPE_MAP = {
     "erosion": "Xói lở",
     "warning_forecast": "Cảnh báo, dự báo",
     "recovery": "Khắc phục hậu quả",
+    "community": "Cộng đồng báo cáo",
     "unknown": "Chưa phân loại"
 }
 
 def get_date_range(hours: int, date: str | None, start_date: str | None, end_date: str | None):
-    """Standardizes date range parsing for all stats endpoints."""
+    """Standardizes date range parsing for all stats endpoints (Timezone Adjusted)."""
+    vn_tz = timezone(timedelta(hours=7))
+    
+    def to_utc_naive(dt_vn_naive: datetime) -> datetime:
+        # Treat input naive (from strptime) as VN time, convert to UTC, then strip tz for DB
+        return dt_vn_naive.replace(tzinfo=vn_tz).astimezone(timezone.utc).replace(tzinfo=None)
+
     if start_date or end_date:
         try:
-            # Create NAIVE datetimes to match database standards (which stores naive UTC)
-            # We treat the input YYYY-MM-DD as UTC midnight.
+            # [LOGIC CHANGE] Interpret inputs as VN time
             
             if start_date:
-                start = datetime.strptime(start_date, "%Y-%m-%d")
+                s_vn = datetime.strptime(start_date, "%Y-%m-%d")
+                start = to_utc_naive(s_vn)
             else:
                 start = datetime.min
             
-            # [LOGIC CHANGE] If start_date is provided but end_date is NOT, treat as a single day filter
+            # If start_date is provided but end_date is NOT, treat as a single day filter (legacy behavior)
             if start_date and not end_date:
-                end = start + timedelta(days=1)
+                s_vn = datetime.strptime(start_date, "%Y-%m-%d")
+                e_vn = s_vn + timedelta(days=1)
+                end = to_utc_naive(e_vn)
             else:
                 if end_date:
-                    end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+                    e_vn = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1) # End of that day
+                    end = to_utc_naive(e_vn)
                 else:
                     end = datetime.now(timezone.utc).replace(tzinfo=None)
             
             return start, end
         except ValueError:
-            pass # Fallback to default
+            pass # Fallback to default functions
+            
     elif date:
         try:
-            # Treat specific date as UTC midnight range
-            target = datetime.strptime(date, "%Y-%m-%d")
-            start = target
-            end = start + timedelta(days=1)
+            d_vn = datetime.strptime(date, "%Y-%m-%d")
+            start = to_utc_naive(d_vn)
+            end = to_utc_naive(d_vn + timedelta(days=1))
             return start, end
         except ValueError:
-            pass # Fallback
-
-    # Default logic (Naive UTC)
+            pass
+            
+    # Default: Use hours (relative to current UTC)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    start = now - timedelta(hours=hours)
-    end = now
-    return start, end
+    since = now - timedelta(hours=hours)
+    return since, now
 
 def get_visibility_filter(query, is_admin: bool):
     """Applies standard visibility rules for non-admin users."""
@@ -242,6 +252,8 @@ def events(
         query = query.filter(func.coalesce(Event.damage_billion_vnd, 0) > 0)
     elif quick == "provinces":
         query = query.filter(Event.province.in_(PROVINCES))
+    elif quick == "community":
+        query = query.filter(Event.disaster_type == "community")
 
     if after_id is not None:
         query = query.filter(Event.id < after_id)
@@ -267,6 +279,8 @@ def events(
 
     filtered = query.limit(limit).offset(offset).all()
     if not filtered:
+        if wrapper:
+            return {"items": [], "total": total_count}
         return []
 
     # 5. [OPTIMIZATION] Fix N+1: Batch Fetch Article Counts
@@ -292,7 +306,11 @@ def events(
         Article.url,
         func.row_number().over(
             partition_by=Article.event_id,
-            order_by=[desc(Article.status == "approved"), desc(Article.published_at)]
+            order_by=[
+                desc(Article.image_url.isnot(None)), # Prioritize articles WITH images
+                desc(Article.status == "approved"), 
+                desc(Article.published_at)
+            ]
         ).label("rn")
     ).filter(
         Article.event_id.in_(event_ids),
@@ -449,35 +467,32 @@ def update_event(
     update_data = payload.model_dump(exclude_unset=True)
     
     # Audit logging for manual correction
-    try:
-        logs_dir = Path(__file__).resolve().parents[1] / 'logs'
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        audit_file = logs_dir / 'audit_log.jsonl'
-        record = {
-            'timestamp': datetime.now(timezone.utc).isoformat(),
-            'event_id': event_id,
-            'changes': update_data,
-            'action': 'manual_correction'
-        }
-        with audit_file.open('a', encoding='utf-8') as f:
-            f.write(json.dumps(record, ensure_ascii=False) + '\n')
-    except: pass
+    log_audit("manual_correction", admin.id, admin.email, event_id=event_id, details=update_data)
 
     # Apply changes
     old_started_at = ev.started_at
     for field, value in update_data.items():
         setattr(ev, field, value)
     
+
+    
     # Propagate date change to articles if started_at changed
     if 'started_at' in update_data and update_data['started_at']:
         try:
-            new_date = update_data['started_at']
-            if isinstance(new_date, str):
-                new_date = datetime.fromisoformat(new_date.replace("Z", "+00:00"))
+            # Pydantic likely parsed this into a datetime, but ensure it's compatible
+            raw_date = update_data['started_at']
+            if isinstance(raw_date, str):
+                raw_date = datetime.fromisoformat(raw_date.replace("Z", "+00:00"))
             
-            # Ensure new_date is timezone aware (UTC) if naive, to match DB expectation
-            if new_date.tzinfo is None:
-                new_date = new_date.replace(tzinfo=timezone.utc)
+            # Normalize to Naive UTC for DB consistency
+            if raw_date.tzinfo is not None:
+                # Convert to UTC first if it has other timezone, then strip
+                new_date = raw_date.astimezone(timezone.utc).replace(tzinfo=None)
+            else:
+                new_date = raw_date
+
+            # Update Event model explicitly to ensure naive format is set
+            ev.started_at = new_date
             
             # Update all linked articles published_at to match the new start date
             # This aligns the event timeline
@@ -489,7 +504,24 @@ def update_event(
         except Exception as e:
             logger.error(f"Failed to propagate date change to articles: {e}")
 
-    ev.last_updated_at = datetime.now(timezone.utc)
+    # [FIX] Propagate type and province changes to articles for consistency
+    if 'disaster_type' in update_data and update_data['disaster_type']:
+        try:
+            db.query(models.Article).filter(models.Article.event_id == event_id).update({
+                models.Article.disaster_type: update_data['disaster_type']
+            }, synchronize_session=False)
+        except Exception as e:
+            logger.error(f"Failed to propagate type change: {e}")
+
+    if 'province' in update_data and update_data['province']:
+        try:
+            db.query(models.Article).filter(models.Article.event_id == event_id).update({
+                models.Article.province: update_data['province']
+            }, synchronize_session=False)
+        except Exception as e:
+            logger.error(f"Failed to propagate province change: {e}")
+
+    ev.last_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
     db.refresh(ev)
     
@@ -554,20 +586,9 @@ def delete_event(
     
     # Delete the event
     title_for_log = ev.title
-    db.delete(ev)
-    db.commit()
+    _delete_event_internal(db, ev)
     
-    # [SYNC] Broadcast delete signal
-    from .ws import manager
-    manager.broadcast_sync({"type": "EVENT_DELETE", "id": event_id})
-
-    # Comprehensive cache invalidation
-    cache.delete(f"ev_detail_v3_{event_id}_True")  # Admin detail
-    cache.delete(f"ev_detail_v3_{event_id}_False") # Public detail
-    cache.delete_match(f"ev_detail_v3_{event_id}*") # Any variants
-    cache.delete_match("ev_v2_*")  # All event list caches (started with ev_v2_)
-    cache.delete_match("stats_*")  # Stats summaries (event count changed)
-    cache.delete_match("articles_latest_*")  # Article lists may reference event
+    log_audit("delete_event", admin.id, admin.email, event_id=event_id, details={"title": title_for_log})
     
     logger.info(f"Deleted event {event_id}: {title_for_log}")
     
@@ -582,56 +603,9 @@ def delete_article(
     """
     Delete/Reject an article (admin only).
     """
-    art = db.query(Article).filter(Article.id == article_id).first()
+    art = _reject_article_internal(db, article_id, admin, "Direct deletion via API")
     if not art:
         raise HTTPException(status_code=404, detail="Article not found")
-        
-    # Save event_id to check for orphans
-    old_event_id = art.event_id
-    
-    # Mark as Rejected and Unlink
-    art.status = "rejected"
-    art.event_id = None
-    
-    # Also add to persistent Blacklist table
-    if art.news_hash:
-        existing_bl = db.query(Blacklist).filter(Blacklist.news_hash == art.news_hash).first()
-        if not existing_bl:
-            db.add(Blacklist(
-                news_hash=art.news_hash,
-                title=art.title,
-                reason="Admin explicitly deleted article"
-            ))
-            
-    db.commit()
-
-    # Cleanup: If the event has no more approved/pending articles, delete it
-    if old_event_id:
-        remaining = db.query(Article).filter(Article.event_id == old_event_id).count()
-        if remaining == 0:
-            # Event is now orphaned, delete it
-            db.query(Event).filter(Event.id == old_event_id).delete()
-            db.commit()
-            
-            # Comprehensive cache invalidation for deleted event
-            cache.delete_match(f"ev_detail_v3_{old_event_id}*")  # Event detail caches
-            cache.delete_match("ev_v2_*")  # All event list caches
-            cache.delete_match("stats_*")  # Stats summaries (event count changed)
-            cache.delete_match("articles_latest_*")  # Article lists may reference event
-            
-            logger.info(f"Deleted orphaned event {old_event_id} after removing last article")
-        else:
-            # Event still has articles, just recalculate metrics
-            recalculate_event_metrics(db, old_event_id)
-            cache.delete(f"ev_detail_v3_{old_event_id}_True")
-            cache.delete(f"ev_detail_v3_{old_event_id}_False")
-            # Also clear event lists as metrics changed
-            cache.delete_match("ev_v2_*")
-    
-    # Global cache invalidation (article removed from system)
-    cache.delete_match("stats_*")
-    cache.delete_match("articles_latest_*")
-    
     return
 
 def recalculate_event_metrics(db: Session, event_id: int):
@@ -657,8 +631,8 @@ def recalculate_event_metrics(db: Session, event_id: int):
     
     if not aggs or aggs[4] == 0:
         # No active articles left - cleanup the event
-        db.delete(ev)
-        db.commit()
+        # Use full delete logic to ensure sync
+        _delete_event_internal(db, ev)
         return
     else:
         # Update with aggregated max values
@@ -674,6 +648,97 @@ def recalculate_event_metrics(db: Session, event_id: int):
             
     db.commit()
     db.refresh(ev)
+    
+    # [SYNC] Broadcast metric changes to all clients
+    emit_event_notifications(db, event_id, is_new=False)
+    
+    # Clear specific detail caches
+    cache.delete(f"ev_detail_v3_{event_id}_True")
+    cache.delete(f"ev_detail_v3_{event_id}_False")
+    cache.delete_match("ev_v2_*")
+
+def _delete_event_internal(db: Session, ev: Event):
+    """Internal helper to shared event deletion logic."""
+    event_id = ev.id
+    title = ev.title
+    
+    # [FIX] Blacklist articles from deleted events to prevent re-crawling bad data
+        # Fetching hashes before deletion to maintain audit trail/blacklist
+    bad_articles = db.query(Article).filter(Article.event_id == event_id).all()
+    for art in bad_articles:
+        if art.news_hash:
+            existing = db.query(models.Blacklist).filter(models.Blacklist.news_hash == art.news_hash).first()
+            if not existing:
+                db.add(models.Blacklist(
+                    news_hash=art.news_hash,
+                    title=art.title,
+                    reason=f"Rejected because parent event '{title}' was deleted"
+                ))
+
+    # Batch unlink articles
+    db.query(Article).filter(Article.event_id == event_id).update(
+        {"status": "rejected", "event_id": None}, 
+        synchronize_session=False
+    )
+
+    # [FIX] Unlink Crowdsourced Reports
+    # Prevents ForeignKeyViolation: update or delete on table "events" violates foreign key constraint
+    # Also set status to 'rejected' so it doesn't count in dashboard stats anymore
+    db.query(models.CrowdsourcedReport).filter(models.CrowdsourcedReport.event_id == event_id).update(
+        {"event_id": None, "status": "rejected"},
+        synchronize_session=False
+    )
+    
+    db.delete(ev)
+    db.commit()
+    
+    # [SYNC] Broadcast delete signal & Clear Caches
+    from .ws import manager
+    manager.broadcast_sync({"type": "EVENT_DELETE", "id": event_id})
+    from .cache import cache
+    cache.delete_match(f"ev_detail_v3_{event_id}*")
+    cache.delete_match("ev_v2_*")
+    cache.delete_match("stats_*")
+    cache.delete_match("map_*")
+
+    # Comprehensive cache invalidation
+    cache.delete_match(f"ev_detail_v3_{event_id}*")
+    cache.delete_match("ev_v2_*")
+    cache.delete_match("stats_*")
+    cache.delete_match("map_*")
+    
+    logger.info(f"System deleted event {event_id}: {title}")
+
+def _reject_article_internal(db: Session, article_id: int, admin: models.User, reason: str = "Admin manual removal"):
+    """Unified logic for removing/rejecting an article."""
+    art = db.query(Article).filter(Article.id == article_id).first()
+    if not art:
+        return None
+        
+    old_event_id = art.event_id
+    art.status = "rejected"
+    art.event_id = None
+    
+    # Blacklist hash
+    if art.news_hash:
+        existing = db.query(models.Blacklist).filter(models.Blacklist.news_hash == art.news_hash).first()
+        if not existing:
+            db.add(models.Blacklist(
+                news_hash=art.news_hash,
+                title=art.title,
+                reason=reason
+            ))
+            
+    log_audit("reject_article", admin.id, admin.email, event_id=old_event_id, article_id=article_id, details={"reason": reason})
+    db.commit()
+
+    if old_event_id:
+        recalculate_event_metrics(db, old_event_id)
+        
+    # Global cache invalidation for general article lists
+    cache.delete_match("articles_latest_*")
+    cache.delete_match("stats_*")
+    return art
 
 
 
@@ -702,14 +767,15 @@ def stats_summary(
 
     # 1. Crowdsourced reports count (approved)
     community_reports_q = db.query(func.count(models.CrowdsourcedReport.id)).filter(
-        models.CrowdsourcedReport.status == "approved"
+        models.CrowdsourcedReport.status == "approved",
+        models.CrowdsourcedReport.event_id.isnot(None) # [FIX] Only count if linked to an active event
     )
-    if start_date: community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.created_at >= start_date)
-    if end_date:
-        if len(end_date) == 10:
-            community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.created_at <= f"{end_date} 23:59:59")
-        else:
-            community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.created_at <= end_date)
+    # [FIX] Use standardized time range
+    community_reports_q = community_reports_q.filter(
+        models.CrowdsourcedReport.created_at >= start,
+        models.CrowdsourcedReport.created_at < end
+    )
+    
     if province: community_reports_q = community_reports_q.filter(models.CrowdsourcedReport.province == province)
     community_reports_count = community_reports_q.scalar() or 0
 
@@ -786,7 +852,7 @@ def stats_summary(
     type_counts_q = db.query(Event.disaster_type, func.count(Event.id)).filter(
         Event.started_at >= start,
         Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
+        Event.disaster_type.notin_(["unknown"]),
         Event.sources_count > 0
     )
     if type: type_counts_q = type_counts_q.filter(Event.disaster_type == type)
@@ -798,6 +864,7 @@ def stats_summary(
     
     official_types = list(DISASTER_GROUPS.keys())
     type_counts = {t: 0 for t in official_types}
+    type_counts["community"] = 0
     type_counts["unknown"] = 0
     
     for row in type_counts_rows:
@@ -811,7 +878,7 @@ def stats_summary(
     prov_counts_q = db.query(Event.province, func.count(Event.id)).filter(
         Event.started_at >= start,
         Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
+        Event.disaster_type.notin_(["unknown"]),
         Event.sources_count > 0,
         Event.province.in_(PROVINCES)
     )
@@ -827,7 +894,7 @@ def stats_summary(
     provinces_count_q = db.query(func.count(func.distinct(Event.province))).filter(
         Event.started_at >= start,
         Event.started_at < end,
-        Event.disaster_type.notin_(["unknown", "other"]),
+        Event.disaster_type.notin_(["unknown"]),
         Event.sources_count > 0,
         Event.province.in_(PROVINCES)
     )
@@ -1005,6 +1072,8 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
     ev, is_new = upsert_event_for_article(db, article)
     db.commit()
     
+    log_audit("approve_article", admin.id, admin.email, event_id=ev.id, article_id=article_id)
+
     # Emit notifications post-commit
     emit_event_notifications(db, ev.id, is_new=is_new)
     # Invalidate event detail cache
@@ -1029,6 +1098,7 @@ def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.Us
         raise HTTPException(status_code=404, detail="Event not found")
         
     ev.needs_verification = 0
+    ev.confidence = 1.0 # Boost to ensure public visibility after manual review
     # Also approve all pending articles in this event
     db.query(models.Article).filter(
         models.Article.event_id == event_id,
@@ -1036,6 +1106,8 @@ def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.Us
     ).update({"status": "approved"}, synchronize_session=False)
     
     db.commit()
+    
+    log_audit("approve_event", admin.id, admin.email, event_id=event_id)
     
     # [OPTIMIZATION] Real-time broadcast for Event Approval
     emit_event_notifications(db, event_id)
@@ -1053,62 +1125,10 @@ def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.Us
 @router.post('/admin/reject-article/{article_id}')
 def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     """Reject an article and add its hash to blacklist to prevent re-crawling."""
-    article = db.query(models.Article).filter(models.Article.id == article_id).first()
-    if not article:
+    art = _reject_article_internal(db, article_id, admin, "Manual rejection via Admin UI")
+    if not art:
         raise HTTPException(status_code=404, detail="Article not found")
-        
-    # Save event_id to check for orphans
-    old_event_id = article.event_id
-
-    article.status = "rejected"
-    article.event_id = None # Unlink from event
-    
-    # Add to blacklist if hash exists
-    if article.news_hash:
-        blacklist_entry = models.Blacklist(
-            news_hash=article.news_hash,
-            title=article.title,
-            reason="Admin explicit rejection"
-        )
-        # Avoid duplicate blacklist entries
-        existing = db.query(models.Blacklist).filter(models.Blacklist.news_hash == article.news_hash).first()
-        if not existing:
-            db.add(blacklist_entry)
-            
-    db.commit()
-
-    # Cleanup: If the event has no more approved/pending articles, delete it
-    if old_event_id:
-        remaining = db.query(models.Article).filter(models.Article.event_id == old_event_id).count()
-        if remaining == 0:
-            db.query(models.Event).filter(models.Event.id == old_event_id).delete()
-            db.commit()
-            
-            # [SYNC] Broadcast delete
-            from .ws import manager
-            manager.broadcast_sync({"type": "EVENT_DELETE", "id": old_event_id})
-
-            cache.delete_match(f"ev_detail_v3_{old_event_id}*")
-        else:
-            # Recalculate metrics for the remaining event
-            recalculate_event_metrics(db, old_event_id)
-            
-            # [OPTIMIZATION] Real-time broadcast for Rejection updates (e.g. death count changes)
-            from .event_matcher import emit_event_notifications
-            emit_event_notifications(db, old_event_id)
-
-            cache.delete(f"ev_detail_v3_{old_event_id}_True")
-            cache.delete(f"ev_detail_v3_{old_event_id}_False")
-        
-        # Clear list caches as event might be gone or changed
-        cache.delete_match("ev_v2_*")
-
-    # Global consistency
-    cache.delete_match("stats_*")
-    cache.delete_match("articles_latest_*")
-    cache.delete_match("map_*")
-
-    return {"ok": True, "message": "Article rejected, blacklisted, and event updated"}
+    return {"ok": True, "message": "Article rejected and event updated"}
 
 
 @router.post('/alerts')
@@ -1256,6 +1276,7 @@ def restart_system(admin: models.User = Depends(auth.get_current_admin)):
         # Append a newline to trigger uvicorn reload
         with open(main_file, "a") as f:
             f.write("\n")
+        log_audit("restart_backend", admin.id, admin.email)
         return {"ok": True, "message": "Backend restart triggered (reloader)."}
     return {"ok": False, "message": "Main file not found, restart failed."}
 
@@ -1280,9 +1301,24 @@ def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: mode
     db.add(feedback)
     
     # Actually update the article as well (manual override)
+    old_type = article.disaster_type
     article.disaster_type = corrected_type
     
+    # [LOGIC] If this article belongs to an event, we might want to refresh the event's type
+    if article.event_id:
+        ev = db.query(Event).get(article.event_id)
+        if ev:
+            from .nlp import DISASTER_PRIORITY_MAP
+            # Simple rule: if new type has higher priority than current event type, or current event type was the old article type
+            if DISASTER_PRIORITY_MAP.get(corrected_type, 99) < DISASTER_PRIORITY_MAP.get(ev.disaster_type, 99) or ev.disaster_type == old_type:
+                ev.disaster_type = corrected_type
+            
+            cache.delete_match(f"ev_detail_v3_{ev.id}*")
+            emit_event_notifications(db, ev.id, is_new=False)
+
     db.commit()
+    log_audit("submit_ai_feedback", admin.id, admin.email, article_id=article_id, details={"from": old_type, "to": corrected_type})
+    
     return {"ok": True, "message": "Feedback saved and classification updated."}
 
 @router.get("/admin/export/event/{event_id}")
@@ -1308,10 +1344,15 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
         if art.summary:
             damage_desc.append(art.summary)
         
+        # [FIX] Convert to VN time for display consistency
+        vn_tz = timezone(timedelta(hours=7))
+        pub_vn = art.published_at.replace(tzinfo=timezone.utc).astimezone(vn_tz)
+        evt_vn = (art.event_time or art.published_at).replace(tzinfo=timezone.utc).astimezone(vn_tz)
+
         row = {
             "Loại hình thiên tai": TYPE_MAP.get(art.disaster_type, art.disaster_type),
-            "Thời gian": (art.event_time or art.published_at).strftime("%d/%m/%Y"),
-            "Ngày đăng tin": art.published_at.strftime("%d/%m/%Y"),
+            "Thời gian": evt_vn.strftime("%d/%m/%Y"),
+            "Ngày đăng tin": pub_vn.strftime("%d/%m/%Y"),
             "Tuyến đường": art.route or "",
             "Vị trí thôn/bản": art.village or "",
             "Xã": art.commune or "",
@@ -1404,21 +1445,35 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
 @router.get("/admin/export/daily")
 def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     import pandas as pd
-    today = datetime.now(timezone.utc)
-    target_date = today if not date else datetime.strptime(date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-    start = target_date.replace(hour=0, minute=0, second=0)
-    end = start + timedelta(days=1)
+    import calendar
     
-    events = db.query(Event).filter(Event.started_at >= start, Event.started_at < end).all()
+    vn_tz = timezone(timedelta(hours=7))
+
+    # [FIX] Timezone-aware date parsing for Vietnam (UTC+7)
+    # Ensure "Daily" covers 00:00-23:59 VN time, not UTC.
+    now_utc = datetime.now(timezone.utc)
+    now_vn = now_utc.astimezone(vn_tz)
+    
+    if not date:
+        target_date_vn = now_vn.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        # Parse YYYY-MM-DD as VN midnight
+        d = datetime.strptime(date, "%Y-%m-%d")
+        target_date_vn = d.replace(tzinfo=vn_tz)
+        
+    start_utc = target_date_vn.astimezone(timezone.utc)
+    end_utc = start_utc + timedelta(days=1)
+    
+    events = db.query(Event).filter(Event.started_at >= start_utc, Event.started_at < end_utc).all()
     
     data = []
     for ev in events:
         data.append({
             "ID": ev.id,
             "Tên sự kiện": ev.title,
-            "Loại": ev.disaster_type,
+            "Loại": TYPE_MAP.get(ev.disaster_type, ev.disaster_type),
             "Tỉnh": ev.province,
-            "Bắt đầu": ev.started_at.strftime("%Y-%m-%d %H:%M"),
+            "Bắt đầu": ev.started_at.astimezone(vn_tz).strftime("%H:%M %d/%m/%Y"), # Convert back to VN for display
             "Nguồn tin": ev.sources_count,
             "Tử vong": ev.deaths or 0,
             "Mất tích": ev.missing or 0,
@@ -1428,7 +1483,8 @@ def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin:
         
     df = pd.DataFrame(data)
     output = io.BytesIO()
-    sheet_name = f'Báo cáo {date}' if date else 'Báo cáo ngày'
+    display_date = target_date_vn.strftime("%d-%m-%Y")
+    sheet_name = f'Báo-cáo-{display_date}'
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
         # [OPTIMIZATION] Auto-adjust column widths
@@ -1442,7 +1498,7 @@ def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin:
 
     output.seek(0)
     
-    headers = {'Content-Disposition': f'attachment; filename="bao-cao-ngay-{date}.xlsx"'}
+    headers = {'Content-Disposition': f'attachment; filename="bao-cao-ngay-{display_date}.xlsx"'}
     return StreamingResponse(output, headers=headers, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 @router.get("/admin/export/summary")
@@ -1459,26 +1515,41 @@ def export_events_summary(
     import pandas as pd
     import calendar
     
+    vn_tz = timezone(timedelta(hours=7))
+
     # TYPE_MAP is used from module level
 
     query = db.query(Event).filter(Event.sources_count > 0)
     
-    # Range Logic
+    # Range Logic [FIXED TIMEZONE]
     title_suffix = ""
     if month and year:
-        start = datetime(year, month, 1, tzinfo=timezone.utc)
+        # Month start: 00:00 VN on 1st
+        start_vn = datetime(year, month, 1, tzinfo=vn_tz)
+        # Month end: 23:59:59 VN on last day
         last_day = calendar.monthrange(year, month)[1]
-        end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
-        query = query.filter(Event.started_at >= start, Event.started_at <= end)
+        end_vn = datetime(year, month, last_day, 23, 59, 59, tzinfo=vn_tz)
+        
+        start_utc = start_vn.astimezone(timezone.utc)
+        end_utc = end_vn.astimezone(timezone.utc)
+        
+        query = query.filter(Event.started_at >= start_utc, Event.started_at <= end_utc)
         title_suffix = f"Tháng {month}-{year}"
     elif start_date:
-        sd = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        # Start date: 00:00 VN
+        sd_vn = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=vn_tz)
+        start_utc = sd_vn.astimezone(timezone.utc)
+        
         if end_date:
-            ed = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=timezone.utc)
-            query = query.filter(Event.started_at >= sd, Event.started_at < ed)
+            # End date: 23:59:59 VN (so next day 00:00)
+            ed_vn = (datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)).replace(tzinfo=vn_tz)
+            end_utc = ed_vn.astimezone(timezone.utc)
+            query = query.filter(Event.started_at >= start_utc, Event.started_at < end_utc)
             title_suffix = f"Từ {start_date} Đến {end_date}"
         else:
-            query = query.filter(Event.started_at >= sd, Event.started_at < sd + timedelta(days=1))
+            # Single day
+            ed_utc = start_utc + timedelta(days=1)
+            query = query.filter(Event.started_at >= start_utc, Event.started_at < ed_utc)
             title_suffix = f"Ngày {start_date}"
 
     if type: query = query.filter(Event.disaster_type == type)

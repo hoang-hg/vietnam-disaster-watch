@@ -35,7 +35,7 @@ function ProtectedRoute({ children, roleRequired }) {
   const currentRole = (user?.role || "").trim().toLowerCase();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: window.location.pathname + window.location.search }} />;
   }
 
   // [ROLE CHECK] Robust comparison

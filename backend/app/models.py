@@ -13,7 +13,7 @@ class Article(Base):
     url: Mapped[str] = mapped_column(Text)
     canonical_url: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     published_at: Mapped[datetime] = mapped_column(DateTime, index=True)
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), index=True)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # extracted details matching the user's report format
@@ -117,7 +117,8 @@ class User(Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user", index=True) # "user", "admin"
     favorite_province: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    token_version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class Blacklist(Base):
     """Stores hashes of articles that were rejected by admin to prevent re-crawling."""
@@ -126,7 +127,7 @@ class Blacklist(Base):
     news_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 class CrowdsourcedReport(Base):
     __tablename__ = "crowdsourced_reports"
@@ -145,7 +146,7 @@ class CrowdsourcedReport(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True) # "pending", "approved", "rejected"
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), index=True)
     
     user = relationship("User")
     event = relationship("Event")
@@ -155,7 +156,7 @@ class EventFollow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), index=True)
     
     __table_args__ = (
         UniqueConstraint("user_id", "event_id", name="uq_user_event_follow"),
@@ -170,12 +171,12 @@ class Notification(Base):
     message: Mapped[str] = mapped_column(Text)
     link: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), index=True)
 
 class CrawlerStatus(Base):
     __tablename__ = "crawler_status"
     source_name: Mapped[str] = mapped_column(String(64), primary_key=True)
-    last_run_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    last_run_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     status: Mapped[str] = mapped_column(String(20), default="success") # "success", "error", "warning"
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     articles_scanned: Mapped[int] = mapped_column(Integer, default=0)
@@ -191,7 +192,7 @@ class AiFeedback(Base):
     original_type: Mapped[str] = mapped_column(String(32))
     corrected_type: Mapped[str] = mapped_column(String(32))
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
     article = relationship("Article")
     user = relationship("User")
@@ -203,4 +204,4 @@ class RescueHotline(Base):
     agency: Mapped[str] = mapped_column(String(255))
     phone: Mapped[str] = mapped_column(String(50))
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

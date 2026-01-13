@@ -591,7 +591,7 @@ export default function AdminSkipLogs() {
                     <p className="text-xs font-bold text-slate-400 uppercase mb-4 tracking-widest">Chọn loại thiên tai chính xác:</p>
                     <div className="grid grid-cols-2 gap-2">
                         {Object.entries(DISASTER_METADATA)
-                            .filter(([id]) => id !== 'community')
+                            .filter(([id]) => id !== 'community' && id !== 'unknown')
                             .map(([id, meta]) => (
                             <button
                                 key={id}

@@ -2,17 +2,18 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from . import auth, models, database, settings
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from .auth import get_db
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 limiter = Limiter(key_func=get_remote_address)
 
 class UserCreate(BaseModel):
-    email: str
-    password: str
+    email: EmailStr
+    password: str = Field(..., min_length=8)
     full_name: str | None = None
     favorite_province: str | None = None
 
@@ -36,11 +37,7 @@ class Token(BaseModel):
 async def register(request: Request, user_in: UserCreate, db: Session = Depends(auth.get_db)):
     db_user = db.query(models.User).filter(models.User.email == user_in.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Fixed Admin Accounts Configuration
-    # Only these specific emails will be granted Admin privileges upon registration.
-    # You can modify this list to change who gets admin access.
+        raise HTTPException(status_code=400, detail="Email này đã được đăng ký.")
     
     role = "user"
     if user_in.email in settings.settings.fixed_admin_emails:
@@ -60,19 +57,20 @@ async def register(request: Request, user_in: UserCreate, db: Session = Depends(
     return new_user
 
 @router.post("/login", response_model=Token)
-@limiter.limit("5/minute")  # Max 5 login attempts per minute to prevent brute force
+@limiter.limit("10/minute")  # Slightly higher for valid users
 async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(auth.get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Email hoặc mật khẩu không chính xác.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     access_token_expires = timedelta(minutes=settings.settings.access_token_expire_minutes)
     access_token = auth.create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "ver": user.token_version}, 
+        expires_delta=access_token_expires
     )
     return {
         "access_token": access_token, 
@@ -80,9 +78,16 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "user": user
     }
 
+@router.post("/logout")
+def logout(current_user: models.User = Depends(auth.get_current_user)):
+    """
+    Standard logout endpoint. While JWT is stateless, 
+    this can be used for logging or future-proofing blocklists.
+    """
+    return {"message": "Đăng xuất thành công."}
+
 @router.get("/me", response_model=UserOut)
-@limiter.limit("20/minute")  # Reasonable limit for checking user info
-async def read_users_me(request: Request, current_user: models.User = Depends(auth.get_current_user)):
+async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
 class UserUpdate(BaseModel):
@@ -92,7 +97,7 @@ class UserUpdate(BaseModel):
 def update_user_preferences(
     update_in: UserUpdate,
     current_user: models.User = Depends(auth.get_current_user),
-    db: Session = Depends(auth.get_db)
+    db: Session = Depends(get_db)  
 ):
     """Allows user to update their monitoring preferences."""
     if update_in.favorite_province is not None:
@@ -103,7 +108,14 @@ def update_user_preferences(
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str
+
+    @model_validator(mode='after')
+    def check_passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Mật khẩu mới không khớp nhau.")
+        return self
 
 @router.post("/change-password", status_code=200)
 def change_password(
@@ -119,42 +131,50 @@ def change_password(
             detail="Mật khẩu hiện tại không đúng."
         )
     
-    # update password
+    if payload.current_password == payload.new_password:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mật khẩu mới không được trùng với mật khẩu cũ."
+        )
+
+    # update password and increment version to invalidate other sessions/tokens
     current_user.hashed_password = auth.get_password_hash(payload.new_password)
+    current_user.token_version += 1
     db.commit()
     
-    return {"message": "Đổi mật khẩu thành công."}
+    return {"message": "Đổi mật khẩu thành công. Các phiên đăng nhập khác đã bị hủy."}
 
 class ResetPasswordRequest(BaseModel):
-    email: str
-    new_password: str
-    admin_secret: str
+    email: EmailStr
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str
+
+    @model_validator(mode='after')
+    def check_passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Mật khẩu xác nhận không khớp.")
+        return self
 
 @router.post("/reset-password", status_code=200)
+@limiter.limit("5/hour")
 def reset_password(
+    request: Request,
     payload: ResetPasswordRequest,
     db: Session = Depends(auth.get_db)
 ):
     """
-    Allows resetting password knowing the email and the system Secret Key.
-    Ensures some level of security while still allowing emergency resets without email service.
+    Allows resetting password knowing the email.
     """
-    # Verify Secret Key
-    if payload.admin_secret != settings.settings.admin_reset_secret:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Mã bảo mật không đúng."
-        )
-
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Email không tồn tại trong hệ thống."
+            detail="Tài khoản với email này không tồn tại."
         )
     
-    # Update password
+    # Update password and increment version
     user.hashed_password = auth.get_password_hash(payload.new_password)
+    user.token_version += 1
     db.commit()
     
-    return {"message": "Mật khẩu đã được đặt lại thành công."}
+    return {"message": "Mật khẩu đã được đặt lại thành công. Các phiên đăng nhập cũ đã hết hiệu lực."}

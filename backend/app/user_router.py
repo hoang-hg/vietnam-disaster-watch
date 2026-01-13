@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .database import get_db
+from .log_utils import log_audit
 from . import models, schemas, auth
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import List
 from .api import get_date_range
 
@@ -99,6 +100,8 @@ def get_notifications(
         models.Notification.user_id == current_user.id
     ).order_by(models.Notification.created_at.desc()).limit(50).all()
 
+from fastapi.responses import JSONResponse
+
 @router.get("/notifications/unread-count")
 def get_unread_count(
     db: Session = Depends(get_db),
@@ -108,7 +111,8 @@ def get_unread_count(
         models.Notification.user_id == current_user.id,
         models.Notification.is_read == False
     ).scalar()
-    return {"count": count or 0}
+    # Explicitly set charset=utf-8 to satisfy strict linters/browsers
+    return JSONResponse(content={"count": count or 0}, media_type="application/json; charset=utf-8")
 
 @router.patch("/notifications/{notif_id}/read")
 def mark_notification_read(
@@ -177,7 +181,7 @@ def approve_report(
             title="Đóng góp đã được duyệt",
             message=f"Thông tin tại {report.province or 'hiện trường'} của bạn đã được Admin duyệt và hiển thị trên bản đồ.",
             link="/map",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None)
         )
         db.add(notif)
         
@@ -194,10 +198,10 @@ def approve_report(
         new_event = models.Event(
             key=event_key,
             title=evt_title,
-            disaster_type="other",
+            disaster_type="community",
             province=report.province or "Toàn quốc",
-            started_at=report.created_at,
-            last_updated_at=datetime.now(timezone.utc),
+            started_at=report.created_at.replace(tzinfo=None) if report.created_at and report.created_at.tzinfo else report.created_at,
+            last_updated_at=datetime.now(timezone.utc).replace(tzinfo=None),
             lat=report.lat,
             lon=report.lon,
             confidence=1.0, # Admin approved
@@ -206,15 +210,33 @@ def approve_report(
             image_url=report.image_url,
             details={
                 "source": "community", 
-                "reporter_name": report.name,
+                "reporter_name": report.name, # Corrected mapping from model.name
                 "full_description": report.description
             }
         )
         db.add(new_event)
         db.flush() # Generate ID
         report.event_id = new_event.id
+
+        # [NEW] Create a "shadow article" so the event has content in the list
+        report_art = models.Article(
+            source="Cộng đồng",
+            domain="community",
+            title=evt_title,
+            url="/rescue", # Link to rescue/community section
+            published_at=report.created_at.replace(tzinfo=None) if report.created_at and report.created_at.tzinfo else report.created_at,
+            disaster_type="community",
+            province=report.province or "Toàn quốc",
+            summary=report.description,
+            event_id=new_event.id,
+            status="approved",
+            image_url=report.image_url
+        )
+        db.add(report_art)
         
     db.commit()
+    
+    log_audit("approve_report", admin.id, admin.email, details={"report_id": report_id, "description": report.description})
     
     # [OPTIMIZATION] Real-time broadcast for Community Event
     # Must run AFTER commit so background threads can see the data
@@ -236,14 +258,23 @@ def reject_report(
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_current_admin)
 ):
-    rows = db.query(models.CrowdsourcedReport).filter(
-        models.CrowdsourcedReport.id == report_id
-    ).update({"status": "rejected"})
-    
-    if rows == 0:
+    report = db.query(models.CrowdsourcedReport).filter(models.CrowdsourcedReport.id == report_id).first()
+    if not report:
         raise HTTPException(status_code=404, detail="Report not found")
         
+    if report.event_id:
+        # If linked to an event, delete the event which recursively rejects the report via _delete_event_internal
+        ev = db.query(models.Event).filter(models.Event.id == report.event_id).first()
+        if ev:
+            from .api import _delete_event_internal
+            _delete_event_internal(db, ev)
+            return {"ok": True, "message": "Report rejected and associated event deleted."}
+            
+    report.status = "rejected"
     db.commit()
+    
+    log_audit("reject_report", admin.id, admin.email, details={"report_id": report_id})
+    
     from .cache import cache
     cache.delete_match("stats_*")
     return {"ok": True}
@@ -266,6 +297,12 @@ def export_crowdsource_reports(
             
     reports = query.order_by(models.CrowdsourcedReport.created_at.desc()).all()
     
+    STATUS_MAP = {
+        "pending": "Chờ duyệt",
+        "approved": "Đã duyệt", 
+        "rejected": "Từ chối"
+    }
+
     data = []
     for r in reports:
         data.append({
@@ -276,8 +313,8 @@ def export_crowdsource_reports(
             "Địa chỉ": r.address or "",
             "Mô tả": r.description,
             "Tọa độ": f"{r.lat}, {r.lon}" if r.lat and r.lon else "",
-            "Thời gian": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else "",
-            "Trạng thái": r.status
+            "Thời gian": r.created_at.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=7))).strftime("%H:%M:%S %d/%m/%Y") if r.created_at else "",
+            "Trạng thái": STATUS_MAP.get(r.status, r.status)
         })
         
     df = pd.DataFrame(data)

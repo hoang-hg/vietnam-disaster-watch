@@ -412,21 +412,28 @@ build_mega_re = sources.build_mega_re
 # Pre-compute accented patterns for high-performance matching
 DISASTER_RULES_RE = []
 for label, pats in DISASTER_RULES:
-    pats_v = [v_safe(p) for p in pats]
-    # Create accented compiled list
+    # Sort patterns by length (descending) to ensure specific phrases (e.g. "heavy rain") 
+    # are matched before generic ones (e.g. "rain") in the mega-regex.
+    pats_sorted = sorted(pats, key=len, reverse=True)
+    pats_v = [v_safe(p) for p in pats_sorted]
+    
+    # Create accented compiled list (fallback)
     compiled_acc = [re.compile(p, RE_FLAGS) for p in pats_v]
+    
     # Attempt to also create a mega-regex for this label if possible
     try:
-        mega_acc = re.compile("|".join(f"(?:{p})" for p in pats_v), RE_FLAGS)
+        mega_pattern = "|".join(f"(?:{p})" for p in pats_v)
+        mega_acc = re.compile(mega_pattern, RE_FLAGS)
         compiled_acc = [mega_acc]
-    except: pass
+    except Exception as e:
+        logger.warning(f"Failed to compile mega-regex for {label}, falling back to iterative. Error: {e}")
     
     # Only append accented versions
     DISASTER_RULES_RE.append((label, compiled_acc))
 
 # HIGH_PRIORITY_RE is already imported from sources
 # [OPTIMIZED] Whitelist Pattern for Pre-compilation
-WHITELIST_RE = re.compile(WHITELIST_TERMS, re.IGNORECASE)
+WHITELIST_RE = RE_CRITICAL_ACTIONS
 
 # DISASTER_CONTEXT needs individual matching to identify specific context contributions
 # [OPTIMIZATION] Use a single Mega-Regex for Context instead of iterating hundreds of patterns

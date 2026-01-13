@@ -5,6 +5,9 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+     -webkit-text-size-adjust: 100%; /* Fix for mobile auto-sizing */
+  }
   body {
     @apply bg-slate-50 text-slate-900 transition-colors duration-500 overflow-x-hidden;
     @apply dark:bg-[#0b1120] dark:text-slate-100;
@@ -15,10 +18,13 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+    @apply bg-white/70 backdrop-blur-lg border border-white/30 shadow-xl;
   }
   .glass-dark {
-    @apply bg-slate-900/70 backdrop-blur-md border border-slate-700/30 shadow-2xl;
+    @apply bg-slate-900/70 backdrop-blur-lg border border-white/5 shadow-2xl;
+  }
+  .glass-brand {
+    @apply bg-[#2fa1b3]/80 backdrop-blur-md border border-white/20 shadow-lg;
   }
 }
 
@@ -34,10 +40,19 @@
 }
 
 .leaflet-popup-content-wrapper {
-    @apply rounded-xl shadow-2xl border-none p-0 overflow-hidden dark:bg-slate-900 dark:text-white !important;
+    @apply rounded-2xl shadow-2xl border-none p-0 overflow-hidden !important;
+    background: rgba(255, 255, 255, 0.8) !important;
+    -webkit-backdrop-filter: blur(12px) !important; /* Safari support */
+    backdrop-filter: blur(12px) !important;
+}
+.dark .leaflet-popup-content-wrapper {
+    background: rgba(15, 23, 42, 0.8) !important;
 }
 .leaflet-popup-tip {
-    @apply dark:bg-slate-900 !important;
+    background: rgba(255, 255, 255, 0.8) !important;
+}
+.dark .leaflet-popup-tip {
+    background: rgba(15, 23, 42, 0.8) !important;
 }
 .leaflet-popup-content {
     @apply m-0 p-0 !important;

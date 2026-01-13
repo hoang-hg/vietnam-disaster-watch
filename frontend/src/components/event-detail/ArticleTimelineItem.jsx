@@ -1,5 +1,5 @@
 import { Check, Trash2, ChevronRight, Tag } from "lucide-react";
-import { fmtTimeAgo, fmtType, isJunkImage } from "../../api.js";
+import { fmtTimeAgo, fmtType, isJunkImage, toUtcDate } from "../../api.js";
 
 const ArticleTimelineItem = ({ 
   article, 
@@ -73,9 +73,9 @@ const ArticleTimelineItem = ({
         <span className="text-blue-700 font-bold bg-blue-50/50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-tight">
           {source.replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
         </span>
-        <span className="flex items-center gap-1">
+        <span className="flex items-center gap-1 font-mono text-[10px] text-slate-500">
           <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-          {fmtTimeAgo(published_at)}
+          {toUtcDate(published_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})} {toUtcDate(published_at).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'})}
         </span>
         
         <span className="flex items-center gap-1">

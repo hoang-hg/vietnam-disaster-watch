@@ -1,179 +1,133 @@
-# Hướng dẫn Vận hành Hệ thống Viet Disaster Watch
+# 🚀 Hướng Dẫn Deploy Viet Disaster Watch
 
-Tài liệu này là cẩm nang chi tiết nhất giúp bạn **Triển khai**, **Vận hành** và **Sửa lỗi** hệ thống.
+Tài liệu này hướng dẫn cách triển khai hệ thống Viet Disaster Watch lên môi trường Production (VPS/Server).
 
----
+## 🛠 Yêu Cầu (Prerequisites)
 
-## MỤC LỤC
-1. [Chạy bằng Docker (Khuyên dùng)](#1-chạy-bằng-docker-khuyên-dùng)
-   - [Môi trường Phát triển (Dev)](#a-môi-trường-phát-triển-dev)
-   - [Môi trường Thực tế (Production)](#b-môi-trường-thực-tế-production)
-2. [Chạy Thủ công (Local Development)](#2-chạy-thủ-công-local-development)
-3. [Các lệnh quản trị thường dùng](#3-các-lệnh-quản-trị-thường-dùng)
-4. [Khắc phục sự cố (Troubleshooting)](#4-khắc-phục-sự-cố-troubleshooting)
-
----
-
-## 1. Chạy bằng Docker (Khuyên dùng)
-
-Đây là cách chuẩn nhất, đảm bảo môi trường trên máy bạn "y hệt" server thật, tránh lỗi "trên máy tôi vẫn chạy được".
-
-### A. Môi trường Phát triển (Dev)
-Dùng khi bạn phát triển, test tính năng mới.
-
-1.  **Cấu hình:** Đảm bảo file `.env` (ở thư mục gốc) đã có nội dung cơ bản.
-2.  **Khởi động:**
+1.  **VPS (Máy chủ ảo)**:
+    *   Hệ điều hành: Ubuntu 22.04 LTS (Khuyến nghị)
+    *   RAM: Tối thiểu 2GB (Khuyến nghị 4GB)
+    *   CPU: 2 vCPU
+    *   Ổ cứng: 20GB SSD
+2.  **Domain (Tên miền)**: Đã trỏ về IP của VPS.
+3.  **Docker & Docker Compose**:
     ```bash
-    docker-compose up --build
+    # Ubuntu
+    sudo apt update
+    sudo apt install -y docker.io docker-compose
+    sudo usermod -aG docker $USER
+    # Logout và Login lại để áp dụng group docker
     ```
-    Hệ thống sẽ chờ Database và Redis đạt trạng thái **healthy** trước khi khởi động Backend.
-3.  **Truy cập:**
-    *   Web Frontend: `http://localhost` (Cổng 80)
-    *   Full API Docs: `http://localhost:8000/docs`
 
-### B. Môi trường Thực tế (Production)
-Dùng khi triển khai trên VPS (Ubuntu/Debian) có domain và SSL.
+---
 
-1.  **Chuẩn bị file cấu hình:**
+## ⚙️ Cấu Hình Môi Trường
+
+1.  **Clone code về Server**:
+    ```bash
+    git clone https://github.com/hoang-hg/viet-disaster-watch.git
+    cd viet-disaster-watch
+    ```
+
+2.  **Tạo File Môi Trường (.env)**:
+    Copy file mẫu và chỉnh sửa:
     ```bash
     cp .env.production.example .env
-    # Sửa file .env: Cập nhật DB_PASSWORD, SECRET_KEY, DEFAULT_ADMIN_PASSWORD, DOMAIN, EMAIL.
+    nano .env
     ```
-2.  **Khởi động:**
-    ```bash
-    docker-compose -f docker-compose.prod.yml up -d --build
-    ```
-    Hệ thống sẽ tự động cấu hình Nginx, Certbot (cho SSL) và thiết lập các Health Check để đảm bảo độ tin cậy.
-3.  **Cấu hình Tên miền (Domain):**
-    *   Mở file `nginx/nginx.conf`.
-    *   Tìm dòng `server_name` và sửa `example.com` thành tên miền của bạn.
-    *   Khởi động lại: `docker-compose -f docker-compose.prod.yml restart nginx`
+    *Những biến quan trọng cần sửa:*
+    *   `DB_PASSWORD`: Đặt mật khẩu DB khó đoán.
+    *   `SECRET_KEY`: Chuỗi ngẫu nhiên dài để mã hóa token.
+    *   `DEFAULT_ADMIN_PASSWORD`: Mật khẩu admin mặc định.
+    *   `VITE_API_BASE`: Để trống `VITE_API_BASE=` (Frontend sẽ tự gọi `/api` qua proxy cùng domain).
 
 ---
 
-## 2. Chạy Thủ công (Local Development)
+## 🔒 Cấu Hình SSL (Vấn đề "Con Gà và Quả Trứng")
 
-Chỉ dành cho lập trình viên muốn can thiệp sâu vào code mà không thích dùng Docker.
+Lần đầu tiên chạy, Nginx sẽ lỗi vì chưa có chứng chỉ SSL. Bạn cần làm theo đúng trình tự sau **một lần duy nhất**:
 
-### Yêu cầu:
-*   [Python 3.10+](https://www.python.org/)
-*   [Node.js 18+](https://nodejs.org/)
-*   [PostgreSQL](https://www.postgresql.org/) (Nếu không muốn cài, hãy sửa cấu hình dùng SQLite).
-*   [Redis](https://redis.io/) (Tùy chọn, để tăng tốc).
+**Bước 1: Tắt SSL trong Nginx tạm thời**
+*   Mở file `nginx/nginx.conf`.
+*   Tìm block `server { listen 443 ssl; ... }` và comment lại toàn bộ (bao gồm cả dòng `listen 443 ssl`).
+*   Đảm bảo chỉ còn block `server { listen 80; ... }` hoạt động.
 
-### Bước 1: Chạy Backend (API & Crawler)
+**Bước 2: Khởi động hệ thống (Chế độ HTTP)**
 ```bash
-cd backend
-python -m venv .venv                  # Tạo môi trường ảo
-.\.venv\Scripts\activate              # Kích hoạt (Windows)
-pip install -r requirements.txt       # Cài thư viện
-
-# Cấu hình Database & Redis:
-# Sửa file backend/.env hoặc set biến môi trường trực tiếp.
-
-python -m uvicorn app.main:app --reload --port 8000
+docker-compose -f docker-compose.prod.yml up -d
 ```
-*Lần đầu chạy, hệ thống sẽ tự tạo file `backend/data/app.db` (nếu dùng SQLite) và thực hiện cào tin ngay lập tức.*
+*Lúc này web đã chạy được nhưng chỉ ở http://domain-cua-ban.com*
 
-### Bước 2: Chạy Frontend (Giao diện)
+**Bước 3: Xin chứng chỉ SSL từ Let's Encrypt**
+Thay `your-domain.com` bằng tên miền thật của bạn:
 ```bash
-cd frontend
-npm install       # Cài thư viện Node
-npm run dev       # Chạy chế độ Dev
+docker-compose -f docker-compose.prod.yml run --rm certbot certonly --webroot --webroot-path /var/www/certbot -d your-domain.com
 ```
-Truy cập: `http://localhost:5173`
+*Nếu thành công, nó sẽ báo "Congratulations!".*
+
+**Bước 4: Bật lại SSL**
+*   Mở lại file `nginx/nginx.conf`.
+*   Bỏ comment (uncomment) block 443 đã làm ở Bước 1.
+*   Sửa `server_name` thành domain thật của bạn (cả ở block 80 và 443).
+*   Sửa đường dẫn chứng chỉ trong `ssl_certificate` và `ssl_certificate_key` cho đúng domain (Certbot thường lưu ở `/etc/letsencrypt/live/your-domain.com/...`).
+
+**Bước 5: Restart Nginx**
+```bash
+docker-compose -f docker-compose.prod.yml restart nginx
+```
+*Lúc này web đã chạy HTTPS an toàn.*
 
 ---
 
-## 3. Các lệnh quản trị thường dùng
+## 🧠 Giải Thích Về Redis (Có cần thiết không?)
 
-### Xem nhật ký hoạt động (Logs)
-Để biết crawler đang làm gì, có lỗi gì không:
-```bash
-# Nếu chạy Docker
-docker logs -f viet_disaster_backend
+Trong hệ thống Viet Disaster Watch, Redis đóng 3 vai trò:
 
-# Nếu chạy Local
-# ...nhìn trực tiếp vào cửa sổ Terminal đang chạy Backend
-```
+1.  **Caching (Bộ nhớ đệm - QUAN TRỌNG NHẤT):**
+    *   *Tác dụng:* Lưu kết quả các tin tức mới nhất, thống kê sự kiện (những API nặng).
+    *   *Lợi ích:* Giúp API trả về kết quả trong **10ms** thay vì 500ms (nhanh gấp 50 lần). Giảm tải cho Database.
 
-### Truy cập Database (PostgreSQL trong Docker)
-```bash
-docker exec -it viet_disaster_db psql -U postgres -d viet_disaster_watch
-```
-*(Gõ lệnh SQL như `SELECT * FROM events;` để xem dữ liệu)*
+2.  **Distributed Lock (Khóa phân tán):**
+    *   *Tác dụng:* Khi chạy nhiều Crawler cùng lúc (Gunicorn workers), Redis đảm bảo **không có 2 worker nào quét cùng một nguồn tin cùng lúc**.
+    *   *Lợi ích:* Tránh việc Database bị spam dữ liệu trùng lặp và tiết kiệm băng thông.
 
-### Dọn dẹp hệ thống
-```bash
-# Xóa sạch container cũ
-docker-compose down
+3.  **Rate Limiting (Giới hạn truy cập - Optional):**
+    *   *Tác dụng:* Đếm số lần request từ 1 IP để chặn spam.
 
-# Xóa sạch cả dữ liệu Database (CẨN THẬN!)
-docker-compose down -v
-```
+### ❓ Câu hỏi: Có thể bỏ Redis không?
 
----
+**CÓ, NHƯNG KHÔNG NÊN.**
 
-## 4. Khắc phục sự cố (Troubleshooting)
+Code Backend đã được viết cơ chế **Fallback (Dự phòng)**:
+*   Nếu `REDIS_URL` không được cung cấp hoặc Redis chết, hệ thống sẽ tự động chuyển sang dùng **Ram nội bộ (In-Memory)** của từng process Python.
 
-**Q: Tại sao tôi không thấy tin mới nào?**
-A:
-1.  Kiểm tra log Backend xem quá trình Crawl có bị lỗi không.
-2.  Kiểm tra kết nối mạng (nếu server chặn kết nối quốc tế, cần thêm Proxy vào `.env`).
-3.  Hệ thống được lập trình cào 60 phút/lần (`CRAWL_INTERVAL_MINUTES=60`). Kiên nhẫn chờ hoặc khởi động lại Backend để ép cào ngay.
+**Nhược điểm nếu bỏ Redis:**
+*   ❌ **Cache bị phân mảnh:** Nếu bạn chạy 4 worker (multiprocess), mỗi worker có bộ nhớ riêng. User A truy cập vào worker 1 thấy tin mới, nhưng User B vào worker 2 lại thấy tin cũ. (Trải nghiệm tệ).
+*   ❌ **Mất Lock:** Có rủi ro Crawler chạy trùng lặp, gây tốn tài nguyên server.
+*   ❌ **Mất Cache khi Restart:** Mỗi lần deploy lại backend, cache trong RAM mất hết, Database sẽ bị "đánh úp" (thunder herd) ngay khi khởi động.
 
-**Q: Lỗi "Connection refused" tới Redis?**
-A:
-*   Nếu dùng Docker: Đã tự động xử lý.
-*   Nếu chạy Local: Bạn quên cài hoặc chưa bật `redis-server`. Hãy cài Redis hoặc xóa dòng `REDIS_URL` trong `.env` để dùng bộ nhớ RAM thường.
+**👉 Khuyến nghị:** Vì Redis rất nhẹ (chỉ tốn ~50-100MB RAM), bạn **NÊN GIỮ LẠI** để hệ thống chạy mượt mà và chuyên nghiệp nhất.
 
-**Q: Dashboard không hiện dữ liệu dù Backend có tin?**
-A: Kiểm tra file `frontend/.env` (hoặc biến `VITE_API_BASE`). Frontend cần biết địa chỉ Backend (thường là `http://localhost:8000`).
 
-**Q: Lỗi "Failed to fetch" hoặc "ERR_EMPTY_RESPONSE" khi chạy Docker?**
-A: Đây là lỗi phổ biến về network trong Docker. Nguyên nhân và cách khắc phục:
+### 🐞 Xử lý lỗi Redis khi chạy thử (Local Development)
 
-**Nguyên nhân:**
-- Frontend được build với `VITE_API_BASE=http://localhost:8000`
-- Khi chạy trong browser, `localhost:8000` trỏ đến máy người dùng, KHÔNG PHẢI backend container
-- Backend chạy trong Docker network riêng, không thể truy cập qua `localhost` từ browser
+Nếu bạn chạy Backend trực tiếp trên máy tính (`python -m uvicorn ...`) và gặp lỗi:
+> *Redis connection failed: Error 10061 ... actively refused it.*
 
-**Cách khắc phục:**
-1. **Kiểm tra `docker-compose.yml`:**
-   ```yaml
-   frontend:
-     build:
-       context: ./frontend
-       args:
-         - VITE_API_BASE=  # Để trống để sử dụng relative paths (tự động nhận domain hiện tại)
-   ```
-
-2. **Kiểm tra `frontend/nginx.conf` có proxy cấu hình:**
-   ```nginx
-   # Proxy API requests to backend
-   location /api {
-       proxy_pass http://backend:8000;
-       # ... các header khác
-   }
-   
-   # Proxy WebSocket connections
-   location /ws {
-       proxy_pass http://backend:8000;
-       # ... các header khác
-   }
-   ```
-
-3. **Rebuild frontend container:**
-   ```bash
-   docker-compose down
-   docker-compose build --no-cache frontend
-   docker-compose up -d
-   ```
-
-**Giải thích:**
-- Frontend gọi API với URL tương đối `/api/...`
-- Nginx trong frontend container nhận request và proxy sang `http://backend:8000`
-- `backend` là tên service trong Docker network, các container có thể gọi nhau qua tên service
+**Nguyên nhân:** Máy tính của bạn chưa cài Redis hoặc Redis chưa chạy.
+**Cách xử lý nhanh:**
+1.  Mở file `backend/.env`.
+2.  Tìm dòng `REDIS_URL`.
+3.  Thêm dấu `#` để tắt nó: `# REDIS_URL=redis://localhost:6379/0`.
+    *   Hệ thống sẽ tự động chuyển sang chế độ **In-Memory Cache** (không lỗi nữa).
 
 ---
-**Chúc bạn vận hành hệ thống thành công!** 🚀
+
+## 🔄 Cập Nhật Ứng Dụng (Update)
+
+Khi có code mới, chỉ cần:
+```bash
+git pull
+docker-compose -f docker-compose.prod.yml build backend frontend
+docker-compose -f docker-compose.prod.yml up -d
+```

@@ -9,8 +9,13 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 import pytz
+import sys
 
 logger = logging.getLogger(__name__)
+
+# [FIX] Windows Asyncio/Playwright compatibility
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Third-party Imports
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -135,6 +140,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# [FIX] Trust Nginx Proxy Headers for correct Rate Limiting IP detection
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 @app.middleware("http")
 async def cdn_optimization_middleware(request: Request, call_next):

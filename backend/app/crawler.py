@@ -108,37 +108,44 @@ def _to_dt(entry) -> datetime:
         except Exception:
             pass
 
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 def _extract_image_url(entry, soup=None, base_url=None) -> str | None:
     """Extract best image URL from Feed Entry or HTML Soup."""
     # 1. Check RSS media extensions (Media RSS)
+    raw_img = None
     if entry:
         if hasattr(entry, 'media_content') and entry.media_content:
-            return entry.media_content[0]['url']
-        if hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
-            return entry.media_thumbnail[0]['url']
-        if hasattr(entry, 'links'):
+            raw_img = entry.media_content[0]['url']
+        elif hasattr(entry, 'media_thumbnail') and entry.media_thumbnail:
+            raw_img = entry.media_thumbnail[0]['url']
+        elif hasattr(entry, 'links'):
             for link in entry.links:
                 if link.get('type', '').startswith('image/') or link.get('rel') == 'enclosure':
-                    return link['href']
+                    raw_img = link['href']
+                    break
         
-        # Check description for img tag
-        try:
-            desc = getattr(entry, "summary", "") or getattr(entry, "description", "")
-            if desc and "<img" in desc:
-                # specific regex for src
-                m = re.search(r'src=["\']([^"\']+)["\']', desc)
-                if m:
-                    return m.group(1)
-        except Exception:
-            pass
+        # Check description for img tag if still no image
+        if not raw_img:
+            try:
+                desc = getattr(entry, "summary", "") or getattr(entry, "description", "")
+                if desc and "<img" in desc:
+                    m = re.search(r'src=["\']([^"\']+)["\']', desc)
+                    if m: raw_img = m.group(1)
+            except Exception: pass
 
     # 2. Check HTML soup (standardized metadata extraction)
-    if soup:
+    if not raw_img and soup:
         meta = extract_metadata(soup)
         if meta["image"]:
-            return meta["image"]
+            raw_img = meta["image"]
+
+    # Filter junk from RSS/Meta results
+    if raw_img:
+        low_img = raw_img.lower()
+        is_junk = any(p in low_img for p in ["logo", "icon", "avatar", "social", "banner", "btn", "loading", "placeholder", "fallback", "default"])
+        if is_junk: raw_img = None
+        else: return raw_img # FOUND GOOD IMAGE
             
         # 3. Fallback: Find the first significant image in the body
         # Ignore common logos, icons, and small social buttons
@@ -700,7 +707,7 @@ async def _enrich_article_async(db: Session, src, article):
             
             if real_date:
                 # Sanity check: valid date and not in future
-                if real_date < datetime.now(timezone.utc) + timedelta(days=1):
+                if real_date < datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=1):
                     # Update if difference is significant (> 1 hour)
                     if abs((article.published_at - real_date).total_seconds()) > 3600:
                         # logger.info(f"   [DATE_FIX] {article.title[:30]}... updated date to {real_date}")
@@ -756,7 +763,7 @@ async def _finalize_crawl(db, new_count, start_time, per_source):
     try:
         logs_dir = Path(__file__).resolve().parents[1] / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
-        record = {"timestamp": datetime.now(timezone.utc).isoformat(), "new_articles": new_count, "elapsed": total_elapsed, "per_source": per_source}
+        record = {"timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(), "new_articles": new_count, "elapsed": total_elapsed, "per_source": per_source}
         with open(logs_dir / "crawl_log.jsonl", "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception: pass
@@ -796,7 +803,7 @@ def process_once(force: bool = False, only_sources: list[str] = None) -> dict:
 def cleanup_old_pending_articles():
     db = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
         deleted = db.query(Article).filter(Article.status == "pending", Article.published_at < cutoff).delete(synchronize_session=False)
         db.commit()
         if deleted > 0: logger.info(f"Cleaned up {deleted} old pending articles.")

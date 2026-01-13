@@ -107,18 +107,19 @@ export async function register(email, password, fullName) {
   return res.json();
 }
 
-export async function changePassword(currentPassword, newPassword) {
+export async function changePassword(currentPassword, newPassword, confirmPassword) {
   return postJson("/api/auth/change-password", { 
     current_password: currentPassword, 
-    new_password: newPassword 
+    new_password: newPassword,
+    confirm_password: confirmPassword
   });
 }
 
-export async function resetPassword(email, newPassword, secret) {
+export async function resetPassword(email, newPassword, confirmPassword) {
   return postJson("/api/auth/reset-password", { 
     email: email, 
     new_password: newPassword,
-    admin_secret: secret
+    confirm_password: confirmPassword
   });
 }
 
@@ -157,8 +158,19 @@ export const isJunkImage = (url) => {
   return junkPatterns.some(p => url.toLowerCase().includes(p));
 };
 
+export function toUtcDate(s) {
+  if (!s) return new Date();
+  // Fix: Backend sends Naive UTC (e.g. "2023-10-27T10:00:00"). 
+  // Browsers parse this as Local Time implies 7h shift error. 
+  // We explicitly treat it as UTC by appending 'Z'.
+  if (typeof s === 'string' && !s.endsWith('Z') && !s.includes('+') && /^\d{4}-\d{2}-\d{2}/.test(s)) {
+    return new Date(s + 'Z');
+  }
+  return new Date(s);
+}
+
 export function fmtDate(s) {
-  const d = new Date(s);
+  const d = toUtcDate(s);
   return d.toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -185,7 +197,7 @@ export function normalizeStr(str, removeSpaces = false) {
 }
 
 export function fmtTimeAgo(s) {
-  const d = new Date(s);
+  const d = toUtcDate(s);
   const now = new Date();
   const seconds = Math.max(0, Math.floor((now - d) / 1000));
 

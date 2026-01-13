@@ -187,7 +187,8 @@ export default function Events() {
           params.append("start_date", startDate);
           params.append("end_date", endDate);
       } else if (startDate) {
-          params.append("date", startDate);
+          // [FIX] Use start_date consistently to match URL and avoiding logic confusion
+          params.append("start_date", startDate);
       }
       
       const response = await getJson(`/api/events?${params.toString()}`, { signal });
@@ -200,11 +201,9 @@ export default function Events() {
               setTotalEvents(response.total);
           }
       } else if (Array.isArray(response)) {
-           // Fallback if backend doesn't support wrapper yet (shouldn't happen)
            fetchedEvents = response;
       }
       
-      // We don't append, we replace for standard pagination
       setEvents(fetchedEvents);
       setCurrentPage(pageToFetch);
       
@@ -220,7 +219,6 @@ export default function Events() {
   // Handler for page change
   const handlePageChange = (newPage) => {
       setCurrentPage(newPage);
-      // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -229,19 +227,21 @@ export default function Events() {
     const controller = new AbortController();
     fetchEvents(false, currentPage, controller.signal);
     
-    // Sync to URL
+    // [FIX] More robust URL synchronization
     const newParams = {};
-    if (q) newParams.q = q; // We still sync the active typing 'q' to URL so it doesn't "jump" on refresh, but the fetch uses debouncedQ
+    if (debouncedQ) newParams.q = debouncedQ; 
     if (type) newParams.type = type;
     if (province) newParams.province = province;
     if (startDate) newParams.start_date = startDate;
     if (endDate) newParams.end_date = endDate;
     if (currentPage > 1) newParams.page = currentPage;
     
-    // Only update if something changed to avoid unnecessary re-renders
     const currentParams = Object.fromEntries(searchParams.entries());
-    const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
-                      Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+    
+    // Helper to compare current vs new
+    const keys1 = Object.keys(newParams);
+    const keys2 = Object.keys(currentParams);
+    const isDifferent = keys1.length !== keys2.length || keys1.some(k => String(newParams[k]) !== String(currentParams[k]));
     
     if (isDifferent) {
         setSearchParams(newParams, { replace: true });
@@ -328,7 +328,7 @@ export default function Events() {
     return Object.entries(groups);
   }, [events]); // removed currentPage dependency
 
-  const hasFilters = q || type || province || startDate || endDate;
+  const hasFilters = !!(q || type || province || startDate || endDate);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
@@ -428,6 +428,8 @@ export default function Events() {
             {/* Search */}
             <div className="lg:col-span-1">
                 <input
+                    name="q"
+                    id="events-q"
                     value={q}
                     onChange={(e) => { setQ(e.target.value); setCurrentPage(1); }}
                     placeholder="Tìm kiếm từ khóa..."
@@ -437,12 +439,16 @@ export default function Events() {
             {/* Type */}
             <div>
                 <select 
+                    name="type"
+                    id="events-type"
                     value={type}
                     onChange={(e) => { setType(e.target.value); setCurrentPage(1); }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
                 >
                     <option value="">Tất cả loại hình</option>
-                    {Object.entries(DISASTER_METADATA).map(([key, meta]) => (
+                    {Object.entries(DISASTER_METADATA)
+                        .filter(([key]) => key !== 'unknown')
+                        .map(([key, meta]) => (
                         <option key={key} value={key}>{meta.label}</option>
                     ))}
                 </select>
@@ -450,6 +456,8 @@ export default function Events() {
             {/* Province */}
             <div>
                 <select 
+                    name="province"
+                    id="events-province"
                     value={province}
                     onChange={(e) => { setProvince(e.target.value); setCurrentPage(1); }}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
@@ -514,7 +522,7 @@ export default function Events() {
                     <tbody className="divide-y divide-slate-200">
                         {events.map((e) => (
                             <tr key={e.id} className="hover:bg-blue-50/30 transition-colors">
-                                <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(e.started_at).toLocaleDateString('vi-VN')}</td>
+                                <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(e.started_at).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
                                 <td className="px-4 py-3 text-xs font-bold text-blue-700">
                                     <Link to={`/events/${e.id}`} className="hover:underline">
                                         {fmtType(e.disaster_type)}

@@ -236,8 +236,8 @@ export default function MainLayout({ children }) {
         <meta property="og:description" content="Cập nhật tin tức thiên tai 24/7 từ 63 tỉnh thành Việt Nam." />
         <meta property="og:type" content="website" />
       </Helmet>
-      {/* Top Header (White / Dark) */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex-none z-30 relative">
+      {/* Top Header (Glassmorphic) */}
+      <header className="sticky top-0 z-[60] glass dark:glass-dark border-b border-slate-200/50 dark:border-slate-800/50 flex-none transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
             {/* Logo / Brand */}
             <div className="flex-shrink-0 flex items-center">
@@ -300,12 +300,14 @@ export default function MainLayout({ children }) {
                 <button 
                     onClick={() => setIsDark(!isDark)}
                     className="p-2 text-slate-500 dark:text-slate-400"
+                    aria-label={isDark ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
                 >
                     {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
                 <button 
                     className="p-2 text-slate-700 dark:text-slate-200"
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    aria-label={isMobileMenuOpen ? "Đóng menu" : "Mở menu"}
                 >
                     {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
@@ -313,8 +315,8 @@ export default function MainLayout({ children }) {
         </div>
       </header>
 
-      {/* Navigation Bar (Teal - Bao Moi Style) */}
-      <nav className="bg-[#2fa1b3] shadow-md sticky top-0 z-50 flex-none">
+      {/* Navigation Bar (Glassmorphic) */}
+      <nav className="sticky top-[64px] z-50 flex-none glass-brand transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center h-12 justify-between">
                 {/* Desktop/Tablet Nav */}
@@ -579,6 +581,7 @@ export default function MainLayout({ children }) {
             <button 
               onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
               className="absolute top-2 right-2 p-1 text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-400"
+              aria-label="Đóng thông báo"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -591,6 +594,7 @@ export default function MainLayout({ children }) {
         <button 
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           className="fixed bottom-6 left-6 z-40 p-3 bg-white dark:bg-slate-800 text-[#2fa1b3] rounded-full shadow-2xl border border-slate-200 dark:border-slate-700 hover:scale-110 active:scale-90 transition-all animate-bounce"
+          aria-label="Cuộn lên đầu trang"
         >
           <ArrowRight className="w-6 h-6 -rotate-90" />
         </button>

@@ -26,7 +26,7 @@ export default function ChangePasswordPage() {
     setError("");
 
     try {
-      await changePassword(formData.currentPassword, formData.newPassword);
+      await changePassword(formData.currentPassword, formData.newPassword, formData.confirmNewPassword);
       setIsSuccess(true);
       setTimeout(() => {
         navigate("/");

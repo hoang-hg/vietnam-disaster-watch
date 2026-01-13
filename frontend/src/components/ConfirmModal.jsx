@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, AlertTriangle, Trash2 } from 'lucide-react';
+import { X, AlertTriangle, Trash2, CheckCircle } from 'lucide-react';
 
 export default function ConfirmModal({ 
   isOpen, 
@@ -9,20 +9,45 @@ export default function ConfirmModal({
   message = "Bạn có chắc chắn muốn thực hiện hành động này?",
   confirmLabel = "Xóa ngay",
   cancelLabel = "Hủy bỏ",
-  variant = "danger" // 'danger' or 'warning'
+  variant = "danger" // 'danger', 'warning', 'success'
 }) {
   if (!isOpen) return null;
 
+  const getIcon = () => {
+    switch(variant) {
+      case 'success': return <CheckCircle className="w-6 h-6" />;
+      case 'warning': return <AlertTriangle className="w-6 h-6" />;
+      default: return <Trash2 className="w-6 h-6" />;
+    }
+  };
+
+  const getIconBg = () => {
+    switch(variant) {
+      case 'success': return 'bg-emerald-50 text-emerald-600';
+      case 'warning': return 'bg-amber-50 text-amber-600';
+      default: return 'bg-red-50 text-red-600';
+    }
+  };
+
+  const getButtonClass = () => {
+    switch(variant) {
+      case 'success': return 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200';
+      case 'warning': return 'bg-amber-600 hover:bg-amber-700 shadow-amber-200';
+      case 'info': return 'bg-blue-600 hover:bg-blue-700 shadow-blue-200';
+      default: return 'bg-red-600 hover:bg-red-700 shadow-red-200';
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 no-print animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[200] p-4 no-print animate-in fade-in duration-200">
       <div 
         className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
-            <div className={`p-3 rounded-2xl ${variant === 'danger' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-              {variant === 'danger' ? <Trash2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+            <div className={`p-3 rounded-2xl ${getIconBg()}`}>
+              {getIcon()}
             </div>
             <button 
               onClick={onClose}
@@ -52,11 +77,7 @@ export default function ConfirmModal({
               onConfirm();
               onClose();
             }}
-            className={`flex-1 px-4 py-3 rounded-xl text-white text-sm font-bold shadow-lg transition-all active:scale-95 ${
-                variant === 'danger' 
-                ? 'bg-red-600 hover:bg-red-700 shadow-red-200' 
-                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
-            }`}
+            className={`flex-1 px-4 py-3 rounded-xl text-white text-sm font-bold shadow-lg transition-all active:scale-95 ${getButtonClass()}`}
           >
             {confirmLabel}
           </button>

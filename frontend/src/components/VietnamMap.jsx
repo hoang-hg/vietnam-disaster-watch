@@ -65,21 +65,21 @@ const VietnamMap = ({ points }) => {
         return (
           <Marker key={p.id} position={[p.lat, p.lon ?? p.lng]} icon={icon}>
             <Popup>
-              <div className="min-w-[200px] font-sans">
+              <div className="min-w-[220px] font-sans p-3">
                 <Link 
                   to={`/events/${p.id}`} 
-                  className="font-bold text-slate-800 text-sm mb-1 leading-tight block hover:text-teal-600 transition-colors"
+                  className="font-bold text-slate-800 dark:text-white text-sm mb-2 leading-tight block hover:text-[#2fa1b3] transition-colors"
                 >
                   {p.title}
                 </Link>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
                     <span 
-                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide text-white"
+                        className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider text-white shadow-sm"
                         style={{ backgroundColor: THEME_COLORS[p.disaster_type || p.type] || THEME_COLORS.unknown }}
                     >
                         {fmtType(p.disaster_type || p.type)}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
                         {new Date(p.started_at || p.published_at).toLocaleDateString("vi-VN")}
                     </span>
                 </div>

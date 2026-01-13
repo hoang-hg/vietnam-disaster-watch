@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Github, Loader2, AlertCircle, X } from "lucide-react";
 import { login as apiLogin, resetPassword } from "../api";
 
@@ -7,7 +7,6 @@ function ResetPasswordForm({ onSuccess }) {
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [secret, setSecret] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", content: "" });
 
@@ -21,7 +20,7 @@ function ResetPasswordForm({ onSuccess }) {
     setLoading(true);
     setMsg({ type: "", content: "" });
     try {
-      await resetPassword(email, newPassword, secret);
+      await resetPassword(email, newPassword, confirmPassword);
       setMsg({ type: "success", content: "Đặt lại mật khẩu thành công!" });
       setTimeout(() => {
         onSuccess?.();
@@ -51,24 +50,6 @@ function ResetPasswordForm({ onSuccess }) {
           onChange={e => setEmail(e.target.value)}
           placeholder="admin@example.com"
         />
-      </div>
-
-      <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Mã bảo mật hệ thống</label>
-        <div className="relative">
-             <input 
-              type="password" 
-              required 
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]"
-              value={secret}
-              onChange={e => setSecret(e.target.value)}
-              placeholder="Nhập mã bí mật..."
-            />
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
-            </div>
-        </div>
-        <p className="text-[10px] text-slate-500 mt-1 italic">* Liên hệ quản trị viên cấp cao để lấy mã này.</p>
       </div>
 
       <div>
@@ -111,6 +92,7 @@ import { useAuth } from "../contexts/AuthContext";
 export default function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,6 +101,8 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+
+  const from = location.state?.from || (user?.role === "admin" ? "/admin/logs" : "/");
 
   // Redirect if already logged in
   React.useEffect(() => {
@@ -143,7 +127,9 @@ export default function LoginPage() {
         login(data.user, data.access_token);
         
         // Navigation will be handled by useEffect, or we can force it here
-        navigate(data.user.role === "admin" ? "/admin/logs" : "/");
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+        navigate(from, { replace: true });
     } catch (err) {
         setError(err.message);
     } finally {

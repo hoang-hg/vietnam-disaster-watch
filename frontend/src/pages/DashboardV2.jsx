@@ -8,7 +8,8 @@ import {
   fmtTimeAgo, 
   cleanText,
   normalizeStr,
-  getDisasterMeta
+  getDisasterMeta,
+  toUtcDate
 } from "../api.js";
 import { THEME_COLORS, DISASTER_METADATA } from "../theme.js";
 import StatCard from "../components/StatCard.jsx";
@@ -46,8 +47,13 @@ import { Helmet } from "react-helmet-async";
 
 import { useAuth } from "../contexts/AuthContext";
 import Pagination from "../components/Pagination.jsx";
+import Skeleton, { StatCardSkeleton, NewsItemSkeleton } from "../components/Skeleton.jsx";
 
 // ... existing imports
+const getLocalISODate = () => {
+    const d = new Date();
+    return new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -57,7 +63,7 @@ export default function Dashboard() {
   
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [startDate, setStartDate] = useState(searchParams.get("start_date") || new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(searchParams.get("start_date") || getLocalISODate());
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || "");
   
   const [hazardType, setHazardType] = useState(searchParams.get("type") || "all");
@@ -118,17 +124,21 @@ export default function Dashboard() {
     setPage(0);
   }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter]); // Use debounced values here
 
-  async function load(signal = null) {
+  async function load(signal = null, overrides = {}) {
     try {
       setLoading(true);
       setError(null);
+      
+      // Resolve parameters: Use override if present, else use current debounced state
+      const pProv = overrides.province !== undefined ? overrides.province : debouncedProvQuery;
+      const pQ = overrides.q !== undefined ? overrides.q : debouncedSearchQuery;
       
       // 1. Construct Main Query (Locked to all filters)
       let queryParams = `?start_date=${startDate}`;
       if (endDate) queryParams += `&end_date=${endDate}`;
       if (hazardType !== "all") queryParams += `&type=${hazardType}`;
-      if (debouncedProvQuery) queryParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; 
-      if (debouncedSearchQuery) queryParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; 
+      if (pProv) queryParams += `&province=${encodeURIComponent(pProv)}`; 
+      if (pQ) queryParams += `&q=${encodeURIComponent(pQ)}`; 
       if (quickFilter) queryParams += `&quick=${quickFilter}`;
 
       // 2. Construct Context Query (For Hotspots Sidebar - Excludes Province Filter)
@@ -136,17 +146,17 @@ export default function Dashboard() {
       let contextParams = `?start_date=${startDate}`;
       if (endDate) contextParams += `&end_date=${endDate}`;
       if (hazardType !== "all") contextParams += `&type=${hazardType}`;
-      if (debouncedSearchQuery) contextParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`;
+      if (pQ) contextParams += `&q=${encodeURIComponent(pQ)}`;
       if (quickFilter) contextParams += `&quick=${quickFilter}`;
       // Note: We purposely OMIT &province here
 
       // Sidebar articles
       let artParams = `?limit=20`;
       if (hazardType !== "all") artParams += `&type=${hazardType}`;
-      if (debouncedProvQuery) artParams += `&province=${encodeURIComponent(debouncedProvQuery)}`; 
-      if (debouncedSearchQuery) artParams += `&q=${encodeURIComponent(debouncedSearchQuery)}`; 
+      if (pProv) artParams += `&province=${encodeURIComponent(pProv)}`; 
+      if (pQ) artParams += `&q=${encodeURIComponent(pQ)}`; 
 
-      const needsContextFetch = !!debouncedProvQuery; // Only fetch extra stats if we are actually filtering by province
+      const needsContextFetch = !!pProv; // Only fetch extra stats if we are actually filtering by province
 
       const promises = [
         getJson(`/api/stats/summary${queryParams}`, { signal }), // Main Stats (Cards)
@@ -187,34 +197,36 @@ export default function Dashboard() {
       setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
 
       // Sync to URL
+      // Sync to URL
       const newParams = {};
-      if (startDate) newParams.start_date = startDate;
+      newParams.start_date = startDate; // Always keep start_date in URL for consistency
       if (endDate) newParams.end_date = endDate;
       if (hazardType !== "all") newParams.type = hazardType;
-      if (debouncedProvQuery) newParams.province = debouncedProvQuery; 
-      if (debouncedSearchQuery) newParams.q = debouncedSearchQuery; 
+      if (debouncedProvQuery) newParams.province = debouncedProvQuery;
+      if (debouncedSearchQuery) newParams.q = debouncedSearchQuery;
       if (quickFilter) newParams.quick = quickFilter;
       if (page > 0) newParams.page = page;
 
       const currentParams = Object.fromEntries(searchParams.entries());
-      const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
-                        Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+      const keys1 = Object.keys(newParams);
+      const keys2 = Object.keys(currentParams);
+      const isDifferent = keys1.length !== keys2.length || keys1.some(k => String(newParams[k]) !== String(currentParams[k]));
       
       if (isDifferent) {
           setSearchParams(newParams, { replace: true });
       }
-
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-      setError(e.message || "Load failed");
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error("Dashboard load error", err);
+      setError(err.message);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }
 
   // Handle URL changes (Back button) - Prevent infinite loop
   useEffect(() => {
-    const urlStart = searchParams.get("start_date") || new Date().toISOString().split('T')[0];
+    const urlStart = searchParams.get("start_date") || getLocalISODate();
     const urlEnd = searchParams.get("end_date") || "";
     const urlType = searchParams.get("type") || "all";
     const urlProv = searchParams.get("province") || "";
@@ -232,17 +244,26 @@ export default function Dashboard() {
   }, [searchParams]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let controller = new AbortController();
+    
+    // Initial and dependency-driven load
     load(controller.signal);
     
-    // [REAL-TIME] Listen for global refresh signals from WebSocket (via MainLayout)
+    // [REAL-TIME] Listen for global refresh signals
     const handleRefresh = () => {
-        console.log("[DashboardV2] Real-time signal received, reloading...");
-        load(); // Trigger refresh without aborting previous (unless we want to be strict)
+        console.log("[DashboardV2] Real-time signal received, refreshing...");
+        // Abort previous if it's still running and start new
+        controller.abort();
+        controller = new AbortController();
+        load(controller.signal);
     };
     window.addEventListener("news:update", handleRefresh);
 
-    const t = setInterval(() => load(controller.signal), 300_000); 
+    const t = setInterval(() => {
+        controller.abort();
+        controller = new AbortController();
+        load(controller.signal);
+    }, 300_000); 
     
     return () => {
       controller.abort();
@@ -251,10 +272,10 @@ export default function Dashboard() {
     };
   }, [startDate, endDate, hazardType, debouncedProvQuery, debouncedSearchQuery, quickFilter, page]);
 
-  const isToday = startDate === new Date().toISOString().split('T')[0] && !endDate;
+  const isToday = startDate === getLocalISODate() && !endDate;
 
   const handleReset = () => {
-    setStartDate(new Date().toISOString().split('T')[0]);
+    setStartDate(getLocalISODate());
     setEndDate("");
     setProvQuery("");
     setSearchQuery("");
@@ -266,6 +287,7 @@ export default function Dashboard() {
   const chartData = useMemo(() => {
     if (stats && stats.by_type) {
        return Object.entries(stats.by_type)
+            .filter(([k]) => k !== 'unknown')
             .map(([k, v]) => ({ 
                 name: fmtType(k), 
                 count: v,
@@ -309,19 +331,19 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight animate-in fade-in slide-in-from-left duration-700">Tổng quan</h1>
-          <p className="text-slate-500 text-xs mt-1 flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            Dữ liệu cập nhật: {lastUpdated} 
-            <span className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-100 dark:border-emerald-500/20 uppercase tracking-tighter">
-              TRỰC TUYẾN
-            </span>
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-full">
+              <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">Trực tiếp</span>
+          </div>
+
+          <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-xs font-medium">
+            <Calendar className="w-3.5 h-3.5" /> 
+            Cập nhật: <span className="text-slate-700 dark:text-slate-300">{lastUpdated}</span>
           </p>
         </div>
         
@@ -329,38 +351,56 @@ export default function Dashboard() {
            <div className="relative">
               <input
                  type="text"
+                 name="province_search"
+                 id="dashboard-province-search"
                  placeholder="Tìm theo tỉnh..."
-                 value={provQuery}
-                 onChange={(e) => setProvQuery(e.target.value)}
-                  className="w-48 py-1.5 pl-8 pr-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white"
-              />
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-           </div>
+                  value={provQuery}
+                  onChange={(e) => setProvQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        load(null, { province: e.currentTarget.value });
+                    }
+                  }}
+                  className="w-40 py-1.5 pl-8 pr-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white transition-all focus:bg-white"
+               />
+               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            </div>
 
-           <div className="relative">
-              <input
-                 type="text"
-                 placeholder="Tìm tên sự kiện..."
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 className="w-48 py-1.5 pl-8 pr-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white"
-              />
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-           </div>
+            <div className="relative">
+               <input
+                  type="text"
+                  name="event_search"
+                  id="dashboard-event-search"
+                  placeholder="Tìm tên sự kiện..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        load(null, { q: e.currentTarget.value });
+                    }
+                  }}
+                  className="w-40 py-1.5 pl-8 pr-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white transition-all focus:bg-white"
+               />
+               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            </div>
 
-           <div className="relative">
-               <select
-                   value={hazardType}
-                   onChange={(e) => setHazardType(e.target.value)}
-                   className="appearance-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 cursor-pointer"
-               >
-                   <option value="all">Tất cả thông tin</option>
-                   {Object.entries(DISASTER_METADATA).map(([key, meta]) => (
-                       <option key={key} value={key}>{meta.label}</option>
-                   ))}
-               </select>
-              <Filter className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+            <div className="relative">
+                <select
+                    name="hazard_type"
+                    id="dashboard-hazard-type"
+                    value={hazardType}
+                    onChange={(e) => setHazardType(e.target.value)}
+                    className="appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-700"
+                >
+                    <option value="all">Tất cả thông tin</option>
+                    {Object.entries(DISASTER_METADATA)
+                        .filter(([key]) => key !== 'unknown')
+                        .map(([key, meta]) => (
+                        <option key={key} value={key}>{meta.label}</option>
+                    ))}
+                </select>
+               <Filter className="w-3 h-3 text-slate-400 dark:text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+           </div>
 
             <DateFilter 
               dateTime={startDate}
@@ -368,65 +408,92 @@ export default function Dashboard() {
                   setStartDate(val);
                   setEndDate("");
               }}
-              className="min-w-[140px]"
+              className="min-w-[120px]"
             />
 
-            <button 
-              onClick={() => load()}
-              title="Làm mới dữ liệu"
-              className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-[#2fa1b3] transition-all shadow-sm group"
-            >
-              <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-700 ${loading ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
 
-            <button 
-              onClick={handleReset}
-              title="Đặt lại tất cả bộ lọc"
-              className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 transition-all shadow-sm group"
-            >
-              <History className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500`} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button 
+                onClick={() => load()}
+                title="Cập nhật dữ liệu mới nhất (Refresh)"
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-[#2fa1b3] transition-all group flex items-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-700 ${loading ? 'animate-spin' : ''}`} />
+                <span className="text-[10px] font-bold uppercase text-slate-500">Cập nhật</span>
+              </button>
+
+              <button 
+                onClick={handleReset}
+                title="Xóa bộ lọc / Xem mặc định (Reset)"
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-all group flex items-center gap-2"
+              >
+                <History className={`w-4 h-4 group-hover:rotate-180 transition-transform duration-500`} />
+                <span className="text-[10px] font-bold uppercase text-slate-500">Mặc định</span>
+              </button>
+            </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title={isToday ? "Sự kiện mới (24h)" : `Sự kiện ngày ${startDate}`}
-          value={stats?.events_count || 0}
-          sub={stats?.needs_verification_count ? `${stats.needs_verification_count} tin cần xác minh` : "Dữ liệu thời gian thực"}
-          icon={Activity}
-          trend={stats?.events_count > 0 ? "up" : "neutral"}
-          color="brand"
-          active={quickFilter === null}
-          onClick={() => setQuickFilter(null)}
-        />
-        <StatCard
-          title="Tỉnh thành ảnh hưởng"
-          value={stats?.provinces_count || 0}
-          sub="Ghi nhận trong kỳ"
-          icon={MapPin}
-          color="brand"
-          active={quickFilter === "provinces"}
-          onClick={() => setQuickFilter(quickFilter === "provinces" ? null : "provinces")}
-        />
-        <StatCard
-          title="Sự kiện có thiệt hại người"
-          value={stats?.events_with_human_damage || 0}
-          sub="Số vụ ghi nhận thương vong"
-          icon={AlertTriangle}
-          color="red"
-          active={quickFilter === "casualties"}
-          onClick={() => setQuickFilter(quickFilter === "casualties" ? null : "casualties")}
-        />
-        <StatCard
-          title="Sự kiện có thiệt hại tài sản"
-          value={stats?.events_with_property_damage || 0}
-          sub="Số vụ ghi nhận mất mát tài sản"
-          icon={TrendingUp}
-          color="emerald"
-          active={quickFilter === "damage"}
-          onClick={() => setQuickFilter(quickFilter === "damage" ? null : "damage")}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {loading && !stats ? (
+            <>
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+            </>
+        ) : (
+            <>
+                <StatCard
+                title={isToday ? "Sự kiện mới (24h)" : `Sự kiện ngày ${startDate}`}
+                value={stats?.events_count || 0}
+                sub={stats?.needs_verification_count ? `${stats.needs_verification_count} tin cần xác minh` : "Dữ liệu thời gian thực"}
+                icon={Activity}
+                trend={stats?.events_count > 0 ? "up" : "neutral"}
+                color="brand"
+                active={quickFilter === null}
+                onClick={() => setQuickFilter(null)}
+                />
+                <StatCard
+                title="Tỉnh ảnh hưởng"
+                value={stats?.provinces_count || 0}
+                sub="Ghi nhận trong kỳ"
+                icon={MapPin}
+                color="brand"
+                active={quickFilter === "provinces"}
+                onClick={() => setQuickFilter(quickFilter === "provinces" ? null : "provinces")}
+                />
+                <StatCard
+                title="Báo cáo cộng đồng"
+                value={stats?.community_reports_count || 0}
+                sub="Thông tin từ hiện trường"
+                icon={Bell}
+                color="violet"
+                active={quickFilter === "community"}
+                onClick={() => setQuickFilter(quickFilter === "community" ? null : "community")}
+                />
+                <StatCard
+                title="Thiệt hại người"
+                value={stats?.events_with_human_damage || 0}
+                sub="Vụ việc có thương vong"
+                icon={AlertTriangle}
+                color="red"
+                active={quickFilter === "casualties"}
+                onClick={() => setQuickFilter(quickFilter === "casualties" ? null : "casualties")}
+                />
+                <StatCard
+                title="Thiệt hại tài sản"
+                value={stats?.events_with_property_damage || 0}
+                sub="Vụ việc có mất mát tài sản"
+                icon={TrendingUp}
+                color="emerald"
+                active={quickFilter === "damage"}
+                onClick={() => setQuickFilter(quickFilter === "damage" ? null : "damage")}
+                />
+            </>
+        )}
       </div>
 
 
@@ -463,34 +530,37 @@ export default function Dashboard() {
               </div>
             )}
 
-            <div className={`divide-y divide-slate-100 dark:divide-slate-800 flex-1 min-h-[400px] relative transition-all duration-500 ${loading ? 'opacity-50 grayscale-[0.5]' : 'opacity-100'}`}>
-              {loading && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/20 dark:bg-slate-900/20 backdrop-blur-[2px]">
-                   <RefreshCw className="w-8 h-8 text-[#2fa1b3] animate-spin" />
-                </div>
-              )}
-              
-            {/* Removed client-side slicing .slice(page * 10, (page + 1) * 10) - server returns correct page now */}
-              {events.map((event) => (
-                <div key={event.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group relative border-l-4 border-transparent hover:border-blue-500/30">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <Badge tone={getDisasterMeta(event.disaster_type).tone} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
-                        {fmtType(event.disaster_type)}
-                      </Badge>
+            <div className={`divide-y divide-slate-100 dark:divide-slate-800 flex-1 min-h-[400px] relative transition-all duration-500`}>
+              {loading && events.length === 0 ? (
+                <>
+                    <NewsItemSkeleton />
+                    <NewsItemSkeleton />
+                    <NewsItemSkeleton />
+                    <NewsItemSkeleton />
+                    <NewsItemSkeleton />
+                </>
+              ) : (
+                events.map((event) => (
+                    <div key={event.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group relative border-l-4 border-transparent hover:border-blue-500/30">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <Badge tone={getDisasterMeta(event.disaster_type).tone} className="px-1.5 py-0.5 text-[9px] uppercase font-black">
+                            {fmtType(event.disaster_type)}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Link to={`/events/${event.id}`}>
+                        <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 mb-2 text-sm leading-tight group-hover:translate-x-1 transition-transform">
+                          {cleanText(event.title)}
+                        </h4>
+                      </Link>
+                      <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {event.province || "Đang xác minh"}</span>
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-400" /> {event.started_at ? toUtcDate(event.started_at).toLocaleDateString('vi-VN') : "—"}</span>
+                      </div>
                     </div>
-                  </div>
-                  <Link to={`/events/${event.id}`}>
-                    <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 mb-2 text-sm leading-tight group-hover:translate-x-1 transition-transform">
-                      {cleanText(event.title)}
-                    </h4>
-                  </Link>
-                  <div className="flex items-center gap-4 text-[11px] text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1"><MapPin className="w-3 h-3 text-slate-400" /> {event.province || "Đang xác minh"}</span>
-                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-slate-400" /> {event.started_at ? new Date(event.started_at).toLocaleDateString('vi-VN') : "—"}</span>
-                  </div>
-                </div>
-              ))}
+                  ))
+              )}
               
               {!loading && events.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400 text-sm">

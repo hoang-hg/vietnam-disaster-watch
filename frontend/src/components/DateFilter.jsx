@@ -37,6 +37,8 @@ export default function DateFilter({
         <input 
             ref={dateInputRef}
             type="date"
+            name="date_filter"
+            id={`date-filter-${placeholder.replace(/\s+/g, '-').toLowerCase()}`}
             value={dateTime || ""} 
             onChange={handleChange}
             className="absolute inset-0 opacity-0 -z-10 pointer-events-none"

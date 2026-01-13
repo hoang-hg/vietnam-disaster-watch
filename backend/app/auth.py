@@ -48,7 +48,7 @@ def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_sch
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Phiên làm việc đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.",
         headers={"WWW-Authenticate": "Bearer"},
     )
     
@@ -62,25 +62,29 @@ def get_current_admin(current_user: models.User = Depends(get_current_user)):
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="The user doesn't have enough privileges",
+            detail="Bạn không có quyền thực hiện hành động này.",
         )
     return current_user
 
 def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)) -> Optional[models.User]:
     if not token:
-        logger.debug("[AUTH] No token found in request")
         return None
     try:
         payload = jwt.decode(token, app_settings.settings.secret_key, algorithms=[app_settings.settings.algorithm])
         email: str = payload.get("sub")
+        ver: int = payload.get("ver")
         if email is None:
-            logger.warning("[AUTH] Token payload missing 'sub'")
             return None
-    except JWTError as e:
-        logger.debug(f"[AUTH] JWT Decode Error: {e}")
+    except JWTError:
         return None
     
     user = db.query(models.User).filter(models.User.email == email).first()
     if not user:
-        logger.warning(f"[AUTH] User not found for email: {email}")
+        return None
+        
+    # Security: Invalidate token if token_version has changed (e.g. password changed)
+    if ver is not None and user.token_version != ver:
+        logger.warning(f"[AUTH] Token version mismatch for {email}: expected {user.token_version}, got {ver}")
+        return None
+
     return user

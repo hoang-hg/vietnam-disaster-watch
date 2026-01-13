@@ -240,7 +240,7 @@ DISASTER_GROUPS = {
         "động đất", "rung chấn", "rung lắc", "rung lắc mạnh", "dư chấn", "dư chấn mạnh", "tâm chấn", "chấn tiêu", "độ sâu chấn tiêu", "độ sâu tâm chấn",
         "thang richter", "cấp độ richter", "độ lớn động đất", "độ lớn theo thang richter", "magnitude", "độ lớn magnitude", "sóng địa chấn", "chấn phát", "dạng sóng địa chấn", "viện vật lý địa cầu",
         "trung tâm báo tin động đất", "thông báo động đất", "ghi nhận động đất", "cảnh báo động đất", "nguy cơ động đất", "người dân cảm nhận rung lắc", "rung lắc kéo dài", "rung lắc trong vài giây", "động đất kích thích",
-        "địa chấn", "chấn động", "rung chuyển", "rung chuyển mạnh", "chấn động mạnh", "rung động", "rung động mạnh", "nhà cửa rung lắc", "đồ vật rung lắc", "cảm nhận động đất",
+        "địa chấn", "chấn động địa chất", "chấn động mạnh do động đất", "rung chuyển", "rung chuyển mạnh", "chấn động mạnh", "rung động", "rung động mạnh", "nhà cửa rung lắc", "đồ vật rung lắc", "cảm nhận động đất",
         "xảy ra động đất", "động đất xảy ra", "động đất xảy ra lúc", "ghi nhận rung chấn", "ghi nhận rung lắc", "ghi nhận dư chấn", "liên tiếp dư chấn", "dư chấn liên tiếp", "dư chấn tiếp diễn", "sau đó xảy ra dư chấn",
         "tâm chấn ở", "tâm chấn tại", "tâm chấn gần", "tâm chấn cách", "độ sâu chấn tiêu khoảng", "độ sâu tâm chấn khoảng", "chấn tiêu nông", "chấn tiêu sâu", "tâm chấn ngoài khơi", "tâm chấn trên đất liền",
         "kinh độ", "vĩ độ", "tọa độ tâm chấn", "tọa độ tâm chấn ở", "tọa độ kinh độ", "tọa độ vĩ độ", "vị trí tâm chấn", "vị trí chấn tiêu", "khu vực tâm chấn", "vùng tâm chấn",
@@ -370,7 +370,9 @@ DISASTER_GROUPS = {
         "hỗ trợ sinh kế", "tái lập sinh kế", "khôi phục sinh kế", "hỗ trợ vốn sản xuất", "hỗ trợ vay vốn", "khoanh nợ", "giãn nợ", "miễn giảm lãi", "ổn định sản xuất", "khôi phục sản xuất nông nghiệp",
         "khôi phục chăn nuôi", "tái đàn", "hỗ trợ tái đàn", "hỗ trợ thức ăn chăn nuôi", "hỗ trợ phân bón", "hỗ trợ thuốc bảo vệ thực vật", "hỗ trợ giống lúa", "cấp giống cây trồng", "gieo trồng lại", "khôi phục diện tích sản xuất", "hỗ trợ bà con", "chung tay ủng hộ", "tấm lòng vàng",
         "chiến dịch quang trung", "dựng lại nhà", "hỗ trợ vốn", "giảm lãi suất",
-    ]
+    ],
+
+
 }
 
 
@@ -926,7 +928,7 @@ ABSOLUTE_VETO = [
     '(?:google|facebook|youtube|tiktok|zalo\\s*pay|vneid).*(?:cập\\s*nhật|tính\\s*năng|ra\\s*mắt|lỗi|hướng\\s*dẫn)(?!.*(?:cứu\\s*trợ|ủng\\s*hộ|thiên\\s*tai|bão|lũ|khẩn\\s*cấp))',
     '(?:hội\\s*nghị|hội\\s*thảo|tập\\s*huấn)\\s.*(?:khoa\\s*học|kỹ\\s*thuật|công\\s*nghệ|chuyên\\s*đề)',
     '(?:khám\\s*bệnh|cấp\\s*phát\\s*thuốc|khám\\s*sức\\s*khỏe|tư\\s*vấn\\s*sức\\s*khỏe|bác\\s*sĩ|bệnh\\s*viện|bệnh\\s*xá|trạm\\s*y\\s*tế)(?!\\s*(?:cứu\\s*trợ|vùng\\s*lũ|vùng\\s*bão|thiên\\s*tai|khắc\\s*phục))',
-    '(?:lãi\\\\s*suất|tín\\\\s*dụng|tỉ\\\\s*giá|ngoại\\\\s*tệ|ngân\\\\s*hàng|chứng\\\\s*khoán|vốn\\\\s*điều\\\\s*lệ|lợi\\\\s*nhuận|doanh\\\\s*thu|vn-index)(?!\\s*(?:chính\\\\s*sách|hỗ\\\\s*trợ|ư\\\\s*đãi|khôi\\\\s*phục|khắc\\\\s*phục)\\\\s*(?:sau|vùng|cho|người)\\\\s*(?:bão|lũ|thiên\\\\s*tai|ngập|sạt\\\\s*lở))',
+    '(?:lãi\\s*hợp\\s*nhất|lãi\\s*ròng|tổng\\s*tài\\s*sản|lãi\\s*suất|tín\\s*dụng|tỉ\\s*giá|ngoại\\s*tệ|ngân\\s*hàng|chứng\\s*khoán|vốn\\s*điều\\s*lệ|lợi\\s*nhuận|doanh\\s*thu|vn-index)(?!\\s*(?:chính\\s*sách|hỗ\\s*trợ|ư\\s*đãi|khôi\\s*phục|khắc\\s*phục)\\s*(?:sau|vùng|cho|người)\\s*(?:bão|lũ|thiên\\s*tai|ngập|sạt\\s*lở))',
     '(?:nghiệm\\s*thu|bàn\\s*giao)\\s*(?:công\\s*trình|đề\\s*tài|dự\\s*án)(?!.*(?:khắc\\s*phục|hậu\\s*quả|sạt\\s*lở|khẩn\\s*cấp|cứu\\s*trợ|tái\\s*định\\s*cư|nhà\\s*đại\\s*đoàn\\s*kết|sau\\s*bão))',
     '(?:sân\\s*bay|hàng\\s*không|hạ\\s*cánh|cất\\s*cánh|phi\\s*công|cơ\\s*trưởng)(?!.*(?:do|vì|bởi|để|ứng\\s*phó)\\s*(?:bão|lũ|thiên\\s*tai|thời\\s*tiết))',
     '(?:sập|tai\\s*nạn)\\s*(?:hầm\\s*lò|mỏ\\s*đá|mỏ\\s*than|công\\s*trường)(?!\\s*(?:do|vì|bởi)\\s*(?:bão|lũ|thiên\\s*tai|mưa|sạt\\s*lở))',
@@ -1047,9 +1049,7 @@ ABSOLUTE_VETO = [
     '\\b(?:chứng\\s*chỉ\\s*hành\\s*nghề|đào\\s*tạo\\s*nghiệp\\s*vụ|kỹ\\s*năng\\s*chuyên\\s*môn|huấn\\s*luyện\\s*an\\s*toàn|văn\\s*bằng\\s*quốc\\s*tế|phong\\s*trào\\s*tay\\s*nghề)\\b',
     '\\b(?:chứng\\s*khoán\\s*phái\\s*sinh|thị\\s*trường\\s*chứng\\s*khoán|phiên\\s*giao\\s*dịch|khớp\\s*lệnh|thanh\\s*khoản|nhà\\s*đầu\\s*tư\\s*nước\\s*ngoài)\\b',
     '\\b(?:clip\\s*gây\\s*bão|video\\s*xôn\\s*xao|hành\\s*động\\s*đẹp\\s*gây\\s*sốt|cư\\s*dân\\s*mạng\\s*truy\\s*tìm|phẫn\\s*nộ\\s*với\\s*hành\\s*động|bông\\s*hoa\\s*thép)\\b',
-    '\\b(?:concert|liveshow|đêm\\s*nhạc|vở\\s*diễn|kịch\\s*nói|phim\\s*điện\\s*ảnh|rạp\\s*phim|cà\\s*phê\\s*đường\\s*tàu|kho\\s*ảnh\\s*đẹp|website\\s*chia\\s*sẻ)\\b',
-    '\\b(?:concert|liveshow|đêm\\s*nhạc|vở\\s*diễn|tiết\\s*mục|hợp\\s*xướng|giải\\s*trí|phim\\s*trường|rạp\\s*chiếu\\s*phim|triển\\s*lãm|khai\\s*mạc|lễ\\s*hội|tuần\\s*lễ\\s*thời\\s*trang)\\b',
-    '\\b(?:concert|liveshow|đêm\\s*nhạc|vở\\s*diễn|tiết\\s*mục|hợp\\s*xướng|giải\\s*trí|phim\\s*trường|rạp\\s*chiếu\\s*phim|triển\\s*lãm|khai\\s*mạc|lễ\\s*hội|tuần\\s*lễ\\s*thời\\s*trang|sân\\s*khấu|biểu\\s*diễn|ca\\s*múa\\s*nhạc)\\b',
+    '\\b(?:concert|liveshow|đêm\\s*nhạc|vở\\s*diễn|kịch\\s*nói|phim\\s*điện\\s*ảnh|rạp\\s*phim|cà\\s*phê\\s*đường\\s*tàu|kho\\s*ảnh\\s*đẹp|website\\s*chia\\s*sẻ|tiết\\s*mục|hợp\\s*xướng|giải\\s*trí|phim\\s*trường|rạp\\s*chiếu\\s*phim|triển\\s*lãm|khai\\s*mạc|lễ\\s*hội|tuần\\s*lễ\\s*thời\\s*trang|sân\\s*khấu|biểu\\s*diễn|ca\\s*múa\\s*nhạc)\\b',
     '\\b(?:container\\s*nông\\s*sản|xe\\s*chở\\s*nông\\s*sản|ùn\\s*ứ\\s*cửa\\s*khẩu|thông\\s*quan\\s*hàng\\s*hóa|xuất\\s*nhập\\s*khẩu)(?!\\s*(?:do|tại)\\s*(?:bão|lũ|mưa))\\b',
     '\\b(?:crispr|chỉnh\\s*sửa\\s*gen|liệu\\s*pháp\\s*tế\\s*bào\\s*gốc|miễn\\s*dịch\\s*trị\\s*liệu|phác\\s*đồ\\s*ung\\s*thư|y\\s*học\\s*tái\\s*tạo)\\b',
     '\\b(?:cryptocurrency|sàn\\s*giao\\s*dịch\\s*số|n\\s*f\\s*t|vốn\\s*hóa\\s*thị\\s*trường\\s*số|công\\s*nghệ\\s*chuỗi\\s*khối)\\b',
@@ -1081,7 +1081,7 @@ ABSOLUTE_VETO = [
     '\\b(?:thực\\s*tập|diễn\\s*tập|thực\\s*binh|hiệp\\s*đồng|huấn\\s*luyện|tình\\s*huống\\s*giả\\s*định|phương\\s*án\\s*ứng\\s*phó|tập\\s*huấn)\\b(?!.*(?:thực\\s*tế|trong\\s*mưa\\s*bão|do\\s*lũ|thiên\\s*tai|sạt\\s*lở|cứu\\s*nạn|khẩn\\s*cấp))',
     '\\b(?:diễn\\s*tập|thực\\s*chiến|an\\s*toàn\\s*thông\\s*tin|an\\s*ninh\\s*mạng|bức\\s*xạ|hạt\\s*nhân|an\\s*ninh\\s*phi\\s*truyền\\s*thống)\\b(?!.*(?:thực\\s*tế|trong\\s*mưa\\s*bão|do\\s*lũ|thiên\\s*tai|sạt\\s*lở|cứu\\s*nạn|khẩn\\s*cấp))',
     '\\b(?:diện\\s*tích\\s*sử\\s*dụng|hợp\\s*đồng\\s*đặt\\s*cọc|pháp\\s*lý\\s*dự\\s*án|tiến\\s*độ\\s*bàn\\s*giao|hoa\\s*hồng\\s*môi\\s*giới|tầng\\s*thanh\\s*khoản|nhà\\s*phố\\s*liền\\s*kề)\\b',
-    '\\b(?:donald\\s*trump|biden|putin|zelensky|kim\\s*jong\\s*un|tập\\s*cận\\s*bình|netanyahu|quân\\s*đội\\s*nga|ukraine|israel|hamas|hezbollah|houthi|gaza|liban|iran|iraq|syria|yemen|triều\\s*tiên|hàn\\s*quốc|trung\\s*quốc|đài\\s*loan|biển\\s*đỏ|eo\\s*biển\\s*hormuz|boston|chicago|hoa\\s*kỳ|ấn\\s*độ|new\\s*delhi|mumbai|pakistan|bangladesh|nepal|sri\\s*lanka|sumatra|singapore|thái\\s*lan|bangkok|lào(?!\\s*cai)|campuchia|myanmar|malaysia|trạm\\s*vũ\\s*trụ|thiên\\s*châu|tàu\\s*vũ\\s*trụ|seoul|itaewon|slovakia|oman|robert\\s*fico|uranium|maroc|peru|nam\\s*phi|australia|sydney|đức|pháp|ý|italia|bồ\\s*đào\\s*nha|argentina|brazil|châu\\s*âu|eu|liên\\s*minh\\s*châu\\s*âu|đông\\s*nam\\s*á|asean|thế\\s*giới|toàn\\s*cầu|quốc\\s*tế|nước\\s*ngoài|palestine)(?!.*(?:bão|lũ|thiên\\s*tai|người\\s*việt|công\\s*dân\\s*việt\\s*nam|ảnh\\s*hưởng\\s*đến\\s*việt\\s*nam|biển\\s*đông|sạt\\s*lở|lở\\s*đất|động\\s*đất|rung\\s*chuyển|sóng\\s*thần|cháy\\s*lớn|sập|vỡ\\s*đập|thảm\\s*họa|cứu\\s*trợ|hỗ\\s*trợ|cứu\\s*hộ|cứu\\s*nạn|sơ\\s*tán|nắng\\s*nóng|hạn\\s*hán|lạnh\\s*giá|băng\\s*tuyết|rét|thiệt\\s*hại|thương\\s*vong|tử\\s*vong|mất\\s*tích))\\b',
+    '\\b(?:donald\\s*trump|biden|putin|zelensky|kim\\s*jong\\s*un|tập\\s*cận\\s*bình|netanyahu|quân\\s*đội\\s*nga|ukraine|israel|hamas|hezbollah|houthi|gaza|liban|iran|iraq|syria|yemen|triều\\s*tiên|hàn\\s*quốc|trung\\s*quốc|đài\\s*loan|biển\\s*đỏ|eo\\s*biển\\s*hormuz|boston|chicago|hoa\\s*kỳ|ấn\\s*độ|new\\s*delhi|mumbai|pakistan|bangladesh|nepal|sri\\s*lanka|sumatra|singapore|thái\\s*lan|bangkok|lào(?!\\s*cai)|campuchia|myanmar|malaysia|trạm\\s*vũ\\s*trụ|thiên\\s*châu|tàu\\s*vũ\\s*trụ|seoul|itaewon|slovakia|oman|robert\\s*fico|uranium|maroc|peru|nam\\s*phi|australia|sydney|đức|pháp|ý|italia|bồ\\s*đào\\s*nha|argentina|brazil|châu\\s*âu|eu|liên\\s*minh\\s*châu\\s*âu|đông\\s*nam\\s*á|asean|thế\\s*giới|toàn\\s*cầu|quốc\\s*tế|nước\\s*ngoài|palestine)(?!.*(?:bão|lũ|thiên\\s*tai|người\\s*việt|công\\s*dân\\s*việt\\s*nam|ảnh\\s*hưởng\\s*đến\\s*việt\\s*nam|biển\\s*đông|sạt\\s*lở|lở\\s*đất|động\\s*đất|rung\\s*chuyển|sóng\\s*thần|cháy\\s*lớn|sập|vỡ\\s*đập|thảm\\s*họa|cứu\\s*trợ|hỗ\\s*trợ|cứu\\s*hộ|cứu\\s*nạn|sơ\\s*tán|nắng\\s*nóng|hạn\\s*hán|lạnh\\s*giá|băng\\s*tuyết|rét|thiệt\\s*hại|thương\\s*vong|tử\\s*vong|thiệt\\s*mạng|chết\\s*người|mất\\s*tích|gió\\s*mùa|băng\\s*giá))\\b',
     '\\b(?:donald\\s*trump|joe\\s*biden|nhà\\s*trắng|lầu\\s*năm\\s*góc|bầu\\s*cử\\s*mỹ|tổng\\s*thống\\s*mỹ|putin|zelensky)\\b',
     '\\b(?:du\\s*lịch\\s*tâm\\s*linh|hành\\s*hương|chùa\\s*tam\\s*chúc|bái\\s*đính|đại\\s*nam|quần\\s*thể\\s*danh\\s*thắng|di\\s*tích\\s*tâm\\s*linh|khu\\s*nghỉ\\s*dưỡng\\s*sinh\\s*thái)\\b',
     '\\b(?:du\\s*thuyền\\s*hạng\\s*sang|princess\\s*yachts|sunseeker|viking\\s*yachts|bến\\s*du\\s*thuyền|hàng\\s*không\\s*tư\\s*nhân|chuyên\\s*cơ\\s*riêng|gulfstream|bombardier)\\b',
@@ -1171,7 +1171,7 @@ ABSOLUTE_VETO = [
     '\\b(?:hệ\\s*thống\\s*cấp\\s*thoát\\s*nước|trạm\\s*bơm\\s*tăng\\s*áp|bể\\s*xử\\s*lý\\s*nước\\s*thải|đường\\s*ống\\s*hdpe|van\\s*giảm\\s*áp|cột\\s*áp|hố\\s*ga\\s*thông\\s*minh)\\b',
     '\\b(?:hệ\\s*thống\\s*phân\\s*phối\\s*bán\\s*lẻ|chuỗi\\s*cửa\\s*hàng\\s*tiện\\s*lợi|siêu\\s*thị\\s*mini|trải\\s*nghiệm\\s*khách\\s*hàng|cơ\\s*hội\\s*hợp\\s*tác\\s*kinh\\s*doanh|phát\\s*triển\\s*đại\\s*lý)\\b',
     '\\b(?:học\\s*bổng\\s*toàn\\s*phần|hội\\s*thảo\\s*quốc\\s*tế|tạp\\s*chí\\s*isi/scopus|công\\s*bố\\s*nghiên\\s*cứu|hệ\\s*đào\\s*tạo\\s*từ\\s*xa|văn\\s*bằng\\s*2|vừa\\s*học\\s*vừa\\s làm)\\b',
-    '\\b(?:học\\s*phí|điểm\\s*chuẩn|quy\\s*chế\\s*thi|kỳ\\s*thi\\s*tốt\\s*nghiệp|sách\\s*giáo\\s*khoa|kỷ\\s*yếu|tự\\s*chủ\\s*đại\\s*học|dạy\\s*thêm|học\\s*thêm|ôn\\s*thi|luyện\\s*thi|sĩ\\s*tử|điểm\\s*thi|tra\\s*cứu\\s*điểm|khai\\s*giảng|năm\\s*học\\s*mới|tuyển\\s*sinh|giáo\\s*viên\\s*chủ\\s*nhiệm|đề\\s*án\\s*ngoại\\s*ngữ|tiếng\\s*anh|lịch\\s*nghỉ\\s*tết|nghỉ\\s*học|lịch\\s*học|tựu\\s*trường|tặng\\s*sách|trao\\s*tặng\\s*sách|tủ\\s*sách|phân\\s*hiệu|thư\\s*viện)(?!.*(?:vùng\\s*lũ|bão|thiên\\s*tai|hỗ\\s*trợ|khắc\\s*phục|sạt\\s*lở|mưa\\s*lũ|rét|ngập))\\b',
+    '\\b(?:học\\s*phí|điểm\\s*chuẩn|quy\\s*chế\\s*thi|kỳ\\s*thi\\s*tốt\\s*nghiệp|sách\\s*giáo\\s*khoa|kỷ\\s*yếu|tự\\s*chủ\\s*đại\\s*học|dạy\\s*thêm|học\\s*thêm|ôn\\s*thi|luyện\\s*thi|sĩ\\s*tử|điểm\\s*thi|tra\\s*cứu\\s*điểm|khai\\s*giảng|năm\\s*học\\s*mới|tuyển\\s*sinh|giáo\\s*viên\\s*chủ\\s*nhiệm|đề\\s*án\\s*ngoại\\s*ngữ|tiếng\\s*anh|lịch\\s*nghỉ\\s*tết|nghỉ\\s*học|lịch\\s*học|tựu\\s*trường|tặng\\s*sách|trao\\s*tặng\\s*sách|tủ\\s*sách|phân\\s*hiệu|thư\\s*viện)(?!.*(?:vùng\\s*lũ|bão|thiên\\s*tai|hỗ\\s*trợ|khắc\\s*phục|sạt\\s*lở|mưa\\s*lũ|rét|ngập|thời\\s*tiết))\\b',
     '\\b(?:học\\s*đàn|học\\s*vẽ|chụp\\s*ảnh\\s*chân\\s*dung|ống\\s*máy\\s*ảnh|mirrorless|dựng\\s*phim|hậu\\s*kỳ|thiết\\s*kế\\s*đồ\\s*họa|photoshop|illustrator)\\b',
     '\\b(?:hỏi\\s*đáp\\s*pháp\\s*luật|tư\\s*vấn\\s*sức\\s*khỏe|chuyện\\s*lạ\\s*đó\\s*đây|tiêu\\s*điểm\\s*dư\\s*luận|góc\\s*nhìn\\s*chuyên\\s*gia|tiếng\\s*nói\\s*cử\\s*tri|báo\\s*chí\\s*điều\\s*tra|phóng\\s*sự\\s*dài\\s*kỳ)\\b',
     '\\b(?:hố\\s*ga|giếng\\s*hoang|hố\\s*công\\s*trình)(?!.*(?:ngập|lũ|bão|sạt|mưa|triều\\s*cường))\\b',
@@ -1312,8 +1312,8 @@ ABSOLUTE_VETO = [
     '\\b(?:nghị\\s*quyết\\s*phát\\s*triển|định\\s*hướng\\s*tầm\\s*nhìn|ưu\\s*tiên\\s*đầu\\s*tư|hạ\\s*tầng\\s*kỹ\\s*thuật|đồng\\s*bộ\\s*hiện\\s*đại)\\b',
     '\\b(?:ngành\\s*công\\s*nghiệp\\s*f&b|xu\\s*hướng\\s*tiêu\\s*dùng|chuỗi\\s*cung\\s*ứng\\s*toàn\\s*cầu|chi\\s*phí\\s*vận\\s*hành|ký\\s*kết\\s*hợp\\s*tác)\\b',
     '\\b(?:ngày\\s*hội\\s*đại\\s*đoàn\\s*kết|hội\\s*thảo\\s*khoa\\s*học|diễn\\s*đàn\\s*trẻ\\s*em|đại\\s*hội\\s*hội\\s*khuyến\\s*học|clb\\s*hưu\\s*trí|sinh\\s*hoạt\\s*hè)\\b',
-    '\\b(?:ngã\\s*vào\\s*gầm|cuốn\\s*vào\\s*gầm|kẹt\\s*trong\\s*cabin|cá\\s*ăn\\s*thịt|đuối\\s*nước\\s*thương\\s*tâm|tắm\\s*sông|tắm\\s*biển|rơi\\s*xuống\\s*sông)(?!.*(?:bão|lũ|lụt|mưa\\s*lớn|nước\\s*dâng|sạt\\s*lở))\\b',
-    '\\b(?:ngã\\s*vào\\s*gầm|cuốn\\s*vào\\s*gầm|kẹt\\s*trong\\s*cabin|cá\\s*ăn\\s*thịt|đuối\\s*nước\\s*thương\\s*tâm|tắm\\s*sông|tắm\\s*biển|rơi\\s*xuống\\s*sông)(?!.*(?:bão|lũ|lụt|mưa\\s*lớn|nước\\s*dâng|sạt\\s*lở|lũ\\s*quét))',
+    '\\b(?:ngã\\s*vào\\s*gầm|cuốn\\s*vào\\s*gầm|kẹt\\s*trong\\s*cabin|cá\\s*ăn\\s*thịt|đuối\\s*nước\\s*thương\\s*tâm|tắm\\s*sông|tắm\\s*biển|rơi\\s*xuống\\s*sông)(?!.*(?:bão|lũ|lụt|mưa\\s*lớn|nước\\s*dâng|sạt\\s*lở|sóng\\s*lớn|sóng\\s*cuốn|biển\\s*động|dông\\s*lốc|áp\\s*thấp))\\b',
+    '\\b(?:ngã\\s*vào\\s*gầm|cuốn\\s*vào\\s*gầm|kẹt\\s*trong\\s*cabin|cá\\s*ăn\\s*thịt|đuối\\s*nước\\s*thương\\s*tâm|tắm\\s*sông|tắm\\s*biển|rơi\\s*xuống\\s*sông)(?!.*(?:bão|lũ|lụt|mưa\\s*lớn|nước\\s*dâng|sạt\\s*lở|lũ\\s*quét|sóng\\s*lớn|sóng\\s*cuốn|biển\\s*động|dông\\s*lốc|áp\\s*thấp))',
     '\\b(?:ngư\\s*trường\\s*khai\\s*thác|xuất\\s*khẩu\\s*hải\\s*sản|vận\\s*tải\\s*biển|cảng\\s*nước\\s*sâu|luồng\\s*hàng\\s*hải|tàu\\s*viễn\\s*dương|giàn\\s*khoan\\s*dầu|dầu\\s*khí\\s*quốc\\s*gia)\\b',
     '\\b(?:người\\s*chết|thi\\s*thể|tử\\s*vong)\\s*(?:bất\\s*thường|trong\\s*nhà|nhà\\s*nghỉ|quán|cháy)\\b',
     '\\b(?:người\\s*nộp\\s*thuế|cơ\\s*quan\\s*thuế|quyết\\s*toán\\s*thuế|hóa\\s*đơn\\s*điện\\s*tử|chống\\s*thất\\s*thu|nợ\\s*thuế|hoàn\\s*thuế|thuế\\s*khoán|hộ\\s*kinh\\s*doanh)\\b',
@@ -1332,7 +1332,7 @@ ABSOLUTE_VETO = [
     '\\b(?:nhập\\s*quốc\\s*tịch|thôi\\s*quốc\\s*tịch|việt\\s*kiều|thị\\s*thực\\s*điện\\s*tử|e-visa|hộ\\s*chiếu\\s*phổ\\s*thông|người\\s*nước\\s*ngoài\\s*tại\\s*việt\\s*nam|định\\s*cư)\\b',
     '\\b(?:nhặt\\s*được\\s*tiền|trả\\s*lại\\s*người\\s*đánh\\s*rơi|pháo\\s*hoa|pháo\\s*nổ|tự\\s*chế\\s*pháo|thuốc\\s*nổ|vật\\s*liệu\\s*nổ)(?!.*(?:lũ|bão|trôi|sạt|thiên\\s*tai|mưa\\s*lũ|cuốn\\s*trôi|vùi\\s*lấp))\\b',
     '\\b(?:nhịn\\s*ăn\\s*gián\\s*đoạn|chế\\s*độ\\s*ăn\\s*keto|thực\\s*phẩm\\s*bảo\\s*vệ\\s*sức\\s*khỏe|vi\\s*chất\\s*dinh\\s*dưỡng|eo\\s*thon\\s*dáng\\s*đẹp)\\b',
-    '\\b(?:nhồi\\s*máu\\s*cơ\\s*tim|đột\\s*quỵ|tai\\s*biến|dấu\\s*hiệu\\s*cảnh\\s*báo|triệu\\s*chứng\\s*bệnh|căn\\s*bệnh|bác\\s*sĩ\\s*khuyến\\s*cáo|tư\\s*vấn\\s*tâm\\s*lý|sức\\s*khỏe\\s*tâm\\s*thần|đuối\\s*nước\\s*khi\\s*tắm|tắm\\s*biển|tắm\\s*sông|ao\\s*nhà|bể\\s*bơi|hồ\\s*bơi|đá\\s*bóng|đá\\s*banh|vận\\s*động\\s*viên|bác\\s*sĩ\\s*tư\\s*vấn|chăm\\s*sóc\\s*sức\\s*khỏe|tuyệt\\s*thực|bỏ\\s*đói|ung\\s*thư|thalassemia|vô\\s*sinh)(?!.*(?:bão|lũ|ngập|sạt|thiên\\s*tai|tai\\s*nạn))\\b',
+    '\\b(?:nhồi\\s*máu\\s*cơ\\s*tim|đột\\s*quỵ|tai\\s*biến|dấu\\s*hiệu\\s*cảnh\\s*báo|triệu\\s*chứng\\s*bệnh|căn\\s*bệnh|bác\\s*sĩ\\s*khuyến\\s*cáo|tư\\s*vấn\\s*tâm\\s*lý|sức\\s*khỏe\\s*tâm\\s*thần|đuối\\s*nước\\s*khi\\s*tắm|tắm\\s*biển|tắm\\s*sông|ao\\s*nhà|bể\\s*bơi|hồ\\s*bơi|đá\\s*bóng|đá\\s*banh|vận\\s*động\\s*viên|bác\\s*sĩ\\s*tư\\s*vấn|chăm\\s*sóc\\s*sức\\s*khỏe|tuyệt\\s*thực|bỏ\\s*đói|ung\\s*thư|thalassemia|vô\\s*sinh)(?!.*(?:bão|lũ|ngập|sạt|thiên\\s*tai|tai\\s*nạn|sóng\\s*lớn|sóng\\s*cuốn|biển\\s*động|rét|lạnh|băng\\s*giá))\\b',
     '\\b(?:niềm\\s*tin\\s*và\\s*khát\\s*vọng|góc\\s*nhìn\\s*thời\\s*đại|nhịp\\s*đập\\s*kinh\\s*tế|thế\\s*giới\\s*đó\\s*đây|chuyện\\s*của\\s*sao|bật\\s*mí\\s*bí\\s*mật|cận\\s*cảnh\\s*quy\\s*trình|khám\\s*phá\\s*thực\\s*tế)\\b',
     '\\b(?:noel|giáng\\s*sinh|check-in|phố\\s*đi\\s*bộ|ẩm\\s*thực|món\\s*ngon|nhà\\s*hàng|quán\\s*ăn|đầu\\s*bếp)(?!\\s*(?:gặp\\s*nạn|tai\\s*nạn|lật|chết|tử\\s*vong|thương\\s*vong|mất\\s*tích|cứu\\s*hộ))\\b',
     '\\b(?:noel|giáng\\s*sinh|tết\\s*dương\\s*lịch|năm\\s*mới|chúc\\s*mừng|quà\\s*tặng|khuyến\\s*mãi|du\\s*xuân|đón\\s*xuân|vui\\s*xuân|chơi\\s*xuân|xuân\\s*về|chợ\\s*xuân|mùa\\s*xuân|cây\\s*cảnh|chơi\\s*tết|bính\\s*ngọ|mai\\s*vàng|đào\\s*phai|quất\\s*cảnh|lăng\\s*ông|cúng|thắp\\s*hương|trẩy\\s*hội|bưởi\\s*diễn|đặc\\s*sản|phố\\s*đêm|hoa\\s*hậu|người\\s*mẫu)(?!.*(?:bão|lũ|mưa|thời\\s*tiết|lạnh|rét|tuyết|rốn\\s*lũ|tái\\s*thiết|hồi\\s*sinh|khắc\\s*phục|vạn\\s*xuân))\\b',
@@ -1350,7 +1350,7 @@ ABSOLUTE_VETO = [
     '\\b(?:năng\\s*lượng\\s*nhiệt\\s*hạch|fusion\\s*energy|du\\s*lịch\\s*vũ\\s*trụ|virgin\\s*galactic|thám\\s*hiểm\\s*sao\\s*hỏa|định\\s*cư\\s*vũ\\s*trụ)\\b',
     '\\b(?:nạo\\s*vét|khơi\\s*thông|vệ\\s*sinh).*(?:kênh\\s*mương|cống\\s*rãnh|dòng\\s*chảy|rác\\s*thải)\\b',
     '\\b(?:nắng\\s*đẹp|thời\\s*tiết\\s*thuận\\s*lợi|nắng\\s*ấm|gió\\s*nhẹ|mây\\s*rải\\s*rác|không\\s*mưa|nắng\\s*chan\\s*hòa|bình\\s*minh|hoàng\\s*hôn)\\b',
-    '\\b(?:nổi\\s*lềnh\\s*bềnh|thi\\s*thể\\s*(?:nam|nữ|thanh\\s*niên)|nhảy\\s*cầu|chết\\s*đuối\\s*khi\\s*tắm|đuối\\s*nước\\s*khi\\s*tắm|tự\\s*tử|quyên\\s*sinh|nhảy\\s*lầu|uống\\s*thuốc\\s*sâu|treo\\s*cổ|đánh\\s*ghen|bạo\\s*lực\\s*học\\s*đường|xô\\s*xát|cãi\\s*vã)\\b',
+    '\\b(?:nổi\\s*lềnh\\s*bềnh|thi\\s*thể\\s*(?:nam|nữ|thanh\\s*niên)|nhảy\\s*cầu|chết\\s*đuối\\s*khi\\s*tắm|đuối\\s*nước\\s*khi\\s*tắm|tự\\s*tử|quyên\\s*sinh|nhảy\\s*lầu|uống\\s*thuốc\\s*sâu|treo\\s*cổ|đánh\\s*ghen|bạo\\s*lực\\s*học\\s*đường|xô\\s*xát|cãi\\s*vã)(?!.*(?:bão|lũ|ngập|sạt|thiên\\s*tai|tai\\s*nạn|mưa\\s*lớn|sóng\\s*lớn|lốc|sét|cháy\\s*rừng|khẩn\\s*cấp))\\b',
     '\\b(?:oecd|brics|asml|t\\s*s\\s*m\\s*c|nvidia|apple\\s*intelligence|openai|chatgpt|mô\\s*hình\\s*ngôn\\s*ngữ\\s*lớn|l\\s*l\\s*m)\\b',
     '\\b(?:olight|ostation|sony|playstation|steam|iphone|samsung|oppo|xiaomi|khôi\\s*phục\\s*cài\\s*đặt|bằng\\s*sáng\\s*chế|ai\\s*ghost|npc|game\\s*thủ)\\b',
     '\\b(?:olympic|asiad|paragames|đại\\s*hội\\s*thể\\s*thao|huấn\\s*luyện\\s*viên\\s*trưởng|đội\\s*tuyển\\s*quốc\\s*gia|liên\\s*đoàn\\s*bóng\\s*đá|v\\s*f\\s*f)\\b',
@@ -1359,7 +1359,7 @@ ABSOLUTE_VETO = [
     '\\b(?:phong\\s*cách\\s*thời\\s*trang|mốt\\s*mới\\s*nhất|phối\\s*đồ|mix\\s*đồ|phụ\\s*kiện\\s*đi\\s*kèm|lookbook|sưu\\s*tập\\s*mùa\\s*hè|trình\\s*diễn\\s*thời\\s*trang|tuần\\s*lễ\\s*thời\\s*trang)\\b',
     '\\b(?:phong\\s*trào\\s*thể\\s*thao|giải\\s*chạy\\s*marathon|phong\\s*trào\\s*cơ\\s*sở|nâng\\s*cao\\s*sức\\s*khỏe|vận\\s*động\\s*toàn\\s*dân)\\b',
     '\\b(?:phá\\s*sản\\s*doanh\\s*nghiệp|giải\\s*thế|mở\\s*thủ\\s*tục\\s*phá\\s*sản|quản\\s*tài\\s*viên|danh\\s*sách\\s*chủ\\s*nợ|tuyên\\s*bố\\s*phá\\s*sản|nợ\\s*quá\\s*hạn)\\b',
-    '\\b(?:phát\\s*hiện\\s*thi\\s*thể|xác\\s*chết|người\\s*đàn\\s*ông\\s*tử\\s*vong|án\\s*mạng|trọng\\s*án|truy\\s*nã|bắt\\s*giữ|ma\\s*túy|buôn\\s*lậu|vượt\\s*biên|đánh\\s*bạc|mại\\s*dâm|cướp\\s*giật|trộm\\s*cắp|đâm\\s*chém|hỗn\\s*chiến|vây\\s*ráp|nẹt\\s*pô|lạng\\s*lách|đua\\s*xe|quái\\s*xế|bốc\\s*đầu|cầm\\s*dao|đâm\\s*chết|truy\\s*sát|xả\\s*súng|mua\\s*bán\\s*người|đầu\\s*thú)\\b',
+    '\\b(?:phát\\s*hiện\\s*thi\\s*thể|xác\\s*chết|người\\s*đàn\\s*ông\\s*tử\\s*vong|án\\s*mạng|trọng\\s*án|truy\\s*nã|bắt\\s*giữ|ma\\s*túy|buôn\\s*lậu|vượt\\s*biên|đánh\\s*bạc|mại\\s*dâm|cướp\\s*giật|trộm\\s*cắp|đâm\\s*chém|hỗn\\s*chiến|vây\\s*ráp|nẹt\\s*pô|lạng\\s*lách|đua\\s*xe|quái\\s*xế|bốc\\s*đầu|cầm\\s*dao|đâm\\s*chết|truy\\s*sát|xả\\s*súng|mua\\s*bán\\s*người|đầu\\s*thú)(?!.*(?:bão|lũ|ngập|sạt|thiên\\s*tai|tai\\s*nạn|mưa\\s*lũ|lở|sóng\\s*thần|cuốn|trôi|tìm\\s*kiếm|nạn\\s*nhân|giông|lốc|sập))\\b',
     '\\b(?:phát\\s*huy\\s*vai\\s*trò|nêu\\s*gương|điển\\s*hình|khen\\s*thưởng|thi\\s*đua|thành\\s*tích|gương\\s*sáng|học\\s*tập\\s*và\\s*làm\\s*theo)(?!.*(?:cứu\\s*dân|cứu\\s*nạn|cứu\\s*người|dũng\\s*cảm|quên\\s*mình|hy\\s*sinh|lũ\\s*dữ|thiên\\s*tai|bão|lũ))\\b',
     '\\b(?:phát\\s*triển\\s*bứt\\s*phá|tạo\\s*đà\\s*tăng\\s*trưởng|kịch\\s*bản\\s*tăng\\s*trưởng|mục\\s*tiêu\\s*tăng\\s*trưởng|nền\\s*tảng\\s*số)(?!.*(?:bão|lũ|khắc\\s*phục|phòng\\s*chống))\\b',
     '\\b(?:phát\\s*triển\\s*nguồn\\s*nhân\\s*lực|đào\\s*tạo\\s*kỹ\\s*năng|chứng\\s*chỉ\\s*nghề|giải\\s*quyết\\s*việc\\s*làm|an\\s*sinh\\s*xã\\s*hội|chính\\s*sách\\s*ưu\\s*đãi)\\b',
@@ -1371,7 +1371,7 @@ ABSOLUTE_VETO = [
     '\\b(?:phê\\s*duyệt\\s*quy\\s*hoạch|nguồn\\s*vốn\\s*o\\s*d\\s*a|giải\\s*ngân\\s*vốn\\s*đầu\\s*tư|tiến\\s*độ\\s*dự\\s*án|tổng\\s*mức\\s*đầu\\s*tư)\\b',
     '\\b(?:phí\\s*dịch\\s*vụ\\s*chung\\s*cư|ban\\s*quản\\s*trị\\s*nhà|họp\\s*dân\\s*cư|quy\\s*chế\\s*phát\\s*ngôn|thủ\\s*tục\\s*hành\\s*chính\\s*công|một\\s*cửa\\s*liên\\s*thông)\\b',
     '\\b(?:phí\\s*quản\\s*lý\\s*vận\\s*hành|bảo\\s*trì\\s*thang\\s*máy|hệ\\s*thống\\s*chiếu\\s*sáng|xử\\s*lý\\s*nước\\s*thải\\s*sinh\\s*hoạt|vệ\\s*sinh\\s*công\\s*nghiệp)\\b',
-    '\\b(?:phòng\\s*thi|sức\\s*nóng\\s*mùa\\s*thi|sĩ\\s*tử|vượt\\s*vũ\\s*môn|đề\\s*thi|nộp\\s*hồ\\s*sơ|điểm\\s*chuẩn|nguyện\\s*vọng|tuyển\\s*sinh)\\b',
+    '\\b(?:phòng\\s*thi|sức\\s*nóng\\s*mùa\\s*thi|sĩ\\s*tử|vượt\\s*vũ\\s*môn|đề\\s*thi|nộp\\s*hồ\\s*sơ|điểm\\s*chuẩn|nguyện\\s*vọng|tuyển\\s*sinh)\\b(?!.*(?:bão|lũ|ngập|sạt\\s*lở|thiên\\s*tai|tốc\\s*mái|sập|hư\\s*hỏng|mưa\\s*lớn|giông\\s*lốc|cô\\s*lập))',
     '\\b(?:phòng\\s*thủ|tấn\\s*công)\\s*(?:tên\\s*lửa|uav|drone)\\b',
     '\\b(?:phạt\\s*nguội|nồng\\s*độ\\s*cồn|tước\\s*bằng|giấy\\s*phép\\s*lái\\s*xe|đăng\\s*kiểm|biển\\s*số)\\b',
     '\\b(?:phấn\\s*đấu\\s*hoàn\\s*thành|vượt\\s*kế\\s*hoạch|thi\\s*đua\\s*lập\\s*thành\\s*tích|chào\\s*mừng\\s*kỷ\\s*niệm|biểu\\s*dương\\s*khen\\s*thưởng|gương\\s*sáng)(?!.*(?:khắc\\s*phục|hậu\\s*quả|thiên\\s*tai|bão|lũ|sạt\\s*lở|cứu\\s*trợ))\\b',
@@ -1408,7 +1408,7 @@ ABSOLUTE_VETO = [
     '\\b(?:quỹ\\s*thiện\\s*tâm|quỹ\\s*hy\\s*vọng|quỹ\\s*vì\\s*người\\s*nghèo|chương\\s*trình\\s*tài\\s*trợ|tấm\\s*lòng\\s*vàng|trao\\s*tặng\\s*quà)(?!\\s*(?:bão|lũ|thiên\\s*tai|khắc\\s*phục|cứu\\s*trợ|sạt\\s*lở))\\b',
     '\\b(?:ra\\s*mắt\\s*iphone|samsung\\s*galaxy|macbook|ios\\s*(?:update|\\d+)|android\\s*\\d+|snapdragon|dimensity|xe\\s*điện\\s*vinfast|lãi\\s*suất\\s*kép|máy\\s*tính\\s*bảng|laptop|tai\\s*nghe\\s*bluetooth)\\b',
     '\\b(?:ra\\s*mắt\\s*sản\\s*phẩm|ra\\s*mắt\\s*(?:xe|điện\\s*thoại|máy|laptop|ốp|sạc|phiên\\s*bản)|công\\s*nghệ\\s*mới|trải\\s*nghiệm|mở\\s*hộp)\\b',
-    '\\b(?:real\\s*madrid|man\\s*utd|manchester\\s*city|liverpool|arsenal|barca|bayern\\s*munich|psg|chuyển\\s*nhượng\\s*cầu\\s*thủ|hợp\\s*đồng\\s*bom\\s*tấn|champions\\s*league|premiere\\s*league|v-league|v\\s*league|ngoại\\s*hạng\\s*anh|league\\s*1|la\\s*liga|serie\\s*a|bundesliga|công\\s*phượng|quang\\s*hải|tiến\\s*linh|văn\\s*toàn|đội\\s*tuyển\\s*bóng\\s*đá)\\b',
+    '\\b(?:real\\s*madrid|man\\s*utd|manchester\\s*city|liverpool|arsenal|barca|bayern\\s*munich|psg|chuyển\\s*nhượng\\s*cầu\\s*thủ|hợp\\s*đồng\\s*bom\\s*tấn|champions\\s*league|premiere\\s*league|v-league|v\\s*league|ngoại\\s*hạng\\s*anh|league\\s*1|la\\s*liga|serie\\s*a|bundesliga|công\\s*phượng|quang\\s*hải|tiến\\s*linh|văn\\s*toàn|đội\\s*tuyển\\s*bóng\\s*đá|trực\\s*tiếp\\s*bóng\\s*đá|kết\\s*quả\\s*bóng\\s*đá|nhận\\s*định\\s*trận\\s*đấu)\\b',
     '\\b(?:resort\\s*5\\s*sao|biệt\\s*thự\\s*nghỉ\\s*dưỡng\\s*luxury|hạng\\s*thương\\s*gia|du\\s*thuyền\\s*triệu\\s*đô|trải\\s*nghiệm\\s*thượng\\s*lưu|dịch\\s*vụ\\s*chuẩn\\s*quốc\\s*tế)\\b',
     '\\b(?:review\\s*sản\\s*phẩm|đánh\\s*giá\\s*chi\\s*tiết|trên\\s*tay|mở\\s*hộp|unboxing|so\\s*sánh\\s*hiệu\\s*năng|trải\\s*nghiệm\\s*người\\s*dùng)\\b',
     '\\b(?:robot\\s*lau\\s*kính|hệ\\s*thống\\s*gondola|bảo\\s*trì\\s*mặt\\s*dựng|kiểm\\s*định\\s*thiết\\s*bị|quản\\s*lý\\s*tòa\\s*nhà)\\b',
@@ -1441,13 +1441,13 @@ ABSOLUTE_VETO = [
     '\\b(?:sống\\s*khỏe\\s*mỗi\\s*ngày|góc\\s*tâm\\s*hồn|dành\\s*cho\\s*thiếu\\s*nhi|phụ\\s*nữ\\s*và\\s*gia\\s*đình|góc\\s*thư\\s*giãn|tâm\\s*sự\\s*thầm\\s*kín|hạnh\\s*phúc\\s*gia\\s*đình)\\b',
     '\\b(?:sốt\\s*xuất\\s*huyết|tay\\s*chân\\s*miệng|dịch\\s*sởi|cúm\\s*gia\\s*cầm|đỉnh\\s*dịch|bùng\\s*phát\\s*dịch|phun\\s*hóa\\s*chất|diệt\\s*loăng\\s*quăng| não\\s*mô\\s*cầu)\\b',
     '\\b(?:sổ\\s*tay\\s*văn\\s*hóa|câu\\s*chuyện\\s*giáo\\s*dục|nhật\\s*ký\\s*người\\s*đi\\s*đường|văn\\s*hóa\\s*giao\\s*thông|ý\\s*thức\\s*công\\s*dân|rèn\\s*luyện\\s*nhân\\s*cách|giá\\s*trị\\s*sống)\\b',
-    '\\b(?:sổ\\s*đỏ|giấy\\s*chứng\\s*nhận|bản\\s*đồ\\s*địa\\s*chính|tranh\\s*chấp\\s*đất|đền\\s*bù\\s*giải\\s*phóng|cấp\\s*sổ|đo\\s*đạc)(?!.*(?:sạt\\s*lở|tái\\s*định\\s*cư|vùng\\s*lũ|trôi))\\b',
+    '\\b(?:sổ\\s*đỏ|giấy\\s*chứng\\s*nhận|bản\\s*đồ\\s*địa\\s*chính|tranh\\s*chấp\\s*đất|đền\\s*bù\\s*giải\\s*phóng|cấp\\s*sổ|đo\\s*đạc|khảo\\s*sát\\s*địa\\s*hình|khảo\\s*sát\\s*thiết\\s*kế)(?!.*(?:sạt\\s*lở|tái\\s*định\\s*cư|vùng\\s*lũ|trôi|thiên\\s*tai))\\b',
     '\\b(?:sởi|rubella|thủy\\s*đậu|quai\\s*bị|tay\\s*chân\\s*miệng|sốt\\s*phát\\s*ban|cúm\\s*gia\\s*cầm|h5n1)(?!.*(?:bão|lũ|vùng\\s*lũ))\\b',
     '\\b(?:sức\\s*nâng\\s*tối\\s*đa|tầm\\s*với\\s*cần\\s*trực|cáp\\s*tải|puly|móc\\s*cẩu|tự\\s*trọng|thông\\s*số\\s*kỹ\\s*thuật\\s*máy|bảo\\s*trì\\s*định\\s*kỳ)\\b',
     '\\b(?:sửa\\s*bình\\s*nóng\\s*lạnh|chống\\s*thấm\\s*dột|sửa\\s*mái\\s*tôn|thông\\s*tắc\\s*cống|hút\\s*bể\\s*phốt|vệ\\s*sinh\\s*điều\\s*hòa|bảo\\s*dưỡng\\s*máy\\s*giặt|lắp\\s*mạng\\s*internet)\\b',
     '\\b(?:sửa\\s*chữa\\s*điện\\s*nước|thông\\s*tắc\\s*bể\\s*phốt|hút\\s*hầm\\s*cầu|thay\\s*vòi\\s*nước|lắp\\s*đặt\\s*camera|bảo\\s*trì\\s*điều\\s*hòa|vệ\\s*sinh\\s*máy\\s*giặt)\\b',
     '\\b(?:sự\\s*thật\\s*ít\\s*ai\\s*biết|cảnh\\s*báo\\s*từ\\s*chuyên\\s*gia|giải\\s*quyết\\s*dứt\\s*điểm|dấu\\s*hiệu\\s*nhận\\s*biết|lời\\s*khuyên\\s*từ\\s*bác\\s*sĩ|phương\\s*pháp\\s*tự\\s*nhiên|thông\\s*tin\\s*sai\\s*lệch|kiểm\\s*chứng\\s*sự\\s*thật)\\b',
-    '\\b(?:tai\\s*nạn\\s*giao\\s*thông|xe\\s*khách|xe\\s*tải|xe\\s*container|tông\\s*xe|va\\s*chạm\\s*xe|lật\\s*xe)(?!.*(?:sạt\\s*lở|lũ|ngập|bão|thiên\\s*tai|mưa\\s*lớn|trôi|mất\\s*tích|cứu\\s*hộ|cứu\\s*nạn))\\b',
+    '\\b(?:tai\\s*nạn\\s*giao\\s*thông|tin\\s*tức\\s*tai\\s*nạn|xe\\s*khách|xe\\s*tải|xe\\s*container|tông\\s*xe|va\\s*chạm\\s*xe|lật\\s*xe)(?!.*(?:sạt\\s*lở|lũ|ngập|bão|thiên\\s*tai|mưa\\s*lớn|trôi|mất\\s*tích|cứu\\s*hộ|cứu\\s*nạn))\\b',
     '\\b(?:tai\\s*nạn\\s*lao\\s*động|sập\\s*giàn\\s*giáo|ngã\\s*giàn\\s*giáo|rơi\\s*từ\\s*tầng\\s*cao|điện\\s*giật|chập\\s*điện)(?!.*(?:bão|lũ|thiên\\s*tai|mưa\\s*lớn|sạt\\s*lở))\\b',
     '\\b(?:tam\\s*tai|năm\\s*tuổi|sao\\s*kế\\s*đô|vận\\s*hạn|cúng\\s*giải\\s*hạn|hóa\\s*giải\\s*vận\\s*đen|phong\\s*thủy\\s*cải\\s*vận|tử\\s*vi\\s*trọn\\s*đời)\\b',
     '\\b(?:taylor\\s*swift|eras\\s*tour|messi|lionel\\s*messi|ronaldo|cristiano\\s*ronaldo|mbappe|haaland|neymar|giải\\s*thưởng\\s*grammy|oscar)\\b',
@@ -1552,7 +1552,7 @@ ABSOLUTE_VETO = [
     '\\b(?:tư\\s*duy\\s*triệu\\s*phú|làm\\s*giàu\\s*không\\s*khó|nghỉ\\s*hưu\\s*sớm|kế\\s*hoạch\\s*chi\\s*tiêu|quản\\s*lý\\s*tài\\s*sản)\\b',
     '\\b(?:tư\\s*vấn\\s*hướng\\s*nghiệp|cẩm\\s*nang\\s*du\\s*học|xét\\s*tuyển\\s*học\\s*bạ|chỉ\\s*tiêu\\s*tuyển\\s*sinh|điểm\\s*sàn|nguyện\\s*vọng\\s*1|kỳ\\s*thi\\s*đánh\\s*giá\\s*năng\\s*lực)\\b',
     '\\b(?:tưới\\s*tiêu|nguồn\\s*nước\\s*phục\\s*vụ\\s*sản\\s*xuất|điều\\s*tiết\\s*nước\\s*ruộng)\\b',
-    '\\b(?:tạm\\s*dừng\\s*ứng\\s*dụng|hệ\\s*thống\\s*thuế|nâng\\s*cấp\\s*hệ\\s*thống|bảo\\s*trì\\s*hệ\\s*thống|cập\\s*nhật\\s*thông\\s*tin|ngành\\s*thuế|hóa\\s*đơn\\s*điện\\s*tử|cổng\\s*dịch\\s*vụ\\s*công)\\b',
+    '\\b(?:tạm\\s*dừng\\s*ứng\\s*dụng|hệ\\s*thống\\s*thuế|nâng\\s*cấp\\s*hệ\\s*thống|bảo\\s*trì\\s*hệ\\s*thống|cập\\s*nhật\\s*thông\\s*tin|ngành\\s*thuế|hóa\\s*đơn\\s*điện\\s*tử|cổng\\s*dịch\\s*vụ\\s*công|tạm\\s*cấm\\s*đường\\s*phục\\s*vụ\\s*sự\\s*kiện)\\b',
     '\\b(?:tải\\s*trọng\\s*gió|dao\\s*động\\s*công\\s*trình|hệ\\s*thống\\s*giảm\\s*chấn|tuned\\s*mass\\s*damper|t\\s*m\\s*d|kháng\\s*chấn|ổn\\s*định\\s*kết\\s*cấu)\\b',
     '\\b(?:tất\\s*toán\\s*tài\\s*khoản|đáo\\s*hạn\\s*thẻ|phí\\s*duy\\s*trì|hạn\\s*mức\\s*thanh\\s*toán|bảo\\s*hiểm\\s*nhân\\s*thọ|quyền\\s*lợi\\s*bảo\\s*hiểm|người\\s*được\\s*thụ\\s*hưởng|bồi\\s*thường\\s*hợp\\s*đồng)(?!.*(?:bão|lũ|thiên\\s*tai|khắc\\s*phục|hỗ\\s*trợ))\\b',
     '\\b(?:tập\\s*gym|bodybuilding|whey\\s*protein|creatine|giảm\\s*mỡ\\s*bụng|cơ\\s*bụng\\s*6\\s*múi|huấn\\s*luyện\\s*viên\\s*cá\\s*nhân|pt|chạy\\s*bộ\\s*mỗi\\s*ngày)\\b',
@@ -1563,7 +1563,7 @@ ABSOLUTE_VETO = [
     '\\b(?:tổng\\s*điều\\s*tra\\s*kinh\\s*tế|phụ\\s*cấp\\s*khu\\s*vực|xếp\\s*lương|trợ\\s*cấp\\s*bhxh|lương\\s*hưu|tăng\\s*trợ\\s*cấp|xếp\\s*hạng\\s*lương|bảo\\s*hiểm\\s*y\\s*tế\\s*giấy|thưởng\\s*tết)(?!.*(?:vùng\\s*lũ|ngập\\s*lụt|thiên\\s*tai|cứu\\s*trợ|khắc\\s*phục|hỗ\\s*trợ\\s*khẩn\\s*cấp))\\b',
     '\\b(?:tổng\\s*đài\\s*cskh|đường\\s*dây\\s*nóng\\s*khiếu\\s*nại|giải\\s*đáp\\s*thắc\\s*mắc|phản\\s*hồi\\s*khách\\s*hàng|quy\\s*trình\\s*kỹ\\s*thuật|hỗ\\s*trợ\\s*trực\\s*tuyến)\\b',
     '\\b(?:từ\\s*trái\\s*tim\\s*đến\\s*trái\\s*tim|chương\\s*trình\\s*phẫu\\s*thuật|mổ\\s*tim|hở\\s*hàm\\s*ếch|nạn\\s*nhân\\s*chất\\s*độc\\s*da\\s*cam|khuyết\\s*tật|trẻ\\s*mồ\\s*côi|người\\s*cao\\s*tuổi\\s*neo\\s*đơn)\\b',
-    '\\b(?:tử\\s*vi|cung\\s*hoàng\\s*đạo|con\\s*giáp|phong\\s*thủy|bói\\s*toán|tướng\\s*số|vận\\s*mệnh)\\b',
+    '\\b(?:tử\\s*vi|cung\\s*hoàng\\s*đạo|con\\s*giáp|phong\\s*thủy|bói\\s*toán|tướng\\s*số|vận\\s*mệnh|bảng\\s*xếp\\s*hạng|top\\s*\\d+)\\b',
     '\\b(?:tử\\s*vi|cung\\s*hoàng\\s*đạo|phong\\s*thủy|hợp\\s*tuổi|ngày\\s*tốt|giờ\\s*xấu|xem\\s*bói|gieo\\s*quẻ|nhân\\s*tướng\\s*học|nhân\\s*mã|xử\\s*nữ|bạch\\s*dương|kim\\s*ngưu|song\\s*tử|cự\\s*giải|sư\\s*tử|thiên\\s*bình|bọ\\s*cạp|ma\\s*kết|bảo\\s*bình|song\\s*ngư)\\b',
     '\\b(?:tự\\s*do\\s*tài\\s*chính|thu\\s*nhập\\s*thụ\\s*động|khai\\s*phá\\s*tiềm\\s*năng|vùng\\s*an\\s*toàn|chữa\\s*lành\\s*tâm\\s*hồn|thiền\\s*định\\s*mỗi\\s*ngày)\\b',
     '\\b(?:tự\\s*hào|truyền\\s*thống|kỷ\\s*niệm|chào\\s*mừng|thành\\s*lập|ra\\s*mắt|khánh\\s*thành|khởi\\s*công|động\\s*thổ|bế\\s*mạc|khai\\s*mạc|hội\\s*thi|hội\\s*diễn|liên\\s*hoan|giao\\s*lưu|gặp\\s*mặt|tọa\\s*đàm|hội\\s*thảo|tập\\s*huấn|bồi\\s*dưỡng|nhiệm\\s*kỳ|văn\\s*kiện|nghị\\s*quyết|chỉ\\s*thị|kế\\s*hoạch|đề\\s*án|dự\\s*án|quy\\s*hoạch|chiến\\s*lược|tầm\\s*nhìn)(?!.*(?:bão|lũ|lụt|ngập|thiên\\s*tai|khẩn\\s*cấp|ứng\\s*phó|cứu\\s*hộ|sạt\\s*lở|rét\\s*đậm|hạn\\s*mặn|vỡ\\s*đê|thăm\\s*hỏi|hỗ\\s*trợ|PCTT|MARD|phòng\\s*chống\\s*thiên\\s*tai|sơ\\s*tán|di\\s*dời|khắc\\s*phục\\s*hậu\\s*quả))\\b',
@@ -1590,7 +1590,7 @@ ABSOLUTE_VETO = [
     '\\b(?:văn\\s*hóa\\s*đọc|ngày\\s*hội\\s*sách|ra\\s*mắt\\s*tác\\s*phẩm|độc\\s*giả|tác\\s*giả|nhà\\s*xuất\\s*bản|phê\\s*bình\\s*văn\\s*học|di\\s*sản\\s*chữ\\s*viết)\\b',
     '\\b(?:văn\\s*hóa\\s*ứng\\s*xử|tri\\s*thức\\s*nhân\\s*loại|di\\s*sản\\s*tư\\s*tưởng|triết\\s*lý\\s*giáo\\s*dục|phương\\s*pháp\\s*truyền\\s*thống)\\b',
     '\\b(?:văn\\s*phòng\\s*cho\\s*thuê|co-working\\s*space|khu\\s*phức\\s*hợp|tiện\\s*ích\\s*all-in-one|tòa\\s*nhà\\s*thông\\s*minh|quản\\s*lý\\s*bất\\s*động\\s*sản)\\b',
-    '\\b(?:vươn\\s*khơi|bám\\s*biển|đánh\\s*bắt|nuôi\\s*trồng|tái\\s*đàn|vào\\s*vụ|thu\\s*hoạch|giá\\s*thu\\s*mua|hải\\s*sản|thủy\\s*sản)\\b',
+    '\\b(?:vươn\\s*khơi|bám\\s*biển|đánh\\s*bắt|nuôi\\s*trồng|tái\\s*đàn|vào\\s*vụ|thu\\s*hoạch|giá\\s*thu\\s*mua|hải\\s*sản|thủy\\s*sản)\\b(?!.*(?:bão|lũ|thiên\\s*tai|sạt\\s*lở|mưa\\s*lớn|sóng\\s*lớn|biển\\s*động|chìm|vỡ|hư\\s*hỏng|thiệt\\s*hại|trôi|lồng\\s*bè|ao\\s*nuôi))',
     '\\b(?:vải\\s*thiều\\s*lục\\s*ngạn|nhãn\\s*lồng\\s*hưng\\s*yên|rượu\\s*cần\\s*tây\\s*nguyên|sâm\\s*ngọc\\s*linh|bưởi\\s*năm\\s*roi|xoài\\s*cát\\s*hòa\\s*lộc|thương\\s*hiệu\\s*đặc\\s*sản|vùng\\s*trồng\\s*tiêu\\s*chuẩn)\\b',
     '\\b(?:vận\\s*hành\\s*quy\\s*trình|tối\\s*ưu\\s*hệ\\s*thống|tiết\\s*kiệm\\s*chi\\s*phí|năng\\s*suất\\s*lao\\s*động|quản\\s*trị\\s*chuỗi\\s*cung\\s*ứng)\\b',
     '\\b(?:vận\\s*hành\\s*thương\\s*mại|chạy\\s*thử|đóng\\s*điện|thông\\s*xe|khởi\\s*công|động\\s*thổ|khép\\s*kín\\s*đường|vành\\s*đai\\s*\\d+|phân\\s*luồng\\s*giao\\s*thông|xuất\\s*quân\\s*bảo\\s*vệ|duyệt\\s*đội\\s*ngũ|diễn\\s*tập\\s*bảo\\s*vệ)(?!\\s*(?:khắc\\s*phục|sửa\\s*chữa|cầu\\s*tạm|cứu\\s*hộ|thiên\\s*tai))\\b',
@@ -1614,8 +1614,7 @@ ABSOLUTE_VETO = [
     '\\b(?:xóa\\s*nhà\\s*tạm|nhà\\s*dột\\s*nát|hỗ\\s*trợ\\s*nhà\\s*ở|nhà\\s*đại\\s*đoàn\\s*kết|an\\s*cư\\s*lạc\\s*nghiệp)(?!\\s*(?:vùng\\s*lũ|rốn\\s*lũ|sau\\s*bão|thiên\\s*tai|sạt\\s*lở|nguy\\s*cơ|di\\s*dời))\\b',
     '\\b(?:xả\\s*nước\\s*đổ\\s*ải|vận\\s*hành\\s*phát\\s*điện|phát\\s*điện\\s*định\\s*kỳ|mực\\s*nước\\s*chết|hồ\\s*thủy\\s*điện\\s*xả\\s*nước(?!\\s*khẩn\\s*cấp))\\b',
     '\\b(?:xả\\s*súng|nổ\\s*súng|đấu\\s*súng|thảm\\s*sát|khủng\\s*bố|đánh\\s*bom|giẫm\\s*đạp|chen\\s*lấn\\s*xô\\s*đẩy|biểu\\s*tình|bạo\\s*loạn)(?!\\s*(?:cứu\\s*trợ|hỗ\\s*trợ))\\b',
-    '\\b(?:xổ\\s*số|k\\s*q\\s*x\\s*s|vietlott|lô\\s*đề|soi\\s*cầu|vé\\s*số|thưởng\\s*độc\\s*đắc|trúng\\s*giải\\s*đặc\\s*biệt)\\b',
-    '\\b(?:xổ\\s*số|vietlott|trúng\\s*số|giải\\s*đặc\\s*biệt|vé\\s*số|kết\\s*quả\\s*mở\\s*thưởng)\\b',
+    '\\b(?:xổ\\s*số|k\\s*q\\s*x\\s*s|vietlott|lô\\s*đề|soi\\s*cầu|vé\\s*số|thưởng\\s*độc\\s*đắc|trúng\\s*giải\\s*đặc\\s*biệt|trúng\\s*số|kết\\s*quả\\s*mở\\s*thưởng)\\b',
     '\\b(?:xử\\s*phạt\\s*vi\\s*phạm\\s*hành\\s*chính|tạm\\s*giữ\\s*phương\\s*tiện|nồng\\s*độ\\s*cồn|vi\\s*phạm\\s*tốc\\s*độ|phí\\s*đường\\s*bộ)\\b',
     '\\b(?:xử\\s*phạt|khởi\\s*tố|truy\\s*tố|xét\\s*xử|phiên\\s*tòa|bản\\s*án|tử\\s*hình|chung\\s*thân|án\\s*tù|bị\\s*can|bị\\s*cáo|tòa\\s*án\\s*nhân\\s*dân|điều\\s*tra\\s*viên|tranh\\s*chấp|khiếu\\s*nại|tố\\s*cáo)\\b',
     '\\b(?:á\\s*hậu|hoa\\s*hậu|hoa\\s*khôi|người\\s*đẹp|người\\s*mẫu|showbiz|nhan\\s*sắc|thảm\\s*đỏ|catwalk)\\b',
@@ -1623,7 +1622,8 @@ ABSOLUTE_VETO = [
     '\\b(?:án\\s*mạng|trọng\\s*án|truy\\s*nã|bắt\\s*giữ|ma\\s*túy|buôn\\s*lậu|đánh\\s*bạc|mại\\s*dâm|cướp\\s*giật|trộm\\s*cắp|đâm\\s*chém|hỗn\\s*chiến|đua\\s*xe|xả\\s*súng|mua\\s*bán\\s*người|giết\\s*người|hung\\s*thủ|nghi\\s*phạm|khởi\\s*tố|bắt\\s*tạm\\s*giam|điều\\s*tra|tố\\s*cáo|chiếm\\s*đoạt)(?!.*(?:lũ|bão|thiên\\s*tai|cứu\\s*nạn))',
     '\\b(?:án\\s*treo|giảm\\s*nhẹ\\s*hình\\s*phạt|hành\\s*vi\\s*phạm\\s*tội|đồng\\s*phạm|chủ\\s*mưu|tang\\s*vật|hồ\\s*sơ\\s*vụ\\s*án|phiên\\s*tòa\\s*xét\\s*xử)\\b',
     '\\b(?:âm\\s*dương\\s*lịch|lịch\\s*vạn\\s*niên|xem\\s*ngày\\s*tốt|tử\\s*vi|hoàng\\s*đạo|con\\s*giáp|vận\\s*may|tài\\s*lộc)\\b',
-    '\\b(?:ùn\\s*tắc\\s*giờ\\s*cao\\s*điểm|kẹt\\s*xe\\s*cục\\s*bộ|phân\\s*luồng\\s*dịp\\s*lễ|bến\\s*xe\\s*đông\\s*nghẹt|người\\s*dân\\s*đổ\\s*về\\s*quê|đường\\s*vành\\s*đai\\s*trên\\s*cao)\\b',
+    '\\b(?:ùn\\s*tắc\\s*giờ\\s*cao\\s*điểm|kẹt\\s*xe\\s*cục\\s*bộ|phân\\s*luồng\\s*dịp\\s*lễ|bến\\s*xe\\s*đông\\s*nghẹt|người\\s*dân\\s*đổ\\s*về\\s*quê|đường\\s*vành\\s*đai\\s*trên\\s*cao|xe\\s*khách\\s*bốc\\s*cháy)\\b',
+    '\\b(?:tai\\s*nạn\\s*giao\\s*thông|va\\s*chạm\\s*giao\\s*thông|lật\\s*xe|tông\\s*xe)(?!.*(?:do|vì|bởi)\\s*(?:bão|lũ|sạt|ngập|thiên\\s*tai))\\b',
     '\\b(?:ăn\\s*chặn|biển\\s*thủ|trục\\s*lợi|sao\\s*kê|minh\\s*bạch)\\s*(?:từ\\s*thiện|tiền\\s*cứu\\s*trợ|quỹ|tài\\s*khoản)(?!\\s*(?:cho|về|người)\\s*(?:vùng\\s*lũ|bão))\\b',
     '\\b(?:ăn\\s*dặm\\s*kiểu\\s*nhật|ăn\\s*dặm\\s*blw|rèn\\s*con\\s*tự\\s*lập|khủng\\s*hoảng\\s*tuổi\\s*lên\\s*ba|mẹ\\s*bỉm\\s*sữa|chọn\\s*bỉm\\s*sữa|sữa\\s*công\\s*thức|phát\\s*triển\\s*chiều\\s*cao)\\b',
     '\\b(?:đa\\s*dạng\\s*sinh\\s*học|bảo\\s*tồn\\s*động\\s*vật|cá\\s*thể\\s*quý\\s*hiếm|sách\\s*đỏ|thả\\s*về\\s*rừng|vườn\\s*quốc\\s*gia|khu\\s*bảo\\s*tồn|tài\\s*nguyên\\s*sinh\\s*vật)\\b',
@@ -1635,7 +1635,7 @@ ABSOLUTE_VETO = [
     '\\b(?:đoàn\\s*luật\\s*sư|liên\\s*đoàn\\s*luật\\s*sư|quy\\s*tắc\\s*đạo\\s*đức\\s*nghề\\s*nghiệp|kỷ\\s*luật\\s*luật\\s*sư|tư\\s*vấn\\s*pháp\\s*lý\\s*doanh\\s*nghiệp|hợp\\s*quy\\s*pháp\\s*luật)\\b',
     '\\b(?:đua\\s*ngựa|đua\\s*chó|đua\\s*thuyền\\s*rồng|lễ\\s*hội\\s*đua\\s*thuyền)\\b',
     '\\b(?:đua\\s*thuyền|rowing|canoeing|đấu\\s*kiếm|fencing|cử\\s*tạ|bắn\\s*súng|thể\\s*dục\\s*dụng\\s*cụ|aerobic|điền\\s*kinh|nhảy\\s*cao|nhảy\\s*xa)\\b',
-    '\\b(?:đuối\\s*nước|chết\\s*đuối|tắm\\s*suối|tắm\\s*hồ|hồ\\s*bơi|bể\\s*bơi|công\\s*viên\\s*nước|tắm\\s*biển)(?!.*(?:bão|lũ|mưa\\s*lũ|ngập|lũ\\s*quét|sóng\\s*thần|cứu\\s*nạn|mất\\s*tích|vùng\\s*lũ))\\b',
+    '\\b(?:đuối\\s*nước|chết\\s*đuối|tắm\\s*suối|tắm\\s*hồ|hồ\\s*bơi|bể\\s*bơi|công\\s*viên\\s*nước|tắm\\s*biển)(?!.*(?:bão|lũ|mưa\\s*lũ|ngập|lũ\\s*quét|sóng\\s*thần|cứu\\s*nạn|mất\\s*tích|vùng\\s*lũ|sóng\\s*lớn|sóng\\s*cuốn|biển\\s*động))\\b',
     '\\b(?:đá\\s*quý\\s*lục\\s*yên|trang\\s*sức\\s*cao\\s*cấp|vàng\\s*bạc\\s*đá\\s*quý|kim\\s*cương\\s*nhân\\s*tạo|đá\\s*phong\\s*thủy|ngọc\\s*trai|p\\s*n\\s*j|d\\s*o\\s*j\\s*i|s\\s*j\\s*c)\\b',
     '\\b(?:đám\\s*cưới|hôn\\s*lễ|ly\\s*hôn|ngoại\\s*tình|đánh\\s*ghen|hẹn\\s*hò|chia\\s*tay|tình\\s*trường)\\b',
     '\\b(?:đánh\\s*bạc|sát\\s*phạt|tụ\\s*điểm\\s*đá\\s*gà|xóc\\s*đĩa|lô\\s*đề|ghi\\s*số\\s*đề|tổ\\s*chức\\s*đánh\\s*bạc)\\b',
@@ -1692,11 +1692,11 @@ ABSOLUTE_VETO = [
     'bắt\\s*sóng', 'bốc\\s*hơi\\s*(?:tài\\s*khoản|vốn\\s*hóa|giá\\s*trị|lợi\\s*nhuận|tài\\s*sản)',
     'cháy\\s*(?:vé|show|concert|liveshow|tour|hàng|kho|đơn|order|slot|suất|deadline|kpi|dự\\s*án|task|việc|túi|tiền|hết\\s*mình|phố|team|máu|đam\\s*mê|quá|rực)',
     'chấn\\s*thương(?:\\s*chỉnh\\s*hình|\\s*thể\\s*thao|\\s*tâm\\s*lý)|giãn\\s*dây\\s*chằng|đứt\\s*dây\\s*chằng',
-    'chấn\\s*động\\s*(?:dư\\s*luận|showbiz|làng\\s*giải\\s*trí|MXH|mạng\\s*xã\\s*hội|vbiz)',
+    'chấn\\s*động\\s*(?:dư\\s*luận|showbiz|làng\\s*giải\\s*trí|MXH|mạng\\s*xã\\s*hội|vbiz|thị\\s*trường|kinh\\s*tế|tài\\s*chính|thế\\s*giới\\s*ngầm|dark\\s*web)',
     'cú\\s*sốc(?:\\s*thị\\s*trường|\\s*tình\\s*cảm|\\s*giá|\\s*vpop|\\s*showbiz|\\s*giải\\s*trí)',
-    'cơn\\s*bão\\s*(?:chứng\\s*khoán|chứng\\s*trường|bán\\s*tháo|lãi\\s*suất|tỷ\\s*giá|khủng\\s*hoảng|suy\\s*thoái|giá\\s*cả|dư\\s*luận|truy\\s*ền\\s*thông|tin\\s*giả|mạng|tin\\s*đồn|showbiz|tài\\s*chính|ngoại\\s*giao|chính\\s*trị|rating|đánh\\s*giá|review|hashtag|trend|viral|quà\\s*tặng|lòng|tố|tát)',
-    'cơn\\s*lũ\\s*(?:tin\\s*giả|tội\\s*phạm|rác\\s*thải\\s*số|lượt|fan|tin\\s*nhắn|email|notification|lời\\s*khen|quà|rác)',
-    'cơn\\s*lốc\\s*(?:giá|tăng\\s*giá|giảm\\s*giá|khuyến\\s*mãi|sale|flash\\s*sale|voucher|đầu\\s*tư|đường\\s*biên|màu\\s*cam|sân\\s*cỏ|chuyển\\s*nhượng)','cơn\\s*sốt\\s*(?:đất|giá|vé)',
+    'cơn\\s*bão\\s*(?:chứng\\s*khoán|chứng\\s*trường|bán\\s*tháo|lãi\\s*suất|tỷ\\s*giá|khủng\\s*hoảng|suy\\s*thoái|giá\\s*cả|dư\\s*luận|truy\\s*ền\\s*thông|tin\\s*giả|mạng|tin\\s*đồn|showbiz|tài\\s*chính|ngoại\\s*giao|chính\\s*trị|rating|đánh\\s*giá|review|hashtag|trend|viral|quà\\s*tặng|lòng|tố|tát|sa\\s*thải|nhân\\s*sự|layoff)',
+    'cơn\\s*lũ\\s*(?:tin\\s*giả|tội\\s*phạm|rác\\s*thải\\s*số|lượt|fan|tin\\s*nhắn|email|notification|lời\\s*khen|quà|rác|thông\\s*tin|cảm\\s*xúc)',
+    'cơn\\s*lốc\\s*(?:giá|tăng\\s*giá|giảm\\s*giá|khuyến\\s*mãi|sale|flash\\s*sale|voucher|đầu\\s*tư|đường\\s*biên|màu\\s*cam|sân\\s*cỏ|chuyển\\s*nhượng|hàng\\s*hiệu)','cơn\\s*sốt\\s*(?:đất|giá|vé|ảo|hàng|thị\\s*trường)',
     'dông\\s*bão\\s*(?:cuộc\\s*đời|tình\\s*cảm|nội\\s*tâm|hôn\\s*nhân|gia\\s*đình)',
     'giá\\s*(?:vàng|heo|cà\\s*phê|lúa|xăng|dầu|trái\\s*cây|thanh\\s*long|nông\\s*sản|bất\\s*động\\s*sản|đất|bạc|bạch\\s*kim)',
     r"tâm\s*bão\s*(?:giá|thị\s*trường|tài\s*chính|ngân\s*hàng|bê\s*bối|truyền\s*thông|dư\s*luận|scandal)",
@@ -1706,7 +1706,7 @@ ABSOLUTE_VETO = [
     'khô\\s*hạn\\s*(?:bàn\\s*thắng|ý\\s*tưởng|nội\\s*dung|tương\\s*tác|vốn|tài\\s*chính)', 'không\\s*khí\\s*lạnh\\s*(?:nhạt|lùng|giá)',
     'làn\\s*sóng\\s*(?:đầu\\s*tư|tẩy\\s*chay|sa\\s*thải|viral|trend|covid|dịch\\s*bệnh|công\\s*nghệ|di\\s*cư\\s*số|di\\s*chuyển)(?!\\s*sóng\\s*thần)',
     'lửa\\s*ngùn\\s*ngụt|bà\\s*hỏa|chập\\s*điện(?!\\s*(?:do|vì)\\s*(?:mưa|ngập|bão))',
-    'mưa\\s*(?:like|view|comment|đơn\\s*hàng|order|follow|sub|subscriber|deal|voucher|ưu\\s*đãi|quà\\s*tặng|coupon|gạch\\s*đá|lời\\s*khen|feedback|email|tin\\s*nhắn|notification|bàn\\s*thắng|huy\\s*chương)','mất\\s*sóng\\s*(?:wifi|wi-?fi|4g|5g|lte)',
+    'mưa\\s*(?:like|view|comment|đơn\\s*hàng|order|follow|sub|subscriber|deal|voucher|ưu\\s*đãi|quà\\s*tặng|coupon|gạch\\s*đá|lời\\s*khen|feedback|email|tin\\s*nhắn|notification|bàn\\s*thắng|huy\\s*chương)','mất\\s*sóng\\s*(?:wifi|wi-?fi|4g|5g|lte|di\\s*động)(?!.*(?:bão|lũ|giông|lốc|mưa\\s*lớn|thiên\\s*tai|sạt\\s*lở|cứu\\s*hộ|sập|đổ))',
     'ngập\\s*(?:deal|ưu\\s*đãi|voucher|order|đơn|hashtag|trend|quà|rác|nợ|hoa|tràn\\s*(?:cảm\\s*xúc|hạnh\\s*phúc|tình\\s*yêu|niềm\\s*vui))','phủ\\s*sóng',
     'rung\\s*chấn\\s*(?:dư\\s*luận|thị\\s*trường|sân\\s*cỏ|điện\\s*ảnh|chính\\s*trường|vpop)', 'storm\\s+of|flood\\s+of|tsunami\\s+of',
     'sóng\\s*(?:wifi|wi-?fi|4g|5g|lte|di\\s*động|viễn\\s*thông|radio|trending|trend|viral)(?!\\s*thần)',
@@ -1731,15 +1731,17 @@ ABSOLUTE_VETO = [
     r"^bản\s*tin\s*dự\s*báo\s*(?:thủy\s*triều|dòng\s*chảy|sóng|nguồn\s*nước)\s*(?:10\s*ngày|hạn\s*ngắn|hạn\s*dài|tuần\s*tới)(?!\s*.*(?:khẩn\s*cấp|bão|áp\s*thấp))",
     r"\b(?:núi\s*rác|bãi\s*rác|sập\s*núi\s*rác)\b",
     r"\b(?:ngắm|chiêm\s*ngưỡng|tận\s*hưởng|check-in|chụp\s*ảnh|du\s*lịch\s*trải\s*nghiệm|vẻ\s*đẹp|thơ\s*mộng|tựa\s*như|phủ\s*kín)\s*(?:tuyết|hoa|cảnh|mây|băng|sương)\b",
-    r"\b(?:tạo|gây)\s*(?:địa\s*chấn|cơn\s*sốt|bão|sóng)\s*(?:tại|trong|trên)\s*(?:giải|vòng|bóng\s*đá|thể\s*thao|sân\s*cỏ|bảng\s*xếp\s*hạng)\b",
-    r"\b(?:lịch\s*cấm\s*đường|phân\s*luồng\s*giao\s*thông|hạn\s*chế\s*phương\s*tiện)\s*(?:phục\s*vụ|tại|trong|dịp)\s*(?:lễ|hội|đại\s*hội|diễu\s*binh|diễu\s*hành|A\d+|sự\s*kiện|tết|quốc\s*khánh|SEA\s*Games)\b",
+    r"\b(?:tạo|gây)\s*(?:địa\s*chấn|cơn\s*sốt|bão|sóng)\s*(?:tại|trong|trên)\s*(?:giải|vòng|bóng\s*đá|thể\s*thao|sân\s*cỏ|bảng\s*xếp\s*hạng|thị\s*trường)\b",
+    r"\b(?:lịch\s*cấm\s*đường|phân\s*luồng\s*giao\s*thông|hạn\s*chế\s*phương\s*tiện)\s*(?:phục\s*vụ|tại|trong|dịp)\s*(?:lễ|hội|đại\s*hội|diễu\s*binh|diễu\s*hành|A\d+|sự\s*kiện|tết|quốc\s*khánh|SEA\s*Games|bầu\s*cử)\b",
+    r"\b(?:tài\s*chính\s*thị\s*trường|chứng\s*khoán|ngân\s*hàng|lãi\s*suất|tỷ\s*giá|fed|biểu\s*tình)(?!.*(?:bão|lũ|thiên\s*tai))\b",
     r"\b(?:thực\s*tập|diễn\s*tập)\s*(?:phương\s*án|kế\s*hoạch)\s*(?:chữa\s*cháy|cứu\s*nạn|cứu\s*hộ|PCCC)\b",
     r"\b(?:tổ\s*liên\s*gia|điểm\s*chữa\s*cháy|mô\s*hình\s*an\s*toàn)\s*(?:PCCC|phòng\s*cháy)\b",
-    r"\bbão\s*(?:mùa\s*đông|tuyết)\s*(?:càn\s*quét|tấn\s*công|đổ\s*bộ)\s*(?:châu|mỹ|âu|úc|canada|nhật|hàn|trung)\b",
+
     r"(?<!\bgiảm\s)(?:lãi\s*hợp\s*nhất|lợi\s*nhuận\s*trước\s*thuế|huy\s*động\s*vốn|tiền\s*gửi\s*tiết\s*kiệm|tổng\s*tài\s*sản\s*(?:vượt|đạt)|dư\s*nợ|nợ\s*xấu)(?!.*(?:thiệt\s*hại|bão|lũ))",
     r"\b(?:hội\s*chợ|triển\s*lãm|trưng\s*bày|xúc\s*tiến\s*thương\s*mại|ra\s*mắt\s*sản\s*phẩm|khai\s*trương|khánh\s*thành)(?!\s*.*(?:cứu\s*trợ|ủng\s*hộ|tái\s*thiết|khắc\s*phục))\b",
     r"\b(?:thực\s*tập|diễn\s*tập)\s*(?:phương\s*án|kế\s*hoạch|chiến\s*đấu|bắn\s*đạn\s*thật|quân\s*sự|phòng\s*thủ|an\s*ninh|tình\s*huống|phòng\s*chống\s*thiên\s*tai|tìm\s*kiếm\s*cứu\s*nạn)(?!\s*.*(?:ứng\s*phó\s*bão|lũ|thiên\s*tai))\b",
     r"\b(?:an\s*toàn\s*giao\s*thông|trật\s*tự\s*giao\s*thông|vi\s*phạm\s*giao\s*thông|ùn\s*tắc\s*giao\s*thông)(?!.*(?:bão|lũ|ngập|sạt|thiên\s*tai))\b",
+    # Removed sập/đổ/vụ sập cầu blockage to allow structural_failure group
     r"\b(?:sập|đổ)\s*(?:giàn\s*giáo|cần\s*cẩu|công\s*trình|tường\s*rào|cổng\s*trường)(?!\s*do\s*(?:bão|lũ|giông|lốc|thiên\s*tai))\b",
     r"\b(?:vụ\s*sập\s*cầu|sập\s*cầu)(?!\s*(?:do|vì|trong)\s*(?:bão|lũ|nước\s*chảy|thiên\s*tai))\b",
     r"\bmất\s*liên\s*lạc\s*(?:bí\s*ẩn|với\s*gia\s*đình|bỏ\s*nhà|đi\s*lạc)\b",
@@ -1750,38 +1752,38 @@ ABSOLUTE_VETO = [
 # Noise contexts that are blocked UNLESS hazard rules are met
 CONDITIONAL_VETO = [
     # URBAN / INDUSTRIAL FIRE & EXPLOSION (Non-Forest)
-    # Block unless caused by disaster (lightning, storm, etc.)
+    # Removed generic fire vetoes to allow urban_fire group
     r"(?:cháy|hỏa\s*hoạn|bốc\s*cháy|phát\s*hỏa)\s*(?:nhà|căn\s*hộ|chung\s*cư|phòng\s*trọ|quán|karaoke|bar|cửa\s*hàng|ki\s*ốt|xưởng|kho|trụ\s*sở|xe|ô\s*tô|xe\s*máy)(?!\s*(?:do|vì|bởi|tại)\s*(?:bão|lũ|thiên\s*tai|sét\s*đánh|chập\s*điện\s*do\s*mưa|cây\s*đổ|giông\s*lốc))",
     r"(?:nổ|phát\s*nổ)\s*(?:bình\s*gas|khí\s*gas|nồi\s*hơi|lò\s*hơi|trạm\s*biến\s*áp|máy\s*biến\s*áp|pin|ắc\s*quy)(?!\s*(?:do|vì|bởi|tại)\s*(?:bão|lũ|thiên\s*tai|sét\s*đánh))",
     r"(?:PCCC|cảnh\s*sát\s*PCCC|114|đội\s*chữa\s*cháy|lực\s*lượng\s*chữa\s*cháy|dập\s*tắt\s*đám\s*cháy)(?!\s*(?:rừng|thảm\s*thực\s*vật|do\s*sét|trong\s*mưa\s*bão))",
     r"(?:nguyên\s*nhân\s*ban\s*đầu|đang\s*điều\s*tra|khám\s*nghiệm\s*hiện\s*trường|khởi\s*tố\s*vụ\s*án)\s*(?:cháy|nổ)?",
-    # REMOVED DUPLICATE: r"lửa\s*ngùn\s*ngụt|bà\s*hỏa|chập\s*điện(?!\s*(?:do|vì)\s*(?:mưa|ngập|bão))",
+
 
     # URBAN MAINTENANCE
-    r"\b(?:chặt\s*hạ|tỉa\s*cành|cắt\s*tỉa|duy\s*tu|xử\s*lý\s*cây\s*xanh)(?!\s*(?:sau|do)\s*(?:bão|lũ|lửa))\b",
+    r"\b(?:chặt\s*hạ|tỉa\s*cành|cắt\s*tỉa|duy\s*tu|xử\s*lý\s*cây\s*xanh)(?!\s*(?:sau|do)\s*(?:bão|lũ|lửa|giông|lốc|mưa))\b",
     r"\b(?:quản\s*lý\s*biên\s*giới|đồn\s*biên\s*phòng|tuần\s*tra\s*biên\s*giới|vệ\s*biên|vùng\s*biên)\b",
     r"\b(?:bom\s*mìn|vật\s*nổ|rửa\s*tiền|Taliban|Hamas|Hezbollah|phiến\s*quân|phi\s*vụ|buôn\s*người)\b",
 
     # TRAFFIC ACCIDENTS (Vehicle specific)
     r"(?<!\w)(?:va\s*chạm\s*liên\s*hoàn|tai\s*nạn\s*liên\s*hoàn|tai\s*nạn\s*giao\s*thông|lật\s*xe|tông\s*xe|xe\s*khách|xe\s*tải|xe\s*ben|va\s*chạm|bị\s*xe\s*cán|xe\s*máy|xe\s*đạp|xe\s*điên|xe\s*tập\s*lai)(?!.*(?:do|vì|bởi|chở|của|xe|đoàn|đi|khi|trong|tại|vùng|bị)\s*(?:bão|lũ|sạt\s*lở|mưa|thiện\s*nguyện|từ\s*thiện|cứu\s*trợ|người\s*đi\s*cứu|hàng\s*cứu|cứu\s*trợ|nhân\s*đạo|ngập|nước\s*cuốn|cuốn\s*trôi|nước\s*dâng|thiên\s*tai))(?!.*(?:đoàn\s*thiện\s*nguyện|đoàn\s*từ\s*thiện|xe\s*cứu\s*trợ|hàng\s*cứu\s*trợ|hỗ\s*trợ\s*khẩn\s*cấp|từ\s*thiện|thiện\s*nguyện|lao\s*cai|yen\s*bai|lang\s*son|phu\s*tho|quang\s*ninh|hai\s*phong|thanh\s*hoa|nghe\s*an|ha\s*tinh|quang\s*tri|thua\s*thien\s*hue|da\s*nang|quang\s*nam|quang\s*ngai|binh\s*dinh|phu\s*yen|khanh\s*hoa|ninh\s*thuan|binh\s*thuan|kon\s*tum|gia\s*lai|dak\s*lak|dak\s*nong|lam\s*dong))",
-    r"\b(?:tông\s*xe|tông\s*vào|xe\s*máy|xe\s*tải|lái\s*xe)(?!.*(?:bão|lũ|sạt\s*lở|cứu\s*trợ|ngập|cứu\s*nạn|tử\s*vong|thiệt\s*mạng|trôi|cuốn))\b",
-    r"\b(?:tai\s*nạn\s*liên\s*hoàn|đâm\s*xe|lật\s*xe|va\s*chạm|người\s*lái\s*xe|tài\s*xế|nồng\s*độ\s*cồn|giấy\s*phép\s*lái\s*xe|sát\s*hạch|thói\s*quen|kỹ\s*năng\s*lái\s*xe|luật\s*giao\s*thông|điểm\s*đen|đường\s*sắt|đường\s*ray|tàu\s*hỏa|xe\s*đạp|xe\s*khách|xe\s*tải|xe\s*hợp\s*đồng|tông\s*xe)(?!.*(?:bão|lũ|sạt\s*lở|mưa|ngập))\b",
+    r"\b(?:tông\s*xe|tông\s*vào|xe\s*máy|xe\s*tải|lái\s*xe)(?!.*(?:bão|lũ|sạt\s*lở|cứu\s*trợ|ngập|cứu\s*nạn|tử\s*vong|thiệt\s*mạng|trôi|cuốn|mưa\s*lớn|đường\s*trơn|sương\s*mù|vách\s*núi|vực\s*sâu))\b",
+    r"\b(?:tai\s*nạn\s*liên\s*hoàn|đâm\s*xe|lật\s*xe|va\s*chạm|người\s*lái\s*xe|tài\s*xế|nồng\s*độ\s*cồn|giấy\s*phép\s*lái\s*xe|sát\s*hạch|thói\s*quen|kỹ\s*năng\s*lái\s*xe|luật\s*giao\s*thông|điểm\s*đen|đường\s*sắt|đường\s*ray|tàu\s*hỏa|xe\s*đạp|xe\s*khách|xe\s*tải|xe\s*hợp\s*đồng|tông\s*xe)(?!.*(?:bão|lũ|sạt\s*lở|mưa|ngập|sương\s*mù|gió\s*giật|cây\s*đổ))\b",
     r"\b(?:tai\s*nạn\s*thảm\s*khốc|thảm\s*khốc\s*9\s*người|lật\s*xe\s*khách)(?!.*(?:bão|lũ|sạt\s*lở|lũ\s*quét|sóng\s*thần|cứu\s*trợ|thiên\s*tai))\b",
 
     # INDIVIDUAL ACCIDENTS
+    # Removed construction collapse veto to allow structural_failure group
     r"(?:sập|đổ)\s*(?:giàn\s*giáo|cần\s*cẩu|công\s*trình|tường|trần|mái|nhà\s*xưởng)\s*(?:đang\s*thi\s*công|khi\s*thi\s*công|tại\s*công\s*trình)(?!\s*(?:do|vì|gây)\s*(?:gió|bão|lốc|mưa|chết|tử\s*vong|thương\s*vong))",
     r"tai\s*nạn\s*lao\s*động|an\s*toàn\s*lao\s*động|phóng\s*hỏa|đốt\s*nhà",
     r"(?:rơi|ngã)\s*(?:từ\s*trên\s*cao|tầng\s*\d+|giàn\s*giáo|cần\s*cẩu|hố\s*ga|thang\s*máy)",
-    r"\b(?:đuối\s*nước|tìm\s*thấy\s*thi\s*thể|tử\s*vong\s*(?:thương\s*tâm|do\s*ngạt|ở\s*sông|ở\s*biển|khi\s*tắm))(?!.*(?:bão|lũ|ngập|sạt|thiên\s*tai|tai\s*nạn|vỡ\s*đê|sóng\s*lớn|sét\s*đánh|mưa\s*lũ))\b",
+    r"\b(?:đuối\s*nước|tìm\s*thấy\s*thi\s*thể|tử\s*vong\s*(?:thương\s*tâm|do\s*ngạt|ở\s*sông|ở\s*biển|khi\s*tắm))(?!.*(?:bão|lũ|ngập|sạt|thiên\s*tai|tai\s*nạn|vỡ\s*đê|sóng\s*lớn|sét\s*đánh|mưa\s*lũ|sóng\s*cuốn|biển\s*động))\b",
     r"\b(?:tìm\s*kiếm|mất\s*tích)\s*(?:bé\s*trai|bé\s*gái|nam\s*sinh|nữ\s*sinh|thanh\s*niên|người\s*thân)(?!\s*(?:do|vì|trong)\s*(?:lũ|bão|thiên\s*tai|sạt\s*lở|nước\s*cuốn))\b",
-    r"\b(?:dự\s*báo\s*thời\s*tiết\s*ngày|thời\s*tiết\s*hôm\s*nay|thời\s*tiết\s*tháng|bản\s*tin\s*thời\s*tiết)(?!.*(?:mưa\s*lũ|ngập|sạt|bão|lốc|mưa\s*đá|hạn\s*mặn|triều\s*cường|rét|lạnh|nhiệt\s*độ))\b",
-    # REMOVED DUPLICATE: r"(?:sập|tai\s*nạn)\s*(?:hầm\s*lò|mỏ\s*đá|mỏ\s*than|công\s*trường)(?!\s*(?:do|vì|bởi)\s*(?:bão|lũ|thiên\s*tai|mưa|sạt\s*lở))",
+    r"\b(?:dự\s*báo\s*thời\s*tiết\s*ngày|thời\s*tiết\s*hôm\s*nay|thời\s*tiết\s*tháng|bản\s*tin\s*thời\s*tiết)(?!.*(?:mưa\s*lũ|ngập|sạt|bão|lốc|giông|mưa\s*đá|hạn\s*mặn|triều\s*cường|rét|lạnh|nhiệt\s*độ|nắng\s*nóng))\b",
+
 
     # ECONOMY & FINANCE
     r"(?<!\bgiảm\s)(?:lãi\s*suất|tín\s*dụng|tỉ\s*giá|ngoại\s*tệ|ngân\s*hàng|chứng\s*khoán|vốn\s*điều\s*lệ|lợi\s*nhuận|doanh\s*thu|vn-index)(?!.*(?:chính\s*sách|hỗ\s*trợ|ưu\s*đãi|khôi\s*phục|khắc\s*phục|giảm|miễn|khoanh\s*nợ|cơ\s*cấu)\s*(?:sau|vùng|cho|người|khách\s*hàng)\s*(?:bão|lũ|thiên\s*tai|ngập|sạt\s*lở|thiệt\s*hại))",
-      r"\b(?:cháy\s*lớn|vụ\s*cháy|hỏa\s*hoạn|bà\s*hỏa|thiêu\s*rụi|cháy\s*rụi).*(?:nhà\s*dân|cửa\s*hàng|quán|karaoke|chung\s*cư|xưởng|nhà\s*kho|xe\s*khách|xe\s*tải|ô\s*tô|xe\s*máy|chợ|siêu\s*thị|tầng|phòng|căn\s*hộ)(?!.*(?:rừng|thảm\s*thực\s*vật|do\s*sét|trong\s*bão|mưa))",
-    
-        r"\b(?:thị\s*trường\s*lao\s*động|nhu\s*cầu\s*tuyển\s*dụng|cơ\s*hội\s*việc\s*làm|làn\s*sóng\s*nhảy\s*việc|nộp\s*c\s*v|phỏng\s*vấn\s*tuyển\s*dụng)\b",
+    # Removed duplicated fire veto
+    r"\b(?:thị\s*trường\s*lao\s*động|nhu\s*cầu\s*tuyển\s*dụng|cơ\s*hội\s*việc\s*làm|làn\s*sóng\s*nhảy\s*việc|nộp\s*c\s*v|phỏng\s*vấn\s*tuyển\s*dụng)\b",
 
     # INDUSTRY, INFRA & ADMIN (Conditional - Blocked if NO disaster context)
     r"\b(?:giấy\s*phép\s*xây\s*dựng|hoàn\s*công|bê\s*tông\s*tươi|ép\s*cọc|nền\s*móng|đấu\s*thầu\s*xây\s*lắp|nhà\s*thầu\s*chính|nghiệm\s*thu\s*dự\s*án)\b",
@@ -1920,13 +1922,16 @@ SOFT_NEGATIVE = [
     r"thành\s*tích\s*xuất\s*sắc|thi\s*đua\s*lập\s*thành\s*tích|phát\s*động\s*phong\s*trào|khen\s*thưởng|tuyên\s*dương",
     r"tin\s*thế\s*giới|thế\s*giới\s*24h|tin\s*nhanh\s*quốc\s*tế|tiêu\s*điểm\s*quốc\s*tế",
     r"\b(?:tập\s*huấn|diễn\s*tập|hội\s*nghị|triển\s*khai\s*nhiệm\s*vụ|quán\s*triệt|phổ\s*biến\s*kiến\s*thức|trải\s*nghiệm|tuyên\s*truyền|thực\s*tập\s*phương\s*án|hội\s*thao|tổng\s*duyệt|giải\s*việt\s*dã|giải\s*chạy)\b",
-    r"\bjiải\s*bài\s*toán\s*(?:hạn|mặn|lũ|ngập|ách\s*tắc)\b",
+    r"\bgiải\s*bài\s*toán\s*(?:hạn|mặn|lũ|ngập|ách\s*tắc)\b",
     r"\bchấm\s*dứt\s*(?:nắng\s*nóng|rét|mưa\s*lớn|đợt\s*lạnh)\b",
     r"\b(?:phê\s*duyệt|ban\s*hành|điều\s*chỉnh|thông\s*qua)\s*(?:phương\s*án|kế\s*hoạch|chương\s*trình|luật)\s*(?:ứng\s*phó|phòng\s*chống|giảm\s*nhẹ|tình\s*trạng)\b",
     r"\b(?:điểm\s*tin|tin\s*tức|tổng\s*hợp)\s*(?:tuần|tháng|ngày)\b",
-    r"\b(?:hướng\s*dẫn|kỹ\s*năng)\s*(?:lái\s*xe|tham\s*gia\s*giao\s*thông|an\s*toàn|sơ\s*cấp\s*cứu|bơi\s*lội|phòng\s*cháy)\b",
+    r"\b(?:hướng\s*dẫn|kỹ\s*năng)\s*(?:lái\s*xe|tham\s*gia\s*giao\s*thông|an\s*toàn|sơ\s*cấp\s*cứu|bơi\s*lội|phòng\s*cháy|thoát\s*hiểm|sinh\s*tồn|cứu\s*đuối)\b",
     r"\b(?:tổng\s*đài|hotline)\s*(?:111|112|113|114|115|cskh)\b",
     r"\b(?:văn\s*hóa|an\s*toàn)\s*giao\s*thông\b",
+    r"\b(?:hội\s*nghị|hội\s*thảo|tọa\s*đàm)\s*(?:tổng\s*kết|sơ\s*kết|triển\s*khai|chuyên\s*đề|khoa\s*học)\b",
+    r"\b(?:kỷ\s*niệm)\s*(?:\d+\s*năm|ngày\s*thành\s*lập|ngày\s*truyền\s*thống)\b",
+    r"\b(?:sinh\s*hoạt)\s*(?:chuyên\s*đề|định\s*kỳ|chi\s*bộ|câu\s*lạc\s*bộ)\b",
 ]
 SOFT_NEGATIVE_RE = build_mega_re(SOFT_NEGATIVE)
 
@@ -1950,12 +1955,12 @@ SCORING_WEIGHTS = {
     "multi_hazard_bonus": 1.0,     # Mentioning 2+ hazards
     "triple_hazard_bonus": 0.5,    # Mentioning 3+ hazards
     "title_hazard_boost": 2.0,     # Hazard found in title
-    "stage_recovery_bonus": 2.5,
-    "stage_forecast_bonus": 2.5,
+    "stage_recovery_bonus": 1.5,   # [TUNED] Lowered from 2.5 to avoid over-scoring vague recovery news
+    "stage_forecast_bonus": 3.0,   # [TUNED] Increased from 2.5 to help pure forecasts pass
     "context_hit_weight": 0.5,     # Points per context keyword match
     "context_max_bonus": 3.0,
     "gold_title_geo_boost": 8.0,   # [Hazard in Title] + [Location in Title]
-    "gold_trusted_warning": 6.0,   # Trusted source + Forecast/Warning
+    "gold_trusted_warning": 8.0,   # [TUNED] Increased from 6.0 to ensure KTTV bulletins pass
     "gold_standard_high": 5.0,     # Rule + Location + (Impact OR Agency)
     "gold_standard_med": 2.5,
     "gold_trusted_breaking": 3.0,  # Trusted + Rule + Location (No stats yet)
@@ -1975,7 +1980,7 @@ SCORING_WEIGHTS = {
     "penalty_title_clickbait": -5.0, # Major hazard title but no body impact
     "authority_level_high_bonus": 4.0, # Level 3 (Gov/Official)
     "authority_level_med_bonus": 1.5,  # Level 2 (Trusted/Verified)
-    "penalty_international": -15.0,    # International news with no VN location
+    "penalty_international": -20.0,    # [TUNED] Increased from -15.0 to stronger reject
     "penalty_neighbor_country": -4.0, # Neighboring countries (Lào, Cam, China, Thai) - milder penalty
     "penalty_drill_exercise": -20.0,    # Training, drills, sports -> High penalty to avoid noise
     "penalty_soft_negative": -10.0,     # General noise/ambiguous context
@@ -1995,80 +2000,90 @@ SCORING_WEIGHTS = {
 
 # CRITICAL ACTIONS WHITELIST
 # Phrases that bypass certain vetoes (e.g. accidents) because they are definitely disaster-related
-WHITELIST_TERMS = (
-    r"(?:xả\s*lũ|xả\s*đáy|sơ\s*tán\s*dân|di\s*dời\s*dân|di\s*dời\s*khẩn\s*cấp|"
-    r"(?:cứu\s*hộ|cứu\s*nạn)\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở|ngập|lụt|trôi|quét|cháy\s*rừng|hạn\s*mặn|sóng\s*thần)|"
-    r"khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở)|"
-    r"hỗ\s*trợ\s*khẩn\s*cấp\s*(?:vùng\s*lũ|thiên\s*tai|bão\s*lụt)|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ|"
-    r"ban\s*chỉ\s*huy\s*pctt|tìm\s*kiếm\s*cứu\s*nạn\s*(?:người\s*mất\s*tích|nạn\s*nhân\s*do\s*lũ|trên\s*biển)|"
-    r"đưa\s*thuyền\s*lên\s*bờ|trú\s*tránh\s*bão|neo\s*đậu\s*tàu\s*thuyền|"
-    r"chi\s*viện\s*(?:vùng\s*lũ|chống\s*bão)|xe\s*cứu\s*trợ\s*(?:bão|lũ)|hàng\s*cứu\s*trợ|tiếp\s*tế\s*vùng\s*lũ|phương\s*tiện\s*cứu\s*trợ|"
-    r"người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh\s*vùng\s*lũ|tiêm\s*chủng\s*vùng\s*lũ|vắc\s*xin\s*vùng\s*lũ|"
-    r"ứng\s*cứu\s*viễn\s*thông\s*bão\s*lũ|khôi\s*phục\s*liên\s*lạc\s*sau\s*bão|khôi\s*phục\s*sản\s*xuất\s*sau\s*lũ|"
-    r"cấm\s*lưu\s*thông\s*do\s*ngập|cấm\s*lưu\s*thông\s*do\s*sạt|phân\s*luồng\s*giao\s*thông\s*do\s*ngập|"
-    r"khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến\s*sau\s*sạt|khởi\s*công\s*nhà\s*vùng\s*lũ|xây\s*dựng\s*nhà\s*vùng\s*lũ|sửa\s*chữa\s*nhà\s*vùng\s*lũ|"
-    r"công\s*trình\s*cấp\s*thiết\s*phòng\s*chống|uav\s*cứu\s*trợ|trực\s*thăng\s*cứu\s*trợ|tàu\s*hỏa\s*cứu\s*trợ|"
-    r"xâm\s*thực\s*bờ\s*biển|sạt\s*lở\s*bờ\s*sông|sạt\s*lở\s*bờ\s*biển|"
-    r"gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch\s*chạy\s*lũ|bảo\s*vệ\s*đê\s*kè|sửa\s*chữa\s*hư\s*hỏng\s*do\s*bão|"
-    r"học\s*sinh\s*nghỉ\s*học\s*tránh\s*bão|cho\s*học\s*sinh\s*nghỉ\s*tránh\s*lũ|trường\s*ngập\s*lụt|"
-    r"sách\s*vở\s*cho\s*vùng\s*lũ|hỗ\s*trợ\s*giáo\s*dục\s*vùng\s*lũ|bão\s*vào\s*biển\s*đông|bão\s*đổ\s*bộ|"
-    r"cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện\s*ra\s*khơi|nước\s*cuốn\s*trôi\s*người|"
-    r"xuất\s*quân\s*hỗ\s*trợ\s*nhân\s*dân|bộ\s*đội\s*vượt\s*lũ|công\s*an\s*giúp\s*dân\s*chống\s*bão|"
-    r"cảnh\s*sát\s*hỗ\s*trợ\s*người\s*dân|cảnh\s*sát\s*giúp\s*dân\s*trong\s*lũ|cảnh\s*sát\s*phòng\s*chống\s*thiên\s*tai|"
-    r"chiến\s*dịch\s*quang\s*trung|hỗ\s*trợ\s*.*thiên\s*tai|khắc\s*phục\s*.*thiên\s*tai|"
-    r"thiệt\s*hại\s*do\s*thiên\s*tai|tình\s*nguyện\s*viên\s*.*vùng\s*lũ|hỗ\s*trợ\s*.*vùng\s*lũ|người\s*dân\s*.*vùng\s*lũ|"
-    r"cứu\s*trợ\s*.*vùng\s*lũ|tìm\s*kiếm\s*.*mất\s*tích|tìm\s*kiếm\s*.*nạn\s*nhân|"
-    r"thi\s*thể\s*.*trôi\s*dạt|mất\s*tích\s*.*trên\s*biển|tàu\s*cá\s*.*mất\s*tích|ngư\s*dân\s*.*mất\s*tích|"
-    r"cứu\s*nạn\s*.*trên\s*biển|lũ\s*quét\s*.*sạt\s*lở|sạt\s*lở\s*.*vùi\s*lấp|"
-    r"di\s*dời\s*.*khẩn\s*cấp|sơ\s*tán\s*.*dân|công\s*điện\s*.*khẩn|"
-    r"hoàn\s*lưu\s*.*bão|ảnh\s*hưởng\s*.*bão|chủ\s*động\s*ứng\s*phó|thủy\s*điện\s*.*xả\s*lũ|"
-    r"ứng\s*phó\s*bão\s*số|ứng\s*phó\s*áp\s*thấp|khẩn\s*cấp\s*ứng\s*phó|"
-    r"chiến\s*sĩ\s*hỗ\s*trợ\s*đồng\s*bào|chiến\s*sĩ\s*giúp\s*dân\s*gặt\s*lúa|"
-    r"tình\s*(?:trạng|huống)\s*khẩn\s*cấp\s*về\s*(?:thiên\s*tai|bão|lũ|sạt|ngập|lụt|hạn|mặn|cháy\s*rừng)|"
-    r"di\s*dời\s*khẩn\s*cấp\s*dân|tái\s*thiết\s*sau\s*thiên\s*tai|khởi\s*công\s*nhà\s*tình\s*nghĩa\s*vùng\s*lũ|"
-    r"sửa\s*chữa\s*hồ\s*đập|bch\s*phòng\s*chống|ban\s*chỉ\s*huy\s*tkcn|"
-    r"diễn\s*tập\s*phòng\s*chống\s*thiên\s*tai\s*quy\s*mô\s*lớn|"
-    r"công\s*an\s*cứu\s*nạn\s*trong\s*lũ|chiến\s*sĩ\s*cứu\s*nạn|binh\s*sĩ\s*cứu\s*hộ|csgt\s*giúp\s*dân\s*trong\s*mưa\s*bão|"
-    r"xây\s*nhà\s*sau\s*lũ|sửa\s*nhà\s*sau\s*lũ|nhà\s*tình\s*nghĩa\s*cho\s*vùng\s*lũ|"
-    r"nghỉ\s*học\s*tránh\s*bão|nghỉ\s*học\s*chống\s*bão|nghỉ\s*học\s*do\s*mưa\s*lũ|"
-    r"ứng\s*trực\s*bão\s*lũ|trực\s*ban\s*thiên\s*tai|đảm\s*bảo\s*an\s*toàn\s*hồ\s*đập|"
-    r"tạm\s*dừng\s*du\s*lịch\s*do\s*bão|công\s*bố\s*tình\s*huống\s*khẩn\s*cấp|viện\s*trợ\s*khẩn\s*cấp\s*thiên\s*tai|"
-    r"kêu\s*cứu\s*khẩn\s*cấp\s*trong\s*lũ|ứng\s*dụng\s*cứu\s*nạn|nâng\s*cao\s*năng\s*lực\s*phòng\s*chống\s*thiên\s*tai|"
-    r"bị\s*cô\s*lập\s*do\s*lũ|khắc\s*phục\s*hậu\s*quả\s*thiên\s*tai|triển\s*khai\s*ứng\s*phó\s*bão|"
-    r"an\s*toàn\s*hồ\s*chứa|dự\s*trữ\s*nước\s*chống\s*hạn|"
-    r"du\s*khách\s*mắc\s*kẹt\s*do\s*mưa\s*lũ|giải\s*cứu\s*du\s*khách\s*mắc\s*kẹt|"
-    r"chủ\s*động\s*ứng\s*phó\s*mưa\s*lũ|huy\s*động\s*lực\s*lượng\s*chống\s*bão|"
-    r"bão\s*số\s*\d+|vận\s*chuyển\s*hàng\s*cứu\s*trợ|di\s*dời\s*dân\s*tránh\s*bão|"
-    r"mái\s*ấm\s*tình\s*thương\s*vùng\s*lũ|dựng\s*nhà\s*cho\s*đồng\s*bào\s*lũ\s*lụt|"
-    r"vùng\s*bị\s*thiệt\s*hại\s*do\s*lũ|chiến\s*dịch\s*quang\s*trung|thư\s*kêu\s*gọi\s*ủng\s*hộ\s*bão\s*lụt|"
-    r"(?:ngân\s*hàng|tổ\s*chức\s*tín\s*dụng)\s*(?:giảm|miễn|hỗ\s*trợ)\s*(?:lãi\s*suất|nợ)\s*(?:cho|với)\s*(?:người\s*dân|khách\s*hàng)\s*(?:bị|vùng)\s*(?:thiên\s*tai|bão|lũ|sạt\s*lở)|"
-    r"bom\s*(?:mìn)?\s*(?:lộ\s*thiên|phát\s*hiện)\s*(?:sau|do)\s*(?:mưa|lũ|sạt\s*lở)|"
-    r"sét\s*đánh\s*(?:chết|tử\s*vong)\s*người|"
-    r"tin\s*dự\s*báo\s*thời\s*tiết\s*nguy\s*hiểm|dự\s*báo\s*mưa\s*lũ|có\s*khả\s*năng\s*xảy\s*ra\s*lũ\s*quét|"
-    r"đợt\s*mưa\s*lũ\s*mới|xây\s*mới\s*nhà\s*cho\s*vùng\s*sạt\s*lở|tái\s*định\s*cư\s*vùng\s*thiên\s*tai|"
-    r"di\s*dời\s*.*hộ\s*dân\s*.*vùng\s*thiên\s*tai|tái\s*định\s*cư\s*.*vùng\s*sạt\s*lở|"
-    r"xây\s*dựng\s*lại\s*nhà\s*.*vùng\s*bão\s*lũ|dựng\s*mái\s*ấm\s*.*vùng\s*sạt\s*lở|"
-    r"hỗ\s*trợ\s*người\s*dân\s*sau\s*bão|xe\s*.*bị\s*cuốn\s*trôi\s*.*lũ|"
-    r"người\s*.*bị\s*lũ\s*cuốn|nạn\s*nhân\s*.*mất\s*tích\s*do\s*lũ|"
-    r"thiệt\s*hại\s*.*do\s*mưa\s*lũ|khắc\s*phục\s*hậu\s*quả\s*.*mưa\s*lũ|"
-    r"mất\s*trắng\s*(?:do|sau|vì|bởi|trong)\s*(?:bão|lũ|thiên\s*tai|ngập|sạt|hạn|mặn)|"
-    r"mất\s*trắng\s*(?:hoa\s*màu|lúa|tôm|cá|tài\s*sản)\s*do\s*thiên\s*tai|"
-    r"rét\s*đậm|rét\s*hại|băng\s*giá|mưa\s*tuyết|không\s*khí\s*lạnh\s*tăng\s*cường|băng\s*tuyết|nắng\s*nóng\s*gay\s*gắt|hạn\s*hán\s*nghiêm\s*trọng|"
-    r"nhà\s*giàn\s*dk\d+|cấp\s*cứu\s*ngư\s*dân|gặp\s*nạn\s*trên\s*biển|tàu\s*cá\s*gặp\s*nạn|"
-    r"chiến\s*dịch\s*quang\s*trung|khắc\s*phục\s*sạt\s*lở|"
-    r"ban\s*chỉ\s*huy\s*quân\s*sự.*(?:đắp\s*đê|gia\s*cố)|quyên\s*góp\s*ủng\s*hộ|ủng\s*hộ\s*đồng\s*bào|"
-    r"hỗ\s*trợ\s*(?:ti\s*vi|tủ\s*lạnh|vật\s*dụng|đồ\s*dùng|nhu\s*yếu\s*phẩm|làm\s*nhà|xây\s*sửa\s*nhà|học\s*sinh|trường\s*học|giáo\s*viên)\s*(?:cho|tới)?\s*(?:bà\s*con|người\s*dân|hộ\s*dân|vùng\s*thiên\s*tai|vùng\s*lũ)|"
-    r"(?:cấp\s*lại|cấp\s*đổi)\s*(?:sổ\s*đỏ|giấy\s*tờ|giấy\s*chứng\s*nhận)\s*(?:bị\s*)?(?:mất|hư\s*hỏng|trôi)\s*(?:do|vì|trong)\s*(?:bão|lũ|thiên\s*tai)|"
-    r"(?:khôi\s*phục|ổn\s*định)\s*(?:sản\s*xuất|đời\s*sống|sinh\s*hoạt)\s*(?:sau|vùng)\s*(?:bão|lũ|thiên\s*tai)|"
-    r"xuất\s*quân\s*hỗ\s*trợ\s*.*(?:bão|lũ|thiên\s*tai)|"
-    r"chiến\s*dịch\s*quang\s*trung|thông\s*báo\s*khẩn\s*.*nghỉ\s*học|"
-    r"(?:cho\s*)?(?:học\s*sinh|sinh\s*viên)\s*(?:nghỉ|tạm\s*ngừng)\s*học(?!\s*.*(?:tết|lễ|hè|nghỉ\s*mát))|"
-    r"(?:sơ\s*tán|di\s*dời)\s*(?:dân|hộ\s*dân|người\s*dân)\s*(?:khẩn\s*cấp|an\s*toàn|khỏi\s*vùng\s*nguy\s*hiểm)|"
-    r"vỡ\s*hồ\s*chứa|vỡ\s*đập\s*thủy\s*điện|sự\s*cố\s*hồ\s*đập|sự\s*cố\s*thủy\s*điện|"
-    r"bão\s*số\s*\d+|áp\s*thấp\s*nhiệt\s*đới|tin\s*bão\s*khẩn\s*cấp)"
-)
+whitelist_patterns = [
+    r"xả\s*lũ|xả\s*đáy|sơ\s*tán\s*dân|di\s*dời\s*dân|di\s*dời\s*khẩn\s*cấp",
+    r"(?:cứu\s*hộ|cứu\s*nạn)\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở|ngập|lụt|trôi|quét|cháy\s*rừng|hạn\s*mặn|sóng\s*thần)",
+    r"khắc\s*phục\s*hậu\s*quả\s*(?:thiên\s*tai|bão|lũ|mưa|sạt\s*lở|ngập\s*lụt|hạn\s*hán|xâm\s*nhập\s*mặn)",
+    r"hỗ\s*trợ\s*khẩn\s*cấp\s*(?:vùng\s*lũ|thiên\s*tai|bão\s*lụt|người\s*dân\s*bị\s*thiệt\s*hại)|nhà\s*chống\s*lũ|nhà\s*phao|hỗ\s*trợ\s*đồng\s*bào\s*vùng\s*lũ",
+    r"ban\s*chỉ\s*huy\s*pctt|tìm\s*kiếm\s*cứu\s*nạn\s*(?:người\s*mất\s*tích|nạn\s*nhân\s*do\s*lũ|trên\s*biển)",
+    r"(?:công\s*điện|chỉ\s*thị)\s*(?:khẩn|hỏa\s*tốc)\s*(?:về|phòng|ứng\s*phó)",
+    r"lệnh\s*(?:sơ\s*tán|di\s*dời)\s*khẩn\s*cấp|di\s*dời\s*khẩn\s*cấp\s*\d+\s*(?:hộ|người)",
+    r"cứu\s*hộ\s*xuyên\s*đêm|đưa\s*người\s*dân\s*về\s*nơi\s*an\s*toàn",
+    r"giải\s*cứu\s*nạn\s*nhân\s*mắc\s*kẹt",
+    r"(?:vỡ|tràn)\s*(?:đê|đập|hồ\s*chứa)",
+    r"(?:lũ\s*quét|sạt\s*lở\s*đất)\s*(?:nghiêm\s*trọng|vùi\s*lấp|chết\s*người)",
+    r"đưa\s*thuyền\s*lên\s*bờ|trú\s*tránh\s*bão|neo\s*đậu\s*tàu\s*thuyền",
+    r"chi\s*viện\s*(?:vùng\s*lũ|chống\s*bão)|xe\s*cứu\s*trợ\s*(?:bão|lũ)|hàng\s*cứu\s*trợ|tiếp\s*tế\s*vùng\s*lũ|phương\s*tiện\s*cứu\s*trợ",
+    r"người\s*dân\s*vùng\s*lũ|bà\s*con\s*vùng\s*lũ|khám\s*chữa\s*bệnh\s*vùng\s*lũ|tiêm\s*chủng\s*vùng\s*lũ|vắc\s*xin\s*vùng\s*lũ",
+    r"ứng\s*cứu\s*viễn\s*thông\s*bão\s*lũ|khôi\s*phục\s*liên\s*lạc\s*sau\s*bão|khôi\s*phục\s*sản\s*xuất\s*sau\s*lũ",
+    r"cấm\s*lưu\s*thông\s*do\s*ngập|cấm\s*lưu\s*thông\s*do\s*sạt|phân\s*luồng\s*giao\s*thông\s*do\s*ngập",
+    r"khắc\s*phục\s*sạt\s*trượt|thông\s*tuyến\s*sau\s*sạt|khởi\s*công\s*nhà\s*vùng\s*lũ|xây\s*dựng\s*nhà\s*vùng\s*lũ|sửa\s*chữa\s*nhà\s*vùng\s*lũ",
+    r"công\s*trình\s*cấp\s*thiết\s*phòng\s*chống|uav\s*cứu\s*trợ|trực\s*thăng\s*cứu\s*trợ|tàu\s*hỏa\s*cứu\s*trợ",
+    r"xâm\s*thực\s*bờ\s*biển|sạt\s*lở\s*bờ\s*sông|sạt\s*lở\s*bờ\s*biển",
+    r"gặt\s*lúa\s*chạy\s*lũ|thu\s*hoạch\s*chạy\s*lũ|bảo\s*vệ\s*đê\s*kè|sửa\s*chữa\s*hư\s*hỏng\s*do\s*bão",
+    r"học\s*sinh\s*nghỉ\s*học\s*tránh\s*bão|cho\s*học\s*sinh\s*nghỉ\s*tránh\s*lũ|trường\s*ngập\s*lụt",
+    r"sách\s*vở\s*cho\s*vùng\s*lũ|hỗ\s*trợ\s*giáo\s*dục\s*vùng\s*lũ|bão\s*vào\s*biển\s*đông|bão\s*đổ\s*bộ",
+    r"cấm\s*biển|lệnh\s*cấm\s*biển|cấm\s*phương\s*tiện\s*ra\s*khơi|nước\s*cuốn\s*trôi\s*người",
+    r"xuất\s*quân\s*hỗ\s*trợ\s*nhân\s*dân|bộ\s*đội\s*vượt\s*lũ|công\s*an\s*giúp\s*dân\s*chống\s*bão",
+    r"cảnh\s*sát\s*hỗ\s*trợ\s*người\s*dân|cảnh\s*sát\s*giúp\s*dân\s*trong\s*lũ|cảnh\s*sát\s*phòng\s*chống\s*thiên\s*tai",
+    r"chiến\s*dịch\s*quang\s*trung|hỗ\s*trợ\s*.*thiên\s*tai|khắc\s*phục\s*.*thiên\s*tai",
+    r"sự\s*cố\s*vỡ\s*kè|vỡ\s*kè\s*nghiêm\s*trọng|thay\s*nhà\s*dột\s*nát\s*vùng\s*lũ",
+    r"thiệt\s*hại\s*do\s*thiên\s*tai|tình\s*nguyện\s*viên\s*.*vùng\s*lũ|hỗ\s*trợ\s*.*vùng\s*lũ|người\s*dân\s*.*vùng\s*lũ",
+    r"cứu\s*trợ\s*.*vùng\s*lũ|tìm\s*kiếm\s*.*mất\s*tích|tìm\s*kiếm\s*.*nạn\s*nhân",
+    r"thi\s*thể\s*.*trôi\s*dạt|mất\s*tích\s*.*trên\s*biển|tàu\s*cá\s*.*mất\s*tích|ngư\s*dân\s*.*mất\s*tích",
+    r"cứu\s*nạn\s*.*trên\s*biển|lũ\s*quét\s*.*sạt\s*lở|sạt\s*lở\s*.*vùi\s*lấp",
+    r"di\s*dời\s*.*khẩn\s*cấp|sơ\s*tán\s*.*dân|công\s*điện\s*.*khẩn",
+    r"hoàn\s*lưu\s*.*bão|ảnh\s*hưởng\s*.*bão|chủ\s*động\s*ứng\s*phó|thủy\s*điện\s*.*xả\s*lũ",
+    r"ứng\s*phó\s*bão\s*số|ứng\s*phó\s*áp\s*thấp|khẩn\s*cấp\s*ứng\s*phó",
+    r"chiến\s*sĩ\s*hỗ\s*trợ\s*đồng\s*bào|chiến\s*sĩ\s*giúp\s*dân\s*gặt\s*lúa",
+    r"tình\s*(?:trạng|huống)\s*khẩn\s*cấp\s*về\s*(?:thiên\s*tai|bão|lũ|sạt|ngập|lụt|hạn|mặn|cháy\s*rừng)",
+    r"di\s*dời\s*khẩn\s*cấp\s*dân|tái\s*thiết\s*sau\s*thiên\s*tai|khởi\s*công\s*nhà\s*tình\s*nghĩa\s*vùng\s*lũ",
+    r"sửa\s*chữa\s*hồ\s*đập|bch\s*phòng\s*chống|ban\s*chỉ\s*huy\s*tkcn",
+    r"diễn\s*tập\s*phòng\s*chống\s*thiên\s*tai\s*quy\s*mô\s*lớn",
+    r"công\s*an\s*cứu\s*nạn\s*trong\s*lũ|chiến\s*sĩ\s*cứu\s*nạn|binh\s*sĩ\s*cứu\s*hộ|csgt\s*giúp\s*dân\s*trong\s*mưa\s*bão",
+    r"xây\s*nhà\s*sau\s*lũ|sửa\s*nhà\s*sau\s*lũ|nhà\s*tình\s*nghĩa\s*cho\s*vùng\s*lũ",
+    r"nghỉ\s*học\s*tránh\s*bão|nghỉ\s*học\s*chống\s*bão|nghỉ\s*học\s*do\s*mưa\s*lũ",
+    r"ứng\s*trực\s*bão\s*lũ|trực\s*ban\s*thiên\s*tai|đảm\s*bảo\s*an\s*toàn\s*hồ\s*đập|trực\s*chiến\s*phòng\s*chống\s*thiên\s*tai",
+    r"tạm\s*dừng\s*du\s*lịch\s*do\s*bão|công\s*bố\s*tình\s*huống\s*khẩn\s*cấp|viện\s*trợ\s*khẩn\s*cấp\s*thiên\s*tai",
+    r"kêu\s*cứu\s*khẩn\s*cấp\s*trong\s*lũ|ứng\s*dụng\s*cứu\s*nạn|nâng\s*cao\s*năng\s*lực\s*phòng\s*chống\s*thiên\s*tai",
+    r"bị\s*cô\s*lập\s*do\s*lũ|khắc\s*phục\s*hậu\s*quả\s*thiên\s*tai|triển\s*khai\s*ứng\s*phó\s*bão",
+    r"an\s*toàn\s*hồ\s*chứa|dự\s*trữ\s*nước\s*chống\s*hạn",
+    r"du\s*khách\s*mắc\s*kẹt\s*do\s*mưa\s*lũ|giải\s*cứu\s*du\s*khách\s*mắc\s*kẹt",
+    r"chủ\s*động\s*ứng\s*phó\s*mưa\s*lũ|huy\s*động\s*lực\s*lượng\s*chống\s*bão",
+    r"bão\s*số\s*\d+|vận\s*chuyển\s*hàng\s*cứu\s*trợ|di\s*dời\s*dân\s*tránh\s*bão",
+    r"mái\s*ấm\s*tình\s*thương\s*vùng\s*lũ|dựng\s*nhà\s*cho\s*đồng\s*bào\s*lũ\s*lụt",
+    r"vùng\s*bị\s*thiệt\s*hại\s*do\s*lũ|chiến\s*dịch\s*quang\s*trung|thư\s*kêu\s*gọi\s*ủng\s*hộ\s*bão\s*lụt",
+    r"(?:ngân\s*hàng|tổ\s*chức\s*tín\s*dụng)\s*(?:giảm|miễn|hỗ\s*trợ)\s*(?:lãi\s*suất|nợ)\s*(?:cho|với)\s*(?:người\s*dân|khách\s*hàng)\s*(?:bị|vùng)\s*(?:thiên\s*tai|bão|lũ|sạt\s*lở)",
+    r"bom\s*(?:mìn)?\s*(?:lộ\s*thiên|phát\s*hiện)\s*(?:sau|do)\s*(?:mưa|lũ|sạt\s*lở)",
+    r"sét\s*đánh\s*(?:chết|tử\s*vong)\s*người",
+    r"tin\s*dự\s*báo\s*thời\s*tiết\s*nguy\s*hiểm|dự\s*báo\s*mưa\s*lũ|có\s*khả\s*năng\s*xảy\s*ra\s*lũ\s*quét",
+    r"đợt\s*mưa\s*lũ\s*mới|xây\s*mới\s*nhà\s*cho\s*vùng\s*sạt\s*lở|tái\s*định\s*cư\s*vùng\s*thiên\s*tai",
+    r"di\s*dời\s*.*hộ\s*dân\s*.*vùng\s*thiên\s*tai|tái\s*định\s*cư\s*.*vùng\s*sạt\s*lở",
+    r"xây\s*dựng\s*lại\s*nhà\s*.*vùng\s*bão\s*lũ|dựng\s*mái\s*ấm\s*.*vùng\s*sạt\s*lở",
+    r"hỗ\s*trợ\s*người\s*dân\s*sau\s*bão|xe\s*.*bị\s*cuốn\s*trôi\s*.*lũ",
+    r"người\s*.*bị\s*lũ\s*cuốn|nạn\s*nhân\s*.*mất\s*tích\s*do\s*lũ",
+    r"thiệt\s*hại\s*.*do\s*mưa\s*lũ|khắc\s*phục\s*hậu\s*quả\s*.*mưa\s*lũ",
+    r"mất\s*trắng\s*(?:do|sau|vì|bởi|trong)\s*(?:bão|lũ|thiên\s*tai|ngập|sạt|hạn|mặn)",
+    r"mất\s*trắng\s*(?:hoa\s*màu|lúa|tôm|cá|tài\s*sản)\s*do\s*thiên\s*tai",
+    r"rét\s*đậm|rét\s*hại|băng\s*giá|mưa\s*tuyết|không\s*khí\s*lạnh\s*tăng\s*cường|băng\s*tuyết|nắng\s*nóng\s*gay\s*gắt|hạn\s*hán\s*nghiêm\s*trọng",
+    r"nhà\s*giàn\s*dk\d+|cấp\s*cứu\s*ngư\s*dân|gặp\s*nạn\s*trên\s*biển|tàu\s*cá\s*gặp\s*nạn",
+    r"chiến\s*dịch\s*quang\s*trung|xóa\s*nhà\s*dột\s*nát.*(?:bão|lũ|thiên\s*tai)|khắc\s*phục\s*sạt\s*lở",
+    r"ban\s*chỉ\s*huy\s*quân\s*sự.*(?:đắp\s*đê|gia\s*cố)|quyên\s*góp\s*ủng\s*hộ|ủng\s*hộ\s*đồng\s*bào",
+    r"hỗ\s*trợ\s*(?:ti\s*vi|tủ\s*lạnh|vật\s*dụng|đồ\s*dùng|nhu\s*yếu\s*phẩm|làm\s*nhà|xây\s*sửa\s*nhà|học\s*sinh|trường\s*học|giáo\s*viên)\s*(?:cho|tới)?\s*(?:bà\s*con|người\s*dân|hộ\s*dân|vùng\s*thiên\s*tai|vùng\s*lũ)",
+    r"(?:cấp\s*lại|cấp\s*đổi)\s*(?:sổ\s*đỏ|giấy\s*tờ|giấy\s*chứng\s*nhận)\s*(?:bị\s*)?(?:mất|hư\s*hỏng|trôi)\s*(?:do|vì|trong)\s*(?:bão|lũ|thiên\s*tai)",
+    r"(?:khôi\s*phục|ổn\s*định)\s*(?:sản\s*xuất|đời\s*sống|sinh\s*hoạt)\s*(?:sau|vùng)\s*(?:bão|lũ|thiên\s*tai)",
+    r"xuất\s*quân\s*hỗ\s*trợ\s*.*(?:bão|lũ|thiên\s*tai)",
+    r"chiến\s*dịch\s*quang\s*trung|thông\s*báo\s*khẩn\s*.*nghỉ\s*học",
+    r"(?:cho\s*)?(?:học\s*sinh|sinh\s*viên)\s*(?:nghỉ|tạm\s*ngừng)\s*học(?!\s*.*(?:tết|lễ|hè|nghỉ\s*mát))",
+    r"(?:sơ\s*tán|di\s*dời)\s*(?:dân|hộ\s*dân|người\s*dân)\s*(?:khẩn\s*cấp|an\s*toàn|khỏi\s*vùng\s*nguy\s*hiểm)",
+    r"vỡ\s*hồ\s*chứa|vỡ\s*đập\s*thủy\s*điện|sự\s*cố\s*hồ\s*đập|sự\s*cố\s*thủy\s*điện",
+    r"bão\s*số\s*\d+|áp\s*thấp\s*nhiệt\s*đới|tin\s*bão\s*khẩn\s*cấp",
+    r"rét\s*đậm|rét\s*hại|băng\s*giá|mưa\s*tuyết|sương\s*muối|gió\s*mùa\s*đông\s*bắc|không\s*khí\s*lạnh\s*tăng\s*cường",
+    r"sóng\s*lớn\s*trên\s*biển|biển\s*động\s*mạnh|sóng\s*cuốn\s*trôi|cứu\s*hộ\s*xuyên\s*đêm|lực\s*lượng\s*cứu\s*hộ\s*tiếp\s*cận"
+]
+WHITELIST_TERMS = tuple(whitelist_patterns)
 CRITICAL_RESCUE_ACTIONS = WHITELIST_TERMS
-RE_CRITICAL_ACTIONS = re.compile(CRITICAL_RESCUE_ACTIONS, re.IGNORECASE)
+RE_CRITICAL_ACTIONS = build_mega_re(WHITELIST_TERMS)
 
 GNEWS_IMPACT_KEYWORDS = [ 
     "thiệt hại","tổn thất", "đổ nhà","đổ tường", "hư hỏng","cuốn trôi", "trôi nhà","ngập nhà","vỡ đê","tràn đê",
@@ -2082,9 +2097,8 @@ GNEWS_IMPACT_KEYWORDS = [
     "nguy cơ cao", "cấm đường","cấm biển","cấm tàu thuyền","đóng cửa trường","cho nghỉ học", "nghỉ học","tạm dừng",
     "tạm ngưng","phong tỏa","cấm lưu thông","cách ly","họp khẩn", "trực ban","trực 24/24","túc trực", "ứng trực",
     "mực nước báo động", "xâm thực","sạt trượt","đứt gãy taluy","đá lăn", "tốc mái", "sập nhà", "thời tiết nguy hiểm",
-    "tin dự báo", "tin cảnh báo", "tin khẩn", "sau bão", "sau lũ", "sau thiên tai", 
-    "mưa cực lớn", "lũ quét", "siêu bão", "chiến dịch quang trung", "vỡ hồ chứa", "vỡ đập", "sập cầu", "sập giàn giáo",
-    "ứng phó khẩn cấp", "khắc phục hậu quả", "di dời dân", "bão số", "áp thấp nhiệt đới"
+    "tin dự báo", "tin cảnh báo", "tin khẩn", "sau bão", "sau lũ", "sau thiên tai", "chiến dịch quang trung", "vỡ hồ chứa", "vỡ đập", "vỡ kè", "thay nhà dột nát",
+    "ứng phó khẩn cấp", "khắc phục hậu quả", "di dời dân"
 ]
 
 
@@ -2201,6 +2215,7 @@ IMPACT_KEYWORDS = {
             rf"\b(?:mất\s*tích|mất\s*liên\s*lạc)\s*thêm\s*{QUAL}\s*{NUM_HARD}\s*{UNIT}\b",
             rf"\b{QUAL}\s*{NUM_HARD}\s*{UNIT}\s*(?:bị\s*)?(?:cuốn\s*trôi|cuốn\s*đi|vùi\s*lấp|vùi\s*trong\s*lũ)\b",
             rf"\b(?:chia\s*cắt|cô\s*lập)\s*{QUAL}\s*{NUM_HARD}\s*(?:hộ\s*dân|người|nhân\s*khẩu)\b",
+            rf"\b{QUAL}\s*{NUM_HARD}\s*(?:hộ|hộ\s*dân|người|nhân\s*khẩu)\s*(?:bị\s*)?(?:chia\s*cắt|cô\s*lập)\b",
             rf"\b{QUAL}\s*{NUM_HARD}\s*{UNIT}\s*(?:bị\s*)?(?:mắc\s*kẹt|mắc\s*kẹt\s*trong\s*lũ|mắc\s*kẹt\s*trong\s*đám\s*cháy)\b",
             rf"\b{QUAL}\s*{NUM_HARD}\s*{UNIT}\s*(?:vẫn\s*)?{MISS_WORD}\b",
             rf"\b{QUAL}\s*{NUM_SOFT}\s*{UNIT}\s*{MISS_WORD}\b",
@@ -2234,7 +2249,10 @@ IMPACT_KEYWORDS = {
             r"\b(?:làm|khiến)\s*(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?P<unit>nhà|căn|hộ)\s*(?:bị\s*)?(?P<type>sập|tốc\s*mái|ngập)\b",
             
             # Agriculture
-            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?)\s*(?P<unit>ha|hecta|héc\s*ta)\s*(?:lúa|hoa\s*màu|cây\s*trồng)\s*(?:bị\s*)?(?:ngập|hư\s*hại|mất\s*trắng)\b"
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?)\s*(?P<unit>ha|hecta|héc\s*ta)\s*(?:lúa|hoa\s*màu|cây\s*trồng)\s*(?:bị\s*)?(?:ngập|hư\s*hại|mất\s*trắng)\b",
+
+            # Aquaculture
+            r"\b(?P<num>\d{1,3}(?:[.,]\d{3})*|\d+(?:[.,]\d+)?)\s*(?P<unit>ha|hecta|héc\s*ta|lồng|bè|ao|đầm|tấn|kg|con)\s*(?:nuôi\s*)?(?:tôm|cá|thủy\s*sản|hải\s*sản|ngao|hàu)\s*(?:bị\s*)?(?:trôi|cuốn\s*trôi|vỡ|tràn|thiệt\s*hại|mất\s*trắng|chết|ngập)\b"
         ]
     }
 }
@@ -2312,7 +2330,7 @@ for s in CONFIG.get("sources", []):
 DISASTER_RULES = [
   # 1) Bão & áp thấp nhiệt đới (Storm/Tropical Cyclone)
     ("storm", [
-        rf"\b(?<!báo\s)(?<!tin\s)(?<!thông\stin\s)(?<!tình\shình\s)(?<!đi\s)(?<!dự\s)(?<!tờ\s)(?<!đọc\s)(?<!thông\s)(?<!cảnh\s)(?<!tình\s)(?<!khai\s)(?<!đảm\s)(?<!nhà\s)(?<!đăng\s)(?<!viết\s)(?<!bài\s)(?<!gây\s)(?<!tâm\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\ssale)(?!\skhuyến\s)(?!\schấn\s)(?!\ssa\s)(?!\struyền\s)(?!\s*chí)(?!\s*cáo)(?!\s*hiểm)(?!\s*vệ)(?!\s*đảm)(?!\s*tàng)(?!\s*toàn)(?!\s*quản)(?!\s*trì)(?!\s*hành)(?!\s*mật)(?!\s*gồm)(?!\s*phủ)(?!\s*quát)(?!\s*trọn)(?!\s*bì)(?!\s*vây)(?!\s*nhiêu)(?!\s*lâu)(?!\s*xa)(?!\s*giờ)(?!\s*lao\s*động)(?!\s*thanh\s*niên)(?!\s*tiền\s*phong)(?!\s*tin\s*tức)(?!\s*công\s*an)(?!\s*phụ\s*nữ)(?!\s*đầu\s*tư)(?!\s*pháp\s*luật)(?!\s*giáo\s*dục)(?!\s*nhân\s*dân)(?!\s*điện\s*tử)(?!\s*vietnamnet)(?!\s*dân\s*trí)(?!\s*vnexpress)(?!\s*công\s*lý)(?!\s*văn\s*hóa)(?!\s*quốc\s*tế)(?!\s*thù)(?!\s*đáp)(?!\s*công)(?!\s*hại)(?!\s*bệnh)(?!\s*lửa)(?!\s*dư\s*luận)(?!\s*chấn\s*thương)(?!\s*đơn)(?!\s*deal)(?!\s*like)(?!\s*view)(?!\s*cấp(?!\s*\d))\b",
+        rf"\b(?<!báo\s)(?<!tin\s)(?<!thông\stin\s)(?<!tình\shình\s)(?<!đi\s)(?<!dự\s)(?<!tờ\s)(?<!đọc\s)(?<!thông\s)(?<!cảnh\s)(?<!tình\s)(?<!khai\s)(?<!đảm\s)(?<!nhà\s)(?<!đăng\s)(?<!viết\s)(?<!bài\s)(?<!gây\s)(?<!tâm\s)bão(?!\sgiá)(?!\smạng)(?!\slòng)(?!\stài\s)(?!\stín\s)(?!\ssale)(?!\skhuyến\s)(?!\schấn\s)(?!\ssa\s)(?!\struyền\s)(?!\s*chí)(?!\s*cáo)(?!\s*hiểm)(?!\s*vệ)(?!\s*đảm)(?!\s*tàng)(?!\s*toàn)(?!\s*quản)(?!\s*trì)(?!\s*hành)(?!\s*mật)(?!\s*gồm)(?!\s*phủ)(?!\s*quát)(?!\s*trọn)(?!\s*bì)(?!\s*vây)(?!\s*nhiêu)(?!\s*lâu)(?!\s*xa)(?!\s*giờ)(?!\s*lao\s*động)(?!\s*thanh\s*niên)(?!\s*tiền\s*phong)(?!\s*tin\s*tức)(?!\s*công\s*an)(?!\s*phụ\s*nữ)(?!\s*đầu\s*tư)(?!\s*pháp\s*luật)(?!\s*giáo\s*dục)(?!\s*nhân\s*dân)(?!\s*điện\s*tử)(?!\s*vietnamnet)(?!\s*dân\s*trí)(?!\s*vnexpress)(?!\s*công\s*lý)(?!\s*văn\s*hóa)(?!\s*quốc\s*tế)(?!\s*thù)(?!\s*đáp)(?!\s*công)(?!\s*hại)(?!\s*bệnh)(?!\s*lửa)(?!\s*dư\s*luận)(?!\s*chấn\s*thương)(?!\s*đơn)(?!\s*deal)(?!\s*like)(?!\s*view)(?!\s*sa\s*thải)(?!\s*nhân\s*sự)(?!\s*cấp(?!\s*\d))\b",
         r"bão\s*số\s*\d+", r"siêu\s*bão", r"tâm\s*bão", r"mắt\s*bão", r"hoàn\s*lưu\s*bão",
         r"áp\s*thấp\s*nhiệt\s*đới", r"vùng\s*áp\s*thấp", r"ATNĐ", r"ATND", r"xoáy\s*thuận\s*nhiệt\s*đới",
         r"nhiễu\s*động\s*nhiệt\s*đới", r"cường\s*độ\s*bão", r"cấp\s*bão", r"gió\s*bão", r"bão\s*khẩn\s*cấp",
@@ -2433,7 +2451,7 @@ DISASTER_RULES = [
 
     # Damage / isolation typical of flash floods (anchored)
     r"\b(?:lũ\s*quét|lũ\s*ống|nước\s*lũ)\s*(?:cuốn\s*trôi|cuốn\s*phăng|cuốn\s*sập|vùi\s*lấp|tàn\s*phá)\b",
-    r"\b(?:đứt\s*đường|trôi\s*cầu|cuốn\s*trôi\s*cầu|cầu\s*tạm\s*bị\s*cuốn)(?:(?=[^\.\n]{0,60}\b(?:lũ\s*quét|lũ\s*ống|nước\s*lũ|bùn\s*đá)\b))\b",
+    r"\b(?:đứt\s*đường|trôi\s*cầu|cuốn\s*trôi\s*cầu|cầu\s*tạm\s*bị\s*cuốn)(?:(?=[^\.\n]{0,60}\b(?:lũ\s*quét|lũ\s*ống|nước\s*lũ|bùn\s*đá|mưa\s*lũ)\b))\b",
   ]),
 
   # 4) Sạt lở (Landslide)
@@ -2470,8 +2488,8 @@ DISASTER_RULES = [
     r"\b(?:đá\s*(?:rơi|lăn|đổ)|rơi\s*đá)(?=(?:[^\.\n]{0,60}\b(?:xuống\s*đường|vào\s*nhà|liên\s*tiếp|nguy\s*hiểm|vùi\s*lấp|tắc\s*đường|ách\s*tắc)\b))\b",
 
     # Nứt: chỉ nhận khi gắn với núi/sườn dốc/taluy (loại nứt nhà/tường)
-    r"\b(?:vết\s*nứt|khe\s*nứt)\s*(?:núi|sườn\s*núi|sườn\s*dốc|mái\s*dốc|mặt\s*dốc|(?:ta[-\s]*luy|taluy))\b",
-    r"\bvết\s*nứt(?!\s*(?:tường|nhà|móng|công\s*trình))\b(?=(?:[^\.\n]{0,60}\b(?:sườn\s*núi|mái\s*dốc|taluy|ta\s*luy)\b))",
+    r"\b(?:vết\s*nứt|khe\s*nứt)\s*(?:núi|sườn\\s*núi|sườn\\s*dốc|mái\\s*dốc|mặt\\s*dốc|(?:ta[-\s]*luy|taluy)|đất)\b",
+    r"\bvết\s*nứt(?!\s*(?:tường|nhà|móng|công\s*trình))\b(?=(?:[^\.\n]{0,60}\b(?:sườn\s*núi|mái\s*dốc|taluy|ta\s*luy|đất|đồi)\b))",
 
     # Thuật ngữ kỹ thuật trượt
     r"\b(?:khối\s*trượt|mặt\s*trượt|cung\s*trượt|vết\s*trượt|vệt\s*trượt)\b",
@@ -2684,8 +2702,8 @@ DISASTER_RULES = [
     r"\b(?:nắng\s*như\s*đổ\s*lửa|nóng\s*như\s*thiêu(?:\s*như\s*đốt)?|thiêu\s*đốt)\b",
     # TEMPERATURE / BASELINE HEAT (định lượng + cụm KTTV
     # Nhiệt độ cao nhất / nền nhiệt / duy trì cao
-    r"\b(?:nhiệt\s*độ\s*cao\s*nhất|nền\s*nhiệt(?:\s*(?:tăng|cao|duy\s*trì\s*cao|cao\s*kéo\s*dài))?)\b",
-    r"\b(?:nhiệt\s*độ\s*(?:tăng\s*(?:nhanh|mạnh|vọt)|duy\s*trì\s*trên\s*cao|phổ\s*biến))\b",
+    r"\b(?:nhiệt\s*độ\s*cao\s*nhất|nền\s*nhiệt(?:\s*(?:tăng|cao|duy\s*trì\s*cao|cao\s*kéo\s*dài)))\b",
+    r"\b(?:nhiệt\s*độ\s*(?:tăng\s*(?:nhanh|mạnh|vọt)|duy\s*trì\s*trên\s*cao|phổ\s*biến\s*(?:ở\s*mức|trên)\s*cao))\b",
     r"\b(?:đêm\s*nóng|đêm\s*oi\s*bức|nhiệt\s*độ\s*ban\s*đêm\s*cao)\b",
 
     # Nhiệt độ vượt ngưỡng “38/39/40 độ”, “trên 40 độ”
@@ -2703,7 +2721,7 @@ DISASTER_RULES = [
     r"\b(?:tia\s*UV|tia\s*cực\s*tím|tia\s*cực\s*tím\s*mạnh)\b",
 
     # “cảnh báo nắng nóng / cấp độ rủi ro / mức cảnh báo”
-    r"\b(?:cảnh\s*báo|dự\s*báo|khuyến\s*cáo)\s*(?:nắng\s*nóng|nóng|nền\s*nhiệt\s*cao)\b",
+    r"\b(?:cảnh\s*báo|dự\s*báo|khuyến\s*cáo)\s*(?:nắng\s*nóng|nền\s*nhiệt\s*cao)\b",
     r"\b(?:cấp\s*độ\s*rủi\s*ro(?:\s*do)?\s*nắng\s*nóng|rủi\s*ro\s*do\s*nắng\s*nóng|mức\s*cảnh\s*báo\s*nắng\s*nóng)\b",
     # HEALTH / IMPACT SIGNALS (neo hậu quả
     r"\b(?:say\s*nắng|say\s*nóng|sốc\s*nhiệt|đột\s*quỵ\s*(?:do\s*nóng|nhiệt)|kiệt\s*sức\s*(?:do|vì)\s*(?:nóng|nắng\s*nóng)|mất\s*nước(?:\s*do\s*nắng\s*nóng)?)\b",
@@ -2752,8 +2770,8 @@ DISASTER_RULES = [
   # 11) Động đất (Earthquake) - User Cat 11
   ("earthquake", [
     r"\bđộng\s*đất\b",
-    r"\b(?:địa\s*chấn|rung\s*chấn|dư\s*chấn|tâm\s*chấn|chấn\s*tiêu)\b",
-    r"\b(?:rung\s*lắc|rung\s*chuyển|chấn\s*động|rung\s*động)(?:\s*mạnh)?\b",
+    r"\b(?:địa\s*chấn|rung\s*chấn|dư\s*chấn|tâm\s*chấn|chấn\s*tiêu|đứt\s*gãy\s*địa\s*chất)\b",
+    r"\b(?:rung\s*lắc|rung\s*chuyển)(?:\s*mạnh)?\b",
     # MEASUREMENT / SCALE ANCHORS (giảm nhiễu mạnh
     # Richter / Magnitude / M5.2 / độ lớn 4.3
     r"\b(?:thang\s*)?richter\b",
@@ -2771,10 +2789,10 @@ DISASTER_RULES = [
     r"\b\d+(?:[.,]\d+)?\s*km\s*(?:dưới\s*mặt\s*đất|độ\s*sâu)\b",
 
     # Coordinates: vĩ độ / kinh độ / tọa độ
-    r"\b(?:vĩ\s*độ|kinh\s*độ|tọa\s*độ)\b",
+    r"\b(?:vĩ\s*độ|kinh\s*độ)\b",
     # dạng số độ thập phân "21.34N 105.82E" hoặc "21.34, 105.82"
-    r"\b\d{1,2}(?:[.,]\d+)?\s*[°]?\s*(?:N|B)\b.*?\d{1,3}(?:[.,]\d+)?\s*[°]?\s*(?:E|Đ)\b",
-    r"\b\d{1,2}(?:[.,]\d+)?\s*[,/;]\s*\d{1,3}(?:[.,]\d+)?\b",
+    r"\b\d{1,2}(?:[.,]\d+)\s*[°]?\s*(?:N|B|S|N)\b.*?\d{1,3}(?:[.,]\d+)\s*[°]?\s*(?:E|Đ|W|T)\b",
+    r"\b\d{1,2}(?:[.,]\d+)\s*(?:,|;)\s*\d{1,3}(?:[.,]\d+)\b",
     # INSTITUTION / REPORTIN
     r"\bviện\s*vật\s*lý\s*địa\s*cầu\b",
     r"\btrung\s*tâm\s*báo\s*tin\s*động\s*đất\b",
@@ -2876,7 +2894,7 @@ DISASTER_RULES = [
     r"\bcháy\s*(?:thực\s*bì|thảm\s*thực\s*bì)\b",
     r"\b(?:cháy\s*dưới\s*tán|cháy\s*tán|cháy\s*ngầm)\b",
     r"\blửa\s*rừng\b",
-    r"\bgiặc\s*lửa\b",
+    r"\bgiặc\s*lửa(?:\s*(?:rừng|trên\s*núi))?\b",
     # FORESTRY org / wildfire prevention lexico
     r"\bPCCCR\b",
     r"\bphòng\s*cháy\s*chữa\s*cháy\s*rừng\b",
@@ -2886,7 +2904,7 @@ DISASTER_RULES = [
     # FIRELINE / containment techniques (very specific
     r"\b(?:đường\s*băng|băng|đường\s*ranh)\s*cản\s*lửa\b",
     r"\b(?:cắt\s*đường\s*lửa|tạo\s*vành\s*đai\s*cản\s*lửa|khoanh\s*vùng\s*đám\s*cháy)\b",
-    r"\b(?:khống\s*chế|dập\s*tắt|dập\s*lửa|chữa\s*cháy)\s*(?:cháy\s*rừng|đám\s*cháy\s*rừng)?\b",
+    r"\b(?:khống\s*chế|dập\s*tắt|dập\s*lửa|chữa\s*cháy)\s*(?:cháy\s*rừng|đám\s*cháy\s*rừng|lửa\s*rừng|rừng|thảm\s*thực\s*vật)\b",
     # AREA / SCALE markers (hectares
     r"\b(?:cháy|thiêu\s*rụi)\s*(?:hàng\s*chục|hàng\s*trăm|\d{1,4})\s*ha\b",
     r"\b\d{1,4}\s*ha\s*(?:rừng|thực\s*bì)\s*(?:bị\s*)?(?:cháy|thiêu\s*rụi)\b",
@@ -3033,6 +3051,10 @@ DISASTER_RULES = [
     r"cứu\s*hộ\s*ngư\s*dân\s*trôi\s*dạt",
     r"hỗ\s*trợ\s*kinh\s*phí\s*khắc\s*phục",
     r"ổn\s*định\s*đời\s*sống", r"khôi\s*phục\s*sản\s*xuất", r"tái\s*thiết", r"hỗ\s*trợ\s*dân\s*sinh", r"bình\s*ổn\s*thị\s*trường",
-    r"tìm\s*kiếm\s*cứu\s*nạn", r"tìm\s*kiếm\s*người\s*mất\s*tích", r"truy\s*tìm\s*nạn\s*nhân", r"trục\s*vớt\s*tàu", r"hỗ\s*trợ\s*nạn\s*nhân"
+    r"tìm\s*kiếm\s*cứu\s*nạn", r"tìm\s*kiếm\s*người\s*mất\s*tích", r"truy\s*tìm\s*nạn\s*nhân", r"trục\s*vớt\s*tàu", r"hỗ\s*trợ\s*nạn\s*nhân",
+    r"xuất\s*cấp\s*(?:gạo|hàng|lương\s*thực|giống)\s*hỗ\s*trợ", r"hỗ\s*trợ\s*giống\s*cây\s*trồng",
+    r"di\s*dời\s*khẩn\s*cấp.*hộ", r"sơ\s*tán\s*dân\s*khẩn\s*cấp"
   ]),
+
+
 ]

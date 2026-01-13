@@ -62,16 +62,21 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - VITE_API_BASE= # Empty for same-domain proxy in dev
+    image: node:18-alpine
     container_name: viet_disaster_frontend
     restart: always
+    working_dir: /app
     ports:
-      - "80:80"
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    command: sh -c "npm install --legacy-peer-deps && npm run dev"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   db_data:

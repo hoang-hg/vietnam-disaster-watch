@@ -41,3 +41,25 @@ def rotate_logs():
 
     # 3. sse_buffer.jsonl: Broadcaster already manages it, but let's ensure it's not massive
     truncate_jsonl(logs_dir / "sse_buffer.jsonl", max_lines=500)
+
+import json
+from datetime import datetime, timezone
+def log_audit(action: str, user_id: int, email: str, event_id: int | None = None, article_id: int | None = None, details: dict | None = None):
+    """Logs administrative actions for audit trailing."""
+    try:
+        logs_dir = Path(__file__).resolve().parents[1] / 'logs'
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        audit_file = logs_dir / 'audit_log.jsonl'
+        record = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'admin_id': user_id,
+            'admin_email': email,
+            'action': action,
+            'event_id': event_id,
+            'article_id': article_id,
+            'details': details or {}
+        }
+        with audit_file.open('a', encoding='utf-8') as f:
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+    except Exception as e:
+        logger.error(f"Failed to write audit log: {e}")

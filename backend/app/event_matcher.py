@@ -109,8 +109,19 @@ def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool
     matched_event, best_score = _find_best_match(db, article)
 
     if matched_event is None:
-        # 2. Create New Event if no match
-        return _create_new_event(db, article), True
+        # Fallback: Check for EXACT Key collision (Same Type, Prov, Minute)
+        # This catches cases where fuzzy match failed but metadata is identical.
+        timestamp_slug = article.published_at.strftime("%Y%m%d%H%M")
+        unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}"
+        same_key_event = db.query(Event).filter(Event.key == unique_key).first()
+        
+        if same_key_event:
+            matched_event = same_key_event
+            # Log this fallback for debugging
+            logger.info(f"Fuzzy match failed but Key Match found. Merging Article {article.id} to Event {matched_event.id} ({unique_key})")
+        else:
+            # 2. Create New Event if no match
+            return _create_new_event(db, article), True
     
     # 3. Update Existing Event
     ev = matched_event
@@ -222,8 +233,13 @@ def _update_event_from_article(db: Session, ev: Event, article: Article):
     
     new_is_trusted = TRUSTED_MAP.get(article.source, False)
     
+    # [LOGIC UPDATE] Lock title after 24 hours to prevent "summary" articles from overwriting concise breaking news.
+    # We still allow updates if the new source is significantly more trusted (Authority Upgrade).
+    event_age_hours = (article.published_at - ev.started_at).total_seconds() / 3600.0
+    is_event_fresh = event_age_hours < 24.0
+
     if (new_is_trusted and not current_leader_trusted) or \
-       (new_is_trusted == current_leader_trusted and len(article.title) > len(ev.title) + 5):
+       (is_event_fresh and new_is_trusted == current_leader_trusted and len(article.title) > len(ev.title) + 5):
         ev.title = article.title
         if ev.details is None: ev.details = {}
         ev.details["impact_bucket"] = _get_impact_bucket(article)

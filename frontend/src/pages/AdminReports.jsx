@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getJson, patchJson, downloadBlob, API_BASE } from "../api";
+import { getJson, patchJson, downloadBlob, API_BASE, toUtcDate } from "../api";
 import { Check, X, FileDown, MapPin, Phone, User, Loader2, XCircle, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Toast from "../components/Toast.jsx";
@@ -214,8 +214,15 @@ export default function AdminReports() {
                                             </a>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 align-top text-slate-500 whitespace-nowrap">
-                                        {new Date(r.created_at).toLocaleString('vi-VN')}
+                                    <td className="px-6 py-4 align-top whitespace-nowrap">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300 font-mono">
+                                                {toUtcDate(r.created_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}
+                                            </span>
+                                            <span className="text-xs text-slate-500 font-mono">
+                                                {toUtcDate(r.created_at).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'})}
+                                            </span>
+                                        </div>
                                     </td>
                                      <td className="px-6 py-4 align-top text-right space-x-2">
                                         <button 
@@ -251,8 +258,10 @@ export default function AdminReports() {
                     if (confirmModal.action === 'reject') handleReject(confirmModal.id);
                     setConfirmModal({ isOpen: false, id: null, action: confirmModal.action });
                 }}
+                variant={confirmModal.action === 'approve' ? 'success' : 'danger'}
                 title={confirmModal.action === 'approve' ? "Xác nhận duyệt" : "Xác nhận từ chối"}
                 message={confirmModal.action === 'approve' ? "Bạn có chắc chắn muốn duyệt báo cáo này và đưa nó lên hệ thống?" : "Bạn có chắc chắn muốn từ chối báo cáo này?"}
+                confirmLabel={confirmModal.action === 'approve' ? 'Duyệt ngay' : 'Từ chối'}
             />
         </div>
     );

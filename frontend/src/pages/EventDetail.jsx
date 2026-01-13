@@ -28,7 +28,9 @@ import ArticleTimelineItem from "../components/event-detail/ArticleTimelineItem.
 
 import { useAuth } from "../contexts/AuthContext";
 
-const HAZARD_TYPES = Object.entries(DISASTER_METADATA).map(([id, meta]) => ({
+const HAZARD_TYPES = Object.entries(DISASTER_METADATA)
+  .filter(([id]) => id !== 'unknown' && id !== 'community')
+  .map(([id, meta]) => ({
   id,
   label: meta.label,
   tone: meta.tone
@@ -212,14 +214,16 @@ export default function EventDetail() {
 
   const toggleFollow = async () => {
     if (!user) {
-      alert("Vui lòng đăng nhập để theo dõi sự kiện.");
+      showToast("Vui lòng đăng nhập để theo dõi sự kiện.", "warning");
       return;
     }
     try {
       const res = await postJson(`/api/user/events/${ev.id}/follow`);
-      setIsFollowing(res.status === "followed");
+      const following = res.status === "followed";
+      setIsFollowing(following);
+      showToast(following ? "Đã bắt đầu theo dõi sự kiện!" : "Đã bỏ theo dõi sự kiện", "info");
     } catch (err) {
-      alert("Lỗi: " + err.message);
+      showToast("Lỗi: " + err.message, "error");
     }
   };
 
@@ -498,7 +502,9 @@ export default function EventDetail() {
                 onChange={e => setEditForm({...editForm, disaster_type: e.target.value})}
                 className="border rounded px-2 py-1 bg-white text-sm font-bold shadow-sm"
               >
-                {Object.entries(DISASTER_METADATA).map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
+                {Object.entries(DISASTER_METADATA)
+                    .filter(([id]) => id !== 'unknown' && id !== 'community')
+                    .map(([id, meta]) => <option key={id} value={id}>{meta.label}</option>)}
               </select>
             ) : (
               <Badge tone={getDisasterMeta(ev.disaster_type).tone} className="px-3 py-1 font-black uppercase text-[10px] tracking-widest shadow-sm">

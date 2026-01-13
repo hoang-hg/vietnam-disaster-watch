@@ -141,13 +141,14 @@ export default function MapPage() {
             
             // Sync to URL
             const newParams = {};
+            newParams.start_date = startDate;
             if (activeFilter !== "all") newParams.type = activeFilter;
-            if (startDate) newParams.start_date = startDate;
             if (endDate) newParams.end_date = endDate;
             
             const currentParams = Object.fromEntries(searchParams.entries());
-            const isDifferent = Object.keys(newParams).length !== Object.keys(currentParams).length || 
-                              Object.keys(newParams).some(k => String(newParams[k]) !== String(currentParams[k]));
+            const keys1 = Object.keys(newParams);
+            const keys2 = Object.keys(currentParams);
+            const isDifferent = keys1.length !== keys2.length || keys1.some(k => String(newParams[k]) !== String(currentParams[k]));
             
             if (isDifferent) {
                 setSearchParams(newParams, { replace: true });
