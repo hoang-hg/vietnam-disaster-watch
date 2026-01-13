@@ -1,0 +1,306 @@
+[
+  {
+    "id": 1,
+    "province": "Toàn quốc",
+    "agency": "Yêu cầu cứu trợ, tìm kiếm cứu nạn",
+    "phone": "112",
+    "address": "Liên hệ khẩn cấp toàn quốc",
+    "updated_at": "2026-01-07 02:47:19.292693"
+  },
+  {
+    "id": 2,
+    "province": "Toàn quốc",
+    "agency": "Cảnh sát phản ứng nhanh",
+    "phone": "113",
+    "address": "Liên hệ khẩn cấp toàn quốc",
+    "updated_at": "2026-01-07 02:47:19.292699"
+  },
+  {
+    "id": 3,
+    "province": "Toàn quốc",
+    "agency": "Phòng cháy chữa cháy & Cứu nạn",
+    "phone": "114",
+    "address": "Liên hệ khẩn cấp toàn quốc",
+    "updated_at": "2026-01-07 02:47:19.292701"
+  },
+  {
+    "id": 4,
+    "province": "Toàn quốc",
+    "agency": "Cấp cứu y tế",
+    "phone": "115",
+    "address": "Liên hệ khẩn cấp toàn quốc",
+    "updated_at": "2026-01-07 02:47:19.292702"
+  },
+  {
+    "id": 5,
+    "province": "TP. Hà Nội",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0243.3824.507",
+    "address": "Trụ sở Ban CM PCTT & TKCN - TP. Hà Nội",
+    "updated_at": "2026-01-07 02:47:19.292703"
+  },
+  {
+    "id": 6,
+    "province": "TP. Hồ Chí Minh",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0283.8293.134",
+    "address": "Trụ sở Ban CM PCTT & TKCN - TP. Hồ Chí Minh",
+    "updated_at": "2026-01-07 02:47:19.292704"
+  },
+  {
+    "id": 7,
+    "province": "TP. Đà Nẵng",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0236.3822.131",
+    "address": "Trụ sở Ban CM PCTT & TKCN - TP. Đà Nẵng",
+    "updated_at": "2026-01-07 02:47:19.292705"
+  },
+  {
+    "id": 8,
+    "province": "TP. Cần Thơ",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0292.3820.536",
+    "address": "Trụ sở Ban CM PCTT & TKCN - TP. Cần Thơ",
+    "updated_at": "2026-01-07 02:47:19.292706"
+  },
+  {
+    "id": 9,
+    "province": "Quảng Ninh",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0203.3835.549",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Quảng Ninh",
+    "updated_at": "2026-01-07 02:47:19.292706"
+  },
+  {
+    "id": 10,
+    "province": "TP. Hải Phòng",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0225.3842.124",
+    "address": "Trụ sở Ban CM PCTT & TKCN - TP. Hải Phòng",
+    "updated_at": "2026-01-07 02:47:19.292707"
+  },
+  {
+    "id": 11,
+    "province": "Thanh Hóa",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0237.3852.126",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Thanh Hóa",
+    "updated_at": "2026-01-07 02:47:19.292708"
+  },
+  {
+    "id": 12,
+    "province": "Nghệ An",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0238.3844.755",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Nghệ An",
+    "updated_at": "2026-01-07 02:47:19.292709"
+  },
+  {
+    "id": 13,
+    "province": "Hà Tĩnh",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0239.3855.514",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Hà Tĩnh",
+    "updated_at": "2026-01-07 02:47:19.292710"
+  },
+  {
+    "id": 14,
+    "province": "Quảng Trị",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0233.3852.144",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Quảng Trị",
+    "updated_at": "2026-01-07 02:47:19.292710"
+  },
+  {
+    "id": 15,
+    "province": "TP. Huế",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0234.3823.116",
+    "address": "Trụ sở Ban CM PCTT & TKCN - TP. Huế",
+    "updated_at": "2026-01-07 02:47:19.292711"
+  },
+  {
+    "id": 16,
+    "province": "Quảng Ngãi",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0255.3822.124",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Quảng Ngãi",
+    "updated_at": "2026-01-07 02:47:19.292712"
+  },
+  {
+    "id": 17,
+    "province": "Gia Lai",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0269.3824.134",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Gia Lai",
+    "updated_at": "2026-01-07 02:47:19.292713"
+  },
+  {
+    "id": 18,
+    "province": "Khánh Hòa",
+    "agency": "Ban CM PCTT & TKCN",
+    "phone": "0258.3822.131",
+    "address": "Trụ sở Ban CM PCTT & TKCN - Khánh Hòa",
+    "updated_at": "2026-01-07 02:47:19.292713"
+  },
+  {
+    "id": 19,
+    "province": "Lào Cai",
+    "agency": "Ban CM PCTT",
+    "phone": "0214.3820.124",
+    "address": "Trụ sở Ban CM PCTT - Lào Cai",
+    "updated_at": "2026-01-07 02:47:19.292714"
+  },
+  {
+    "id": 20,
+    "province": "Sơn La",
+    "agency": "Ban CM PCTT",
+    "phone": "0212.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Sơn La",
+    "updated_at": "2026-01-07 02:47:19.292715"
+  },
+  {
+    "id": 21,
+    "province": "Thái Nguyên",
+    "agency": "Ban CM PCTT",
+    "phone": "0208.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Thái Nguyên",
+    "updated_at": "2026-01-07 02:47:19.292716"
+  },
+  {
+    "id": 22,
+    "province": "Lạng Sơn",
+    "agency": "Ban CM PCTT",
+    "phone": "0205.3870.124",
+    "address": "Trụ sở Ban CM PCTT - Lạng Sơn",
+    "updated_at": "2026-01-07 02:47:19.292716"
+  },
+  {
+    "id": 23,
+    "province": "Tuyên Quang",
+    "agency": "Ban CM PCTT",
+    "phone": "0207.3822.124",
+    "address": "Trụ sở Ban CM PCTT - Tuyên Quang",
+    "updated_at": "2026-01-07 02:47:19.292717"
+  },
+  {
+    "id": 24,
+    "province": "Lai Châu",
+    "agency": "Ban CM PCTT",
+    "phone": "0213.3876.124",
+    "address": "Trụ sở Ban CM PCTT - Lai Châu",
+    "updated_at": "2026-01-07 02:47:19.292718"
+  },
+  {
+    "id": 25,
+    "province": "Điện Biên",
+    "agency": "Ban CM PCTT",
+    "phone": "0215.3824.124",
+    "address": "Trụ sở Ban CM PCTT - Điện Biên",
+    "updated_at": "2026-01-07 02:47:19.292718"
+  },
+  {
+    "id": 26,
+    "province": "Lâm Đồng",
+    "agency": "Ban CM PCTT",
+    "phone": "0263.3822.134",
+    "address": "Trụ sở Ban CM PCTT - Lâm Đồng",
+    "updated_at": "2026-01-07 02:47:19.292719"
+  },
+  {
+    "id": 27,
+    "province": "Đắk Lắk",
+    "agency": "Ban CM PCTT",
+    "phone": "0262.3852.134",
+    "address": "Trụ sở Ban CM PCTT - Đắk Lắk",
+    "updated_at": "2026-01-07 02:47:19.292720"
+  },
+  {
+    "id": 28,
+    "province": "Cà Mau",
+    "agency": "Ban CM PCTT",
+    "phone": "0290.3831.134",
+    "address": "Trụ sở Ban CM PCTT - Cà Mau",
+    "updated_at": "2026-01-07 02:47:19.292721"
+  },
+  {
+    "id": 29,
+    "province": "Cao Bằng",
+    "agency": "Ban CM PCTT",
+    "phone": "0206.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Cao Bằng",
+    "updated_at": "2026-01-07 02:47:19.292722"
+  },
+  {
+    "id": 30,
+    "province": "Phú Thọ",
+    "agency": "Ban CM PCTT",
+    "phone": "0210.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Phú Thọ",
+    "updated_at": "2026-01-07 02:47:19.292722"
+  },
+  {
+    "id": 31,
+    "province": "Bắc Ninh",
+    "agency": "Ban CM PCTT",
+    "phone": "0222.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Bắc Ninh",
+    "updated_at": "2026-01-07 02:47:19.292723"
+  },
+  {
+    "id": 32,
+    "province": "Hưng Yên",
+    "agency": "Ban CM PCTT",
+    "phone": "0221.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Hưng Yên",
+    "updated_at": "2026-01-07 02:47:19.292724"
+  },
+  {
+    "id": 33,
+    "province": "Ninh Bình",
+    "agency": "Ban CM PCTT",
+    "phone": "0229.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Ninh Bình",
+    "updated_at": "2026-01-07 02:47:19.292724"
+  },
+  {
+    "id": 34,
+    "province": "Tây Ninh",
+    "agency": "Ban CM PCTT",
+    "phone": "0276.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Tây Ninh",
+    "updated_at": "2026-01-07 02:47:19.292725"
+  },
+  {
+    "id": 35,
+    "province": "Đồng Tháp",
+    "agency": "Ban CM PCTT",
+    "phone": "0277.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Đồng Tháp",
+    "updated_at": "2026-01-07 02:47:19.292726"
+  },
+  {
+    "id": 36,
+    "province": "An Giang",
+    "agency": "Ban CM PCTT",
+    "phone": "0296.3852.124",
+    "address": "Trụ sở Ban CM PCTT - An Giang",
+    "updated_at": "2026-01-07 02:47:19.292727"
+  },
+  {
+    "id": 37,
+    "province": "Vĩnh Long",
+    "agency": "Ban CM PCTT",
+    "phone": "0270.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Vĩnh Long",
+    "updated_at": "2026-01-07 02:47:19.292727"
+  },
+  {
+    "id": 38,
+    "province": "Đồng Nai",
+    "agency": "Ban CM PCTT",
+    "phone": "0251.3852.124",
+    "address": "Trụ sở Ban CM PCTT - Đồng Nai",
+    "updated_at": "2026-01-07 02:47:19.292728"
+  }
+]

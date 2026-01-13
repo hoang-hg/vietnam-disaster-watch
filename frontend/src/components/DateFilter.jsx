@@ -39,6 +39,7 @@ export default function DateFilter({
             type="date"
             name="date_filter"
             id={`date-filter-${placeholder.replace(/\s+/g, '-').toLowerCase()}`}
+            aria-label={placeholder}
             value={dateTime || ""} 
             onChange={handleChange}
             className="absolute inset-0 opacity-0 -z-10 pointer-events-none"

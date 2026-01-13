@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .database import get_db
@@ -8,15 +8,29 @@ from datetime import datetime, timezone, timedelta
 from typing import List
 from .api import get_date_range
 
+from .limiter import limiter
+
 router = APIRouter(prefix="/api/user", tags=["user"])
 
 # Crowdsourcing
 @router.post("/crowdsource/submit", response_model=schemas.CrowdsourcedReportOut)
+@limiter.limit("5/minute")
 def submit_report(
+    request: Request, # Rate limiter needs request object in arguments
     report: schemas.CrowdsourcedReportCreate,
     db: Session = Depends(get_db),
     current_user: models.User | None = Depends(auth.get_current_user_optional)
 ):
+    # [FIX] Double-submission check (same user/phone + same description + last 5 mins)
+    recent_check = db.query(models.CrowdsourcedReport).filter(
+        (models.CrowdsourcedReport.phone == report.phone) | (models.CrowdsourcedReport.user_id == (current_user.id if current_user else -1)),
+        models.CrowdsourcedReport.description == report.description,
+        models.CrowdsourcedReport.created_at > datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=5)
+    ).first()
+    
+    if recent_check:
+        return recent_check # Silently return the existing one to avoid error noise
+
     db_report = models.CrowdsourcedReport(
         user_id=current_user.id if current_user else None,
         **report.model_dump()
@@ -24,6 +38,11 @@ def submit_report(
     db.add(db_report)
     db.commit()
     db.refresh(db_report)
+    
+    # Invalidate crowdsource caches
+    from .cache import cache
+    cache.delete_match("map_*")
+    
     return db_report
 
 @router.get("/crowdsource/approved", response_model=List[schemas.CrowdsourcedReportOut])
@@ -242,13 +261,15 @@ def approve_report(
     # Must run AFTER commit so background threads can see the data
     try:
         from .event_matcher import emit_event_notifications
-        emit_event_notifications(db, new_event.id, is_new=True)
-    except ImportError:
+        if report.event_id:
+            emit_event_notifications(db, report.event_id, is_new=True)
+    except Exception:
         pass
 
     from .cache import cache
     cache.delete_match("stats_*")
     cache.delete_match("map_*")
+    cache.delete_match("heatmap_*")
     cache.delete_match("ev_v2_*")
     return {"ok": True}
 

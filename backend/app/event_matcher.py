@@ -121,7 +121,18 @@ def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool
             logger.info(f"Fuzzy match failed but Key Match found. Merging Article {article.id} to Event {matched_event.id} ({unique_key})")
         else:
             # 2. Create New Event if no match
-            return _create_new_event(db, article), True
+            from sqlalchemy.exc import IntegrityError
+            try:
+                return _create_new_event(db, article), True
+            except IntegrityError:
+                # Race condition: another thread created it between our initial check and now.
+                # Rollback current minor fail and retry fetching the other thread's event.
+                db.rollback()
+                matched_event = db.query(Event).filter(Event.key.like(f"{article.disaster_type}|{article.province}|{timestamp_slug}%")).first()
+                if not matched_event:
+                     # If still not found, something is very wrong, re-raise
+                     raise
+                logger.info(f"Race condition detected for Event key {unique_key}. Merged Article {article.id} into concurrently created Event.")
     
     # 3. Update Existing Event
     ev = matched_event
@@ -166,6 +177,10 @@ def _find_best_match(db: Session, article: Article) -> tuple[Event | None, float
         if article.village and cand.village and article.village.lower() == cand.village.lower(): score += 0.4
         if article.landmark and cand.landmark and article.landmark.lower() == cand.landmark.lower(): score += 0.4
         if article.route and cand.route and article.route.lower() == cand.route.lower(): score += 0.3
+        
+        # [NEW] LOCATION PENALTY: Prevent over-clustering across different districts/villages
+        if article.commune and cand.commune and article.commune.lower() != cand.commune.lower(): score -= 0.5
+        if article.village and cand.village and article.village.lower() != cand.village.lower(): score -= 0.6
             
         if score > 0.7 and score > best_score:
             best_score = score
@@ -254,13 +269,30 @@ def _update_event_from_article(db: Session, ev: Event, article: Article):
     if stage_priority.get(article.stage, 0) > stage_priority.get(ev.stage, 0):
         ev.stage = article.stage
 
-    # Location & Metrics
-    for attr in ["commune", "village", "route", "landmark"]:
-        if not getattr(ev, attr) and getattr(article, attr):
-            setattr(ev, attr, getattr(article, attr))
+    # Location & Metrics - Accumulate rather than overwrite
+    if not ev.details: ev.details = {}
     
+    for attr in ["commune", "village", "route", "landmark"]:
+        art_val = getattr(article, attr)
+        if not art_val or art_val == "unknown": continue
+        
+        # Primary field update (if empty)
+        if not getattr(ev, attr):
+            setattr(ev, attr, art_val)
+            
+        # Accumulate in details for full coverage
+        detail_key = f"all_{attr}s"
+        locs = ev.details.get(detail_key, [])
+        if art_val not in locs:
+            locs.append(art_val)
+            ev.details[detail_key] = locs
+
     if article.location_description and len(article.location_description) > len(ev.location_description or ""):
         ev.location_description = article.location_description
+
+    # [FIX] Propagate better Image URL if current is missing
+    if not ev.image_url and article.image_url:
+        ev.image_url = article.image_url
 
     ev.last_updated_at = max(ev.last_updated_at, article.published_at)
     ev.started_at = min(ev.started_at, article.published_at)
@@ -316,9 +348,12 @@ def _finalize_event_upsert(db: Session, ev: Event, article: Article):
         .filter(Article.event_id == ev.id).all()
     
     all_domains = {r.domain for r in article_data if r.domain}
-    all_sources = {r.source for r in article_data if r.source}
     if article.domain: all_domains.add(article.domain)
-    if article.source: all_sources.add(article.source)
+    
+    # [FIX] Only count APPROVED sources to maintain consistency with Recalculate logic
+    all_sources = {r.source for r in article_data if r.source and r.status == "approved"}
+    if article.source and article.status == "approved": 
+        all_sources.add(article.source)
     
     ev.sources_count = len(all_sources)
 
@@ -373,7 +408,7 @@ def emit_event_notifications(db: Session, event_id: int, is_new: bool = False):
 
         # 2. Notifications (Slow, DB-heavy) -> Offload to thread
         import threading
-        t = threading.Thread(target=_background_notify_wrapper, args=(ev.id,))
+        t = threading.Thread(target=_background_notify_wrapper, args=(ev.id, is_new))
         t.daemon = True 
         t.start()
         
@@ -387,7 +422,7 @@ def emit_event_notifications(db: Session, event_id: int, is_new: bool = False):
     except Exception as e:
         logger.error(f"Failed to emit notifications for event {event_id}: {e}")
 
-def _background_notify_wrapper(evt_id):
+def _background_notify_wrapper(evt_id, is_new=True):
     # Create a dedicated session for the background thread
     from .database import SessionLocal
     bg_db = SessionLocal()
@@ -397,7 +432,9 @@ def _background_notify_wrapper(evt_id):
         if bg_ev:
             from .notifications import notify_users_of_event
             # Triggers province-based notifications for new events
-            notify_users_of_event(bg_db, bg_ev) 
+            if is_new:
+                notify_users_of_event(bg_db, bg_ev) 
+            
             bg_db.commit() # [FIX] Ensure notifications are persisted
             
             # Use this background thread to also notify followers if needed
@@ -453,3 +490,33 @@ def _broadcast_event(ev: Event, is_new: bool = False):
     except Exception as e:
         logger.error(f"Failed to broadcast event {ev.id}: {e}")
 
+
+def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool]:
+    """
+    Public entry point to match an article to an event or create a new one.
+    Returns (event, is_new_event_created).
+    """
+    ev, score = _find_best_match(db, article)
+    is_new = False
+    
+    if ev:
+        _update_event_from_article(db, ev, article)
+        
+        # [CONSENSUS] If source is trusted/approved, boost confidence
+        if article.source in ["VTV", "TTXVN", "Báo Chính Phủ"] or article.status == "approved":
+            ev.confidence = max(ev.confidence, 0.9)
+            
+    else:
+        # Create new
+        ev = _create_new_event(db, article)
+        is_new = True
+        
+    # Flush to get ID
+    db.flush()
+    # Ensure article is linked
+    if article.event_id != ev.id:
+        article.event_id = ev.id
+        db.add(article)
+        
+    _finalize_event_upsert(db, ev, article)
+    return ev, is_new

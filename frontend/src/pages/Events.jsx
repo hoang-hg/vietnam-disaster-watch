@@ -334,10 +334,10 @@ export default function Events() {
     <div className="mx-auto max-w-7xl px-4 py-8">
       {/* Page Header */}
       <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
             Danh sách sự kiện
           </h1>
-          <p className="text-slate-500 text-sm mt-1 flex items-center gap-2">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 flex items-center gap-2">
             Tổng hợp từ 38 nguồn tin chính thống.
             <span className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black border border-emerald-100/50">
               <span className="relative flex h-1.5 w-1.5">
@@ -423,7 +423,7 @@ export default function Events() {
       `}</style>
 
       {/* Filter Controls */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 mb-8 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 mb-8 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
             {/* Search */}
             <div className="lg:col-span-1">
@@ -433,7 +433,7 @@ export default function Events() {
                     value={q}
                     onChange={(e) => { setQ(e.target.value); setCurrentPage(1); }}
                     placeholder="Tìm kiếm từ khóa..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition outline-none"
                 />
             </div>
             {/* Type */}
@@ -443,7 +443,7 @@ export default function Events() {
                     id="events-type"
                     value={type}
                     onChange={(e) => { setType(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition outline-none text-slate-700 dark:text-slate-200"
                 >
                     <option value="">Tất cả loại hình</option>
                     {Object.entries(DISASTER_METADATA)
@@ -460,7 +460,7 @@ export default function Events() {
                     id="events-province"
                     value={province}
                     onChange={(e) => { setProvince(e.target.value); setCurrentPage(1); }}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white transition outline-none text-slate-700"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 transition outline-none text-slate-700 dark:text-slate-200"
                 >
                     <option value="">Tất cả tỉnh thành</option>
                     {VALID_PROVINCES.map(p => (
@@ -486,10 +486,10 @@ export default function Events() {
       {error ? <div className="p-4 bg-red-50 text-red-700 rounded-lg mb-6">{error}</div> : null}
 
       {/* Results count */}
-      {!loading && events.length > 0 && (
+       {!loading && events.length > 0 && (
         <div className="mb-6 flex items-center justify-between">
-           <div className="text-sm text-slate-600 font-medium">
-             Đang hiển thị <span className="text-slate-900 font-bold">{events.length}</span> sự kiện mới nhất
+           <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+             Đang hiển thị <span className="text-slate-900 dark:text-white font-bold">{events.length}</span> sự kiện mới nhất
            </div>
         </div>
       )}

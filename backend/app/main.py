@@ -5,6 +5,7 @@ from fastapi.websockets import WebSocket
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from contextlib import asynccontextmanager
+from sqlalchemy import text, inspect
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -41,16 +42,43 @@ job_defaults = {
 scheduler = BackgroundScheduler(timezone=settings.app_timezone, job_defaults=job_defaults)
 
 # --- RATE LIMITER SETUP ---
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["100/minute"],
-    storage_uri="memory://"
-)
+from .limiter import limiter
+# app.state.limiter and handler set after app initialization
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 0. Database Initialization
+    # 0. Database Initialization & Migration
     database.Base.metadata.create_all(bind=database.engine)
+    
+    # [MIGRATION] Auto-patch schema for new columns
+    try:
+        def run_migrations():
+            with database.engine.connect() as conn:
+                # 1. Articles Audit Fields
+                columns = inspect(database.engine).get_columns("articles")
+                col_names = [c["name"] for c in columns]
+                
+                if "moderated_by" not in col_names:
+                    logger.info("Migrating: Adding moderated_by to articles")
+                    conn.execute(text("ALTER TABLE articles ADD COLUMN IF NOT EXISTS moderated_by INTEGER REFERENCES users(id)"))
+                    
+                if "moderated_at" not in col_names:
+                    logger.info("Migrating: Adding moderated_at to articles")
+                    conn.execute(text("ALTER TABLE articles ADD COLUMN IF NOT EXISTS moderated_at TIMESTAMP"))
+
+                # 2. Users Token Version
+                u_columns = inspect(database.engine).get_columns("users")
+                u_col_names = [c["name"] for c in u_columns]
+                
+                if "token_version" not in u_col_names:
+                    logger.info("Migrating: Adding token_version to users")
+                    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1"))
+                    
+                conn.commit()
+                
+        await asyncio.to_thread(run_migrations)
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
     
     # 0.1 Seed Fixed Admin Accounts
     db = None
@@ -76,6 +104,30 @@ async def lifespan(app: FastAPI):
             logger.info(f"[SEED] Created {created_count} Admin accounts.")
     except Exception as e:
         logger.error(f"[SEED] Failed to seed admins: {e}")
+    finally:
+        if db: db.close()
+
+    # 0.1.1 Seed Rescue Hotlines
+    db = None
+    try:
+        db = next(auth.get_db())
+        hotline_count = db.query(models.RescueHotline).count()
+        if hotline_count == 0:
+            import json
+            import os
+            seed_path = os.path.join(os.path.dirname(__file__), "hotlines_seed.json")
+            if os.path.exists(seed_path):
+                with open(seed_path, "r", encoding="utf-8") as f:
+                    hotlines_data = json.load(f)
+                    for h_data in hotlines_data:
+                        # Remove id and updated_at to let DB handle them
+                        h_data.pop("id", None)
+                        h_data.pop("updated_at", None)
+                        db.add(models.RescueHotline(**h_data))
+                db.commit()
+                logger.info(f"[SEED] Seeded {len(hotlines_data)} Rescue Hotlines.")
+    except Exception as e:
+        logger.error(f"[SEED] Failed to seed hotlines: {e}")
     finally:
         if db: db.close()
 
@@ -150,6 +202,8 @@ async def cdn_optimization_middleware(request: Request, call_next):
     """Ensures optimal caching for CDNs like Cloudflare and safe defaults."""
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Vary"] = "Accept-Encoding, Authorization"
     if not response.headers.get("Cache-Control"):
         if request.url.path.startswith("/api"):
@@ -187,7 +241,3 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(user_router)
-
-
-
-

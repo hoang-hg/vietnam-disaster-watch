@@ -173,10 +173,10 @@ export default function RescuePage() {
             />
 
             <div className="mb-8 text-center">
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center justify-center gap-3 uppercase">
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-3 uppercase">
                     <Shield className="w-8 h-8 text-red-600" /> Hồ sơ Cứu hộ Khẩn cấp
                 </h1>
-                <p className="text-slate-500 mt-2 font-medium">Lưu lại các số điện thoại này để sử dụng trong trường hợp cấp bách</p>
+                <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Lưu lại các số điện thoại này để sử dụng trong trường hợp cấp bách</p>
             </div>
 
             {/* National Hotlines (Editable) */}
@@ -198,7 +198,7 @@ export default function RescuePage() {
             </div>
 
             {/* Province Hotlines Section */}
-            <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden min-h-[400px]">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm overflow-hidden min-h-[400px]">
                 <HotlineFilterBar 
                     filterProvince={filterProvince}
                     setFilterProvince={setFilterProvince}
@@ -210,7 +210,7 @@ export default function RescuePage() {
                     totalCount={otherHotlines.length}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-x divide-y divide-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 divide-x divide-y divide-slate-50 dark:divide-slate-800">
                     {loading ? (
                         <div className="col-span-full py-20 flex justify-center text-slate-400">
                             <Loader2 className="w-8 h-8 animate-spin" />

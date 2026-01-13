@@ -42,6 +42,11 @@ class Article(Base):
     impact_details: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     event_id: Mapped[int | None] = mapped_column(ForeignKey("events.id"), nullable=True, index=True)
+    
+    # Audit trail for moderation actions
+    moderated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     event = relationship("Event", back_populates="articles")
 
     needs_verification: Mapped[bool] = mapped_column(Boolean, default=False) # 0=no, 1=yes
@@ -187,7 +192,7 @@ class CrawlerStatus(Base):
 class AiFeedback(Base):
     __tablename__ = "ai_feedback"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     original_type: Mapped[str] = mapped_column(String(32))
     corrected_type: Mapped[str] = mapped_column(String(32))

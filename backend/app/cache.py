@@ -57,15 +57,23 @@ class CacheManager:
                 del self.memory_cache[key]
         return None
 
+    def _serialize(self, value: Any) -> str:
+        import datetime
+        def handler(obj):
+            if isinstance(obj, (datetime.datetime, datetime.date)):
+                return obj.isoformat()
+            raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+        return json.dumps(value, default=handler)
+
     def set(self, key: str, value: Any, ttl: int = 300):
         # 1. Store in Redis
         if self.redis_client:
             try:
                 # Value must be serializable
-                self.redis_client.setex(key, ttl, json.dumps(value))
+                self.redis_client.setex(key, ttl, self._serialize(value))
                 return
             except Exception as e:
-                logger.error(f"Redis set failed: {e}")
+                logger.error(f"Redis set failed for key {key}: {e}")
 
         # 2. Store in local memory with LRU-like eviction
         if key in self.memory_cache:

@@ -3,12 +3,12 @@ import { MapPin, Phone, Edit2, Trash2 } from "lucide-react";
 
 const HotlineGridItem = ({ item: h, isAdmin, onEdit, onDelete }) => {
   return (
-    <div className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-start group/item relative">
+    <div className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex justify-between items-start group/item relative">
       <div className="flex-1 min-w-0 pr-4">
-        <div className="font-bold text-slate-900 text-sm truncate">{h.province}</div>
+        <div className="font-bold text-slate-900 dark:text-white text-sm truncate">{h.province}</div>
         <div className="text-[10px] text-slate-400 uppercase font-black truncate">{h.agency}</div>
         {h.address && (
-          <div className="mt-1 text-xs text-slate-500 line-clamp-2">
+          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
             <MapPin className="w-3 h-3 inline mr-1 text-slate-400" />
             {h.address}
           </div>

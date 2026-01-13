@@ -336,8 +336,17 @@ export default function MainLayout({ children }) {
                         </Link>
                     ))}
 
+                    {/* Desktop Crowdsourcing - Perfectly matched with Nav Links */}
+                    {user?.role !== "admin" && (
+                        <button 
+                            onClick={() => setIsCrowdsourceOpen(true)}
+                            className="flex items-center px-4 h-full text-xs font-black tracking-widest uppercase transition-all border-r border-white/20 text-white/80 hover:bg-[#258a9b] hover:text-white"
+                        >
+                            <AlertTriangle className="w-3.5 h-3.5 mr-2 text-yellow-300" />
+                            Đóng góp hiện trường
+                        </button>
+                    )}
 
-                    
                     {adminNavigation.length > 0 && adminNavigation.map((item) => (
                         <Link
                             key={item.name}
@@ -354,30 +363,15 @@ export default function MainLayout({ children }) {
                     ))}
                 </div>
 
-
-
                 {/* Account Actions (Desktop) */}
                 <div className="hidden md:flex items-center gap-2 h-full">
-                    {/* Crowdsourcing & Notifications (Logged in users only) */}
-                    {user?.role !== "admin" && (
-                            <button 
-                                onClick={() => setIsCrowdsourceOpen(true)}
-                                className="flex items-center gap-2 px-4 h-full text-white text-[10px] font-black hover:bg-white/10 transition-colors border-l border-white/20 uppercase tracking-tighter"
-                            >
-                                <AlertTriangle className="w-3.5 h-3.5 text-yellow-300" />
-                                Đóng góp hiện trường
-                            </button>
-                    )}
                     {user && user.role !== 'guest' && (
-                        <>
-                            <div className="h-full border-l border-white/20 flex items-center px-2">
-                                <NotificationDropdown isOpen={isNotifOpen} setIsOpen={setIsNotifOpen} user={user} />
-                            </div>
-                        </>
+                        <div className="h-full border-l border-white/20 flex items-center px-2">
+                             <NotificationDropdown isOpen={isNotifOpen} setIsOpen={setIsNotifOpen} user={user} />
+                        </div>
                     )}
-
-
                 </div>
+
             </div>
         </div>
         
@@ -399,6 +393,15 @@ export default function MainLayout({ children }) {
                             {item.name}
                         </Link>
                     ))}
+                    {user?.role !== "admin" && (
+                            <button 
+                                onClick={() => { setIsCrowdsourceOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-bold text-white hover:bg-[#258a9b] transition-colors"
+                            >
+                                <AlertTriangle className="w-4 h-4 text-yellow-300" />
+                                ĐÓNG GÓP HIỆN TRƯỜNG
+                            </button>
+                    )}
                     {adminNavigation.map((item) => (
                         <Link
                             key={item.name}
@@ -414,15 +417,6 @@ export default function MainLayout({ children }) {
                             {item.name}
                         </Link>
                     ))}
-                    {user?.role !== "admin" && (
-                            <button 
-                                onClick={() => { setIsCrowdsourceOpen(true); setIsMobileMenuOpen(false); }}
-                                className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-bold text-white bg-red-600/30 hover:bg-red-600/50 mt-2"
-                            >
-                                <AlertTriangle className="w-4 h-4 text-yellow-300" />
-                                ĐÓNG GÓP HIỆN TRƯỜNG
-                            </button>
-                    )}
                     {user && user.role !== 'guest' && (
                         <>
                             <button 

@@ -27,6 +27,25 @@ from .sources import (
     DISASTER_PRIORITY_MAP,
     AMBIGUOUS_KEYWORDS
 )
+
+def strip_accents(text):
+    """Normalize Vietnamese text by removing accents."""
+    if not text: return ""
+    text = re.sub(r'[àáạảãâầấậẩẫăằắặẳẵ]', 'a', text)
+    text = re.sub(r'[ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ]', 'A', text)
+    text = re.sub(r'[èéẹẻẽêềếệểễ]', 'e', text)
+    text = re.sub(r'[ÈÉẸẺẼÊỀẾỆỂỄ]', 'E', text)
+    text = re.sub(r'[òóọỏõôồốộổỗơờớợởỡ]', 'o', text)
+    text = re.sub(r'[ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ]', 'O', text)
+    text = re.sub(r'[ìíịỉĩ]', 'i', text)
+    text = re.sub(r'[ÌÍỊỈĨ]', 'I', text)
+    text = re.sub(r'[ùúụủũưừứựửữ]', 'u', text)
+    text = re.sub(r'[ÙÚỤỦŨƯỪỨỰỬỮ]', 'U', text)
+    text = re.sub(r'[ỳýỵỷỹ]', 'y', text)
+    text = re.sub(r'[ỲÝỴỶỸ]', 'Y', text)
+    text = re.sub(r'[đ]', 'd', text)
+    text = re.sub(r'[Đ]', 'D', text)
+    return text
 # Re-export key constants for external modules
 SCORING_WEIGHTS = SW
 DISASTER_PRIORITY_MAP = DISASTER_PRIORITY_MAP

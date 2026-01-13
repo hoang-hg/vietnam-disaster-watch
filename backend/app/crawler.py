@@ -367,6 +367,14 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
     score = diag["score"]
     
     if existing:
+        # [FEATURE] Allow re-enrichment if very recent (<12h) and impact is missing
+        # Many news sites update the SAME URL with death/damage counts later.
+        pub_at_utc = existing.published_at.replace(tzinfo=None)
+        age_hours = (datetime.now(timezone.utc).replace(tzinfo=None) - pub_at_utc).total_seconds() / 3600.0
+        if age_hours < 12.0 and score >= 10.0 and \
+           not any([existing.deaths, existing.missing, existing.injured, existing.damage_billion_vnd]):
+            return existing, "upgradable-metrics"
+
         # Upgrade Pending -> Approved if new score is high enough
         if existing.status == "pending" and score >= 15.0:
             existing.status = "approved"
@@ -422,15 +430,14 @@ async def _ingest_article_async(db: Session, src, title: str, link: str, publish
 
     if status == "auto-blacklisted":
         # Check database first
-        exists = db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first()
-        if not exists:
-            # [FIX] Also check what's already added in the current session batch
-            in_session = any(
-                isinstance(obj, Blacklist) and getattr(obj, "news_hash", None) == article_hash 
-                for obj in db.new
-            )
-            if not in_session:
+        try:
+            exists = db.query(Blacklist).filter(Blacklist.news_hash == article_hash).first()
+            if not exists:
+                # Use a flush to trigger Integrity check early
                 db.add(Blacklist(news_hash=article_hash, title=title, reason=f"Low Score: {score:.1f}"))
+                db.flush()
+        except Exception:
+            db.rollback() # Ignore collision or race condition
         
         if score >= 3.0 or diag["signals"].get("rule_matches"):
             _log_to_review_file(src, title, link, published_at, score, diag["reason"], "auto_blacklisted", diag["signals"])
@@ -587,23 +594,41 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 feed_worked = True
                 stat["feed_used"].append(f_type)
                 
-                # Process Entries
-                for entry in entry_list[:(50 if f_type == "gnews" else 200)]:
-                    title = html.unescape(html.unescape(getattr(entry, "title", ""))).strip()
-                    title = re.sub(r"\s+", " ", title)
-                    link = getattr(entry, "link", "").strip()
-                    pub_at = _to_dt(entry)
-                    if pub_at < CRAWL_MIN_DATE: continue
+                # Process Entries Concurrently (Limited to 15 at once to avoid DB/Network overload)
+                sem = asyncio.Semaphore(15)
+                
+                async def process_entry(entry):
+                    # Each task gets its OWN DB session to avoid race conditions and session corruption
+                    # especially when using asyncio.to_thread internally.
+                    task_db = SessionLocal()
+                    try:
+                        async with sem:
+                            title = html.unescape(html.unescape(getattr(entry, "title", ""))).strip()
+                            title = re.sub(r"\s+", " ", title)
+                            link = getattr(entry, "link", "").strip()
+                            pub_at = _to_dt(entry)
+                            if pub_at < CRAWL_MIN_DATE: return None
+        
+                            raw_sum = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+                            sum_raw = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(html.unescape(raw_sum)))).strip()
+                            
+                            res = await _process_article_logic(task_db, src, title, link, pub_at, sum_raw)
+                            if res and res[2]: # if article was added
+                                task_db.commit() # [FIX] Must commit the task session!
+                            return res
+                    finally:
+                        task_db.close()
 
-                    raw_sum = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
-                    sum_raw = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", html.unescape(html.unescape(raw_sum)))).strip()
-                    
-                    ev, is_new, added, status = await _process_article_logic(db, src, title, link, pub_at, sum_raw)
-                    
-                    if added:
-                        new_count += 1
-                        info["added"] += 1
-                        if ev: events_to_notify.append((ev.id, is_new))
+                tasks = [process_entry(e) for e in entry_list[:(50 if f_type == "gnews" else 200)]]
+                results = await asyncio.gather(*tasks)
+                
+                for res in results:
+                    if res:
+                        ev, is_new, added, status = res
+                        if added:
+                            new_count += 1
+                            info["added"] += 1
+                            if ev: events_to_notify.append((ev.id, is_new))
 
                 # If primary worked, we don't need backup/gnews
                 if feed_worked: break
@@ -616,14 +641,31 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                     if scraped:
                         stat["feed_used"].append("html_scraper")
                         feed_worked = True
-                        for item in scraped[:50]:
-                             ev, is_new, added, status = await _process_article_logic(
-                                db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", "")
-                            )
-                             if added:
-                                new_count += 1
-                                info["added"] += 1
-                                if ev: events_to_notify.append((ev.id, is_new))
+                        sem_scraped = asyncio.Semaphore(10)
+                        async def process_scraped(item):
+                            # Independent session for concurrent scraper results
+                            task_db = SessionLocal()
+                            try:
+                                async with sem_scraped:
+                                    res = await _process_article_logic(
+                                        task_db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", "")
+                                    )
+                                    if res and res[2]:
+                                        task_db.commit() # [FIX] Must commit the task session!
+                                    return res
+                            finally:
+                                task_db.close()
+                        
+                        scraped_tasks = [process_scraped(it) for it in scraped[:50]]
+                        scraped_results = await asyncio.gather(*scraped_tasks)
+                        
+                        for res in scraped_results:
+                            if res:
+                                ev, is_new, added, status = res
+                                if added:
+                                    new_count += 1
+                                    info["added"] += 1
+                                    if ev: events_to_notify.append((ev.id, is_new))
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
             
@@ -801,15 +843,28 @@ def process_once(force: bool = False, only_sources: list[str] = None) -> dict:
         cache.release_lock(lock_name)
 
 def cleanup_old_pending_articles():
+    """Cleanup old pending articles and notifications to keep the DB lean."""
     db = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
-        deleted = db.query(Article).filter(Article.status == "pending", Article.published_at < cutoff).delete(synchronize_session=False)
+        # 1. Old Pending Articles (> 30 days)
+        limit_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
+        res = db.query(Article).filter(
+            Article.status == "pending",
+            Article.published_at < limit_date
+        ).delete()
+        
+        # 2. Old Notifications (> 30 days)
+        res_notif = db.query(models.Notification).filter(
+            models.Notification.created_at < limit_date
+        ).delete()
+        
         db.commit()
-        if deleted > 0: logger.info(f"Cleaned up {deleted} old pending articles.")
+        if res > 0 or res_notif > 0:
+            logger.info(f"[CLEANUP] Removed {res} old pending articles and {res_notif} old notifications.")
     except Exception as e:
-        db.rollback(); logger.error(f"Failed to cleanup old pending articles: {e}")
-    finally: db.close()
+        logger.error(f"[CLEANUP] Failed: {e}")
+    finally:
+        db.close()
 
 def main():
     parser = argparse.ArgumentParser()

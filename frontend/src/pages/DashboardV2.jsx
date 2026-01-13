@@ -388,6 +388,7 @@ export default function Dashboard() {
                 <select
                     name="hazard_type"
                     id="dashboard-hazard-type"
+                    aria-label="Lọc theo loại hình thiên tai"
                     value={hazardType}
                     onChange={(e) => setHazardType(e.target.value)}
                     className="appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 cursor-pointer transition-all hover:bg-white dark:hover:bg-slate-700"

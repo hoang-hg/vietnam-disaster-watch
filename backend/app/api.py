@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import desc, func, or_, case
-from sqlalchemy.orm import Session, defer
+from sqlalchemy.orm import Session, defer, selectinload
 from sqlalchemy.sql import text
 from .database import get_db, engine
 from . import models
@@ -17,15 +17,13 @@ from .log_utils import log_audit
 import asyncio
 from pathlib import Path
 import json
-from .nlp import PROVINCES
+from .nlp import PROVINCES, strip_accents
 from .sources import DISASTER_GROUPS
 from .risk_lookup import canon
 from . import broadcast, auth
 from .cache import cache
 import io
 from typing import Optional, List
-
-
 
 # Unified filtering rules for Dashboard/Stats (Decision 18/2021/QĐ-TTg)
 def get_dec18_filter():
@@ -135,6 +133,13 @@ def get_visibility_filter(query, is_admin: bool):
         (Event.needs_verification.is_(False)) & (Event.sources_count >= 2)
     ))
 
+def strip_accents(s: str) -> str:
+    """Removes Vietnamese accents for robust search/export fallback."""
+    if not s: return ""
+    import unicodedata
+    s = unicodedata.normalize('NFD', s)
+    s = "".join([c for c in s if unicodedata.category(c) != 'Mn'])
+    return s.replace('đ', 'd').replace('Đ', 'D')
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -149,29 +154,40 @@ def latest_articles(
     province: str | None = Query(None),
     exclude_unknown: bool = Query(False),
     after_id: int | None = Query(None, description="Keyset pagination for better performance"),
+    q: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
-    cache_key = f"articles_latest_{limit}_{type}_{province}_{exclude_unknown}_{after_id}"
+    cache_key = f"articles_latest_{limit}_{type}_{province}_{exclude_unknown}_{after_id}_{q}"
     cached = cache.get(cache_key)
     if cached: return cached
 
-    q = db.query(Article).filter(Article.status == "approved")\
+    q_latest = db.query(Article).filter(Article.status == "approved")\
         .options(defer(Article.full_text))\
         .order_by(desc(Article.published_at))
+
+    if q:
+        q_clean = strip_accents(q).lower()
+        q_latest = q_latest.filter(or_(
+            Article.title.ilike(f"%{q}%"),
+            Article.title.ilike(f"%{q_clean}%")
+        ))
 
     
 
 
     if after_id is not None:
-        q = q.filter(Article.id < after_id)
+        # [FIX] Keyset pagination by ID is unstable when sorting by published_at.
+        # We fallback to a safer filtering or simple offset-like behavior if after_id is used.
+        # For now, we use it as a secondary sort key to ensure stability.
+        q_latest = q_latest.filter(Article.id < after_id)
     if type:
-        q = q.filter(Article.disaster_type == type)
+    	q_latest = q_latest.filter(Article.disaster_type == type)
     if province:
-        q = q.filter(Article.province == province)
+    	q_latest = q_latest.filter(Article.province == province)
     if exclude_unknown:
-        q = q.filter(Article.disaster_type != 'unknown')
+    	q_latest = q_latest.filter(Article.disaster_type != 'unknown')
     
-    res = q.limit(limit).all()
+    res = q_latest.limit(limit).all()
     
     # [OPTIMIZATION] Serialize to dicts before caching to avoid detaching ORM objects
     # and to ensure the cache stores simple serializable data.
@@ -243,7 +259,12 @@ def events(
 
     if type: query = query.filter(Event.disaster_type == type)
     if province: query = query.filter(Event.province == province)
-    if q: query = query.filter(Event.title.ilike(f"%{q}%"))
+    if q: 
+        q_clean = strip_accents(q).lower()
+        query = query.filter(or_(
+            Event.title.ilike(f"%{q}%"),
+            Event.title.ilike(f"%{q_clean}%")
+        ))
 
     # Quick Filters (Decision & UI Shortcuts)
     if quick == "casualties":
@@ -255,7 +276,10 @@ def events(
     elif quick == "community":
         query = query.filter(Event.disaster_type == "community")
 
-    if after_id is not None:
+    # [FIX] Keyset pagination (after_id) is only stable when sorting by a unique, strictly monotonic field (like ID).
+    # If sorting by 'impact' or 'latest' (dates can be identical), after_id can cause skipped items or duplicates.
+    # We restrict after_id usage to avoid logic errors in complex sorts.
+    if after_id is not None and sort not in ["impact", "latest"]:
         query = query.filter(Event.id < after_id)
 
     # Calculate total if wrapper is requested
@@ -401,7 +425,15 @@ SUB_IMAGES = {
 }
 
 @router.get("/events/{event_id}", response_model=EventDetailOut)
-def event_detail(event_id: int, response: Response, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(auth.get_current_user_optional)):
+def event_detail(
+    event_id: int, 
+    response: Response,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_current_user_optional)
+):
+    """Chi tiết sự kiện + danh sách bài báo (có phân trang nhẹ)."""
+    limit_articles = limit
     is_admin = current_user and current_user.role == "admin"
     
     # 1. Try Cache
@@ -423,10 +455,14 @@ def event_detail(event_id: int, response: Response, db: Session = Depends(get_db
     # 3. [OPTIMIZATION] Database-side Article Filtering & Limited Fetch
     # For large datasets, we should not load thousands of articles into a single response.
     # We fetch the latest 300 articles (status approved/pending).
-    limit_articles = 300
+    # [FIX] Privacy & Verification: Regular users should ONLY see approved articles.
+    # Pending articles might contain unverified rumors.
+    is_admin = current_user and current_user.role == "admin"
+    allowed_statuses = ["approved", "pending"] if is_admin else ["approved"]
+    
     articles_q = db.query(Article).filter(
         Article.event_id == event_id,
-        Article.status.in_(["approved", "pending"])
+        Article.status.in_(allowed_statuses)
     ).options(defer(Article.full_text)).order_by(desc(Article.published_at))
     
     # Accurate counts via SQL aggregates
@@ -521,6 +557,17 @@ def update_event(
         except Exception as e:
             logger.error(f"Failed to propagate province change: {e}")
 
+    # [FIX] Also propagate detailed location fields for consistency in Exports/Search
+    loc_fields = ['commune', 'village', 'route', 'landmark']
+    loc_updates = {f: update_data[f] for f in loc_fields if f in update_data}
+    if loc_updates:
+        try:
+            db.query(models.Article).filter(models.Article.event_id == event_id).update(
+                loc_updates, synchronize_session=False
+            )
+        except Exception as e:
+            logger.error(f"Failed to propagate location updates: {e}")
+
     ev.last_updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.commit()
     db.refresh(ev)
@@ -578,9 +625,15 @@ def delete_event(
         if new_blacklist_entries:
             db.add_all(new_blacklist_entries)
 
-    # Mark all associated articles as Rejected/Hidden
+    # Mark all associated articles (news + shadow community arts) as Rejected/Hidden
     db.query(Article).filter(Article.event_id == event_id).update(
         {"status": "rejected", "event_id": None}, 
+        synchronize_session=False
+    )
+    
+    # [FIX] Also unlink from CrowdsourcedReport if any
+    db.query(models.CrowdsourcedReport).filter(models.CrowdsourcedReport.event_id == event_id).update(
+        {"event_id": None},
         synchronize_session=False
     )
     
@@ -626,7 +679,7 @@ def recalculate_event_metrics(db: Session, event_id: int):
         func.count(func.distinct(Article.source))
     ).filter(
         Article.event_id == event_id,
-        Article.status.in_(["approved", "pending"])
+        Article.status == "approved"
     ).first()
     
     if not aggs or aggs[4] == 0:
@@ -642,6 +695,14 @@ def recalculate_event_metrics(db: Session, event_id: int):
         ev.damage_billion_vnd = aggs[3] or 0.0
         ev.sources_count = aggs[4] or 0
         
+        # [FIX] Keep Event visual & title fresh: if current image/title missing, take from latest approved
+        latest_art = db.query(Article).filter(Article.event_id == event_id, Article.status == "approved")\
+            .order_by(Article.published_at.desc()).first()
+        if latest_art:
+            if not ev.image_url: ev.image_url = latest_art.image_url
+            # If event title looks like a summary/placeholder, update from latest specific title
+            if len(ev.title or "") < 10: ev.title = latest_art.title
+
         # Downgrade confidence if sources dropped explicitly
         if ev.sources_count < 2 and ev.confidence > 0.6:
             ev.confidence = 0.5
@@ -718,6 +779,8 @@ def _reject_article_internal(db: Session, article_id: int, admin: models.User, r
     old_event_id = art.event_id
     art.status = "rejected"
     art.event_id = None
+    art.moderated_by = admin.id
+    art.moderated_at = datetime.now(timezone.utc).replace(tzinfo=None)
     
     # Blacklist hash
     if art.news_hash:
@@ -731,9 +794,11 @@ def _reject_article_internal(db: Session, article_id: int, admin: models.User, r
             
     log_audit("reject_article", admin.id, admin.email, event_id=old_event_id, article_id=article_id, details={"reason": reason})
     db.commit()
-
+    
+    # [FIX] Recalculate metrics for the event after article removal
     if old_event_id:
         recalculate_event_metrics(db, old_event_id)
+        db.commit()
         
     # Global cache invalidation for general article lists
     cache.delete_match("articles_latest_*")
@@ -751,12 +816,13 @@ def stats_summary(
     type: str | None = Query(None),
     province: str | None = Query(None),
     q: str | None = Query(None),
+    quick: str | None = Query(None),
     response: Response = None,
     db: Session = Depends(get_db),
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
 ):
     is_admin = current_user and current_user.role == "admin"
-    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{type}_{province}_{q}_{is_admin}"
+    cache_key = f"stats_{hours}_{date}_{start_date}_{end_date}_{type}_{province}_{q}_{is_admin}_{quick}"
     cached = cache.get(cache_key)
     if cached:
         if response: response.headers["Cache-Control"] = "public, max-age=120"
@@ -823,7 +889,8 @@ def stats_summary(
         func.sum(func.coalesce(Event.missing, 0)),
         func.sum(func.coalesce(Event.injured, 0)),
         func.sum(human_damage_case),
-        func.sum(prop_damage_case)
+        func.sum(prop_damage_case),
+        func.sum(func.coalesce(Event.damage_billion_vnd, 0))
     ]
     
     # Reuse the same filter base logic for aggregation
@@ -836,7 +903,12 @@ def stats_summary(
     )
     if type: agg_q = agg_q.filter(Event.disaster_type == type)
     if province: agg_q = agg_q.filter(Event.province == province)
-    if q: agg_q = agg_q.filter(Event.title.ilike(f"%{q}%"))
+    if q: 
+        q_clean = strip_accents(q).lower()
+        agg_q = agg_q.filter(or_(
+            Event.title.ilike(f"%{q}%"),
+            Event.title.ilike(f"%{q_clean}%") # Fallback for unaccented search
+        ))
     agg_q = get_visibility_filter(agg_q, is_admin)
         
     agg_res = agg_q.first()
@@ -847,6 +919,7 @@ def stats_summary(
     total_injured = agg_res[3] or 0
     events_human_damage = agg_res[4] or 0
     events_property_damage = agg_res[5] or 0
+    total_damage = agg_res[6] or 0
 
     # Type breakdown
     type_counts_q = db.query(Event.disaster_type, func.count(Event.id)).filter(
@@ -857,7 +930,12 @@ def stats_summary(
     )
     if type: type_counts_q = type_counts_q.filter(Event.disaster_type == type)
     if province: type_counts_q = type_counts_q.filter(Event.province == province)
-    if q: type_counts_q = type_counts_q.filter(Event.title.ilike(f"%{q}%"))
+    if q: 
+        q_clean = strip_accents(q).lower()
+        type_counts_q = type_counts_q.filter(or_(
+            Event.title.ilike(f"%{q}%"),
+            Event.title.ilike(f"%{q_clean}%")
+        ))
     type_counts_q = get_visibility_filter(type_counts_q, is_admin)
     
     type_counts_rows = type_counts_q.group_by(Event.disaster_type).all()
@@ -900,7 +978,12 @@ def stats_summary(
     )
     if type: provinces_count_q = provinces_count_q.filter(Event.disaster_type == type)
     if province: provinces_count_q = provinces_count_q.filter(Event.province == province)
-    if q: provinces_count_q = provinces_count_q.filter(Event.title.ilike(f"%{q}%"))
+    if q: 
+        q_clean = strip_accents(q).lower()
+        provinces_count_q = provinces_count_q.filter(or_(
+            Event.title.ilike(f"%{q}%"),
+            Event.title.ilike(f"%{q_clean}%")
+        ))
     provinces_count_q = get_visibility_filter(provinces_count_q, is_admin)
     provinces_count = provinces_count_q.scalar() or 0
 
@@ -917,7 +1000,8 @@ def stats_summary(
         "impacts": {
             "deaths": int(total_deaths),
             "missing": int(total_missing),
-            "injured": int(total_injured)
+            "injured": int(total_injured),
+            "damage_billion_vnd": float(total_damage)
         },
         "by_type": type_counts,
         "by_province": by_province,
@@ -935,10 +1019,13 @@ def stats_timeline(
     date: str | None = Query(None),
     start_date: str | None = Query(None),
     end_date: str | None = Query(None),
+    type: str | None = Query(None),
+    province: str | None = Query(None),
+    q: str | None = Query(None),
     db: Session = Depends(get_db)
 ):
     """Timeline: số sự kiện theo giờ."""
-    cache_key = f"timeline_{hours}_{date}_{start_date}_{end_date}"
+    cache_key = f"timeline_{hours}_{date}_{start_date}_{end_date}_{type}_{province}_{q}"
     cached = cache.get(cache_key)
     if cached: 
         response.headers["Cache-Control"] = "public, max-age=180"
@@ -956,6 +1043,15 @@ def stats_timeline(
         time_func.label('hour'),
         func.count(Event.id).label('count')
     ).filter(Event.started_at >= start, Event.started_at < end)
+    
+    if type: query = query.filter(Event.disaster_type == type)
+    if province: query = query.filter(Event.province == province)
+    if q:
+        q_clean = strip_accents(q).lower()
+        query = query.filter(or_(
+            Event.title.ilike(f"%{q}%"),
+            Event.title.ilike(f"%{q_clean}%")
+        ))
     
     # [OPTIMIZATION] Sync visibility with dashboard
     query = get_visibility_filter(query, False) # Non-admin visibility for public timeline
@@ -1051,13 +1147,17 @@ def label_log(payload: dict, admin: models.User = Depends(auth.get_current_admin
 def get_pending_articles(
     skip: int = 0, 
     limit: int = 50, 
+    q: Optional[str] = Query(None),
     db: Session = Depends(get_db), 
     admin: models.User = Depends(auth.get_current_admin)
 ):
     """Fetch articles waiting for admin review."""
-    return db.query(models.Article).filter(models.Article.status == "pending")\
-             .order_by(models.Article.published_at.desc())\
-             .offset(skip).limit(limit).all()
+    query = db.query(models.Article).filter(models.Article.status == "pending")
+    if q:
+        query = query.filter(models.Article.title.ilike(f"%{q}%"))
+    
+    return query.order_by(models.Article.published_at.desc())\
+                .offset(skip).limit(limit).all()
 
 
 @router.post('/admin/approve-article/{article_id}')
@@ -1068,6 +1168,9 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
         raise HTTPException(status_code=404, detail="Article not found")
         
     article.status = "approved"
+    article.moderated_by = admin.id
+    article.moderated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    
     # Update events
     ev, is_new = upsert_event_for_article(db, article)
     db.commit()
@@ -1086,6 +1189,7 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
     cache.delete_match("stats_*")
     cache.delete_match("articles_latest_*")
     cache.delete_match("map_*")
+    cache.delete_match("heatmap_*")
         
     return {"ok": True, "message": "Article approved and event updated"}
 
@@ -1118,9 +1222,36 @@ def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.Us
     cache.delete_match("ev_v2_*")
     cache.delete_match("stats_*")
     cache.delete_match("map_*")
+    cache.delete_match("heatmap_*")
     
     return {"ok": True, "message": "Event and its articles approved"}
 
+
+@router.get('/admin/blacklist')
+def get_blacklist(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db), 
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    """Fetch blacklisted article hashes."""
+    return db.query(models.Blacklist).order_by(models.Blacklist.created_at.desc())\
+             .offset(skip).limit(limit).all()
+
+@router.delete('/admin/blacklist/{news_hash}')
+def delete_from_blacklist(
+    news_hash: str, 
+    db: Session = Depends(get_db), 
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    """Remove a hash from the blacklist."""
+    entry = db.query(models.Blacklist).filter(models.Blacklist.news_hash == news_hash).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Blacklist entry not found")
+    db.delete(entry)
+    db.commit()
+    log_audit("delete_blacklist", admin.id, admin.email, details={"hash": news_hash})
+    return {"ok": True}
 
 @router.post('/admin/reject-article/{article_id}')
 def reject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
@@ -1254,11 +1385,28 @@ def get_crawler_status(db: Session = Depends(get_db), admin: models.User = Depen
 
 @router.post("/admin/crawler/run")
 async def trigger_crawler(db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
-    """Manually triggers a full crawl job."""
-    from .crawler import _process_once_async
-    # Run in background to not block the request
-    asyncio.create_task(_process_once_async())
-    return {"ok": True, "message": "Crawler started in background."}
+    """Manually triggers a full crawl job, ensuring it doesn't collide with scheduled runs."""
+    from .crawler import process_once
+    
+    # 1. Check lock immediately
+    if not cache.acquire_lock("crawl_job_full", timeout=2700):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, 
+            detail="Máy chủ đang thực hiện thu thập dữ liệu (theo lịch hoặc thủ công). Vui lòng đợi đến khi phiên hiện tại kết thúc."
+        )
+    
+    # 2. Release lock immediately because `process_once` will re-acquire it properly
+    cache.release_lock("crawl_job_full")
+    
+    # 3. Trigger in thread to bypass event loop collision with asyncio.run
+    async def run_wrapper():
+        try:
+            await asyncio.to_thread(process_once)
+        except Exception as e:
+            logger.error(f"[MANUAL_CRAWL] Failed: {e}")
+
+    asyncio.create_task(run_wrapper())
+    return {"ok": True, "message": "Crawler started in background with lock-safety."}
 
 @router.post("/admin/system/clear-cache")
 def clear_system_cache(admin: models.User = Depends(auth.get_current_admin)):
@@ -1397,28 +1545,27 @@ def export_event_data(event_id: int, format: str = "excel", db: Session = Depend
         from reportlab.pdfbase.ttfonts import TTFont
         
         # Try to use a font that supports Vietnamese if available, otherwise fallback
-        # This is a bit tricky in a generic environment, but we'll try basic Helvetica first
+        # To avoid squares/error, we strip accents for PDF export as a safer fallback
         
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
         elements = []
         styles = getSampleStyleSheet()
         
-        elements.append(Paragraph(f"BAO CAO THIET HAI SU KIEN: {ev.title}", styles['Title']))
+        clean_title = strip_accents(ev.title)
+        elements.append(Paragraph(f"BAO CAO THIET HAI SU KIEN: {clean_title}", styles['Title']))
         elements.append(Spacer(1, 12))
         elements.append(Paragraph(f"Thoi gian bat dau: {ev.started_at.strftime('%Y-%m-%d')}", styles['Normal']))
-        elements.append(Paragraph(f"Loai thien tai: {ev.disaster_type} | Tinh thanh: {ev.province}", styles['Normal']))
+        elements.append(Paragraph(f"Loai thien tai: {strip_accents(ev.disaster_type)} | Tinh thanh: {strip_accents(ev.province)}", styles['Normal']))
         elements.append(Spacer(1, 20))
         
         # Table data
         table_data = [["Ngay", "Nguon", "Tieu de", "Tu vong", "Mat tich", "Bi thuong", "Thiet hai"]]
         for art in articles:
-            # Strip accents for PDF if font support is unreliable (simplified for this task)
-            # Actually we'll just use the raw text and hope for the best or use a standard font
             table_data.append([
                 art.published_at.strftime("%d/%m"),
-                art.source[:15],
-                art.title[:50] + "...",
+                strip_accents(art.source)[:15],
+                strip_accents(art.title)[:50] + "...",
                 str(art.deaths or 0),
                 str(art.missing or 0),
                 str(art.injured or 0),
@@ -1464,21 +1611,25 @@ def export_daily_summary(date: str = None, db: Session = Depends(get_db), admin:
     start_utc = target_date_vn.astimezone(timezone.utc)
     end_utc = start_utc + timedelta(days=1)
     
-    events = db.query(Event).filter(Event.started_at >= start_utc, Event.started_at < end_utc).all()
+    events = db.query(Event).filter(Event.started_at >= start_utc, Event.started_at < end_utc).options(selectinload(Event.articles)).all()
     
     data = []
     for ev in events:
+        # Get representative URL
+        ref_link = ev.articles[0].url if ev.articles else ""
+
         data.append({
-            "ID": ev.id,
-            "Tên sự kiện": ev.title,
-            "Loại": TYPE_MAP.get(ev.disaster_type, ev.disaster_type),
-            "Tỉnh": ev.province,
-            "Bắt đầu": ev.started_at.astimezone(vn_tz).strftime("%H:%M %d/%m/%Y"), # Convert back to VN for display
-            "Nguồn tin": ev.sources_count,
+            "Ngày": ev.started_at.astimezone(vn_tz).strftime("%d/%m/%Y"),
+            "Loại hình": TYPE_MAP.get(ev.disaster_type, ev.disaster_type),
+            "Tỉnh thành": ev.province,
+            "Xã/Thôn/Tuyến": f"{ev.commune or ''} / {ev.village or ''} / {ev.route or ''}".strip(" /"),
+            "Nguyên nhân": ev.cause or "Chưa rõ",
+            "Đặc điểm": ev.characteristics or "N/A",
             "Tử vong": ev.deaths or 0,
             "Mất tích": ev.missing or 0,
             "Bị thương": ev.injured or 0,
-            "Thiệt hại (Tỷ VNĐ)": ev.damage_billion_vnd or 0
+            "Thiệt hại (Tỷ VNĐ)": ev.damage_billion_vnd or 0,
+            "Link nguồn": ref_link
         })
         
     df = pd.DataFrame(data)
@@ -1509,6 +1660,7 @@ def export_events_summary(
     year: int = Query(None),
     type: str = Query(None),
     province: str = Query(None),
+    q: str = Query(None),
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_current_admin)
 ):
@@ -1554,21 +1706,30 @@ def export_events_summary(
 
     if type: query = query.filter(Event.disaster_type == type)
     if province: query = query.filter(Event.province == province)
+    if q:
+        q_clean = strip_accents(q).lower()
+        query = query.filter(or_(
+            Event.title.ilike(f"%{q}%"),
+            Event.title.ilike(f"%{q_clean}%")
+        ))
 
-    events = query.order_by(Event.started_at.desc()).all()
+    events = query.order_by(Event.started_at.desc()).options(selectinload(Event.articles)).all()
     
     data = []
     for ev in events:
+        ref_link = ev.articles[0].url if ev.articles else ""
         data.append({
-            "Ngày Báo cáo": ev.started_at.strftime("%d/%m/%Y"),
+            "Ngày Báo cáo": ev.started_at.astimezone(vn_tz).strftime("%d/%m/%Y"),
             "Tên sự kiện": ev.title,
             "Loại hình thiên tai": TYPE_MAP.get(ev.disaster_type, ev.disaster_type),
             "Tỉnh": ev.province,
+            "Xã/Thôn/Tuyến": f"{ev.commune or ''} / {ev.village or ''} / {ev.route or ''}".strip(" /"),
+            "Nguyên nhân": ev.cause or "Chưa rõ",
             "Tử vong": ev.deaths or 0,
             "Mất tích": ev.missing or 0,
             "Bị thương": ev.injured or 0,
             "Thiệt hại (Tỷ VNĐ)": ev.damage_billion_vnd or 0,
-            "Số nguồn tin": ev.sources_count or 1,
+            "Link nguồn": ref_link,
             "Trạng thái": "Đã duyệt" if ev.needs_verification == 0 else "Chờ xác minh"
         })
         
@@ -1580,11 +1741,13 @@ def export_events_summary(
             "Tên sự kiện": title_suffix,
             "Loại hình thiên tai": "",
             "Tỉnh": "",
+            "Xã/Thôn/Tuyến": "",
+            "Nguyên nhân": "",
             "Tử vong": df["Tử vong"].sum(),
             "Mất tích": df["Mất tích"].sum(),
             "Bị thương": df["Bị thương"].sum(),
             "Thiệt hại (Tỷ VNĐ)": df["Thiệt hại (Tỷ VNĐ)"].sum(),
-            "Số nguồn tin": "",
+            "Link nguồn": "",
             "Trạng thái": ""
         }
         df = pd.concat([df, pd.DataFrame([summary_row])], ignore_index=True)

@@ -32,6 +32,9 @@ Cách này không yêu cầu bạn phải cài Python, Node.js hay Database th�
     ```bash
     docker-compose up --build -d
     ```
+
+Dọn dẹp Docker cache (nếu cần): Chạy lệnh docker system prune -f để giải phóng các layer cũ bị lỗi.
+
 3.  **Sử dụng:**
     *   Web Dashboard: [http://localhost](http://localhost)
     *   API Backend: [http://localhost:8000/docs](http://localhost:8000/docs)
