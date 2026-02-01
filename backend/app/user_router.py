@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .database import get_db
@@ -46,12 +46,32 @@ def submit_report(
     return db_report
 
 @router.get("/crowdsource/approved", response_model=List[schemas.CrowdsourcedReportOut])
-def get_approved_reports(db: Session = Depends(get_db)):
-    # Optimized query: filter first, then limit if necessary (though usually few approved reports)
-    # Using defer() is not necessary here as description is text but likely crucial for map
-    return db.query(models.CrowdsourcedReport).filter(
+def get_approved_reports(
+    min_lat: float | None = Query(None),
+    max_lat: float | None = Query(None),
+    min_lon: float | None = Query(None),
+    max_lon: float | None = Query(None),
+    db: Session = Depends(get_db)
+):
+    from .cache import cache
+    cache_key = f"crowd_apprv_v1_{min_lat}_{max_lat}_{min_lon}_{max_lon}"
+    cached = cache.get(cache_key)
+    if cached: return cached
+
+    # Optimized query: filter first, then limit if necessary
+    query = db.query(models.CrowdsourcedReport).filter(
         models.CrowdsourcedReport.status == "approved"
-    ).order_by(models.CrowdsourcedReport.created_at.desc()).limit(200).all()
+    )
+    
+    if min_lat is not None: query = query.filter(models.CrowdsourcedReport.lat >= min_lat)
+    if max_lat is not None: query = query.filter(models.CrowdsourcedReport.lat <= max_lat)
+    if min_lon is not None: query = query.filter(models.CrowdsourcedReport.lon >= min_lon)
+    if max_lon is not None: query = query.filter(models.CrowdsourcedReport.lon <= max_lon)
+
+    res = query.order_by(models.CrowdsourcedReport.created_at.desc()).limit(200).all()
+    # Cache results (including Pydantic serialization if necessary, but FastAPI handles models)
+    cache.set(cache_key, res, ttl=60)
+    return res
 
 # Event Following
 @router.post("/events/{event_id}/follow")

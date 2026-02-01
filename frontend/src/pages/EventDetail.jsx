@@ -339,7 +339,7 @@ export default function EventDetail() {
 
       {/* Header Actions */}
       <div className="flex justify-between items-center no-print mb-6">
-        <Link to="/events" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-600 transition-colors group">
+        <Link to="/events" className="inline-flex items-center text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group">
           <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
           Quay lại danh sách sự kiện
         </Link>
@@ -372,7 +372,7 @@ export default function EventDetail() {
                 </button>
                 <button 
                   onClick={handleDeleteEvent}
-                  className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-semibold transition-all shadow-md group"
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30 rounded-lg text-sm font-semibold transition-all shadow-md group"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Xóa</span>
@@ -402,7 +402,7 @@ export default function EventDetail() {
                 <button 
                   disabled={isSaving}
                   onClick={() => setIsEditing(false)}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-semibold transition-all shadow-md group"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-semibold transition-all shadow-md group"
                 >
                   <X className="w-4 h-4" />
                   <span>Hủy</span>
@@ -413,15 +413,14 @@ export default function EventDetail() {
         )}
       </div>
 
-      {/* Professional Report Header */}
-      <div className="mb-6 flex items-center justify-between border-b-4 border-red-600 pb-4">
+       <div className="mb-6 flex items-center justify-between border-b-4 border-red-600 pb-4">
         <div className="flex items-center gap-4">
           <div className="bg-red-600 text-white px-4 py-2 rounded-lg font-black text-[10px] tracking-tighter text-center leading-tight w-24">
             BÁO TỔNG HỢP RỦI RO THIÊN TAI
           </div>
           <div>
-            <h1 className="text-xl font-black text-slate-900 uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
-            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase">
+            <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Phiếu Tin Thiên Tai</h1>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
               <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
               ID: {ev.id.toString().padStart(6, '0')} • Hệ thống giám sát rủi ro thiên tai
             </div>
@@ -437,35 +436,35 @@ export default function EventDetail() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-start justify-between gap-6 mb-8 pb-6 border-b border-slate-100">
+      <div className="flex flex-col lg:flex-row items-start justify-between gap-6 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
         <div className="flex-1 space-y-4">
-          <div className="text-3xl font-black leading-tight text-slate-900 tracking-tight">
+          <div className="text-3xl font-black leading-tight text-slate-900 dark:text-white tracking-tight">
             {isEditing ? (
               <input 
                 value={editForm.title}
                 onChange={e => setEditForm({...editForm, title: e.target.value})}
-                className="w-full border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 px-1"
+                className="w-full border-b-2 border-blue-500 focus:outline-none bg-blue-50/50 dark:bg-blue-900/20 dark:text-white px-1"
               />
             ) : ev.title}
           </div>
 
-          <div className="text-sm font-medium text-slate-500 flex flex-wrap gap-x-4 gap-y-2 items-center">
-            <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-md text-slate-700">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-2 items-center">
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md text-slate-700 dark:text-slate-300">
                <MapPin className="w-3.5 h-3.5 text-slate-400" />
                {isEditing ? (
                 <>
                   <select 
                     value={editForm.province}
                     onChange={e => setEditForm({...editForm, province: e.target.value})}
-                    className="bg-transparent focus:outline-none cursor-pointer text-xs font-bold"
+                    className="bg-transparent focus:outline-none cursor-pointer text-xs font-bold dark:text-white"
                   >
-                    {VALID_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    {VALID_PROVINCES.map(p => <option key={p} value={p} className="dark:bg-slate-800">{p}</option>)}
                   </select>
                   <input 
                     placeholder="Địa chỉ cụ thể..."
                     value={editForm.location_description || ""} 
                     onChange={e => setEditForm({...editForm, location_description: e.target.value})}
-                    className="w-32 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent text-xs px-1"
+                    className="w-32 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent text-xs px-1 dark:text-white"
                   />
                 </>
               ) : <span>{ev.province || "Cả nước"} {ev.location_description ? `- ${ev.location_description}` : ''}</span>}
@@ -479,14 +478,14 @@ export default function EventDetail() {
                     type="date"
                     value={editForm.started_at ? editForm.started_at.split('T')[0] : ""}
                     onChange={e => setEditForm({...editForm, started_at: e.target.value})}
-                    className="bg-transparent border-b border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold px-1 px-0 py-0"
+                    className="bg-transparent border-b border-slate-300 focus:border-blue-500 focus:outline-none text-xs font-bold px-1 px-0 py-0 dark:text-white dark:invert-0"
                    />
                  </div>
                ) : (
                  <>Bắt đầu: {fmtDate(ev.started_at)}</>
                )}
             </span>
-            <span className="text-slate-300">|</span>
+            <span className="text-slate-300 dark:text-slate-600">|</span>
             <span className="flex items-center gap-1.5 italic text-xs">
               Cập nhật {fmtTimeAgo(ev.last_updated_at)} ({fmtDate(ev.last_updated_at)})
             </span>
@@ -500,7 +499,7 @@ export default function EventDetail() {
               <select 
                 value={editForm.disaster_type}
                 onChange={e => setEditForm({...editForm, disaster_type: e.target.value})}
-                className="border rounded px-2 py-1 bg-white text-sm font-bold shadow-sm"
+                className="border rounded px-2 py-1 bg-white dark:bg-slate-800 text-sm font-bold shadow-sm dark:text-white dark:border-slate-700"
               >
                 {Object.entries(DISASTER_METADATA)
                     .filter(([id]) => id !== 'unknown' && id !== 'community')
@@ -522,7 +521,7 @@ export default function EventDetail() {
                   Cần kiểm chứng
                 </label>
             ) : ev.needs_verification === 1 && (
-              <span className="bg-red-50 text-red-700 border border-red-200 text-[9px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+              <span className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/30 text-[9px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 Dữ liệu cần kiểm chứng
               </span>
@@ -533,28 +532,45 @@ export default function EventDetail() {
           </div>
 
           {/* Quick Share Buttons */}
-          <div className="no-print flex items-center gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="no-print flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
             <button
                onClick={toggleFollow}
                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm hover:shadow-md ${
                  isFollowing 
                    ? "bg-slate-800 text-yellow-400" 
-                   : "bg-white text-slate-700 hover:bg-slate-50"
+                   : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600"
                }`}
             >
-               {isFollowing ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5 text-blue-600" />}
+               {isFollowing ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
                <span>{isFollowing ? "ĐANG THEO DÕI" : "THEO DÕI"}</span>
             </button>
-            <div className="w-px h-6 bg-slate-200 mx-1"></div>
-            <a 
-              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
-              target="_blank" rel="noopener noreferrer"
-              className="p-2 bg-white text-[#1877F2] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/fb flex items-center gap-2 px-4 py-2"
-              title="Chia sẻ Facebook"
-            >
-                <Facebook className="w-4 h-4 group-hover/fb:scale-110 transition-transform" />
-                <span className="text-[10px] font-black uppercase">Chia sẻ Facebook</span>
-            </a>
+            <div className="w-px h-6 bg-slate-200 dark:bg-slate-600 mx-1"></div>
+            {(() => {
+                const apiBaseFull = API_BASE.startsWith('http') ? API_BASE : window.location.origin + API_BASE;
+                const shareUrl = `${apiBaseFull}/api/share/events/${ev.id}`;
+                return (
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="p-2 bg-white dark:bg-slate-700 text-[#1877F2] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/fb flex items-center gap-2 px-4 py-2"
+                      title="Chia sẻ Facebook"
+                    >
+                        <Facebook className="w-4 h-4 group-hover/fb:scale-110 transition-transform" />
+                        <span className="text-[10px] font-black uppercase dark:text-slate-200 hidden sm:inline">Facebook</span>
+                    </a>
+                    <a 
+                      href={`https://sp.zalo.me/share/base?url=${encodeURIComponent(shareUrl)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="p-2 bg-white dark:bg-slate-700 text-[#0068FF] rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group/zalo flex items-center gap-2 px-4 py-2"
+                      title="Chia sẻ Zalo"
+                    >
+                        <Send className="w-4 h-4 group-hover/zalo:scale-110 transition-transform" />
+                        <span className="text-[10px] font-black uppercase dark:text-slate-200 hidden sm:inline">Zalo</span>
+                    </a>
+                  </div>
+                );
+            })()}
           </div>
         </div>
       </div>
@@ -584,22 +600,22 @@ export default function EventDetail() {
         ) : (
           <>
             {ev.deaths ? (
-              <div className="bg-red-50 text-red-700 border border-red-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/30 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
                 Tử vong: {ev.deaths}
               </div>
             ) : null}
             {ev.injured ? (
-              <div className="bg-yellow-50 text-yellow-700 border border-yellow-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/30 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
                 Bị thương: {ev.injured}
               </div>
             ) : null}
             {ev.missing ? (
-              <div className="bg-orange-50 text-orange-700 border border-orange-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+              <div className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-900/30 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
                 Mất tích: {ev.missing}
               </div>
             ) : null}
             {ev.damage_billion_vnd ? (
-              <div className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
+              <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30 font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">
                 Ước thiệt hại: {fmtVndBillion(ev.damage_billion_vnd)}
               </div>
             ) : null}
@@ -619,8 +635,8 @@ export default function EventDetail() {
       <ImpactBreakdown details={ev.details} />
 
       {combinedSummary || heroImage ? (
-              <div className="mt-4 text-sm text-gray-700 bg-white p-4 rounded border border-gray-200">
-                <div className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <div className="mt-4 text-sm text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-900 p-4 rounded border border-gray-200 dark:border-slate-800">
+                <div className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                   <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
                   Tóm tắt tổng hợp
                 </div>
@@ -654,11 +670,11 @@ export default function EventDetail() {
               </div>
             ) : null}
 
-      <div className="mt-6 rounded-2xl border border-gray-300 bg-white p-4">
-        <div className="text-sm font-semibold text-gray-900">
+      <div className="mt-6 rounded-2xl border border-gray-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
+        <div className="text-sm font-semibold text-gray-900 dark:text-white">
           Bài báo liên quan ({ev.articles?.length || 0} báo)
         </div>
-        <div className="text-xs text-gray-600 mt-1">
+        <div className="text-xs text-gray-600 dark:text-slate-400 mt-1">
           Timeline cập nhật từ các nguồn. Mỗi link mở bài gốc.
         </div>
         <div className="mt-4 space-y-0">
@@ -680,10 +696,10 @@ export default function EventDetail() {
       {/* Reclassification Modal */}
       {isReclassifying && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4 no-print">
-            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="text-xl font-black text-slate-800 uppercase tracking-tighter">Phân loại lại AI</h3>
-                    <button onClick={() => setIsReclassifying(null)} className="p-2 text-slate-400 hover:text-slate-600">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 overflow-hidden border border-slate-100 dark:border-slate-800">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Phân loại lại AI</h3>
+                    <button onClick={() => setIsReclassifying(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -696,8 +712,8 @@ export default function EventDetail() {
                                 onClick={() => submitReclassification(type.id)}
                                 className={`px-4 py-3 rounded-xl border-2 transition-all font-bold text-sm text-left ${
                                     isReclassifying.disaster_type === type.id 
-                                    ? "bg-slate-800 text-white border-slate-800 shadow-lg" 
-                                    : "border-slate-100 text-slate-600 hover:border-blue-300 hover:bg-blue-50"
+                                    ? "bg-slate-800 dark:bg-slate-700 text-white border-slate-800 dark:border-slate-700 shadow-lg" 
+                                    : "border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-slate-800"
                                 }`}
                             >
                                 {type.label}
@@ -705,7 +721,7 @@ export default function EventDetail() {
                         ))}
                     </div>
                 </div>
-                <div className="p-4 bg-slate-50 text-center">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Hệ thống sẽ ghi nhận Feedback để tự huấn luyện</p>
                 </div>
             </div>

@@ -48,7 +48,8 @@ def _get_tokens(text):
     if not text: return set(), set()
     # Normalize: lowercase, remove special characters
     text = TOKEN_CLEAN_RE.sub(" ", text.lower())
-    words = [t for t in text.split() if t not in STOPWORDS and not t.isdigit() and len(t) > 1]
+    # [FIX] Keep digits but skip pure stopwords. Digits are crucial for numbering (Bão số 1, 2...)
+    words = [t for t in text.split() if t not in STOPWORDS and len(t) > 0]
     
     # 1-grams
     unigrams = set(words)
@@ -110,15 +111,13 @@ def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool
 
     if matched_event is None:
         # Fallback: Check for EXACT Key collision (Same Type, Prov, Minute)
-        # This catches cases where fuzzy match failed but metadata is identical.
         timestamp_slug = article.published_at.strftime("%Y%m%d%H%M")
         unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}"
         same_key_event = db.query(Event).filter(Event.key == unique_key).first()
         
         if same_key_event:
             matched_event = same_key_event
-            # Log this fallback for debugging
-            logger.info(f"Fuzzy match failed but Key Match found. Merging Article {article.id} to Event {matched_event.id} ({unique_key})")
+            logger.info(f"Fuzzy match failed but Key Match found. Merging Article {article.id} to Event {matched_event.id}")
         else:
             # 2. Create New Event if no match
             from sqlalchemy.exc import IntegrityError
@@ -126,16 +125,20 @@ def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool
                 return _create_new_event(db, article), True
             except IntegrityError:
                 # Race condition: another thread created it between our initial check and now.
-                # Rollback current minor fail and retry fetching the other thread's event.
                 db.rollback()
                 matched_event = db.query(Event).filter(Event.key.like(f"{article.disaster_type}|{article.province}|{timestamp_slug}%")).first()
                 if not matched_event:
-                     # If still not found, something is very wrong, re-raise
                      raise
                 logger.info(f"Race condition detected for Event key {unique_key}. Merged Article {article.id} into concurrently created Event.")
     
-    # 3. Update Existing Event
-    ev = matched_event
+    # 3. Update Existing Event with Pessimistic Locking
+    # Re-fetch the event with a row lock to prevent race conditions on metrics accumulation
+    ev = db.query(Event).filter(Event.id == matched_event.id).with_for_update().first()
+    
+    # If for some extremely rare reason it was deleted between match and lock
+    if not ev:
+        return _create_new_event(db, article), True
+
     _update_event_from_article(db, ev, article)
     
     # 4. Finalize: Consensus checks
@@ -200,8 +203,18 @@ def _create_new_event(db: Session, article: Article) -> Event:
         counter += 1
         unique_key = f"{article.disaster_type}|{article.province}|{timestamp_slug}_{counter}"
 
-    from .nlp import PROVINCE_COORDINATES
-    coords = PROVINCE_COORDINATES.get(article.province, [None, None])
+    from .nlp import PROVINCE_COORDINATES, normalize_name
+    coords = PROVINCE_COORDINATES.get(article.province)
+    if not coords:
+        # Fuzzy match fallback
+        norm = normalize_name(article.province)
+        coords = PROVINCE_COORDINATES.get(norm)
+        if not coords:
+            for k, v in PROVINCE_COORDINATES.items():
+                if norm and (norm in k.lower() or k.lower() in norm):
+                    coords = v
+                    break
+    if not coords: coords = [None, None]
 
     # [LOGIC CHANGE] Admin Approved = Verified & High Confidence
     is_approved = article.status == "approved"
@@ -469,11 +482,20 @@ def _invalidate_event_caches(event_id: int):
 
 
 def _broadcast_event(ev: Event, is_new: bool = False):
-    """Universal broadcast to real-time channels."""
+    """Universal broadcast to real-time channels with update throttling."""
     try:
+        # [OPTIMIZATION] Throttle updates: Always broadcast if new.
+        # If updating, only broadcast if source count is a multiple of 5,
+        # or it's a very high confidence jump, to avoid spamming the frontend.
+        should_broadcast = is_new or (ev.sources_count % 5 == 0) or (ev.sources_count == 2)
+        
+        if not should_broadcast:
+            return
+
         data = {
             "type": "new_event" if is_new else "event_updated",
             "event_id": ev.id,
+# ... (rest of data remains same)
             "title": ev.title,
             "disaster_type": ev.disaster_type,
             "province": ev.province,

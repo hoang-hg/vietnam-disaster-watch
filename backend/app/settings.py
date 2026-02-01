@@ -1,6 +1,6 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, AliasChoices
+from pydantic import Field, AliasChoices, field_validator
 
 # Build absolute path to data/app.db
 # This file is in backend/app/settings.py -> parent.parent is backend/
@@ -54,12 +54,26 @@ class Settings(BaseSettings):
 
     # Security & Admin
     # Use a set for O(1) lookups
-    fixed_admin_emails: set[str] = {
-        "admin@vdw.com",
-        "quantri@vdw.com", 
-        "root@vdw.com" 
-    }
+    fixed_admin_emails: set[str] | str = Field(
+        default={
+            "admin@vdw.com",
+            "quantri@vdw.com", 
+            "root@vdw.com" 
+        },
+        validation_alias="FIXED_ADMIN_EMAILS"
+    )
+
+    @field_validator("fixed_admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, v):
+        if isinstance(v, str):
+            # Parse comma-separated string from env var
+            return {e.strip() for e in v.split(",") if e.strip()}
+        return v
     # Separate secret for password resets (don't reuse JWT secret)
     admin_reset_secret: str = Field(default="dev_admin_reset_secret", validation_alias="ADMIN_RESET_SECRET")
+    
+    # Frontend URL for SEO & Sharing
+    frontend_url: str = Field(default="https://viet-disaster.vn", validation_alias="FRONTEND_URL")
 
 settings = Settings()

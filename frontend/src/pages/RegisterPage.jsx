@@ -58,12 +58,12 @@ export default function RegisterPage() {
 
   return (
     <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-slate-100">
+      <div className="max-w-md w-full space-y-8 bg-white dark:bg-slate-900 p-10 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800">
         <div>
-          <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-center text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Tạo tài khoản mới
           </h2>
-          <p className="mt-2 text-center text-sm text-slate-600">
+          <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
             Đã có tài khoản?{" "}
             <Link to="/login" className="font-medium text-[#2fa1b3] hover:text-[#258a9b] transition-colors">
               Đăng nhập ngay
@@ -73,7 +73,7 @@ export default function RegisterPage() {
         
         <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl flex items-center gap-3 text-sm">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span>{error}</span>
             </div>
@@ -82,7 +82,7 @@ export default function RegisterPage() {
           <div className="rounded-md space-y-4">
             {/* Full Name */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Họ và tên</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-slate-400" />
@@ -90,7 +90,7 @@ export default function RegisterPage() {
                 <input
                   type="text"
                   required
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 placeholder-slate-400 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
                   placeholder="Nguyễn Văn A"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
@@ -100,7 +100,7 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -108,7 +108,7 @@ export default function RegisterPage() {
                 <input
                   type="email"
                   required
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 placeholder-slate-400 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
                   placeholder="name@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -118,7 +118,7 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mật khẩu</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-400" />
@@ -126,7 +126,7 @@ export default function RegisterPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
+                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 placeholder-slate-400 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -142,7 +142,7 @@ export default function RegisterPage() {
 
              {/* Confirm Password */}
              <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Xác nhận mật khẩu</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Xác nhận mật khẩu</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-400" />
@@ -150,7 +150,7 @@ export default function RegisterPage() {
                 <input
                   type="password"
                   required
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 placeholder-slate-400 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
@@ -166,12 +166,12 @@ export default function RegisterPage() {
                 name="terms"
                 type="checkbox"
                 required
-                className="h-4 w-4 text-[#2fa1b3] focus:ring-[#2fa1b3] border-slate-300 rounded"
+                className="h-4 w-4 text-[#2fa1b3] focus:ring-[#2fa1b3] border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded"
                 checked={formData.agreeToTerms}
                 onChange={(e) => setFormData({ ...formData, agreeToTerms: e.target.checked })}
               />
             </div>
-            <label htmlFor="terms" className="ml-2 block text-xs text-slate-600 leading-tight">
+            <label htmlFor="terms" className="ml-2 block text-xs text-slate-600 dark:text-slate-400 leading-tight">
               Tôi đồng ý với{" "}
               <a href="#" className="text-[#2fa1b3] font-medium hover:underline">Điều khoản sử dụng</a> và{" "}
               <a href="#" className="text-[#2fa1b3] font-medium hover:underline">Chính sách bảo mật</a> của hệ thống.

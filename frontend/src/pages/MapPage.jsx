@@ -85,6 +85,17 @@ export default function MapPage() {
   });
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || '');
   const [activeFilter, setActiveFilter] = useState(searchParams.get("type") || "all");
+  const [bounds, setBounds] = useState(null);
+  const [debouncedBounds, setDebouncedBounds] = useState(null);
+
+  // Debounce bounds changes
+  useEffect(() => {
+    if (!bounds) return;
+    const timer = setTimeout(() => {
+        setDebouncedBounds(bounds);
+    }, 400); // 400ms debounce
+    return () => clearTimeout(timer);
+  }, [bounds]);
   
   const mid = Math.ceil(LEGEND_ITEMS.length / 2);
   const row1 = LEGEND_ITEMS.slice(0, mid);
@@ -92,17 +103,33 @@ export default function MapPage() {
 
   // Fetch Data
   useEffect(() => {
+    // [OPTIMIZATION] Avoid nationwide fetch on mount if we're about to get bounds
+    if (!debouncedBounds && !startDate && !endDate) {
+        setLoading(false);
+        return;
+    }
+
     const controller = new AbortController();
     (async () => {
         setLoading(true);
         try {
             let query = `/api/events?limit=1000`;
+            if (activeFilter && activeFilter !== "all") query += `&type=${activeFilter}`;
             if (startDate) query += `&start_date=${startDate}`;
             if (endDate) query += `&end_date=${endDate}`;
+            if (debouncedBounds) {
+                query += `&min_lat=${debouncedBounds.minLat}&max_lat=${debouncedBounds.maxLat}&min_lon=${debouncedBounds.minLon}&max_lon=${debouncedBounds.maxLon}`;
+            }
+            
+            let crowdQuery = "/api/user/crowdsource/approved";
+            if (debouncedBounds) {
+                const b = debouncedBounds;
+                crowdQuery += `?min_lat=${b.minLat}&max_lat=${b.maxLat}&min_lon=${b.minLon}&max_lon=${b.maxLon}`;
+            }
             
             const [evs, crowd] = await Promise.all([
                 getJson(query, { signal: controller.signal }),
-                getJson("/api/user/crowdsource/approved", { signal: controller.signal })
+                getJson(crowdQuery, { signal: controller.signal })
             ]);
             if (controller.signal.aborted) return;
             
@@ -162,7 +189,7 @@ export default function MapPage() {
     })();
 
     return () => controller.abort();
-  }, [startDate, endDate, activeFilter]);
+  }, [startDate, endDate, activeFilter, debouncedBounds]);
 
   // Handle URL changes (Back button)
   useEffect(() => {
@@ -185,21 +212,23 @@ export default function MapPage() {
   }, [dataEvents, activeFilter]);
 
   return (
-    <div className="flex flex-col flex-1 w-full bg-slate-100 font-sans h-full">
+    <div className="flex flex-col flex-1 w-full bg-slate-100 dark:bg-slate-950 font-sans h-full">
         
         {/* TOP CONTROL PANEL (Blended with background) */}
-        <div className="flex-none bg-slate-100 z-10 p-2">
+        <div className="flex-none bg-slate-100 dark:bg-slate-950 z-10 p-2">
             <div className="max-w-5xl mx-auto flex flex-col gap-2">
                 
                 {/* Row 1: Title & Date (Compact) */}
                 <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-3 text-blue-900 font-black text-sm uppercase tracking-tight">
-                        <img 
-                            src={logoIge} 
-                            alt="IGE Logo" 
-                            className="w-10 h-10 object-contain" 
-                            style={{ mixBlendMode: 'multiply' }}
-                        />
+                     <div className="flex items-center gap-3 text-blue-900 dark:text-blue-100 font-black text-sm uppercase tracking-tight">
+                        <div className="relative">
+                            <img 
+                                src={logoIge} 
+                                alt="IGE Logo" 
+                                className="w-10 h-10 object-contain dark:bg-white dark:rounded-lg dark:p-1" 
+                                style={{ mixBlendMode: 'multiply' }} 
+                            />
+                        </div>
                         <Layers className="w-4 h-4 ml-1" />
                         <span>BẢN ĐỒ TỔNG HỢP RỦI RO THIÊN TAI</span>
                      </div>
@@ -233,19 +262,19 @@ export default function MapPage() {
                                     className={`
                                         flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] uppercase font-black transition-all duration-200 shadow-sm whitespace-nowrap
                                         ${isActive 
-                                            ? 'shadow-md scale-105 ring-1 ring-offset-1' 
-                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                            ? 'shadow-md scale-105 ring-1 ring-offset-1 dark:ring-offset-slate-900' 
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300'
                                         }
                                     `}
                                     style={isActive ? {
-                                        backgroundColor: `${item.color}15`, 
+                                        backgroundColor: item.key === 'all' ? '#2563eb' : item.color, 
                                         borderColor: item.color,
-                                        color: item.color,
-                                        boxShadow: `0 4px 6px -1px ${item.color}20`
+                                        color: '#ffffff',
+                                        boxShadow: `0 4px 6px -1px ${item.color}40`
                                     } : {}}
                                 >
                                     <span 
-                                        className="w-2.5 h-2.5 rounded-full shadow-inner"
+                                        className="w-2.5 h-2.5 rounded-full shadow-inner float-left mr-1.5"
                                         style={{ backgroundColor: item.color }}
                                     ></span>
                                     {item.label}
@@ -263,19 +292,19 @@ export default function MapPage() {
                                     className={`
                                         flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] uppercase font-black transition-all duration-200 shadow-sm whitespace-nowrap
                                         ${isActive 
-                                            ? 'shadow-md scale-105 ring-1 ring-offset-1' 
-                                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:border-slate-300'
+                                            ? 'shadow-md scale-105 ring-1 ring-offset-1 dark:ring-offset-slate-900' 
+                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300'
                                         }
                                     `}
                                     style={isActive ? {
-                                        backgroundColor: `${item.color}15`, 
+                                        backgroundColor: item.color, 
                                         borderColor: item.color,
-                                        color: item.color,
-                                        boxShadow: `0 4px 6px -1px ${item.color}20`
+                                        color: '#ffffff',
+                                        boxShadow: `0 4px 6px -1px ${item.color}40`
                                     } : {}}
                                 >
                                     <span 
-                                        className="w-2.5 h-2.5 rounded-full shadow-inner"
+                                        className="w-2.5 h-2.5 rounded-full shadow-inner float-left mr-1.5"
                                         style={{ backgroundColor: item.color }}
                                     ></span>
                                     {item.label}
@@ -290,11 +319,12 @@ export default function MapPage() {
         {/* MAP AREA (Fills remaining space, centered and narrower) */}
         <div className="flex-1 w-full max-w-5xl mx-auto relative z-0">
              {loading && (
-                <div className="absolute inset-0 z-[500] bg-white/50 flex items-center justify-center pointer-events-none">
-                    <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full shadow-xl"></div>
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] bg-white/90 dark:bg-slate-800/90 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl border border-blue-100 dark:border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full font-black"></div>
+                    <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">Đang cập nhật dữ liệu vùng...</span>
                 </div>
              )}
-             <VietnamMap points={displayedEvents} />
+             <VietnamMap points={displayedEvents} onBoundsChange={setBounds} />
         </div>
     </div>
   );

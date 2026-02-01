@@ -1,14 +1,17 @@
 from app.database import SessionLocal
 from app.models import User
 from app.auth import get_password_hash
+from app.settings import settings
 
 db = SessionLocal()
-user = db.query(User).filter(User.email == "admin@vdw.com").first()
+target_email = "admin@vdw.com"
+target_pass = "Admin@123456"
+
+user = db.query(User).filter(User.email == target_email).first()
 if user:
-    new_hash = get_password_hash("admin123")
+    new_hash = get_password_hash(target_pass)
     user.hashed_password = new_hash
     db.commit()
-    print(f"Password for {user.email} reset to 'admin123'")
-    print(f"New hash prefix: {new_hash[:15]}")
+    print(f"SUCCESS: Password for {user.email} has been reset to: {target_pass}")
 else:
-    print("User admin@vdw.com not found")
+    print(f"ERROR: User {target_email} not found in database (PostgreSQL connection check successful).")

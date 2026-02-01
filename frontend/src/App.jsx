@@ -10,6 +10,8 @@ const Events = lazy(() => import("./pages/Events.jsx"));
 const EventDetail = lazy(() => import("./pages/EventDetail.jsx"));
 const MapPage = lazy(() => import("./pages/MapPage.jsx"));
 const About = lazy(() => import("./pages/About.jsx"));
+const Terms = lazy(() => import("./pages/Terms.jsx"));
+const Privacy = lazy(() => import("./pages/Privacy.jsx"));
 const AdminSkipLogs = lazy(() => import("./pages/AdminSkipLogs.jsx"));
 const AdminReports = lazy(() => import("./pages/AdminReports.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
@@ -60,6 +62,8 @@ export default function App() {
             <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/about" element={<About />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="/rescue" element={<RescuePage />} />
             <Route path="/admin/logs" element={
               <ProtectedRoute roleRequired="admin">

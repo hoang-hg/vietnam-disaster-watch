@@ -139,12 +139,12 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-slate-100">
+      <div className="max-w-md w-full space-y-8 bg-white dark:bg-slate-900 p-10 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800">
         <div>
-          <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h2 className="text-center text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Chào mừng trở lại
           </h2>
-          <p className="mt-2 text-center text-sm text-slate-600">
+          <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
             Hoặc{" "}
             <Link to="/register" className="font-medium text-[#2fa1b3] hover:text-[#258a9b] transition-colors">
               tạo tài khoản mới nếu chưa có
@@ -154,7 +154,7 @@ export default function LoginPage() {
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-3 text-sm animate-shake">
+            <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl flex items-center gap-3 text-sm animate-shake">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span>{error}</span>
             </div>
@@ -162,7 +162,7 @@ export default function LoginPage() {
 
           <div className="rounded-md space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-slate-400" />
@@ -170,7 +170,7 @@ export default function LoginPage() {
                 <input
                   type="email"
                   required
-                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
+                  className="appearance-none block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 placeholder-slate-400 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
                   placeholder="name@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -179,7 +179,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Mật khẩu</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-slate-400" />
@@ -187,7 +187,7 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-slate-200 placeholder-slate-400 text-slate-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
+                  className="appearance-none block w-full pl-10 pr-10 py-3 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 placeholder-slate-400 text-slate-900 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2fa1b3] focus:border-transparent transition-all sm:text-sm"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -209,9 +209,9 @@ export default function LoginPage() {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 text-[#2fa1b3] focus:ring-[#2fa1b3] border-slate-300 rounded"
+                className="h-4 w-4 text-[#2fa1b3] focus:ring-[#2fa1b3] border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-900">
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-900 dark:text-slate-300">
                 Ghi nhớ đăng nhập
               </label>
             </div>
@@ -256,11 +256,11 @@ export default function LoginPage() {
             onClick={() => setShowForgotModal(false)}
           >
              <div 
-               className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4"
+               className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-slate-200 dark:border-slate-800"
                onClick={e => e.stopPropagation()}
              >
                 <div className="flex items-center justify-between">
-                   <h3 className="text-lg font-bold text-slate-900">Đặt lại mật khẩu</h3>
+                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">Đặt lại mật khẩu</h3>
                    <button onClick={() => setShowForgotModal(false)} className="text-slate-400 hover:text-slate-600">
                       <X className="w-5 h-5" />
                    </button>

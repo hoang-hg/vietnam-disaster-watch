@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { Helmet, HelmetProvider } from "react-helmet-async";
 import {
   Menu,
   X,
@@ -56,11 +56,15 @@ export default function MainLayout({ children }) {
   }, [user]);
 
   useEffect(() => {
-    // Real-time WebSocket connection
+    // Real-time WebSocket connection with Exponential Backoff
     let ws;
     let reconnectTimer;
+    let mounted = true;
+    let reconnectAttempts = 0;
 
     const connect = () => {
+        if (!mounted) return;
+        
         // Use API_BASE to derive WS URL to ensure consistency
         let wsUrl;
         if (API_BASE.startsWith('http')) {
@@ -79,9 +83,11 @@ export default function MainLayout({ children }) {
         
         ws.onopen = () => {
             console.log("WS connected successfully to:", wsUrl);
+            reconnectAttempts = 0; // Reset attempts on successful connection
         };
         
         ws.onmessage = (event) => {
+            if (!mounted) return;
             try {
                 const msg = JSON.parse(event.data);
                 if (msg.type === "EVENT_UPSERT" && msg.data?.event_id) {
@@ -117,7 +123,7 @@ export default function MainLayout({ children }) {
 
                         // Auto-remove after 8s
                         setTimeout(() => {
-                            setToasts(current => current.filter(t => t.id !== newId));
+                            if (mounted) setToasts(current => current.filter(t => t.id !== newId));
                         }, 8000);
 
                         return [newToast, ...prev].slice(0, 3);
@@ -145,32 +151,40 @@ export default function MainLayout({ children }) {
                          
                          // Alerts stay longer (15s)
                          setTimeout(() => {
-                             setToasts(current => current.filter(t => t.id !== newId));
+                            if (mounted) setToasts(current => current.filter(t => t.id !== newId));
                          }, 15000);
                          
                          return [newToast, ...prev].slice(0, 3);
                     });
                 }
-            } catch (e) { console.error("WS parse error", e); }
+            } catch (e) { if (mounted) console.error("WS parse error", e); }
         };
         
         ws.onclose = () => {
-             // Only reconnect if we are still mounted? No logic here checked, but acceptable for now.
-             // Ideally we should check if component is unmounted.
-             // But existing code didn't check mounted state in onclose besides cleanup ref.
-            console.log("WS closed. Reconnecting in 5s...");
-            reconnectTimer = setTimeout(connect, 5000);
+            if (!mounted) return;
+            
+            // Exponential backoff: min 1s, max 30s
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+            reconnectAttempts++;
+            
+            console.log(`WS connection closed. Reconnecting in ${Math.round(delay/1000)}s... (Attempt ${reconnectAttempts})`);
+            reconnectTimer = setTimeout(connect, delay);
         };
         
         ws.onerror = (err) => {
+            if (!mounted) return;
             console.error("WS Error", err);
-            ws.close();
+            // onclose will trigger the reconnection
         };
     };
 
     connect();
     return () => {
-        if (ws) ws.close();
+        mounted = false;
+        if (ws) {
+            ws.onclose = null; // Prevent onclose firing during unmount
+            ws.close();
+        }
         clearTimeout(reconnectTimer);
     };
   }, []);
@@ -227,6 +241,7 @@ export default function MainLayout({ children }) {
   }, []);
 
   return (
+    <HelmetProvider>
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-[#0b1120] font-sans transition-colors duration-300">
       <Helmet>
         <title>BÁO TỔNG HỢP RỦI RO THIÊN TAI - Theo dõi rủi ro thời gian thực</title>
@@ -487,22 +502,19 @@ export default function MainLayout({ children }) {
                 <div className="md:col-span-2 space-y-3">
                     <h3 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Liên hệ</h3>
                     <ul className="space-y-2 text-slate-600 dark:text-slate-400">
-                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Giới thiệu</a></li>
-                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Điều khoản sử dụng</a></li>
-                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Chính sách bảo mật</a></li>
-                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">Quảng cáo</a></li>
+                        <li><Link to="/about" className="hover:text-[#2fa1b3] transition-colors">Giới thiệu</Link></li>
+                        <li><Link to="/terms" className="hover:text-[#2fa1b3] transition-colors">Điều khoản sử dụng</Link></li>
+                        <li><Link to="/privacy" className="hover:text-[#2fa1b3] transition-colors">Chính sách bảo mật</Link></li>
                     </ul>
                 </div>
 
-                {/* Column 2: Khác */}
+                {/* Column 2: Tính năng */}
                 <div className="md:col-span-2 space-y-3">
-                    <h3 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Khác</h3>
+                    <h3 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">Rủi ro thiên tai</h3>
                     <ul className="space-y-2 text-slate-600 dark:text-slate-400">
                         <li><Link to="/map" className="hover:text-[#2fa1b3] transition-colors">Bản đồ rủi ro</Link></li>
                         <li><Link to="/events" className="hover:text-[#2fa1b3] transition-colors">Dòng sự kiện</Link></li>
                         <li><Link to="/rescue" className="hover:text-red-500 font-bold transition-colors">Cứu hộ khẩn cấp</Link></li>
-                        <li><Link to="/admin/logs" className="hover:text-[#2fa1b3] transition-colors">Xác minh tin (Admin)</Link></li>
-                        <li><a href="#" className="hover:text-[#2fa1b3] transition-colors">RSS Feeds</a></li>
                     </ul>
                 </div>
 
@@ -512,15 +524,15 @@ export default function MainLayout({ children }) {
                         <span className="font-bold text-slate-900 dark:text-slate-200 uppercase text-sm block mb-1">
                             BÁO TỔNG HỢP RỦI RO THIÊN TAI - VIETNAM DISASTER SURVEILLANCE
                         </span>
-                        <span>Đơn vị thiết lập: Nhóm nghiên cứu & Phát triển.</span>
+                        <span>Trang web thuộc quyền sở hữu của Viện Địa công nghệ và Môi trường.</span>
                     </p>
                     <p>
-                         Hệ thống tự động tổng hợp tin tức thiên tai từ các nguồn chính thống (KTTV Quốc gia, Báo Chính Phủ, TTXVN, v.v...) nhằm cung cấp cái nhìn toàn cảnh về tình hình thiên tai tại Việt Nam.
+                         Trụ sở chính: Phòng 503 nhà N01, khu 5,03ha, Phường Cầu Giấy, Thành phố Hà Nội, Việt Nam.
                     </p>
                     <p>
-                        Địa chỉ: Hà Nội, Việt Nam. Email: contact@vietndisasterwatch.com <br/>
+                        Email: <a href="mailto:hoangcaf4@gmail.com" className="hover:text-[#2fa1b3] transition-colors">hoangcaf4@gmail.com</a> • SĐT: <a href="tel:0981484828" className="hover:text-[#2fa1b3] transition-colors">0981.484.828</a>
                     </p>
-                    <p className="italic mt-2">
+                    <p className="italic mt-2 opacity-75">
                         Lưu ý: Các thông tin dự báo chỉ mang tính chất tham khảo, vui lòng theo dõi các bản tin chính thức từ cơ quan chức năng địa phương.
                     </p>
                 </div>
@@ -601,5 +613,6 @@ export default function MainLayout({ children }) {
         user={user} 
       />
     </div>
+    </HelmetProvider>
   );
 }

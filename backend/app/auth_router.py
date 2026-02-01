@@ -57,7 +57,7 @@ async def register(request: Request, user_in: UserCreate, db: Session = Depends(
     return new_user
 
 @router.post("/login", response_model=Token)
-@limiter.limit("10/minute")  # Slightly higher for valid users
+@limiter.limit("5/15minute")  # Strict Anti-Spam (5 attempts per 15 mins)
 async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(auth.get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):

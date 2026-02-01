@@ -11,9 +11,10 @@ from .models import Article, Event, Blacklist, CrawlerStatus, AiFeedback
 from .schemas import ArticleOut, EventOut, EventDetailOut, EventUpdate
 from datetime import datetime, timedelta, timezone
 from fastapi import Response, Request, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from .event_matcher import upsert_event_for_article, emit_event_notifications
 from .log_utils import log_audit
+from .settings import settings
 import asyncio
 from pathlib import Path
 import json
@@ -217,14 +218,18 @@ def events(
     date: str | None = Query(None),
     wrapper: bool = Query(False),
     quick: str | None = Query(None),
+    min_lat: float | None = Query(None),
+    max_lat: float | None = Query(None),
+    min_lon: float | None = Query(None),
+    max_lon: float | None = Query(None),
     db: Session = Depends(get_db),
     sort: str = Query("impact"),
     current_user: Optional[models.User] = Depends(auth.get_current_user_optional),
 ):
     is_admin = current_user and current_user.role == "admin"
     
-    # Cache optimization - include is_admin, offset, and wrapper in key
-    cache_key = f"ev_v2_{limit}_{offset}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}_{is_admin}_{wrapper}_{quick}"
+    # Cache optimization - include is_admin, offset, wrapper and bbox in key
+    cache_key = f"ev_v2_{limit}_{offset}_{hours}_{type}_{province}_{start_date}_{end_date}_{q}_{date}_{sort}_{is_admin}_{wrapper}_{quick}_{min_lat}_{max_lat}_{min_lon}_{max_lon}"
     cached = cache.get(cache_key)
     if cached:
         response.headers["X-Cache"] = "HIT"
@@ -242,6 +247,16 @@ def events(
 
     # 2. Database-level filters (Decision 18/2021/QĐ-TTg Implementation)
     query = apply_dashboard_filters(query, db)
+
+    # 3. BBox Filtering (Map Viewport Optimization)
+    if min_lat is not None:
+        query = query.filter(Event.lat >= min_lat)
+    if max_lat is not None:
+        query = query.filter(Event.lat <= max_lat)
+    if min_lon is not None:
+        query = query.filter(Event.lon >= min_lon)
+    if max_lon is not None:
+        query = query.filter(Event.lon <= max_lon)
 
     # Standardized Date Logic
     if date or start_date or end_date:
@@ -275,6 +290,12 @@ def events(
         query = query.filter(Event.province.in_(PROVINCES))
     elif quick == "community":
         query = query.filter(Event.disaster_type == "community")
+
+    # [BBOX FILTER] Map optimization
+    if min_lat is not None: query = query.filter(Event.lat >= min_lat)
+    if max_lat is not None: query = query.filter(Event.lat <= max_lat)
+    if min_lon is not None: query = query.filter(Event.lon >= min_lon)
+    if max_lon is not None: query = query.filter(Event.lon <= max_lon)
 
     # [FIX] Keyset pagination (after_id) is only stable when sorting by a unique, strictly monotonic field (like ID).
     # If sorting by 'impact' or 'latest' (dates can be identical), after_id can cause skipped items or duplicates.
@@ -391,6 +412,79 @@ def events(
             response.headers["Cache-Control"] = "public, max-age=10"
         return final_result
 
+@router.get("/share/events/{event_id}", response_class=HTMLResponse)
+def share_event_page(event_id: int, db: Session = Depends(get_db)):
+    """A minimal HTML page with OpenGraph tags for social crawlers."""
+    ev = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Không tìm thấy sự kiện")
+    
+    # Get top article for image context
+    top_art = db.query(models.Article).filter(
+        models.Article.event_id == event_id, 
+        models.Article.image_url.isnot(None), 
+        models.Article.status == "approved"
+    ).order_by(models.Article.published_at.desc()).first()
+    
+    # Use event image or article image or default
+    raw_img = ev.image_url or (top_art.image_url if top_art else "")
+    
+    # Ensure absolute URL for social bots
+    if raw_img and raw_img.startswith("http"):
+        image_url = raw_img
+    elif raw_img and raw_img.startswith("/"):
+        image_url = f"{settings.frontend_url}{raw_img}"
+    else:
+        # Generic fallback
+        image_url = "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/alert-triangle.svg"
+    
+    title = f"{ev.title} | Theo dõi thiên tai VDW"
+    desc = f"Cảnh báo rủi ro thiên tai tại {ev.province}. Loại: {ev.disaster_type}. Cập nhật tóm tắt thiệt hại và diễn biến mới nhất."
+    app_url = f"{settings.frontend_url}/events/{event_id}"
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <title>{title}</title>
+        <meta name="description" content="{desc}">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <!-- Open Graph / Facebook / Zalo -->
+        <meta property="og:type" content="article">
+        <meta property="og:url" content="{app_url}">
+        <meta property="og:title" content="{title}">
+        <meta property="og:description" content="{desc}">
+        <meta property="og:image" content="{image_url}">
+        <meta property="og:site_name" content="Viet Disaster Watch">
+
+        <!-- Redirect real users to the React App -->
+        <script>
+            window.location.href = "{app_url}";
+        </script>
+        
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; }}
+            .container {{ text-align: center; padding: 2rem; max-width: 400px; }}
+            .loader {{ border: 3px solid #e2e8f0; border-top: 3px solid #2fa1b3; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem; }}
+            @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+            a {{ color: #2fa1b3; text-decoration: none; font-weight: 600; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="loader"></div>
+            <h2 style="font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5rem;">Đang kết nối...</h2>
+            <p style="font-size: 0.875rem; color: #64748b;">Hệ thống đang chuyển hướng bạn đến báo cáo chi tiết về rủi ro thiên tai.</p>
+            <p style="font-size: 0.75rem; margin-top: 2rem; color: #94a3b8;">
+                Nếu trang không tự chuyển, <a href="{app_url}">nhấn vào đây</a>.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
 # Lightweight SVGs (stable CDN, pinned version)
 DEFAULT_IMAGES = {
     "storm": "https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/1.13.0/icons/cloud-storm.svg",
@@ -496,7 +590,7 @@ def update_event(
     admin: models.User = Depends(auth.get_current_admin)
 ):
     """Update event details (admin only)."""
-    ev = db.query(Event).filter(Event.id == event_id).first()
+    ev = db.query(Event).filter(Event.id == event_id).with_for_update().first()
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
         
@@ -1087,6 +1181,7 @@ async def stream_events(request: Request):
 def get_skip_logs(
     skip: int = Query(0, ge=0), 
     limit: int = Query(50, ge=1, le=200), 
+    q: Optional[str] = Query(None),
     admin: models.User = Depends(auth.get_current_admin)
 ):
     """
@@ -1101,13 +1196,26 @@ def get_skip_logs(
         return []
         
     try:
-        # Read all lines (assuming log file < 50MB is manageable in RAM)
+        # Read all lines
         with log_file.open('r', encoding='utf-8') as f:
             lines = f.readlines()
             
         # Reverse to get latest first
         lines.reverse()
         
+        # Filter if search query provided
+        if q:
+            q_lower = q.lower()
+            filtered_lines = []
+            for line in lines:
+                try:
+                    data = json.loads(line)
+                    if q_lower in data.get("title", "").lower() or q_lower in data.get("url", "").lower():
+                        filtered_lines.append(line)
+                except:
+                    continue
+            lines = filtered_lines
+
         # Paginate
         start = skip
         end = skip + limit
@@ -1151,12 +1259,26 @@ def get_pending_articles(
     db: Session = Depends(get_db), 
     admin: models.User = Depends(auth.get_current_admin)
 ):
-    """Fetch articles waiting for admin review."""
     query = db.query(models.Article).filter(models.Article.status == "pending")
     if q:
         query = query.filter(models.Article.title.ilike(f"%{q}%"))
-    
     return query.order_by(models.Article.published_at.desc())\
+                .offset(skip).limit(limit).all()
+
+@router.get('/admin/rejected-articles')
+def get_rejected_articles(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    q: str | None = Query(None),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_current_admin)
+):
+    """Fetch articles that were manually rejected."""
+    query = db.query(models.Article).filter(models.Article.status == "rejected")
+    if q:
+        query = query.filter(models.Article.title.ilike(f"%{q}%"))
+    
+    return query.order_by(models.Article.moderated_at.desc())\
                 .offset(skip).limit(limit).all()
 
 
@@ -1197,7 +1319,7 @@ def approve_article(article_id: int, db: Session = Depends(get_db), admin: model
 @router.post('/admin/events/{event_id}/approve')
 def approve_event(event_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
     """Approve an entire event: clear needs_verification and approve all articles."""
-    ev = db.query(models.Event).filter(models.Event.id == event_id).first()
+    ev = db.query(models.Event).filter(models.Event.id == event_id).with_for_update().first()
     if not ev:
         raise HTTPException(status_code=404, detail="Event not found")
         
@@ -1260,6 +1382,24 @@ def reject_article(article_id: int, db: Session = Depends(get_db), admin: models
     if not art:
         raise HTTPException(status_code=404, detail="Article not found")
     return {"ok": True, "message": "Article rejected and event updated"}
+
+@router.post('/admin/unreject-article/{article_id}')
+def unreject_article(article_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
+    """Restore a rejected article, removing its hash from the blacklist and setting status back to pending."""
+    art = db.query(Article).filter(Article.id == article_id).first()
+    if not art:
+        raise HTTPException(status_code=404, detail="Article not found")
+        
+    art.status = "pending"
+    # Remove from blacklist if exists
+    if art.news_hash:
+        db.query(models.Blacklist).filter(models.Blacklist.news_hash == art.news_hash).delete()
+    
+    db.commit()
+    log_audit("unreject_article", admin.id, admin.email, article_id=article_id)
+    # Clear cache for pending list
+    cache.delete_match("articles_latest_*")
+    return {"ok": True, "message": "Article restored to pending status."}
 
 
 @router.post('/alerts')
@@ -1454,7 +1594,7 @@ def submit_ai_feedback(payload: dict, db: Session = Depends(get_db), admin: mode
     
     # [LOGIC] If this article belongs to an event, we might want to refresh the event's type
     if article.event_id:
-        ev = db.query(Event).get(article.event_id)
+        ev = db.query(Event).filter(Event.id == article.event_id).with_for_update().first()
         if ev:
             from .nlp import DISASTER_PRIORITY_MAP
             # Simple rule: if new type has higher priority than current event type, or current event type was the old article type

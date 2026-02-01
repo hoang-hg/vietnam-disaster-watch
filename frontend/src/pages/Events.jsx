@@ -21,6 +21,7 @@ import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
 import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import EventCard from "../components/events/EventCard.jsx";
+import EventCardSkeleton from "../components/events/EventCardSkeleton.jsx";
 import DateFilter from "../components/DateFilter.jsx";
 
 // Local TYPE_TONES removed
@@ -169,6 +170,24 @@ export default function Events() {
 
   const fetchEvents = async (isBackground = false, pageToFetch = 1, signal = null) => {
     try {
+      // 1. Generate Cache Key based on current params
+      const cacheKey = `events_cache_${pageToFetch}_${type}_${province}_${debouncedQ}_${startDate}_${endDate}`;
+      
+      // 2. Try Instant Cache Load (SWR Strategy)
+      if (!isBackground) {
+          const cachedRaw = sessionStorage.getItem(cacheKey);
+          if (cachedRaw) {
+              const cachedData = JSON.parse(cachedRaw);
+              // Only use cache if it's less than 5 minutes old
+              if (Date.now() - cachedData.timestamp < 5 * 60 * 1000) {
+                  setEvents(cachedData.items);
+                  if (cachedData.total) setTotalEvents(cachedData.total);
+                  setLoading(false); // Immediate user feedback
+                  isBackground = true; // Switch to background mode for freshness check
+              }
+          }
+      }
+    
       if (!isBackground) setLoading(true);
       setError(null);
       
@@ -187,7 +206,6 @@ export default function Events() {
           params.append("start_date", startDate);
           params.append("end_date", endDate);
       } else if (startDate) {
-          // [FIX] Use start_date consistently to match URL and avoiding logic confusion
           params.append("start_date", startDate);
       }
       
@@ -195,8 +213,11 @@ export default function Events() {
       if (signal?.aborted) return;
       
       let fetchedEvents = [];
+      let totalCount = 0;
+      
       if (response && response.items) {
           fetchedEvents = response.items;
+          totalCount = response.total || 0;
           if (response.total !== undefined) {
               setTotalEvents(response.total);
           }
@@ -204,13 +225,29 @@ export default function Events() {
            fetchedEvents = response;
       }
       
+      // Update State
       setEvents(fetchedEvents);
       setCurrentPage(pageToFetch);
       
+      // 3. Save to Session Cache for next time
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+            items: fetchedEvents,
+            total: totalCount,
+            timestamp: Date.now()
+        }));
+      } catch (e) {
+        // Quota exceeded or disabled
+        console.warn("Cache save failed", e);
+      }
+      
     } catch (e) {
       if (e.name === 'AbortError') return;
-      showToast(`Không thể tải danh sách sự kiện: ${e.message}`, "error");
-      if (!isBackground) setError(e.message || "Load failed");
+      // Only show toast if not a "silent" background update
+      if (!isBackground) {
+          showToast(`Không thể tải danh sách sự kiện: ${e.message}`, "error");
+          setError(e.message || "Load failed");
+      }
     } finally {
       if (!isBackground) setLoading(false);
     }
@@ -296,7 +333,7 @@ export default function Events() {
     setQ("");
     setType("");
     setProvince("");
-    setStartDate(new Date().toISOString().split('T')[0]);
+    setStartDate("");
     setEndDate("");
     setCurrentPage(1);
     // fetchEvents will be triggered by useEffect
@@ -377,22 +414,22 @@ export default function Events() {
                         <span>{isExporting ? "Đang xuất..." : "Xuất Excel (.xlsx)"}</span>
                     </button>
                     
-                    <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1 shadow-sm ml-auto">
+                    <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 shadow-sm ml-auto">
                         <select 
                             value={exportMonth} 
                             onChange={(e) => setExportMonth(parseInt(e.target.value))}
-                            className="text-xs font-bold bg-transparent outline-none cursor-pointer"
+                            className="text-xs font-bold bg-transparent outline-none cursor-pointer text-slate-700 dark:text-slate-200"
                         >
-                            {[...Array(12).keys()].map(i => <option key={i+1} value={i+1}>Tháng {i+1}</option>)}
+                            {[...Array(12).keys()].map(i => <option key={i+1} value={i+1} className="dark:bg-slate-800">Tháng {i+1}</option>)}
                         </select>
                         <select 
                             value={exportYear} 
                             onChange={(e) => setExportYear(parseInt(e.target.value))}
-                            className="text-xs font-bold bg-transparent outline-none cursor-pointer"
+                            className="text-xs font-bold bg-transparent outline-none cursor-pointer text-slate-700 dark:text-slate-200"
                         >
                             {(() => {
                                 const currentYear = new Date().getFullYear();
-                                return [currentYear - 2, currentYear - 1, currentYear].map(y => <option key={y} value={y}>{y}</option>);
+                                return [currentYear - 2, currentYear - 1, currentYear].map(y => <option key={y} value={y} className="dark:bg-slate-800">{y}</option>);
                             })()}
                         </select>
                         <button 
@@ -469,16 +506,21 @@ export default function Events() {
                 </select>
             </div>
             {/* Date Pill (Dashboard Style) */}
+            {/* Start Date */}
             <DateFilter 
                 dateTime={startDate}
-                onChange={(val) => {
-                    setStartDate(val);
-                    setEndDate(""); 
-                }}
+                onChange={(val) => setStartDate(val)}
+                placeholder="Từ ngày"
+                className="w-full"
+            />
+            {/* End Date */}
+            <DateFilter 
+                dateTime={endDate}
+                onChange={(val) => setEndDate(val)}
                 onClear={clearFilters}
                 showClear={hasFilters}
-                placeholder="Tất cả thời gian"
-                className="flex-1"
+                placeholder="Đến ngày"
+                className="w-full"
             />
         </div>
       </div>
@@ -495,51 +537,55 @@ export default function Events() {
       )}
 
       {loading && events.length === 0 ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-300 border-t-blue-600"></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+            {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-full">
+                    <EventCardSkeleton />
+                </div>
+            ))}
         </div>
       ) : showExportView ? (
         /* DAILY REPORT TABLE VIEW */
-        <div className="bg-white rounded-xl border border-slate-300 overflow-hidden shadow-xl report-container">
-            <div className="p-6 bg-slate-50 border-b border-slate-200 text-center hidden print:block">
-                <div className="text-xl font-black uppercase text-slate-900 leading-tight">Báo cáo Tổng hợp Thiên tai Ngày {startDate?.split('-').reverse().join('/')}</div>
-                <div className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Hệ thống Báo tổng hợp rủi ro thiên tai</div>
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-700 overflow-hidden shadow-xl report-container">
+            <div className="p-6 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center hidden print:block">
+                <div className="text-xl font-black uppercase text-slate-900 dark:text-white leading-tight">Báo cáo Tổng hợp Thiên tai Ngày {startDate?.split('-').reverse().join('/')}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest font-bold">Hệ thống Báo tổng hợp rủi ro thiên tai</div>
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full report-table">
-                    <thead className="bg-slate-800 text-white">
+                    <thead className="bg-slate-800 text-white dark:bg-slate-950">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Ngày</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Loại hình</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Tỉnh Thành</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Xã/Thôn/Tuyến</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Nguyên nhân</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Đặc điểm</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase">Thiệt hại</th>
-                            {isAdmin && <th className="px-4 py-3 text-center text-xs font-black uppercase no-print">Thao tác</th>}
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Ngày</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Loại hình</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Tỉnh Thành</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Xã/Thôn/Tuyến</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Nguyên nhân</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Đặc điểm</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase border-b border-slate-700">Thiệt hại</th>
+                            {isAdmin && <th className="px-4 py-3 text-center text-xs font-black uppercase no-print border-b border-slate-700">Thao tác</th>}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-900">
                         {events.map((e) => (
-                            <tr key={e.id} className="hover:bg-blue-50/30 transition-colors">
-                                <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(e.started_at).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
-                                <td className="px-4 py-3 text-xs font-bold text-blue-700">
+                            <tr key={e.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800 transition-colors">
+                                <td className="px-4 py-3 text-xs whitespace-nowrap text-slate-700 dark:text-slate-300">{new Date(e.started_at).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
+                                <td className="px-4 py-3 text-xs font-bold text-blue-700 dark:text-blue-400">
                                     <Link to={`/events/${e.id}`} className="hover:underline">
                                         {fmtType(e.disaster_type)}
                                     </Link>
                                 </td>
-                                <td className="px-4 py-3 text-xs font-bold">{e.province}</td>
-                                <td className="px-4 py-3 text-[11px] leading-tight">
+                                <td className="px-4 py-3 text-xs font-bold text-slate-800 dark:text-slate-200">{e.province}</td>
+                                <td className="px-4 py-3 text-[11px] leading-tight text-slate-700 dark:text-slate-300">
                                     {e.commune && <div className="font-bold">Xã: {e.commune}</div>}
                                     {e.village && <div>Thôn: {e.village}</div>}
                                     {e.route && <div className="font-mono text-[9px] text-slate-500">{e.route}</div>}
                                 </td>
                                 <td className="px-4 py-3">
-                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${e.cause?.includes('Mưa') ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${e.cause?.includes('Mưa') ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
                                        {e.cause || "Chưa rõ"}
                                    </span>
                                 </td>
-                                <td className="px-4 py-3 text-[11px] italic text-slate-600 line-clamp-3">
+                                <td className="px-4 py-3 text-[11px] italic text-slate-600 dark:text-slate-400 line-clamp-3">
                                     {e.characteristics || "N/A"}
                                 </td>
                                 <td className="px-4 py-3">
@@ -552,7 +598,7 @@ export default function Events() {
                                     <td className="px-4 py-3 text-center no-print">
                                         <button 
                                             onClick={(evt) => handleDelete(evt, e.id)}
-                                            className="p-1.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-all"
+                                            className="p-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white dark:hover:text-white rounded-lg transition-all"
                                             title="Xóa sự kiện"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -573,10 +619,10 @@ export default function Events() {
             {groupedEvents.map(([label, items]) => (
             <div key={label} className="space-y-6">
                 <div className="flex items-center gap-4">
-                <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight flex-shrink-0">
+                <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight flex-shrink-0">
                     {label}
                 </h2>
-                <div className="h-px bg-slate-200 flex-1"></div>
+                <div className="h-px bg-slate-200 dark:bg-slate-800 flex-1"></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {items.map((e) => (

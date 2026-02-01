@@ -71,8 +71,27 @@ Base.metadata.create_all(bind=engine)
 # User Requirement: Skip any news before 2025-01-01
 CRAWL_MIN_DATE = datetime(2025, 1, 1)
 
-# Optional classifier loader (joblib) - Removed as it was unused and causing import overhead
+
+# Optional classifier loader (joblib)
 _classifier = None
+
+def _cleanup_old_logs(retention_days=7):
+    """Delete log files older than retention_days."""
+    try:
+        logs_dir = Path(__file__).resolve().parents[1] / "logs"
+        if not logs_dir.exists(): return
+        
+        cutoff = time.time() - (retention_days * 86400)
+        
+        for p in logs_dir.glob("*.jsonl"):
+            if p.is_file() and p.stat().st_mtime < cutoff:
+                try:
+                    p.unlink()
+                    logger.info(f"Deleted old log file: {p.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete {p.name}: {e}")
+    except Exception as e:
+        logger.warning(f"Log cleanup failed: {e}")
 
 
 def _get_impact_value(impact_data):
@@ -535,6 +554,10 @@ async def _process_article_logic(db, src, title, link, pub_at, summary):
 async def _process_once_async(force_update: bool = False, only_sources: list[str] = None) -> dict:
     """Async implementation of a single crawl run."""
     db: Session = SessionLocal()
+    
+    # Maintenance: Rotate logs
+    _cleanup_old_logs()
+
     new_count = 0
     start_total = time.perf_counter()
     per_source_stats = []
@@ -852,14 +875,15 @@ def cleanup_old_pending_articles():
     """Cleanup old pending articles and notifications to keep the DB lean."""
     db = SessionLocal()
     try:
-        # 1. Old Pending Articles (> 30 days)
-        limit_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
+        # 1. Old Pending Articles (> 90 days)
+        # Increased retention to build better AI dataset later
+        limit_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=90)
         res = db.query(Article).filter(
             Article.status == "pending",
             Article.published_at < limit_date
         ).delete()
         
-        # 2. Old Notifications (> 30 days)
+        # 2. Old Notifications (> 90 days)
         res_notif = db.query(models.Notification).filter(
             models.Notification.created_at < limit_date
         ).delete()

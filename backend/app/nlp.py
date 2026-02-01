@@ -289,7 +289,21 @@ PROVINCE_COORDINATES = {
     "Hậu Giang": [9.7833, 105.4667],
     "Sóc Trăng": [9.6000, 105.9667],
     "Bạc Liêu": [9.2833, 105.7167],
-    "Cà Mau": [9.1833, 105.1500]
+    "Cà Mau": [9.1833, 105.1500],
+    
+    # Regions & Major Areas (Centroids)
+    "Miền Bắc": [21.5, 105.5],
+    "Bắc Bộ": [21.5, 105.5],
+    "Miền Trung": [16.0, 107.5],
+    "Trung Bộ": [16.0, 107.5],
+    "Miền Nam": [10.5, 106.5],
+    "Nam Bộ": [10.5, 106.5],
+    "Tây Nguyên": [14.0, 108.0],
+    "Bắc Trung Bộ": [18.5, 105.5],
+    "Nam Trung Bộ": [12.5, 109.0],
+    "Đồng bằng sông Cửu Long": [10.0, 105.5],
+    "Biển Đông": [15.0, 114.0],
+    "Vịnh Bắc Bộ": [19.5, 107.5]
 }
 
 PROVINCE_REGIONS = [

@@ -5,8 +5,8 @@ const NationalHotlineCard = ({ item, style, isAdmin, onEdit, onDelete }) => {
   
   return (
     <div 
-      style={{ borderColor: `${style.color}20` }}
-      className="bg-white border-2 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative h-full"
+      style={{ borderColor: `${style.color}40` }}
+      className="bg-white dark:bg-slate-900 border-2 dark:border-slate-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group relative h-full flex flex-col items-center text-center"
     >
       {isAdmin && (
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -29,14 +29,26 @@ const NationalHotlineCard = ({ item, style, isAdmin, onEdit, onDelete }) => {
         </div>
       )}
       <div 
-        style={{ backgroundColor: `${style.color}10` }}
-        className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"
+        style={{ backgroundColor: `${style.color}15` }}
+        className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm"
       >
-        <CardIcon style={{ color: style.color }} className="w-6 h-6" />
+        <CardIcon style={{ color: style.color }} className="w-7 h-7" />
       </div>
-      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{style.label}</div>
-      <div style={{ color: style.color }} className="text-3xl font-black my-1">{item.phone}</div>
-      <div className="text-xs font-semibold text-slate-600 leading-tight">{item.agency}</div>
+      
+      {/* Editable Label (Agency) */}
+      <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+        {item.agency ? item.agency : style.label}
+      </div>
+      
+      {/* Phone Number */}
+      <div style={{ color: style.color }} className="text-4xl font-black mb-2 tracking-tight">
+        {item.phone}
+      </div>
+      
+      {/* Editable Description (Address) or Default */}
+      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 leading-tight px-4 opacity-80">
+        {item.address ? item.address : style.description}
+      </div>
     </div>
   );
 };

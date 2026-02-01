@@ -38,14 +38,14 @@ const DamageBadges = ({ e }) => {
       {prioritized.slice(0, 2).map((item) => {
         const Icon = item.icon;
         const colorClass = { 
-          red: "text-red-700 bg-red-50 border border-red-100",
-          orange: "text-orange-700 bg-orange-50 border border-orange-100",
-          yellow: "text-yellow-700 bg-yellow-50 border border-yellow-100",
-          blue: "text-blue-700 bg-blue-50 border border-blue-100", 
-          indigo: "text-indigo-700 bg-indigo-50 border border-indigo-100", 
-          slate: "text-slate-700 bg-slate-50 border border-slate-100",
-          green: "text-emerald-700 bg-emerald-50 border border-emerald-100"
-        }[item.color] || "text-slate-700 bg-slate-50";
+          red: "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30",
+          orange: "text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30",
+          yellow: "text-yellow-700 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-900/30",
+          blue: "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30", 
+          indigo: "text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/30", 
+          slate: "text-slate-700 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700",
+          green: "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-900/30"
+        }[item.color] || "text-slate-700 dark:text-slate-400 bg-slate-50 dark:bg-slate-800";
         
         return (
           <div key={item.type} className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg shadow-sm ${colorClass}`}>
@@ -64,7 +64,7 @@ const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
   return (
     <Link
       to={`/events/${e.id}`}
-      className={`block group bg-white rounded-2xl border-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm ${e.disaster_type === 'warning_forecast' ? 'border-dashed' : 'border-solid'}`}
+      className={`block group bg-white dark:bg-slate-900 rounded-2xl border-2 dark:border-slate-800 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 flex flex-col overflow-hidden relative shadow-sm ${e.disaster_type === 'warning_forecast' ? 'border-dashed' : 'border-solid'}`}
       style={{ borderColor: meta.color }}
     >
       <div className="h-1 w-full" style={{ backgroundColor: meta.color }}></div>
@@ -73,19 +73,20 @@ const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
           <img 
             src={e.image_url} 
             alt={e.title} 
+            loading="lazy"
             className={
               e.image_url.endsWith('.svg')
-                ? "w-24 h-24 object-contain opacity-50 transition-transform duration-500 group-hover:scale-110" 
+                ? "w-24 h-24 object-contain opacity-50 dark:opacity-80 transition-transform duration-500 group-hover:scale-110" 
                 : "w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
             }
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white relative overflow-hidden">
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-800 relative overflow-hidden">
             <div className="absolute inset-0 opacity-5" style={{ backgroundColor: meta.color }}></div>
             <img 
               src={logoIge} 
               alt="Logo IGE" 
-              className="w-36 h-36 object-contain opacity-90 group-hover:scale-110 transition-transform duration-700 grayscale group-hover:grayscale-0" 
+              className="w-36 h-36 object-contain opacity-90 dark:opacity-20 group-hover:scale-110 transition-transform duration-700 grayscale group-hover:grayscale-0 dark:invert" 
             />
             <div className="mt-2 h-1 w-16 rounded-full opacity-50" style={{ backgroundColor: meta.color }}></div>
           </div>
@@ -120,12 +121,12 @@ const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
       </div>
 
       <div className="p-5 flex-1 flex flex-col">
-        <h2 className="text-[15px] font-bold text-slate-900 line-clamp-2 mb-3 group-hover:text-blue-600 transition-colors leading-snug h-11">
+        <h2 className="text-[15px] font-bold text-slate-900 dark:text-white line-clamp-2 mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug h-11">
           {cleanText(e.title)}
         </h2>
-        <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-5">
+        <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 mb-5">
           {e.province && (
-            <div className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
               <MapPin className="w-3 h-3 text-slate-400" />
               <span className="font-medium">{e.province}</span>
             </div>
@@ -135,7 +136,7 @@ const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
             <span>{fmtTimeAgo(e.started_at)}</span>
           </div>
           {e.source && (
-            <span className="font-bold text-red-500 uppercase ml-auto">
+            <span className="font-bold text-red-500 dark:text-red-400 uppercase ml-auto">
               {(e.source || "").replace(/(\.com\.vn|\.vn|\.com|https?:\/\/|www\.)/g, '').toUpperCase()}
             </span>
           )}
@@ -143,7 +144,7 @@ const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
 
         <DamageBadges e={e} />
 
-        <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+        <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
           <div className="flex items-center gap-1">
             <FileText className="w-3 h-3" />
             <span>{e.sources_count || 1} nguồn tin</span>

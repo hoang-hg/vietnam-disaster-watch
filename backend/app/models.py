@@ -9,7 +9,7 @@ class Article(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(String(64), index=True)
     domain: Mapped[str] = mapped_column(String(128), index=True)
-    title: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text, index=True)
     url: Mapped[str] = mapped_column(Text)
     canonical_url: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     published_at: Mapped[datetime] = mapped_column(DateTime, index=True)
@@ -112,6 +112,8 @@ class Event(Base):
         # Optimized for matching during crawl
         Index("ix_event_match_lookup", province, disaster_type, last_updated_at),
         Index("ix_event_last_updated", last_updated_at),
+        # Spatial indices for Bbox filtering
+        Index("ix_event_coords", lat, lon),
     )
 
 class User(Base):
@@ -144,6 +146,10 @@ class CrowdsourcedReport(Base):
     lon: Mapped[float | None] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text)
     image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    
+    __table_args__ = (
+        Index("ix_crowd_coords", lat, lon),
+    )
     
     # Contact info for guest/user
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)

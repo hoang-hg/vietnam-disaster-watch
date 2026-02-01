@@ -1,5 +1,7 @@
-// Standardized Provinces and Regions with Centroids for Map Rendering
-export const PROVINCE_COORDINATES = {
+import sqlite3
+import re
+
+PROVINCE_COORDINATES = {
     "TP. Hà Nội": [21.0285, 105.8542],
     "Hà Giang": [22.8233, 104.9836],
     "Cao Bằng": [22.6667, 106.2500],
@@ -63,8 +65,6 @@ export const PROVINCE_COORDINATES = {
     "Sóc Trăng": [9.6000, 105.9667],
     "Bạc Liêu": [9.2833, 105.7167],
     "Cà Mau": [9.1833, 105.1500],
-
-    // Regions & Maritime Areas
     "Miền Bắc": [21.5, 105.5],
     "Bắc Bộ": [21.5, 105.5],
     "Miền Trung": [16.0, 107.5],
@@ -77,13 +77,44 @@ export const PROVINCE_COORDINATES = {
     "Đồng bằng sông Cửu Long": [10.0, 105.5],
     "Biển Đông": [15.0, 114.0],
     "Vịnh Bắc Bộ": [19.5, 107.5]
-};
+}
 
-export const VALID_PROVINCES = Object.keys(PROVINCE_COORDINATES).filter(k => 
-    !["Miền Bắc", "Bắc Bộ", "Miền Trung", "Trung Bộ", "Miền Nam", "Nam Bộ", "Tây Nguyên", "Bắc Trung Bộ", "Nam Trung Bộ", "Đồng bằng sông Cửu Long", "Biển Đông", "Vịnh Bắc Bộ"].includes(k)
-).sort();
+def normalize_name(name):
+    if not name: return ""
+    name = name.replace("Tình ", "Tỉnh ")
+    name = re.sub(r"^(Tỉnh|Thành phố)\s+", "", name, flags=re.IGNORECASE)
+    if name.lower().startswith("hồ chí minh"): return "TP. Hồ Chí Minh"
+    if name.lower().startswith("hà nội"): return "TP. Hà Nội"
+    if name.lower().startswith("đà nẵng"): return "TP. Đà Nẵng"
+    if name.lower().startswith("cần thơ"): return "TP. Cần Thơ"
+    if name.lower().startswith("hải phòng"): return "TP. Hải Phòng"
+    return name
 
-// Helper to check if a name is a region
-export const isRegion = (name) => {
-    return PROVINCE_COORDINATES[name] && !VALID_PROVINCES.includes(name);
-};
+def run_fix():
+    conn = sqlite3.connect('backend/data/app.db')
+    cur = conn.cursor()
+    
+    cur.execute("SELECT id, province FROM events WHERE lat IS NULL OR lon IS NULL")
+    rows = cur.fetchall()
+    print(f"Found {len(rows)} events to fix.")
+    
+    updated = 0
+    for eid, province in rows:
+        norm = normalize_name(province)
+        coords = PROVINCE_COORDINATES.get(norm)
+        if not coords:
+            for k, v in PROVINCE_COORDINATES.items():
+                if norm and (norm in k or k in norm):
+                    coords = v
+                    break
+        
+        if coords:
+            cur.execute("UPDATE events SET lat = ?, lon = ? WHERE id = ?", (coords[0], coords[1], eid))
+            updated += 1
+            
+    conn.commit()
+    print(f"Successfully updated {updated} events.")
+    conn.close()
+
+if __name__ == "__main__":
+    run_fix()

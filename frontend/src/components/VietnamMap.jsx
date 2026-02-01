@@ -1,5 +1,5 @@
-import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
+import React, { useEffect } from 'react';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -18,27 +18,78 @@ L.Icon.Default.mergeOptions({
 // Memoize icons to prevent recreation on every render
 const iconCache = {};
 
-function getIcon(type) {
-  const color = THEME_COLORS[type] || THEME_COLORS.unknown;
-  const key = `${type}`;
+// Enhanced Logic to get icon
+function getIcon(type, isCritical = false) {
+  // 1. Get Base Color from unified theme
+  let color = THEME_COLORS[type] || THEME_COLORS.unknown;
+  
+  // Specific override for Community to ensure visibility
+  if (type === 'community') color = THEME_COLORS.community;
 
+  // 2. Generate Unique Cache Key
+  const key = `${type}-${isCritical ? 'crit' : 'std'}`;
+
+  // 3. Create or Return Cached Icon
   if (!iconCache[key]) {
+    // Pulse animation for critical events (Storm, Landslide, Flash Flood)
+    const pulseEffect = isCritical 
+      ? `<span class="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping" style="background-color: ${color}"></span>` 
+      : `<span class="absolute inline-flex h-full w-full rounded-full opacity-20" style="background-color: ${color}"></span>`;
+      
     iconCache[key] = L.divIcon({
       className: "bg-transparent",
       html: `
-        <div class="relative flex items-center justify-center w-8 h-8 group hover:scale-110 transition-transform">
-            <span class="absolute inline-flex h-full w-full rounded-full opacity-20" style="background-color: ${color}"></span>
-            <span class="relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-white shadow-md" style="background-color: ${color}"></span>
+        <div class="relative flex items-center justify-center w-8 h-8 group hover:scale-110 transition-transform ${isCritical ? 'z-50' : ''}">
+            ${pulseEffect}
+            <span class="relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-white shadow-md z-10" style="background-color: ${color}"></span>
         </div>
       `,
       iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -10]
     });
   }
   return iconCache[key];
 }
 
-const VietnamMap = ({ points }) => {
+function MapEvents({ onBoundsChange }) {
+  const map = useMap();
+  
+  // Set initial bounds
+  useEffect(() => {
+    const bounds = map.getBounds();
+    onBoundsChange({
+      minLat: bounds.getSouth(),
+      maxLat: bounds.getNorth(),
+      minLon: bounds.getWest(),
+      maxLon: bounds.getEast(),
+    });
+  }, []);
+
+  useMapEvents({
+    moveend: () => {
+      const bounds = map.getBounds();
+      onBoundsChange({
+        minLat: bounds.getSouth(),
+        maxLat: bounds.getNorth(),
+        minLon: bounds.getWest(),
+        maxLon: bounds.getEast(),
+      });
+    },
+    zoomend: () => {
+      const bounds = map.getBounds();
+      onBoundsChange({
+        minLat: bounds.getSouth(),
+        maxLat: bounds.getNorth(),
+        minLon: bounds.getWest(),
+        maxLon: bounds.getEast(),
+      });
+    },
+  });
+  return null;
+}
+
+const VietnamMap = ({ points, onBoundsChange }) => {
   const center = [16.5, 107.0]; 
 
   return (
@@ -47,20 +98,24 @@ const VietnamMap = ({ points }) => {
         zoom={5} 
         scrollWheelZoom={true} 
         zoomControl={true} 
+        attributionControl={false}
         className="w-full h-full z-0 font-sans"
         style={{ background: '#aadaff' }}
     >
+      {onBoundsChange && <MapEvents onBoundsChange={onBoundsChange} />}
       <TileLayer
         attribution='&copy; Google Maps'
         url="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}&hl=vi&gl=vn"
       />
 
-      <MarkerClusterGroup chunkedLoading>
+      <MarkerClusterGroup chunkedLoading maxClusterRadius={40} spiderfyOnMaxZoom={true}>
       {points.map((p) => {
         if (typeof p.lat !== 'number' || typeof (p.lon ?? p.lng) !== 'number') return null;
         
         const type = p.disaster_type || p.type;
-        const icon = getIcon(type);
+        // Determine Criticality for Pulse Effect
+        const isCritical = ['storm', 'landslide', 'flash_flood'].includes(type) || (p.deaths > 0);
+        const icon = getIcon(type, isCritical);
 
         return (
           <Marker key={p.id} position={[p.lat, p.lon ?? p.lng]} icon={icon}>
