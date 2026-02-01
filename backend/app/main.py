@@ -170,12 +170,18 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(rotate_logs, trigger=IntervalTrigger(hours=12, jitter=60), id="log_rotation", replace_existing=True)
     scheduler.add_job(cleanup_old_pending_articles, trigger=IntervalTrigger(hours=24, jitter=120), id="db_cleanup_pending", replace_existing=True)
 
-    scheduler.start()
+    import os
+    if os.getenv("RUN_SCHEDULER", "true").lower() == "true":
+        logger.info("Starting Background Scheduler...")
+        scheduler.start()
+    else:
+        logger.info("Background Scheduler is DISABLED for this worker.")
 
     yield
     
     # Shutdown
-    scheduler.shutdown(wait=False)
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
     # Close shared resources
     from .html_scraper import HTMLScraper
     await HTMLScraper.close_client()
@@ -250,3 +256,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(api_router)
 app.include_router(auth_router)
 app.include_router(user_router)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    # When running as worker, we use a single worker and no reloading
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000)

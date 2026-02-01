@@ -91,6 +91,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-your_production_secret_key_change_me}
       - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}
+      - FRONTEND_URL=${FRONTEND_URL:-https://example.com}
+      - RUN_SCHEDULER=false
       - PYTHONUNBUFFERED=1
     volumes:
       - backend_data:/app/data
@@ -114,6 +116,37 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    build: 
+      context: ./backend
+    container_name: viet_disaster_worker
+    restart: always
+    environment:
+      - APP_DB_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-password_change_me}@db:5432/${DB_NAME:-viet_disaster}
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-your_production_secret_key_change_me}
+      - RUN_SCHEDULER=true
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "app.main"] # Run directly to avoid multi-worker scheduler
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
     logging:
       driver: "json-file"
       options:
