@@ -639,13 +639,14 @@ export default function Dashboard() {
                 <BarChart data={chartData} layout="vertical" margin={{ left: 5, right: 30 }} barCategoryGap="15%">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" className="dark:opacity-10" />
                   <XAxis type="number" hide />
-                  <YAxis type="category" dataKey="name" width={windowWidth < 640 ? 100 : 140} tick={{ fontSize: windowWidth < 640 ? 9 : 10, fill: '#64748b' }} />
+                  <YAxis type="category" dataKey="name" width={windowWidth < 640 ? 110 : 160} interval={0} tick={{ fontSize: windowWidth < 640 ? 9 : 11, fill: '#64748b' }} />
                   <Tooltip 
                     cursor={{fill: '#f1f5f9', opacity: 0.1}} 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', backgroundColor: isDark ? '#1e293b' : '#fff', color: isDark ? '#fff' : '#000' }}
                   />
                   <Bar 
                     dataKey="count" 
+                    name="Số lượng"
                     radius={[0, 4, 4, 0]} 
                     barSize={windowWidth < 640 ? 18 : 24}
                     isAnimationActive={true}

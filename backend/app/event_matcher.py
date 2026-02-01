@@ -491,32 +491,4 @@ def _broadcast_event(ev: Event, is_new: bool = False):
         logger.error(f"Failed to broadcast event {ev.id}: {e}")
 
 
-def upsert_event_for_article(db: Session, article: Article) -> tuple[Event, bool]:
-    """
-    Public entry point to match an article to an event or create a new one.
-    Returns (event, is_new_event_created).
-    """
-    ev, score = _find_best_match(db, article)
-    is_new = False
-    
-    if ev:
-        _update_event_from_article(db, ev, article)
-        
-        # [CONSENSUS] If source is trusted/approved, boost confidence
-        if article.source in ["VTV", "TTXVN", "Báo Chính Phủ"] or article.status == "approved":
-            ev.confidence = max(ev.confidence, 0.9)
-            
-    else:
-        # Create new
-        ev = _create_new_event(db, article)
-        is_new = True
-        
-    # Flush to get ID
-    db.flush()
-    # Ensure article is linked
-    if article.event_id != ev.id:
-        article.event_id = ev.id
-        db.add(article)
-        
-    _finalize_event_upsert(db, ev, article)
-    return ev, is_new
+# The duplicated definition of upsert_event_for_article was removed to ensure the main one at line 106 is used.

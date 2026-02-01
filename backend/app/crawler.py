@@ -614,7 +614,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                             
                             res = await _process_article_logic(task_db, src, title, link, pub_at, sum_raw)
                             if res and res[2]: # if article was added
-                                task_db.commit() # [FIX] Must commit the task session!
+                                ev_obj, is_new, added, status = res
+                                ev_id = ev_obj.id if ev_obj else None
+                                task_db.commit()
+                                return ev_id, is_new, added, status
                             return res
                     finally:
                         task_db.close()
@@ -624,11 +627,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                 
                 for res in results:
                     if res:
-                        ev, is_new, added, status = res
+                        ev_id, is_new, added, status = res
                         if added:
                             new_count += 1
                             info["added"] += 1
-                            if ev: events_to_notify.append((ev.id, is_new))
+                            if ev_id: events_to_notify.append((ev_id, is_new))
 
                 # If primary worked, we don't need backup/gnews
                 if feed_worked: break
@@ -651,7 +654,10 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                                         task_db, src, item["title"], item["url"], datetime.now(timezone.utc), item.get("summary", "")
                                     )
                                     if res and res[2]:
-                                        task_db.commit() # [FIX] Must commit the task session!
+                                        ev_obj, is_new, added, status = res
+                                        ev_id = ev_obj.id if ev_obj else None
+                                        task_db.commit()
+                                        return ev_id, is_new, added, status
                                     return res
                             finally:
                                 task_db.close()
@@ -661,11 +667,11 @@ async def _process_once_async(force_update: bool = False, only_sources: list[str
                         
                         for res in scraped_results:
                             if res:
-                                ev, is_new, added, status = res
+                                ev_id, is_new, added, status = res
                                 if added:
                                     new_count += 1
                                     info["added"] += 1
-                                    if ev: events_to_notify.append((ev.id, is_new))
+                                    if ev_id: events_to_notify.append((ev_id, is_new))
                 except Exception as e:
                     stat["error"] = f"scraper error: {str(e)[:50]}"
             
