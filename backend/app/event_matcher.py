@@ -513,4 +513,4 @@ def _broadcast_event(ev: Event, is_new: bool = False):
         logger.error(f"Failed to broadcast event {ev.id}: {e}")
 
 
-# The duplicated definition of upsert_event_for_article was removed to ensure the main one at line 106 is used.
+

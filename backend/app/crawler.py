@@ -72,8 +72,7 @@ Base.metadata.create_all(bind=engine)
 CRAWL_MIN_DATE = datetime(2025, 1, 1)
 
 
-# Optional classifier loader (joblib)
-_classifier = None
+
 
 def _cleanup_old_logs(retention_days=7):
     """Delete log files older than retention_days."""

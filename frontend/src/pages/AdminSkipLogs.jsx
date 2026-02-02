@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   getJson, 
   postJson, 
   patchJson,
   downloadBlob,
-  API_BASE 
+  toUtcDate
 } from "../api";
 import { 
   CheckCircle, 
@@ -19,14 +19,11 @@ import {
   MapPin,
   LayoutDashboard,
   Download,
-  History,
   Settings
 } from "lucide-react";
-import { VALID_PROVINCES } from "../provinces";
 import { DISASTER_METADATA } from "../theme.js";
 import Toast from "../components/Toast.jsx";
 import ConfirmModal from "../components/ConfirmModal.jsx";
-import Pagination from "../components/Pagination.jsx";
 
 export default function AdminSkipLogs() {
   const [activeTab, setActiveTab] = useState("pending"); // "pending" | "skipped" | "reports" | "crawler"
@@ -45,6 +42,18 @@ export default function AdminSkipLogs() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, action: null });
   const ITEMS_PER_PAGE = 50;
+
+  // [OPTIMIZATION] Client-side search for Reports since API fetches all pending
+  const displayedCrowdReports = useMemo(() => {
+    if (!debouncedSearch) return crowdReports;
+    const lower = debouncedSearch.toLowerCase();
+    return crowdReports.filter(r => 
+        (r.description || "").toLowerCase().includes(lower) ||
+        (r.province || "").toLowerCase().includes(lower) ||
+        (r.phone || "").toLowerCase().includes(lower) ||
+        (r.name || "").toLowerCase().includes(lower)
+    );
+  }, [crowdReports, debouncedSearch]);
 
   // Debounce search input
   useEffect(() => {
@@ -94,9 +103,13 @@ export default function AdminSkipLogs() {
   }
 
   async function handleExportDaily() {
-    const date = new Date().toISOString().split('T')[0];
+    // [FIX] Use local time for 'today', not UTC, to avoid previous-day errors in early morning
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(d - offset)).toISOString().slice(0, 10);
+    
     try {
-        await downloadBlob(`/api/admin/export/daily?date=${date}`, `bao_cao_ngay_${date}.xlsx`);
+        await downloadBlob(`/api/admin/export/daily?date=${localISOTime}`, `bao_cao_ngay_${localISOTime}.xlsx`);
     } catch (err) {
         setError("Lỗi tải báo cáo: " + err.message);
     }
@@ -411,7 +424,9 @@ export default function AdminSkipLogs() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {crawlerStatus.map((s) => (
+                  {crawlerStatus
+                    .filter(s => !debouncedSearch || s.source_name.toLowerCase().includes(debouncedSearch.toLowerCase()))
+                    .map((s) => (
                     <tr key={s.source_name} className="hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">{s.source_name}</td>
                       <td className="px-6 py-4">
@@ -426,7 +441,7 @@ export default function AdminSkipLogs() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-                        {new Date(s.last_run_at).toLocaleString('vi-VN')}
+                        {toUtcDate(s.last_run_at).toLocaleString('vi-VN')}
                       </td>
                       <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{s.articles_added}</td>
                       <td className="px-6 py-4 text-center text-xs font-bold text-slate-400 dark:text-slate-500">{s.latency_ms}ms</td>
@@ -446,7 +461,7 @@ export default function AdminSkipLogs() {
         </div>
       )}
 
-        {!loading && activeTab !== "crawler" && (activeTab === "pending" ? pendingItems : (activeTab === "reports" ? crowdReports : skippedItems)).length === 0 && (
+        {!loading && activeTab !== "crawler" && (activeTab === "pending" ? pendingItems : (activeTab === "reports" ? displayedCrowdReports : (activeTab === "rejected" ? rejectedItems : skippedItems))).length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-slate-800 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 shadow-sm text-center px-6">
             <div className="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mb-6">
               <FileText className="w-10 h-10 text-slate-300 dark:text-slate-500" />
@@ -458,7 +473,7 @@ export default function AdminSkipLogs() {
                 : activeTab === "rejected"
                 ? "Không có tin tức nào bị bỏ qua thủ công."
                 : activeTab === "reports"
-                ? "Không có báo cáo nào từ người dân cần duyệt."
+                ? "Không có báo cáo nào từ người dân khớp với bộ lọc."
                 : "Không tìm thấy lịch sử tin tức bị bỏ qua (Logs)."}
             </p>
           </div>
@@ -466,7 +481,7 @@ export default function AdminSkipLogs() {
 
         <div className="space-y-4">
           {activeTab === "reports" ? (
-             crowdReports.map((report) => (
+             displayedCrowdReports.map((report) => (
                 <div key={report.id} className="group bg-white dark:bg-slate-800 rounded-2xl border-2 border-red-100 dark:border-red-900/30 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
                     <div className="p-5 flex flex-col sm:flex-row gap-5">
                          <div className="sm:w-24 flex-shrink-0 flex sm:flex-col items-center justify-center gap-2">
@@ -479,7 +494,7 @@ export default function AdminSkipLogs() {
                          <div className="flex-grow">
                             <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 font-bold mb-2">
                                 <Clock className="w-3.5 h-3.5" />
-                                {report.created_at ? new Date(report.created_at).toLocaleString("vi-VN") : "—"}
+                                {report.created_at ? toUtcDate(report.created_at).toLocaleString("vi-VN") : "—"}
                                 <span className="mx-1">•</span>
                                 <span className="text-red-500 uppercase flex items-center gap-1">
                                     <MapPin className="w-3 h-3" /> {report.province || "Không xác định"}
@@ -501,7 +516,7 @@ export default function AdminSkipLogs() {
 
                          <div className="flex sm:flex-col justify-center gap-2 sm:w-32 flex-shrink-0">
                             <button
-                                onClick={() => handleApproveReport(report.id)}
+                                onClick={() => handleActionClick(report.id, "approve", "report")}
                                 disabled={processingId === report.id}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all active:scale-95 disabled:opacity-50"
                             >
@@ -509,7 +524,7 @@ export default function AdminSkipLogs() {
                                 DUYỆT
                             </button>
                             <button
-                                onClick={() => handleRejectReport(report.id)}
+                                onClick={() => handleActionClick(report.id, "reject", "report")}
                                 disabled={processingId === report.id}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-700 text-slate-400 dark:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-600 transition-all active:scale-95 disabled:opacity-50"
                             >
@@ -543,7 +558,7 @@ export default function AdminSkipLogs() {
                 <div className="flex-grow min-w-0">
                   <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 font-bold mb-2">
                     <Clock className="w-3.5 h-3.5" />
-                    {new Date(article.published_at || article.timestamp).toLocaleString("vi-VN")}
+                    {toUtcDate(article.published_at || article.timestamp).toLocaleString("vi-VN")}
                     <span className="mx-1">•</span>
                     <span className="text-[#2fa1b3] uppercase">{article.source}</span>
                     <span className="mx-1">•</span>
@@ -591,7 +606,7 @@ export default function AdminSkipLogs() {
                       PHÂN LOẠI LẠI
                     </button>
                     <button
-                      onClick={() => handleApprove(article.id)}
+                      onClick={() => handleActionClick(article.id, "approve", "article")}
                       disabled={processingId === article.id}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm hover:bg-green-700 transition-all active:scale-95 disabled:opacity-50"
                     >
@@ -599,7 +614,7 @@ export default function AdminSkipLogs() {
                       DUYỆT
                     </button>
                     <button
-                      onClick={() => handleReject(article.id)}
+                      onClick={() => handleActionClick(article.id, "reject", "article")}
                       disabled={processingId === article.id}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 border-2 border-red-500 dark:border-red-600 rounded-xl font-bold text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95 disabled:opacity-50"
                     >

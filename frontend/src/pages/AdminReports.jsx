@@ -19,15 +19,30 @@ export default function AdminReports() {
         
         const d = new Date();
         d.setDate(d.getDate() - 30); // Default to last 30 days
-        return d.toISOString().split('T')[0];
+        const offset = d.getTimezoneOffset() * 60000;
+        return (new Date(d - offset)).toISOString().split('T')[0];
     });
-    const [endDate, setEndDate] = useState(searchParams.get("end_date") || new Date().toISOString().split('T')[0]);
+    
+    const [endDate, setEndDate] = useState(() => {
+        const urlDate = searchParams.get("end_date");
+        if (urlDate) return urlDate;
+        
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        return (new Date(d - offset)).toISOString().split('T')[0];
+    });
 
     const handleReset = () => {
         const d = new Date();
-        d.setDate(d.getDate() - 30);
-        setStartDate(d.toISOString().split('T')[0]);
-        setEndDate(new Date().toISOString().split('T')[0]);
+        const offset = d.getTimezoneOffset() * 60000;
+        const todayStr = (new Date(d - offset)).toISOString().split('T')[0];
+        
+        const dStart = new Date();
+        dStart.setDate(dStart.getDate() - 30);
+        const startStr = (new Date(dStart - offset)).toISOString().split('T')[0];
+        
+        setStartDate(startStr);
+        setEndDate(todayStr);
     };
 
     const fetchReports = async () => {

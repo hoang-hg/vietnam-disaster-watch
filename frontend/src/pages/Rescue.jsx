@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, ExternalLink, Loader2 } from 'lucide-react';
+import { Shield, Loader2 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { getJson, postJson, putJson, deleteJson } from '../api';
 import { VALID_PROVINCES } from '../provinces';

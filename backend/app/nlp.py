@@ -4,7 +4,7 @@ import logging
 from typing import List
 from datetime import datetime
 from dateutil import parser as dtparser
-from functools import lru_cache
+
 from . import sources
 from .sources import (
     DISASTER_KEYWORDS as SOURCE_DISASTER_KEYWORDS, 
@@ -130,6 +130,10 @@ def normalize_text(text: str) -> str:
     t = t.lower()
     t = re.sub(r"\s+", " ", t).strip()
     return t
+
+def normalize_name(text: str) -> str:
+    """Alias for normalize_text to satisfy imports."""
+    return normalize_text(text)
 
 def strip_accents_and_normalize(text: str) -> str:
     """

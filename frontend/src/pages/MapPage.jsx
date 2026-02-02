@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { getJson } from "../api";
 import VietnamMap from "../components/VietnamMap";
 import DateFilter from "../components/DateFilter";
-import { Filter, Calendar, Layers } from "lucide-react";
+import { Layers } from "lucide-react";
 import { THEME_COLORS, DISASTER_METADATA } from "../theme";
 import { PROVINCE_COORDINATES } from "../provinces";
 import VIETNAM_LOCATIONS from "../data/vietnam_locations.json";
@@ -75,13 +75,17 @@ const MAPPING = {
 export default function MapPage() {
   const [dataEvents, setDataEvents] = useState([]); // Raw data from API
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   
   const [searchParams, setSearchParams] = useSearchParams();
   
   // Filters
   const [startDate, setStartDate] = useState(() => {
-    return searchParams.get("start_date") || new Date().toISOString().split('T')[0];
+    const urlDate = searchParams.get("start_date");
+    if (urlDate) return urlDate;
+    // [FIX] Use local time for 'today', not UTC schema
+    const d = new Date();
+    const offset = d.getTimezoneOffset() * 60000;
+    return (new Date(d - offset)).toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || '');
   const [activeFilter, setActiveFilter] = useState(searchParams.get("type") || "all");
@@ -182,7 +186,7 @@ export default function MapPage() {
             }
         } catch (e) {
             if (e.name === 'AbortError') return;
-            setError(`Không thể tải dữ liệu bản đồ: ${e.message}`);
+             console.error("Map data error:", e);
         } finally {
             setLoading(false);
         }

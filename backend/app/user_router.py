@@ -309,9 +309,14 @@ def reject_report(
         if ev:
             from .api import _delete_event_internal
             _delete_event_internal(db, ev)
+            # [FIX] Clear event_id so if we re-approve, it creates a new event
+            report.status = "rejected"
+            report.event_id = None
+            db.commit()
             return {"ok": True, "message": "Report rejected and associated event deleted."}
             
     report.status = "rejected"
+    report.event_id = None # Ensure clean state
     db.commit()
     
     log_audit("reject_report", admin.id, admin.email, details={"report_id": report_id})
@@ -386,7 +391,11 @@ def get_rescue_hotlines(
 ):
     query = db.query(models.RescueHotline)
     if province and province != "Toàn quốc":
-        query = query.filter(models.RescueHotline.province == province)
+        # [FIX] Always include "Toàn quốc" so National Hotlines don't disappear in Frontend
+        query = query.filter(
+            (models.RescueHotline.province == province) | 
+            (models.RescueHotline.province == "Toàn quốc")
+        )
     
     if q:
         search_filter = f"%{q}%"

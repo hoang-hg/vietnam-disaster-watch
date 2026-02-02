@@ -4,7 +4,7 @@ import {
   MapPin, Clock, FileText, Zap, Users, Activity, DollarSign, Filter, Trash2
 } from "lucide-react";
 import { 
-  getDisasterMeta, fmtType, isJunkImage, fmtTimeAgo, fmtVndBillion, cleanText 
+  getDisasterMeta, fmtType, isJunkImage, fmtTimeAgo, fmtVndBillion, cleanText, toUtcDate 
 } from "../../api.js";
 import Badge from "../Badge.jsx";
 import logoIge from "../../assets/logo_ige.png";
@@ -149,7 +149,7 @@ const EventCard = React.memo(({ event: e, isAdmin, onDelete }) => {
             <FileText className="w-3 h-3" />
             <span>{e.sources_count || 1} nguồn tin</span>
           </div>
-          <span>{new Date(e.started_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
+          <span>{toUtcDate(e.started_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</span>
         </div>
       </div>
     </Link>

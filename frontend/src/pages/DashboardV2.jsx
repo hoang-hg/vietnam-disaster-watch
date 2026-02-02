@@ -4,10 +4,8 @@ import useDebounce from "../hooks/useDebounce";
 import { 
   getJson, 
   fmtType, 
-  fmtDate, 
   fmtTimeAgo, 
   cleanText,
-  normalizeStr,
   getDisasterMeta,
   toUtcDate
 } from "../api.js";
@@ -89,7 +87,6 @@ export default function Dashboard() {
     if (user?.favorite_province && !initializedFav.current) {
         if (!searchParams.get("province") && !provQuery) {
             setProvQuery(user.favorite_province);
-            console.log("[DashboardV2] Auto-applying favorite province:", user.favorite_province);
         }
         initializedFav.current = true;
     }
@@ -251,7 +248,6 @@ export default function Dashboard() {
     
     // [REAL-TIME] Listen for global refresh signals
     const handleRefresh = () => {
-        console.log("[DashboardV2] Real-time signal received, refreshing...");
         // Abort previous if it's still running and start new
         controller.abort();
         controller = new AbortController();
@@ -353,6 +349,7 @@ export default function Dashboard() {
               <input
                  type="text"
                  name="province_search"
+                 list="province-options"
                  id="dashboard-province-search"
                  placeholder="Tìm theo tỉnh..."
                   value={provQuery}
@@ -364,6 +361,9 @@ export default function Dashboard() {
                   }}
                   className="w-full py-1.5 pl-8 pr-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#2fa1b3]/20 dark:text-white transition-all focus:bg-white"
                />
+               <datalist id="province-options">
+                  {VALID_PROVINCES.map(p => <option key={p} value={p} />)}
+               </datalist>
                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             </div>
 

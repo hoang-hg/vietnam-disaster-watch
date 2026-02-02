@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getJson, API_BASE } from "../api";
+import { getJson, API_BASE, toUtcDate } from "../api";
 import StatCard from "../components/StatCard";
 import { 
   Activity, 
@@ -186,7 +186,7 @@ export default function CrawlerDashboard() {
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
                                         <Clock className="w-3 h-3" />
-                                        {new Date(s.last_run_at).toLocaleTimeString('vi-VN')}
+                                        {toUtcDate(s.last_run_at).toLocaleTimeString('vi-VN')}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">

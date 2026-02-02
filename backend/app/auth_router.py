@@ -149,6 +149,8 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
     confirm_password: str
 
+    admin_secret: str | None = None
+
     @model_validator(mode='after')
     def check_passwords_match(self):
         if self.new_password != self.confirm_password:
@@ -164,7 +166,16 @@ def reset_password(
 ):
     """
     Allows resetting password knowing the email.
+    [SECURITY] Since we don't have SMTP configured yet, we require an Admin Secret Key
+    to prevent unauthorized resets.
     """
+    # Verify Admin Secret (since we can't verify ownership via Email OTP yet)
+    if payload.admin_secret != settings.settings.admin_reset_secret:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chức năng tự đặt lại mật khẩu đang tạm khóa (chưa có Email SMTP). Vui lòng liên hệ Admin để cấp lại mật khẩu."
+        )
+
     user = db.query(models.User).filter(models.User.email == payload.email).first()
     if not user:
         raise HTTPException(

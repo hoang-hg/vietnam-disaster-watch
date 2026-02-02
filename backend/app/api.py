@@ -134,13 +134,7 @@ def get_visibility_filter(query, is_admin: bool):
         (Event.needs_verification.is_(False)) & (Event.sources_count >= 2)
     ))
 
-def strip_accents(s: str) -> str:
-    """Removes Vietnamese accents for robust search/export fallback."""
-    if not s: return ""
-    import unicodedata
-    s = unicodedata.normalize('NFD', s)
-    s = "".join([c for c in s if unicodedata.category(c) != 'Mn'])
-    return s.replace('đ', 'd').replace('Đ', 'D')
+
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -776,31 +770,42 @@ def recalculate_event_metrics(db: Session, event_id: int):
         Article.status == "approved"
     ).first()
     
-    if not aggs or aggs[4] == 0:
-        # No active articles left - cleanup the event
-        # Use full delete logic to ensure sync
-        _delete_event_internal(db, ev)
-        return
-    else:
-        # Update with aggregated max values
-        ev.deaths = aggs[0] or 0
-        ev.missing = aggs[1] or 0
-        ev.injured = aggs[2] or 0
-        ev.damage_billion_vnd = aggs[3] or 0.0
-        ev.sources_count = aggs[4] or 0
-        
-        # [FIX] Keep Event visual & title fresh: if current image/title missing, take from latest approved
-        latest_art = db.query(Article).filter(Article.event_id == event_id, Article.status == "approved")\
-            .order_by(Article.published_at.desc()).first()
-        if latest_art:
-            if not ev.image_url: ev.image_url = latest_art.image_url
-            # If event title looks like a summary/placeholder, update from latest specific title
-            if len(ev.title or "") < 10: ev.title = latest_art.title
+    # Update with aggregated max values
+    ev.deaths = aggs[0] or 0
+    ev.missing = aggs[1] or 0
+    ev.injured = aggs[2] or 0
+    ev.damage_billion_vnd = aggs[3] or 0.0
+    ev.sources_count = aggs[4] or 0
+    
+    # Keep Event visual & title fresh: if current image/title missing, take from latest approved
+    latest_art = db.query(Article).filter(Article.event_id == event_id, Article.status == "approved")\
+        .order_by(Article.published_at.desc()).first()
+    if latest_art:
+        if not ev.image_url: ev.image_url = latest_art.image_url
+        if len(ev.title or "") < 10: ev.title = latest_art.title
 
-        # Downgrade confidence if sources dropped explicitly
-        if ev.sources_count < 2 and ev.confidence > 0.6:
-            ev.confidence = 0.5
+    # Downgrade confidence if sources dropped explicitly
+    if ev.sources_count < 2 and ev.confidence > 0.6:
+        ev.confidence = 0.5
             
+    # [FIX] Logic Check: If 0 Approved Sources, check if we have Pending ones.
+    # If we have Pending, we CANNOT delete the event via _delete_event_internal because it REJECTS all articles.
+    # We should just downgrade it to waiting state.
+    if ev.sources_count == 0:
+        pending_count = db.query(func.count(Article.id)).filter(
+            Article.event_id == event_id, 
+            Article.status == "pending"
+        ).scalar() or 0
+        
+        if pending_count > 0:
+            ev.needs_verification = True
+            ev.confidence = 0.3 # Low confidence, waiting for review
+            # Do NOT delete
+        else:
+            # Truly empty (No Approved, No Pending)
+            _delete_event_internal(db, ev)
+            return
+
     db.commit()
     db.refresh(ev)
     

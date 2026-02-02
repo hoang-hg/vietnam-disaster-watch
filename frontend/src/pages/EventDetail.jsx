@@ -48,7 +48,7 @@ export default function EventDetail() {
   const navigate = useNavigate();
 
   // Modal states
-  const [deleteModal, setDeleteModal] = useState({ open: false, type: null, id: null });
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: null, id: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
@@ -59,11 +59,11 @@ export default function EventDetail() {
 
   const handleDeleteArticle = (e, articleId) => {
     e.preventDefault();
-    setDeleteModal({ open: true, type: 'article', id: articleId });
+    setConfirmModal({ open: true, type: 'delete_article', id: articleId });
   };
 
   const confirmDeleteArticle = async () => {
-    const articleId = deleteModal.id;
+    const articleId = confirmModal.id;
     setIsDeleting(true);
     try {
         await deleteJson(`/api/articles/${articleId}`);
@@ -86,7 +86,7 @@ export default function EventDetail() {
         }
     } finally {
         setIsDeleting(false);
-        setDeleteModal({ open: false, type: null, id: null });
+        setConfirmModal({ open: false, type: null, id: null });
     }
   };
   
@@ -94,8 +94,12 @@ export default function EventDetail() {
     setToast({ isVisible: true, message, type });
   };
 
-  const handleApproveArticle = async (e, articleId) => {
+  const handleApproveArticleClick = (e, articleId) => {
     e.preventDefault();
+    setConfirmModal({ open: true, type: 'approve_article', id: articleId });
+  };
+
+  const handleApproveArticle = async (articleId) => {
     setIsApproving(articleId);
     try {
         await postJson(`/api/admin/approve-article/${articleId}`);
@@ -157,7 +161,7 @@ export default function EventDetail() {
   };
 
   const handleDeleteEvent = () => {
-    setDeleteModal({ open: true, type: 'event', id: ev.id });
+    setConfirmModal({ open: true, type: 'delete_event', id: ev.id });
   };
 
   const confirmDeleteEvent = async () => {
@@ -174,7 +178,7 @@ export default function EventDetail() {
         }
     } finally {
         setIsDeleting(false);
-        setDeleteModal({ open: false, type: null, id: null });
+        setConfirmModal({ open: false, type: null, id: null });
     }
   };
 
@@ -230,7 +234,9 @@ export default function EventDetail() {
   const handleSaveEdit = async () => {
     setIsSaving(true);
     try {
-        const updated = await putJson(`/api/events/${ev.id}`, editForm);
+        // [FIX] Sanitize payload: strip relations and read-only fields
+        const { articles, id, created_at, last_updated_at, key, ...payload } = editForm;
+        const updated = await putJson(`/api/events/${ev.id}`, payload);
         setEv({ ...ev, ...updated });
         setIsEditing(false);
         setToast({ isVisible: true, message: 'Cập nhật sự kiện thành công!', type: 'success' });
@@ -380,7 +386,7 @@ export default function EventDetail() {
                 {(ev.needs_verification === 1 || ev.articles.some(a => a.status === 'pending')) && (
                   <button 
                     disabled={isApproving === 'all'}
-                    onClick={handleApproveEvent}
+                    onClick={handleApproveEventClick}
                     className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md animate-pulse hover:animate-none disabled:opacity-50"
                     title="Duyệt nhanh toàn bộ sự kiện và bài báo"
                   >
@@ -684,7 +690,7 @@ export default function EventDetail() {
                 key={a.id} 
                 article={a} 
                 isAdmin={isAdmin} 
-                handleApprove={handleApproveArticle}
+                handleApprove={handleApproveArticleClick}
                 handleDelete={handleDeleteArticle}
                 onReclassify={setIsReclassifying}
                 isApproving={isApproving}
@@ -730,16 +736,25 @@ export default function EventDetail() {
 
       {/* Modern Confirm Modal */}
       <ConfirmModal 
-        isOpen={deleteModal.open}
-        onClose={() => setDeleteModal({ open: false, type: null, id: null })}
-        onConfirm={deleteModal.type === 'event' ? confirmDeleteEvent : confirmDeleteArticle}
-        title={deleteModal.type === 'event' ? "Xóa sự kiện" : "Xóa bài báo"}
-        message={deleteModal.type === 'event' 
-            ? "Bạn có chắc chắn muốn xóa TOÀN BỘ sự kiện này? Các bài báo liên quan sẽ bị loại khỏi hệ thống và không thể khôi phục."
-            : "Bạn có chắc chắn muốn xóa bài báo này? Bài báo sẽ bị gỡ khỏi sự kiện và chuyển vào danh sách đen."
+        isOpen={confirmModal.open}
+        onClose={() => setConfirmModal({ open: false, type: null, id: null })}
+        onConfirm={() => {
+            if (confirmModal.type === 'delete_event') confirmDeleteEvent();
+            if (confirmModal.type === 'delete_article') confirmDeleteArticle();
+            if (confirmModal.type === 'approve_event') handleApproveEvent();
+            if (confirmModal.type === 'approve_article') handleApproveArticle(confirmModal.id);
+        }}
+        title={
+            confirmModal.type?.includes('delete') ? "Xác nhận xóa" : "Xác nhận duyệt"
         }
-        confirmLabel="Xác nhận xóa"
-        variant="danger"
+        message={
+            confirmModal.type === 'delete_event' ? "Bạn có chắc chắn muốn xóa TOÀN BỘ sự kiện này? Các bài báo liên quan sẽ bị loại khỏi hệ thống và không thể khôi phục." :
+            confirmModal.type === 'delete_article' ? "Bạn có chắc chắn muốn xóa bài báo này? Bài báo sẽ bị gỡ khỏi sự kiện và chuyển vào danh sách đen." :
+            confirmModal.type === 'approve_event' ? "Bạn có chắc chắn muốn DUYỆT NHANH toàn bộ sự kiện này? Hành động này sẽ công khai sự kiện lên bản đồ." :
+            "Bạn có muốn duyệt bài báo này?"
+        }
+        confirmLabel={confirmModal.type?.includes('delete') ? "Xác nhận xóa" : "Duyệt ngay"}
+        variant={confirmModal.type?.includes('delete') ? "danger" : "success"}
       />
 
       <Toast 

@@ -1,21 +1,13 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   getJson,
   deleteJson,
   fmtType,
-  fmtDate,
-  fmtTimeAgo,
-  fmtVndBillion,
-  cleanText,
-  isJunkImage,
-  normalizeStr,
-  getDisasterMeta,
-  downloadBlob,
-  API_BASE
+  downloadBlob
 } from "../api.js";
 import Pagination from "../components/Pagination.jsx";
 import { THEME_COLORS, DISASTER_METADATA } from "../theme.js";
-import { Filter, Trash2, Printer, Download, Loader2 } from "lucide-react";
+import { Trash2, Printer, Download, Loader2 } from "lucide-react";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import Toast from "../components/Toast.jsx";
 import { VALID_PROVINCES } from "../provinces.js";
@@ -46,7 +38,16 @@ export default function Events() {
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [type, setType] = useState(searchParams.get("type") || "");
   const [province, setProvince] = useState(searchParams.get("province") || "");
-  const [startDate, setStartDate] = useState(searchParams.get("start_date") || "");
+  
+  const [startDate, setStartDate] = useState(() => {
+      const urlDate = searchParams.get("start_date");
+      if (urlDate) return urlDate;
+      // [FIX] Use local time for 'today', not UTC
+      const d = new Date();
+      const offset = d.getTimezoneOffset() * 60000;
+      return (new Date(d - offset)).toISOString().split('T')[0];
+  });
+  
   const [endDate, setEndDate] = useState(searchParams.get("end_date") || "");
   
   // [OPTIMIZATION] Debounce search input
@@ -59,8 +60,7 @@ export default function Events() {
   
   const [error, setError] = useState(null);
   
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  
   const [exportYear, setExportYear] = useState(new Date().getFullYear());
   const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
 
@@ -102,6 +102,7 @@ export default function Events() {
       await deleteJson(`/api/events/${deleteId}`);
       // Remove from local state immediately
       setEvents(prev => prev.filter(ev => ev.id !== deleteId));
+      setTotalEvents(prev => Math.max(0, prev - 1));
       setDeleteId(null);
       setToast({ isVisible: true, message: 'Đã xóa sự kiện thành công!', type: 'success' });
     } catch (err) {
@@ -310,7 +311,6 @@ export default function Events() {
     
     // [REAL-TIME] Listen for global refresh signals from WebSocket (via MainLayout)
     const handleRefresh = () => {
-        console.log("[Events] Real-time signal received, reloading...");
         if (currentPage === 1) {
             fetchEvents(true, 1); // Background refresh for page 1
         }

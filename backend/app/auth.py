@@ -15,7 +15,7 @@ pwd_context = CryptContext(
     schemes=["pbkdf2_sha256"], 
     deprecated="auto"
 )
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 
 def verify_password(plain_password, hashed_password):
